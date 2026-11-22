@@ -16,6 +16,14 @@ const REWARD_SHOP_PREFIX = 'elec_reward_shop_v1_';
 const BASE_ELO = 1200;
 const BASE_POWER = 1000;
 
+function emitAnalyticsKeyChanged(key) {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+  try {
+    if (key) window.dispatchEvent(new CustomEvent('cs-ls', { detail: key }));
+    window.dispatchEvent(new CustomEvent('elec-student-analytics-change', { detail: { key } }));
+  } catch { /* ignore */ }
+}
+
 export function getStudentElo(uid = 'guest') {
   if (typeof window === 'undefined' || !window.localStorage) {
     return { elo: BASE_ELO, history: [] };
@@ -74,10 +82,12 @@ export function recordStudentEloOnce({ uid = 'guest', attemptKey, pct, totalQues
         ...state.history.slice(-29),
         { key, before: state.elo, delta: calc.delta, after: calc.nextElo, at: Date.now() },
       ];
+      const lsKey = `${ELO_STORAGE_PREFIX}${uid || 'guest'}`;
       window.localStorage.setItem(
-        `${ELO_STORAGE_PREFIX}${uid || 'guest'}`,
+        lsKey,
         JSON.stringify({ elo: calc.nextElo, history: nextHistory })
       );
+      emitAnalyticsKeyChanged(lsKey);
     } catch { /* ignore */ }
   }
   return calc;
@@ -185,6 +195,7 @@ export function saveTargetUniversity(uid = 'guest', majorRecord = null) {
     const key = `${TARGET_UNI_PREFIX}${uid || 'guest'}`;
     if (!majorRecord) window.localStorage.removeItem(key);
     else window.localStorage.setItem(key, JSON.stringify(majorRecord));
+    emitAnalyticsKeyChanged(key);
   } catch { /* ignore */ }
 }
 
@@ -350,10 +361,12 @@ export function recordCombatPowerOnce({ uid = 'guest', attemptKey, correctCount 
         ...state.history.slice(-29),
         { key, earned, after: totalPower, at: Date.now() },
       ];
+      const lsKey = `${COMBAT_POWER_PREFIX}${uid || 'guest'}`;
       window.localStorage.setItem(
-        `${COMBAT_POWER_PREFIX}${uid || 'guest'}`,
+        lsKey,
         JSON.stringify({ power: totalPower, history: nextHistory })
       );
+      emitAnalyticsKeyChanged(lsKey);
     } catch { /* ignore */ }
   }
 
@@ -385,7 +398,9 @@ export function saveWrongQuestionNote(uid = 'guest', qid, noteText = '') {
   else delete next[qid];
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
-      window.localStorage.setItem(`${WRONG_NOTES_PREFIX}${uid || 'guest'}`, JSON.stringify(next));
+      const lsKey = `${WRONG_NOTES_PREFIX}${uid || 'guest'}`;
+      window.localStorage.setItem(lsKey, JSON.stringify(next));
+      emitAnalyticsKeyChanged(lsKey);
     } catch { /* ignore */ }
   }
   return next;
@@ -851,9 +866,11 @@ export function listExamDrafts(uid = 'guest') {
 export function saveExamDraft(uid = 'guest', examId, draft) {
   if (!examId || typeof window === 'undefined' || !window.localStorage) return;
   try {
+    const lsKey = `${EXAM_DRAFT_PREFIX}${uid || 'guest'}`;
     const all = listExamDrafts(uid);
     all[examId] = { ...draft, updatedAt: Date.now() };
-    window.localStorage.setItem(`${EXAM_DRAFT_PREFIX}${uid || 'guest'}`, JSON.stringify(all));
+    window.localStorage.setItem(lsKey, JSON.stringify(all));
+    emitAnalyticsKeyChanged(lsKey);
   } catch { /* ignore */ }
 }
 
@@ -866,10 +883,12 @@ export function loadExamDraft(uid = 'guest', examId) {
 export function clearExamDraft(uid = 'guest', examId) {
   if (!examId || typeof window === 'undefined' || !window.localStorage) return;
   try {
+    const lsKey = `${EXAM_DRAFT_PREFIX}${uid || 'guest'}`;
     const all = listExamDrafts(uid);
     if (all[examId]) {
       delete all[examId];
-      window.localStorage.setItem(`${EXAM_DRAFT_PREFIX}${uid || 'guest'}`, JSON.stringify(all));
+      window.localStorage.setItem(lsKey, JSON.stringify(all));
+      emitAnalyticsKeyChanged(lsKey);
     }
   } catch { /* ignore */ }
 }
@@ -1021,13 +1040,16 @@ export function buyOrEquipShopItem(uid = 'guest', itemId) {
     try {
       const curFreeze = Number(window.localStorage.getItem('cs-streak-freeze-count') ?? 1);
       window.localStorage.setItem('cs-streak-freeze-count', String(Math.max(0, curFreeze) + 1));
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'cs-streak-freeze-count' }));
+      window.dispatchEvent(new CustomEvent('cs-streak-ui-sync'));
     } catch { /* ignore */ }
   }
 
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
+      const lsKey = `${REWARD_SHOP_PREFIX}${uid || 'guest'}`;
       window.localStorage.setItem(
-        `${REWARD_SHOP_PREFIX}${uid || 'guest'}`,
+        lsKey,
         JSON.stringify({
           spent: nextSpent,
           owned: nextOwned,
@@ -1036,6 +1058,7 @@ export function buyOrEquipShopItem(uid = 'guest', itemId) {
         })
       );
       window.dispatchEvent(new CustomEvent('elec-shop-updated'));
+      emitAnalyticsKeyChanged(lsKey);
     } catch { /* ignore */ }
   }
 

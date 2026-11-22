@@ -20,6 +20,7 @@ import {
   where,
   getDocs,
   deleteDoc,
+  onSnapshot,
   limit,
   writeBatch,
 } from './firebase.js';
@@ -269,6 +270,46 @@ export async function fetchChats(userId) {
 }
 
 /**
+ * Lắng nghe realtime các đoạn chat học sinh trên Firestore `ai_chats` (Mobile <-> Desktop tức thì).
+ */
+export function subscribeChatsRealtime(userId, onUpdate) {
+  if (!userId || !canSyncFirestore(userId) || typeof onSnapshot !== 'function') return () => {};
+  const uid = activeFirebaseUid(userId);
+  if (!uid) return () => {};
+  try {
+    const q = query(
+      collection(db, COLLECTION),
+      where('user_id', '==', uid),
+      limit(MAX_CHATS + 10)
+    );
+    return onSnapshot(q, (snap) => {
+      if (snap.metadata?.hasPendingWrites) return;
+      const tombstones = getDeletedChatTombstones(uid);
+      const list = [];
+      snap.forEach((docSnap) => {
+        const d = docSnap.data() || {};
+        if (d.kind === 'teacher_studio' || d.kind === 'teacher_floating') return;
+        const item = {
+          id: String(d.chat_id || docSnap.id),
+          title: d.title || 'Trò chuyện mới',
+          messages: Array.isArray(d.messages) ? d.messages : [],
+          pinned: Boolean(d.pinned),
+          created_at: d.created_at || Date.now(),
+          updated_at: d.updated_at || d.created_at || Date.now(),
+        };
+        if (!isChatDeletedByTombstone(item, tombstones)) {
+          list.push(item);
+        }
+      });
+      list.sort((a, b) => Number(b.updated_at || 0) - Number(a.updated_at || 0));
+      onUpdate?.(list.slice(0, MAX_CHATS));
+    }, () => {});
+  } catch {
+    return () => {};
+  }
+}
+
+/**
  * Tạo đoạn chat mới trên Firestore `ai_chats`.
  */
 export async function createChat(userId, chat) {
@@ -465,6 +506,121 @@ export async function clearTeacherStudioState(userId) {
   try {
     await deleteDoc(doc(db, COLLECTION, chatDocId(uid, 'teacher_studio')));
   } catch { /* ignore */ }
+}
+
+export function subscribeTeacherStudioState(userId, onUpdate) {
+  if (!userId || !canSyncFirestore(userId) || typeof onSnapshot !== 'function') return () => {};
+  const uid = activeFirebaseUid(userId);
+  if (!uid) return () => {};
+  try {
+    return onSnapshot(doc(db, COLLECTION, chatDocId(uid, 'teacher_studio')), (snap) => {
+      if (!snap.exists() || snap.metadata?.hasPendingWrites) return;
+      const d = snap.data() || {};
+      onUpdate?.({
+        chatMessages: Array.isArray(d.chatMessages) ? d.chatMessages : [],
+        matrixData: d.matrixData || null,
+        questions: Array.isArray(d.questions) ? d.questions : [],
+        topic: d.topic || '',
+        selectedSubject: d.selectedSubject || '',
+        step: Number(d.step) || 0,
+        slots: d.slots || { grade: null, count: null, duration: null },
+        updatedAt: Number(d.updated_at) || 0,
+      });
+    }, () => {});
+  } catch {
+    return () => {};
+  }
+}
+
+/* ============================================================
+   TEACHER FLOATING CHAT (ELEC AGENT) — ĐỒNG BỘ LÊN FIRESTORE
+   ============================================================ */
+export async function loadTeacherFloatingChat(userId) {
+  if (!userId || !canSyncFirestore(userId)) return null;
+  const uid = activeFirebaseUid(userId);
+  try {
+    const snap = await getDoc(doc(db, COLLECTION, chatDocId(uid, 'teacher_floating')));
+    if (!snap.exists()) return null;
+    const d = snap.data() || {};
+    return {
+      messages: Array.isArray(d.messages) ? d.messages : [],
+      updatedAt: Number(d.updated_at) || 0,
+      clearedAt: Number(d.cleared_at) || 0,
+    };
+  } catch (err) {
+    console.warn('[aiChatApi] loadTeacherFloatingChat error:', err?.message || err);
+    return null;
+  }
+}
+
+export async function saveTeacherFloatingChat(userId, messages = [], updatedAt = Date.now()) {
+  if (!userId || !canSyncFirestore(userId)) return null;
+  const uid = activeFirebaseUid(userId);
+  try {
+    const nonStreaming = (Array.isArray(messages) ? messages : [])
+      .filter((m) => m && !m.streaming && m.id && m.sender && typeof m.text === 'string')
+      .slice(-50)
+      .map((m) => {
+        const copy = { ...m };
+        delete copy.realSummary;
+        if (copy.imagePreview) {
+          copy.imagePreview = { name: copy.imagePreview.name, sizeLabel: copy.imagePreview.sizeLabel };
+        }
+        return copy;
+      });
+    const payload = sanitizeForFirestore({
+      chat_id: 'teacher_floating',
+      user_id: uid,
+      kind: 'teacher_floating',
+      title: 'ELEC Agent Giáo viên',
+      messages: prepareMessagesForCloud(nonStreaming),
+      updated_at: Number(updatedAt) || Date.now(),
+    });
+    await setDoc(doc(db, COLLECTION, chatDocId(uid, 'teacher_floating')), payload, { merge: true });
+    return payload;
+  } catch (err) {
+    console.warn('[aiChatApi] saveTeacherFloatingChat error:', err?.message || err);
+    return null;
+  }
+}
+
+export async function clearTeacherFloatingChat(userId, ts = Date.now()) {
+  if (!userId || !canSyncFirestore(userId)) return;
+  const uid = activeFirebaseUid(userId);
+  try {
+    await setDoc(
+      doc(db, COLLECTION, chatDocId(uid, 'teacher_floating')),
+      sanitizeForFirestore({
+        chat_id: 'teacher_floating',
+        user_id: uid,
+        kind: 'teacher_floating',
+        title: 'ELEC Agent Giáo viên',
+        messages: [],
+        cleared_at: ts,
+        updated_at: ts,
+      }),
+      { merge: true }
+    );
+  } catch { /* ignore */ }
+}
+
+export function subscribeTeacherFloatingChat(userId, onUpdate) {
+  if (!userId || !canSyncFirestore(userId) || typeof onSnapshot !== 'function') return () => {};
+  const uid = activeFirebaseUid(userId);
+  if (!uid) return () => {};
+  try {
+    return onSnapshot(doc(db, COLLECTION, chatDocId(uid, 'teacher_floating')), (snap) => {
+      if (!snap.exists() || snap.metadata?.hasPendingWrites) return;
+      const d = snap.data() || {};
+      onUpdate?.({
+        messages: Array.isArray(d.messages) ? d.messages : [],
+        updatedAt: Number(d.updated_at) || 0,
+        clearedAt: Number(d.cleared_at) || 0,
+      });
+    }, () => {});
+  } catch {
+    return () => {};
+  }
 }
 
 /**

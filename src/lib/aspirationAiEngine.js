@@ -483,6 +483,9 @@ export function saveAiStrategy(uid, strategyPlan) {
   try {
     const key = `${AI_STRATEGY_STORAGE_PREFIX}${uid || 'guest'}`;
     localStorage.setItem(key, JSON.stringify(strategyPlan));
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: key }));
+    }
   } catch (e) {
     console.warn('[aspirationAiEngine] save error:', e);
   }

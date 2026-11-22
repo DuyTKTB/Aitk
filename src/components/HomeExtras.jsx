@@ -220,16 +220,25 @@ function ExamCountdown() {
   const saveTimer = useRef(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(EXAM_KEY);
-      if (raw) setD(JSON.parse(raw));
-    } catch { /* localStorage bị chặn */ }
+    const syncExam = () => {
+      try {
+        const raw = localStorage.getItem(EXAM_KEY);
+        if (raw) setD(JSON.parse(raw));
+        else setD({ name: '', date: '' });
+      } catch { /* localStorage bị chặn */ }
+    };
+    syncExam();
+    window.addEventListener('cs-cloud-sync-update', syncExam);
+    return () => window.removeEventListener('cs-cloud-sync-update', syncExam);
   }, []);
   const save = (n) => {
     setD(n);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      try { localStorage.setItem(EXAM_KEY, JSON.stringify(n)); } catch { /* */ }
+      try {
+        localStorage.setItem(EXAM_KEY, JSON.stringify(n));
+        window.dispatchEvent(new CustomEvent('cs-ls', { detail: EXAM_KEY }));
+      } catch { /* */ }
     }, 400);
   };
   useEffect(() => () => clearTimeout(saveTimer.current), []);

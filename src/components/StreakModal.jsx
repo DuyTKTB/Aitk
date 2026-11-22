@@ -30,7 +30,6 @@ export function readFreezeCount() {
   try {
     const saved = localStorage.getItem(FREEZE_KEY);
     if (saved !== null) return Math.max(0, Number(saved));
-    localStorage.setItem(FREEZE_KEY, '1');
     return 1;
   } catch {
     return 1;
@@ -179,12 +178,19 @@ export default function StreakModal({ isOpen: propIsOpen, onClose: propOnClose }
     window.addEventListener('elec-open-streak-modal', handleOpen);
     window.addEventListener('elec-close-streak-modal', handleClose);
     window.addEventListener('cs-streak-ui-sync', handleSync);
+    window.addEventListener('cs-cloud-sync-update', handleSync);
     return () => {
       window.removeEventListener('elec-open-streak-modal', handleOpen);
       window.removeEventListener('elec-close-streak-modal', handleClose);
       window.removeEventListener('cs-streak-ui-sync', handleSync);
+      window.removeEventListener('cs-cloud-sync-update', handleSync);
     };
-  }, [propOnClose]);
+  }, [propOnClose, uid]);
+
+  useEffect(() => {
+    setFreezeCount(readFreezeCount());
+    setClaimedList(readClaimedMilestones());
+  }, [uid]);
 
   const handleCloseModal = (e) => {
     if (e) {
@@ -231,6 +237,7 @@ export default function StreakModal({ isOpen: propIsOpen, onClose: propOnClose }
       const nextCount = freezeCount + 1;
       setFreezeCount(nextCount);
       localStorage.setItem(FREEZE_KEY, String(nextCount));
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: FREEZE_KEY }));
       window.dispatchEvent(new CustomEvent('cs-streak-ui-sync'));
       setNoticeMsg({
         ok: true,
@@ -258,6 +265,7 @@ export default function StreakModal({ isOpen: propIsOpen, onClose: propOnClose }
         const passes = JSON.parse(localStorage.getItem('cs-streak-passes') || '{}');
         passes[passTier] = (Number(passes[passTier]) || 0) + 1;
         localStorage.setItem('cs-streak-passes', JSON.stringify(passes));
+        window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'cs-streak-passes' }));
       } catch { /* ignore */ }
     }
 
@@ -265,6 +273,7 @@ export default function StreakModal({ isOpen: propIsOpen, onClose: propOnClose }
     setClaimedList(next);
     try {
       localStorage.setItem(CLAIMED_KEY, JSON.stringify(next));
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: CLAIMED_KEY }));
       window.dispatchEvent(new CustomEvent('cs-streak-ui-sync'));
     } catch { /* ignore */ }
     setNoticeMsg({ ok: true, text: `Chúc mừng bạn đã nhận thưởng cột mốc ${milestoneDays} ngày: ${rewardLabel}!` });

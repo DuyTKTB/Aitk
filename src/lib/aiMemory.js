@@ -56,7 +56,13 @@ export function loadProfile(uid) {
 export function saveProfile(uid, patch) {
   if (!uid || !hasStorage()) return null;
   const next = { ...loadProfile(uid), ...patch, lastSeen: Date.now() };
-  try { localStorage.setItem(PROFILE_PREFIX + uid, JSON.stringify(next)); } catch { /* quota */ }
+  try {
+    const key = PROFILE_PREFIX + uid;
+    localStorage.setItem(key, JSON.stringify(next));
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: key }));
+    }
+  } catch { /* quota */ }
   return next;
 }
 

@@ -49,6 +49,7 @@ import {
   loadTeacherStudioState,
   saveTeacherStudioState,
   clearTeacherStudioState,
+  subscribeTeacherStudioState,
 } from '../../lib/aiChatApi.js';
 import ExamPreviewSimulator from './ExamPreviewSimulator.jsx';
 import AIMark from '../AIMark.jsx';
@@ -661,26 +662,38 @@ export default function AutoExamStudio({
       return undefined;
     }
 
+    const applyCloudSnapshot = (cloud) => {
+      if (cancelled || !cloud) return;
+      const localUpdatedAt = Number(localStorage.getItem(`cs-aes:${uid}:updated_at`) || 0);
+      if (cloud.updatedAt > localUpdatedAt || (!localStorage.getItem(`cs-aes:${uid}:chat_history`) && (cloud.chatMessages.length || cloud.matrixData || cloud.questions.length))) {
+        if (cloud.selectedSubject && THPT_SUBJECTS.includes(cloud.selectedSubject)) setSelectedSubject(cloud.selectedSubject);
+        if (cloud.chatMessages?.length) setChatMessages(cloud.chatMessages.slice(-50));
+        if (cloud.matrixData) setMatrixData(cloud.matrixData);
+        if (cloud.questions?.length) setQuestions(cloud.questions);
+        if (cloud.topic) setTopic(cloud.topic);
+        if (cloud.step) setStep(cloud.step);
+        if (cloud.slots) setSlots(cloud.slots);
+        try { localStorage.setItem(`cs-aes:${uid}:updated_at`, String(cloud.updatedAt)); } catch { /* ignore */ }
+      }
+    };
+
     (async () => {
       try {
         const cloud = await loadTeacherStudioState(uid);
-        if (cancelled) return;
-        const localUpdatedAt = Number(localStorage.getItem(`cs-aes:${uid}:updated_at`) || 0);
-        if (cloud && (cloud.updatedAt > localUpdatedAt || (!localStorage.getItem(`cs-aes:${uid}:chat_history`) && (cloud.chatMessages.length || cloud.matrixData || cloud.questions.length)))) {
-          if (cloud.selectedSubject && THPT_SUBJECTS.includes(cloud.selectedSubject)) setSelectedSubject(cloud.selectedSubject);
-          if (cloud.chatMessages?.length) setChatMessages(cloud.chatMessages.slice(-50));
-          if (cloud.matrixData) setMatrixData(cloud.matrixData);
-          if (cloud.questions?.length) setQuestions(cloud.questions);
-          if (cloud.topic) setTopic(cloud.topic);
-          if (cloud.step) setStep(cloud.step);
-          if (cloud.slots) setSlots(cloud.slots);
-        }
+        applyCloudSnapshot(cloud);
       } catch { /* ignore */ } finally {
         if (!cancelled) studioSyncedRef.current = true;
       }
     })();
 
-    return () => { cancelled = true; };
+    const unsubStudioRealtime = subscribeTeacherStudioState(uid, (cloud) => {
+      applyCloudSnapshot(cloud);
+    });
+
+    return () => {
+      cancelled = true;
+      unsubStudioRealtime?.();
+    };
   }, [uid]);
 
   // Save khi có thay đổi (localStorage theo uid + Firestore ai_chats)

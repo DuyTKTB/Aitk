@@ -63,11 +63,18 @@ export default function NavStreakPopover({ userId, streakCount = 0, hasStreakTod
     };
     window.addEventListener('elec-close-nav-dropdowns', onCloseOthers);
     window.addEventListener('cs-streak-ui-sync', onSync);
+    window.addEventListener('cs-cloud-sync-update', onSync);
     return () => {
       window.removeEventListener('elec-close-nav-dropdowns', onCloseOthers);
       window.removeEventListener('cs-streak-ui-sync', onSync);
+      window.removeEventListener('cs-cloud-sync-update', onSync);
     };
   }, []);
+
+  useEffect(() => {
+    setFreezeCount(readFreezeCount());
+    setClaimedList(readClaimedMilestones());
+  }, [userId]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -125,6 +132,7 @@ export default function NavStreakPopover({ userId, streakCount = 0, hasStreakTod
       setFreezeCount(next);
       try {
         localStorage.setItem(FREEZE_KEY, String(next));
+        window.dispatchEvent(new CustomEvent('cs-ls', { detail: FREEZE_KEY }));
         window.dispatchEvent(new CustomEvent('cs-streak-ui-sync'));
       } catch { /* ignore */ }
       setNotice({ ok: true, text: `Đã trang bị +1 Khiên Đóng Băng (-${formatCredits(freezeCost)} Credit)!` });

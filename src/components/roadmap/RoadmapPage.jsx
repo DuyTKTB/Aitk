@@ -451,7 +451,10 @@ export default function RoadmapPage() {
 
   const pickGrade = (g) => {
     setGradeFilter(g);
-    try { localStorage.setItem(GRADE_KEY, g); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(GRADE_KEY, g);
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: GRADE_KEY }));
+    } catch { /* ignore */ }
   };
 
   const syncChapterHash = (id) => {

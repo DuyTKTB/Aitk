@@ -76,8 +76,10 @@ export function getWeeklyPlan(uid = 'guest') {
 export function saveWeeklyPlan(uid = 'guest', plan) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(`${STORAGE_PREFIX}${uid}`, JSON.stringify(plan));
+    const key = `${STORAGE_PREFIX}${uid}`;
+    localStorage.setItem(key, JSON.stringify(plan));
     window.dispatchEvent(new CustomEvent('elec-weekly-plan-changed', { detail: plan }));
+    window.dispatchEvent(new CustomEvent('cs-ls', { detail: key }));
   } catch (err) {
     console.warn('[WeeklyPlan] Failed to save plan:', err);
   }

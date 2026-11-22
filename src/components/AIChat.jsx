@@ -16,6 +16,7 @@ import {
   deleteAllChats as deleteAllChatsServer,
   migrateLocalChats,
   mergeChatsById,
+  subscribeChatsRealtime,
   debouncedSync,
   flushPendingSyncs,
   cancelAllSyncs,
@@ -955,6 +956,11 @@ export default function AIChat({ onExit }) {
     if (!uid) {
       setSynced(true);
       syncedAtMapRef.current = {};
+      if (typeof localStorage !== 'undefined' && localStorage.getItem('cs-ai-chats') === null) {
+        setChats([]);
+        setActiveId(null);
+        setPinnedIds([]);
+      }
       return undefined;
     }
 
@@ -994,59 +1000,65 @@ export default function AIChat({ onExit }) {
     }
     try { localStorage.setItem('cs-ai-chats-owner', uid); } catch { /* ignore */ }
 
+    const applyServerChatsSnapshot = (serverChats, { pushNeedsUpload = false } = {}) => {
+      if (cancelled || !Array.isArray(serverChats)) return;
+      const tombstones = getDeletedChatTombstones(uid);
+      const mapped = serverChats
+        .map((c) => ({
+          id: c.id,
+          title: c.title || 'Trò chuyện mới',
+          messages: Array.isArray(c.messages) ? c.messages : [],
+          createdAt: Number(c.created_at) || Date.now(),
+          updatedAt: Number(c.updated_at) || Date.now(),
+          pinned: Boolean(c.pinned),
+        }))
+        .filter((c) => !isChatDeletedByTombstone(c, tombstones));
+
+      const serverById = new Map(mapped.map((m) => [m.id, m]));
+      mapped.forEach((m) => {
+        syncedAtMapRef.current[m.id] = Math.max(syncedAtMapRef.current[m.id] || 0, Number(m.updatedAt) || 0);
+      });
+
+      const curLocal = pushNeedsUpload ? readScopedLocalChats(uid) : (chatsRef.current || []);
+      const merged = mergeChatsById(mapped, curLocal).filter(
+        (c) => !isChatDeletedByTombstone(c, tombstones)
+      );
+      const needsUpload = merged.filter((c) => {
+        const srv = serverById.get(c.id);
+        return !srv || (Number(c.updatedAt) || 0) > (Number(srv.updatedAt) || 0);
+      });
+
+      setChats(merged);
+      try {
+        localStorage.setItem(`cs-ai-chats:${uid}`, JSON.stringify(merged.slice(0, 60)));
+      } catch { /* ignore */ }
+
+      // Đồng bộ chuẩn trạng thái ghim từ server (thêm ghim mới + gỡ bỏ chat đã bỏ ghim ở máy khác)
+      setPinnedIds((prev) => {
+        const keepLocalOnly = (prev || []).filter((id) => !serverById.has(id));
+        const serverPinned = mapped.filter((c) => c.pinned).map((c) => c.id);
+        return Array.from(new Set([...keepLocalOnly, ...serverPinned]));
+      });
+
+      if (merged.length === 0) {
+        setActiveId(null);
+      } else if (activeId && !merged.some((c) => c.id === activeId)) {
+        setActiveId(merged[0]?.id || null);
+      }
+
+      if (pushNeedsUpload && needsUpload.length > 0) {
+        migrateLocalChats(uid, needsUpload).catch(() => {});
+        needsUpload.forEach((c) => {
+          syncedAtMapRef.current[c.id] = Math.max(syncedAtMapRef.current[c.id] || 0, Number(c.updatedAt) || 0);
+        });
+      }
+    };
+
     const runPullSync = async () => {
       try {
         const serverChats = await fetchChatsServer(uid);
         if (cancelled) return;
-
-        const tombstones = getDeletedChatTombstones(uid);
-        const mapped = serverChats
-          .map((c) => ({
-            id: c.id,
-            title: c.title || 'Trò chuyện mới',
-            messages: Array.isArray(c.messages) ? c.messages : [],
-            createdAt: Number(c.created_at) || Date.now(),
-            updatedAt: Number(c.updated_at) || Date.now(),
-            pinned: Boolean(c.pinned),
-          }))
-          .filter((c) => !isChatDeletedByTombstone(c, tombstones));
-
-        const serverById = new Map(mapped.map((m) => [m.id, m]));
-        mapped.forEach((m) => {
-          syncedAtMapRef.current[m.id] = Math.max(syncedAtMapRef.current[m.id] || 0, Number(m.updatedAt) || 0);
-        });
-
-        const curLocal = readScopedLocalChats(uid);
-        const merged = mergeChatsById(mapped, curLocal).filter(
-          (c) => !isChatDeletedByTombstone(c, tombstones)
-        );
-        const needsUpload = merged.filter((c) => {
-          const srv = serverById.get(c.id);
-          return !srv || (Number(c.updatedAt) || 0) > (Number(srv.updatedAt) || 0);
-        });
-
-        setChats(merged);
-        try {
-          localStorage.setItem(`cs-ai-chats:${uid}`, JSON.stringify(merged.slice(0, 60)));
-        } catch { /* ignore */ }
-
-        const nextPinned = mapped.filter((c) => c.pinned).map((c) => c.id);
-        if (nextPinned.length > 0) {
-          setPinnedIds((prev) => Array.from(new Set([...(prev || []), ...nextPinned])));
-        }
-        if (merged.length === 0) {
-          setActiveId(null);
-        } else if (activeId && !merged.some((c) => c.id === activeId)) {
-          setActiveId(merged[0]?.id || null);
-        }
-
-        if (needsUpload.length > 0) {
-          migrateLocalChats(uid, needsUpload).catch(() => {});
-          needsUpload.forEach((c) => {
-            syncedAtMapRef.current[c.id] = Math.max(syncedAtMapRef.current[c.id] || 0, Number(c.updatedAt) || 0);
-          });
-        }
-
+        applyServerChatsSnapshot(serverChats, { pushNeedsUpload: true });
         if (!cancelled) setSynced(true);
       } catch (e) {
         console.warn('[AIChat] Không load được chat từ server:', e?.message || e);
@@ -1055,6 +1067,12 @@ export default function AIChat({ onExit }) {
     };
 
     runPullSync();
+
+    // Lắng nghe realtime collection `ai_chats` cho phép Mobile <-> PC cập nhật tức thì
+    const unsubRealtime = subscribeChatsRealtime(uid, (liveServerChats) => {
+      if (cancelled) return;
+      applyServerChatsSnapshot(liveServerChats, { pushNeedsUpload: false });
+    });
 
     // Khi đổi từ thiết bị khác quay lại tab hoặc nhận tín hiệu sync, kéo lại ngay
     const onVisiblePull = () => {
@@ -1076,6 +1094,7 @@ export default function AIChat({ onExit }) {
 
     return () => {
       cancelled = true;
+      unsubRealtime?.();
       flushPendingSyncs();
       cancelAllSyncs();
       document.removeEventListener('visibilitychange', onVisiblePull);
@@ -1321,10 +1340,12 @@ export default function AIChat({ onExit }) {
     e?.stopPropagation();
     setPinnedIds((prev) => {
       const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      updateChatServer(id, { pinned: next.includes(id), userId: uid }).catch(() => {});
+      if (uid) {
+        updateChatServer(id, { pinned: next.includes(id), userId: uid }).catch(() => {});
+      }
       return next;
     });
-  }, [setPinnedIds]);
+  }, [setPinnedIds, uid]);
 
   /* KHÁC */
   useEffect(() => {

@@ -342,17 +342,26 @@ export default function DedicatedLessonView({
     }
   }, [uid]);
 
-  // Tự động tải ghi chú tương ứng khi chuyển bài học
+  // Tự động tải ghi chú tương ứng khi chuyển bài học hoặc đồng bộ cloud
   useEffect(() => {
-    try {
-      setPersonalNotes(localStorage.getItem(`elec-notes-${currentLessonId}`) || '');
-    } catch { setPersonalNotes(''); }
+    const syncLessonExtras = () => {
+      try {
+        setPersonalNotes(localStorage.getItem(`elec-notes-${currentLessonId}`) || '');
+        setCompletedLessonIds(JSON.parse(localStorage.getItem('elec-completed-lessons') || '[]'));
+        setBookmarkedFormulas(JSON.parse(localStorage.getItem('elec-bookmarked-formulas') || '[]'));
+      } catch { /* ignore */ }
+    };
+    syncLessonExtras();
+    window.addEventListener('cs-cloud-sync-update', syncLessonExtras);
+    return () => window.removeEventListener('cs-cloud-sync-update', syncLessonExtras);
   }, [currentLessonId]);
 
   const handleSaveNote = (text) => {
     setPersonalNotes(text);
     try {
-      localStorage.setItem(`elec-notes-${currentLessonId}`, text);
+      const k = `elec-notes-${currentLessonId}`;
+      localStorage.setItem(k, text);
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: k }));
       setNoteSavedBadge(true);
       setTimeout(() => setNoteSavedBadge(false), 2000);
     } catch {}
@@ -450,6 +459,7 @@ export default function DedicatedLessonView({
     setCompletedLessonIds(nextList);
     try {
       localStorage.setItem('elec-completed-lessons', JSON.stringify(nextList));
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'elec-completed-lessons' }));
     } catch {}
     const chId = currentLesson?.chapter?.chapterId;
     if (uid && chId && !wasDone) {
@@ -522,6 +532,7 @@ export default function DedicatedLessonView({
     setBookmarkedFormulas(next);
     try {
       localStorage.setItem('elec-bookmarked-formulas', JSON.stringify(next));
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'elec-bookmarked-formulas' }));
     } catch {}
   };
 

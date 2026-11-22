@@ -1009,6 +1009,7 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
           const existing = JSON.parse(localStorage.getItem('elec_paper_exams') || '[]');
           existing.unshift(localPaperExam);
           localStorage.setItem('elec_paper_exams', JSON.stringify(existing));
+          window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'elec_paper_exams' }));
         } catch (_) {}
         setOmrSavedInfo(localPaperExam);
         onSay?.(

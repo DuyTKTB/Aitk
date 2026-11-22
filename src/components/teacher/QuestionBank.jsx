@@ -529,7 +529,10 @@ export default function QuestionBank({
     if (!qId) return;
     setCustomMeta((prev) => {
       const next = { ...prev, [qId]: { ...(prev[qId] || {}), ...patch } };
-      try { localStorage.setItem(Q_META_STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      try {
+        localStorage.setItem(Q_META_STORAGE_KEY, JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent('cs-ls', { detail: Q_META_STORAGE_KEY }));
+      } catch { /* ignore */ }
       return next;
     });
   }, []);
@@ -610,12 +613,34 @@ export default function QuestionBank({
     clearTimeout(undoTimer.current);
   }, []);
 
-  /* Lưu bộ lọc yêu thích vào localStorage */
+  /* Lưu bộ lọc yêu thích vào localStorage (chỉ đẩy sự kiện khi thực sự thay đổi) */
+  const favSyncInitRef = useRef(false);
   useEffect(() => {
+    if (!favSyncInitRef.current) {
+      favSyncInitRef.current = true;
+      return;
+    }
     try {
       localStorage.setItem(FAV_FILTERS_KEY, JSON.stringify(favFilters));
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: FAV_FILTERS_KEY }));
     } catch { /* ignore */ }
   }, [favFilters]);
+
+  useEffect(() => {
+    const onCloudSync = () => {
+      try {
+        const rawFav = localStorage.getItem(FAV_FILTERS_KEY);
+        if (rawFav) {
+          favSyncInitRef.current = false;
+          setFavFilters(JSON.parse(rawFav));
+        }
+        const rawMeta = localStorage.getItem(Q_META_STORAGE_KEY);
+        if (rawMeta) setCustomMeta(JSON.parse(rawMeta));
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('cs-cloud-sync-update', onCloudSync);
+    return () => window.removeEventListener('cs-cloud-sync-update', onCloudSync);
+  }, []);
 
   /* Tải danh sách câu hỏi */
   const refresh = useCallback(async () => {

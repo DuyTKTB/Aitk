@@ -53,7 +53,10 @@ function write(uid, cards) {
     console.warn('[flashcardStore] không lưu được:', e && e.message);
   }
   if (written) {
-    try { window.dispatchEvent(new Event(EVT)); } catch { /* test */ }
+    try {
+      window.dispatchEvent(new Event(EVT));
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: keyOf(uid) }));
+    } catch { /* test */ }
   }
 }
 

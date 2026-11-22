@@ -2557,8 +2557,22 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   };
 
   useEffect(() => {
-    setFavIds(getFavoriteExamIds(uid));
-    setHistoryList(getVirtualExamHistory(uid));
+    const refreshUserExamLists = () => {
+      setFavIds(getFavoriteExamIds(uid));
+      setHistoryList(getVirtualExamHistory(uid));
+      setSubQuota(getSubscriptionAndQuota(uid));
+    };
+    refreshUserExamLists();
+    window.addEventListener('cs-cloud-sync-update', refreshUserExamLists);
+    window.addEventListener('elec-fav-exams-changed', refreshUserExamLists);
+    window.addEventListener('elec-exam-history-changed', refreshUserExamLists);
+    window.addEventListener('elec-quota-changed', refreshUserExamLists);
+    return () => {
+      window.removeEventListener('cs-cloud-sync-update', refreshUserExamLists);
+      window.removeEventListener('elec-fav-exams-changed', refreshUserExamLists);
+      window.removeEventListener('elec-exam-history-changed', refreshUserExamLists);
+      window.removeEventListener('elec-quota-changed', refreshUserExamLists);
+    };
   }, [uid]);
 
   useEffect(() => {

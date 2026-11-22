@@ -37,8 +37,15 @@ import {
   IcoFileDoc,
 } from './chat/tfcIcons.jsx';
 import {
+  loadTeacherFloatingChat,
+  saveTeacherFloatingChat,
+  clearTeacherFloatingChat,
+  subscribeTeacherFloatingChat,
+} from '../../lib/aiChatApi.js';
+import {
   createWelcomeMessage,
   buildConversationHistory,
+  getPersistedChatMeta,
   loadPersistedMessages,
   savePersistedMessages,
   clearPersistedMessages,
@@ -913,17 +920,122 @@ export default function TeacherFloatingChat({
     return count;
   }, [activeLiveRooms]);
 
-  // Khôi phục lịch sử hội thoại theo tài khoản (hoặc khởi tạo lời chào gọn gàng)
+  // Khôi phục lịch sử hội thoại theo tài khoản (localStorage + đồng bộ Firestore Realtime)
   const [messages, setMessages] = useState(() =>
     loadPersistedMessages(user?.uid, user?.displayName)
   );
+  const hydratedUidRef = useRef('');
+  const applyingCloudRef = useRef(false);
+  const cloudPushTimerRef = useRef(null);
 
   // Giữ ref luôn mới nhất để build lịch sử đa lượt không bị stale closure
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
-  // Đồng bộ lời chào khi tên giáo viên vừa tải xong và lưu lịch sử vào localStorage
+  // Nạp lại lịch sử đúng tài khoản & kéo đồng bộ Firestore khi user?.uid thay đổi
+  useEffect(() => {
+    const uid = user?.uid || '';
+    const displayName = user?.displayName || '';
+    const loadedLocal = loadPersistedMessages(uid, displayName);
+    hydratedUidRef.current = '';
+    applyingCloudRef.current = true;
+    setMessages(loadedLocal);
+    const tReset = setTimeout(() => { applyingCloudRef.current = false; }, 0);
+
+    if (!uid) {
+      clearTimeout(tReset);
+      hydratedUidRef.current = '';
+      applyingCloudRef.current = false;
+      return undefined;
+    }
+
+    let cancelled = false;
+    const normalizeCloudMsgs = (remoteList) => {
+      const welcome = createWelcomeMessage(displayName);
+      const valid = (Array.isArray(remoteList) ? remoteList : [])
+        .filter((m) => m && m.id && m.sender && typeof m.text === 'string' && m.id !== 'welcome_ultra')
+        .map((m) => ({ ...m, streaming: false }));
+      return [welcome, ...valid].slice(-60);
+    };
+
+    const mergeRemote = (remote) => {
+      if (cancelled || !remote) return;
+      const meta = getPersistedChatMeta(uid);
+      if (remote.clearedAt > meta.updatedAt && (!remote.messages || remote.messages.length === 0)) {
+        clearPersistedMessages(uid, remote.clearedAt);
+        applyingCloudRef.current = true;
+        setMessages([createWelcomeMessage(displayName)]);
+        setTimeout(() => { applyingCloudRef.current = false; }, 0);
+        return;
+      }
+      const remoteHasMsgs = Array.isArray(remote.messages) && remote.messages.some((m) => m.id !== 'welcome_ultra');
+      const curLocal = messagesRef.current || [];
+      const localNonWelcome = curLocal.filter((m) => m && m.id !== 'welcome_ultra');
+
+      if (remoteHasMsgs && (remote.updatedAt >= meta.updatedAt || localNonWelcome.length === 0)) {
+        const merged = normalizeCloudMsgs(remote.messages);
+        applyingCloudRef.current = true;
+        setMessages(merged);
+        savePersistedMessages(uid, merged, remote.updatedAt);
+        setTimeout(() => { applyingCloudRef.current = false; }, 0);
+      } else if (localNonWelcome.length > 0 && meta.updatedAt > (remote.updatedAt || 0)) {
+        saveTeacherFloatingChat(uid, curLocal, meta.updatedAt).catch(() => {});
+      }
+    };
+
+    loadTeacherFloatingChat(uid)
+      .then((remote) => {
+        if (!cancelled) {
+          if (remote) mergeRemote(remote);
+          else {
+            const curLocal = messagesRef.current || [];
+            if (curLocal.some((m) => m && m.id !== 'welcome_ultra')) {
+              saveTeacherFloatingChat(uid, curLocal, Date.now()).catch(() => {});
+            }
+          }
+          hydratedUidRef.current = uid;
+        }
+      })
+      .catch(() => {
+        if (!cancelled) hydratedUidRef.current = uid;
+      });
+
+    const unsubRealtime = subscribeTeacherFloatingChat(uid, (remote) => {
+      if (!cancelled && hydratedUidRef.current === uid) {
+        mergeRemote(remote);
+      }
+    });
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden' && hydratedUidRef.current === uid) {
+        if (cloudPushTimerRef.current) {
+          clearTimeout(cloudPushTimerRef.current);
+          cloudPushTimerRef.current = null;
+        }
+        saveTeacherFloatingChat(uid, messagesRef.current || []).catch(() => {});
+      }
+    };
+    window.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onVisibility);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(tReset);
+      unsubRealtime?.();
+      window.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onVisibility);
+      if (cloudPushTimerRef.current) {
+        clearTimeout(cloudPushTimerRef.current);
+        cloudPushTimerRef.current = null;
+        if (hydratedUidRef.current === uid) {
+          saveTeacherFloatingChat(uid, messagesRef.current || []).catch(() => {});
+        }
+      }
+    };
+  }, [user?.uid]);
+
+  // Đồng bộ lời chào khi tên giáo viên vừa tải xong
   useEffect(() => {
     if (!user?.displayName) return;
     setMessages((prev) => {
@@ -936,13 +1048,35 @@ export default function TeacherFloatingChat({
     });
   }, [user?.displayName]);
 
+  // Lưu lịch sử localStorage + đẩy Firestore khi có thay đổi (sau khi đã hydrate xong uid)
   useEffect(() => {
-    savePersistedMessages(user?.uid, messages);
+    const uid = user?.uid || '';
+    if (applyingCloudRef.current) return undefined;
+    if (uid && hydratedUidRef.current !== uid) return undefined;
+    const now = Date.now();
+    savePersistedMessages(uid, messages, now);
+    if (!uid) return undefined;
+    if (messages.some((m) => m?.streaming)) return undefined;
+    if (cloudPushTimerRef.current) clearTimeout(cloudPushTimerRef.current);
+    cloudPushTimerRef.current = setTimeout(() => {
+      cloudPushTimerRef.current = null;
+      saveTeacherFloatingChat(uid, messages, now).catch(() => {});
+    }, 900);
+    return () => {
+      if (cloudPushTimerRef.current) {
+        clearTimeout(cloudPushTimerRef.current);
+        cloudPushTimerRef.current = null;
+      }
+    };
   }, [user?.uid, messages]);
 
   const handleClearChat = useCallback(() => {
     handleStopGeneration();
-    clearPersistedMessages(user?.uid);
+    const ts = Date.now();
+    clearPersistedMessages(user?.uid, ts);
+    if (user?.uid) {
+      clearTeacherFloatingChat(user.uid, ts).catch(() => {});
+    }
     setMessages([createWelcomeMessage(user?.displayName)]);
     setConfirmClearChat(false);
   }, [handleStopGeneration, user?.uid, user?.displayName]);

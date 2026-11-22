@@ -516,6 +516,7 @@ export function DashFrame({
     setTheme(next);
     try {
       localStorage.setItem('elec_teacher_theme', next);
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'elec_teacher_theme' }));
     } catch { /* */ }
   };
 
@@ -524,10 +525,24 @@ export function DashFrame({
       const next = !prev;
       try {
         localStorage.setItem('elec_teacher_rail_collapsed', next ? '1' : '0');
+        window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'elec_teacher_rail_collapsed' }));
       } catch { /* */ }
       return next;
     });
   };
+
+  useEffect(() => {
+    const syncTeacherPrefs = () => {
+      try {
+        const t = localStorage.getItem('elec_teacher_theme');
+        if (t === 'dark' || t === 'light') setTheme(t);
+        const r = localStorage.getItem('elec_teacher_rail_collapsed');
+        if (r === '0' || r === '1') setRailCollapsed(r === '1');
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('cs-cloud-sync-update', syncTeacherPrefs);
+    return () => window.removeEventListener('cs-cloud-sync-update', syncTeacherPrefs);
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

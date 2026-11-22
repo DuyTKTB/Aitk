@@ -604,7 +604,8 @@ export default function App() {
         const subj = params.get('subject');
         if (subj && ['all', 'ly', 'hoa', 'sinh'].includes(subj)) {
           localStorage.setItem('elec-current-subject', subj);
-          window.dispatchEvent(new CustomEvent('elec-subject-change', { detail: subj }));
+          window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'elec-current-subject' }));
+          window.dispatchEvent(new CustomEvent('elec-subject-change', { detail: { subject: subj } }));
         }
       } catch {}
     };

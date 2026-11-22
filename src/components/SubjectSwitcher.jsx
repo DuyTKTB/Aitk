@@ -97,18 +97,29 @@ export function useCurrentSubject() {
 
   useEffect(() => {
     const handleSubjectChange = (e) => {
-      const nextSub = e.detail?.subject;
+      const nextSub = typeof e?.detail === 'string' ? e.detail : e.detail?.subject;
       if (nextSub && nextSub !== subject) {
         setSubjectState(nextSub);
       }
     };
+    const handleCloudSync = () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY) || 'all';
+        if (stored !== subject) setSubjectState(stored);
+      } catch { /* ignore */ }
+    };
     window.addEventListener('elec-subject-change', handleSubjectChange);
-    return () => window.removeEventListener('elec-subject-change', handleSubjectChange);
+    window.addEventListener('cs-cloud-sync-update', handleCloudSync);
+    return () => {
+      window.removeEventListener('elec-subject-change', handleSubjectChange);
+      window.removeEventListener('cs-cloud-sync-update', handleCloudSync);
+    };
   }, [subject]);
 
   const setSubject = useCallback((nextSub) => {
     try {
       localStorage.setItem(STORAGE_KEY, nextSub);
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: STORAGE_KEY }));
     } catch {}
     setSubjectState(nextSub);
     window.dispatchEvent(new CustomEvent('elec-subject-change', { detail: { subject: nextSub } }));

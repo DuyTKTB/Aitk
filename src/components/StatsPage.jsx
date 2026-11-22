@@ -20,6 +20,7 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { supabase } from '../lib/supabase.js';
 import { useGamification } from '../hooks/useGamification.js';
 import { readStore } from '../lib/roadmapStore.js';
+import { getWrongQuestions } from '../lib/wrongQuestionService.js';
 import { getSubmissionsByStudent } from '../lib/classroom.js';
 import { getVirtualExamHistory } from '../data/virtualExamsBank.js';
 import { getStudentElo, computeEloUpdate, computeStudyDiagnosis } from '../lib/studentAnalytics.js';
@@ -363,7 +364,16 @@ export default function StatsPage() {
 
   useEffect(() => {
     const unsub = subscribeAspirationChanges(() => setTick((t) => t + 1));
-    return () => unsub?.();
+    const onCloudSync = () => setTick((t) => t + 1);
+    window.addEventListener('cs-cloud-sync-update', onCloudSync);
+    window.addEventListener('elec-student-analytics-change', onCloudSync);
+    window.addEventListener('cs-wrong-questions-update', onCloudSync);
+    return () => {
+      unsub?.();
+      window.removeEventListener('cs-cloud-sync-update', onCloudSync);
+      window.removeEventListener('elec-student-analytics-change', onCloudSync);
+      window.removeEventListener('cs-wrong-questions-update', onCloudSync);
+    };
   }, []);
 
   const eloInfo = useMemo(() => {
@@ -602,15 +612,16 @@ export default function StatsPage() {
   const studyDiagnosis = useMemo(() => {
     let wrongCount = 0;
     try {
-      const w = JSON.parse(localStorage.getItem('elec-wrong-questions') || '[]');
-      if (Array.isArray(w)) wrongCount = w.length;
+      const wrongItems = getWrongQuestions(uid).filter((w) => !w?.mastered);
+      const wrongBank = JSON.parse(localStorage.getItem('cs-wrong-bank') || '[]');
+      wrongCount = wrongItems.length + (Array.isArray(wrongBank) ? wrongBank.length : 0);
     } catch { /* ignore */ }
     return computeStudyDiagnosis({
       attempts: cur,
       streakDays: gamif?.streak || 0,
       wrongCount,
     });
-  }, [cur, gamif?.streak]);
+  }, [cur, gamif?.streak, uid, tick]);
 
   const exportCsv = useCallback(() => {
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;

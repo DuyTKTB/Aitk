@@ -21,7 +21,8 @@ import { supabase } from '../lib/supabase.js';
 import { getTier, clearTierCache } from '../lib/tier.js';
 import { invalidateVipCache } from '../lib/vipService.js';
 import { saveUserProfile, syncUserProfileFromCloud } from '../lib/userProfileService.js';
-import { initCloudStudySyncForUser, stopCloudStudySync } from '../lib/cloudStudySync.js';
+import { initCloudStudySyncForUser, stopCloudStudySync, flushCloudStudyState, clearLocalStudyStateOnLogout } from '../lib/cloudStudySync.js';
+import { flushPendingSyncs, cancelAllSyncs } from '../lib/aiChatApi.js';
 import { canonicalizeEmail } from '../lib/authValidation.js';
 import { requestBrandedPasswordReset } from '../lib/emailOtp.js';
 import {
@@ -501,8 +502,20 @@ export function AuthProvider({ children }) {
 
   /* ============ LOGOUT ============ */
   const logout = useCallback(async () => {
+    const curUid = auth.currentUser?.uid || '';
+    if (curUid) {
+      try {
+        flushPendingSyncs();
+        await Promise.race([
+          flushCloudStudyState(curUid).catch(() => {}),
+          new Promise((resolve) => setTimeout(resolve, 1200)),
+        ]);
+      } catch { /* ignore */ }
+    }
     clearPostAuthRedirect();
     stopCloudStudySync();
+    cancelAllSyncs();
+    clearLocalStudyStateOnLogout();
     try {
       localStorage.removeItem('cs-vip-status');
       localStorage.removeItem('cs-vip');

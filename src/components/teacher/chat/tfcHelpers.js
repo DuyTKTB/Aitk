@@ -559,6 +559,23 @@ function storageKeyFor(uid) {
   return `${HISTORY_STORAGE_PREFIX}${uid || 'guest'}`;
 }
 
+function metaKeyFor(uid) {
+  return `${HISTORY_STORAGE_PREFIX}meta_${uid || 'guest'}`;
+}
+
+export function getPersistedChatMeta(uid) {
+  if (typeof window === 'undefined' || !window.localStorage) return { updatedAt: 0, clearedAt: 0 };
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(metaKeyFor(uid)) || '{}');
+    return {
+      updatedAt: Number(parsed?.updatedAt) || 0,
+      clearedAt: Number(parsed?.clearedAt) || 0,
+    };
+  } catch {
+    return { updatedAt: 0, clearedAt: 0 };
+  }
+}
+
 export function loadPersistedMessages(uid, displayName = '') {
   const welcome = createWelcomeMessage(displayName);
   if (typeof window === 'undefined' || !window.localStorage) return [welcome];
@@ -584,7 +601,7 @@ export function loadPersistedMessages(uid, displayName = '') {
   }
 }
 
-export function savePersistedMessages(uid, messages = []) {
+export function savePersistedMessages(uid, messages = [], updatedAt = Date.now()) {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     const trimmed = (messages || [])
@@ -600,15 +617,24 @@ export function savePersistedMessages(uid, messages = []) {
         return copy;
       });
     window.localStorage.setItem(storageKeyFor(uid), JSON.stringify(trimmed));
+    const prevMeta = getPersistedChatMeta(uid);
+    window.localStorage.setItem(metaKeyFor(uid), JSON.stringify({
+      updatedAt: Number(updatedAt) || Date.now(),
+      clearedAt: prevMeta.clearedAt || 0,
+    }));
   } catch {
     // Ignore storage quota errors cleanly
   }
 }
 
-export function clearPersistedMessages(uid) {
+export function clearPersistedMessages(uid, clearedAt = Date.now()) {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     window.localStorage.removeItem(storageKeyFor(uid));
+    window.localStorage.setItem(metaKeyFor(uid), JSON.stringify({
+      updatedAt: Number(clearedAt) || Date.now(),
+      clearedAt: Number(clearedAt) || Date.now(),
+    }));
   } catch {
     // ignore
   }

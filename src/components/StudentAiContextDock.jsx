@@ -13,6 +13,7 @@ import { runWithCredit, CREDIT_TARIFF } from '../lib/creditService.js';
 import { askAI as openFullAiPage } from './HomePlus.jsx';
 import { MarkdownLike } from './ChatMarkdown.jsx';
 import { getVirtualExamHistory } from '../data/virtualExamsBank.js';
+import { getWrongQuestions } from '../lib/wrongQuestionService.js';
 import { getStudentElo, getStudentCombatPower, loadTargetUniversity } from '../lib/studentAnalytics.js';
 import '../styles/student-v9-upgrades.css';
 
@@ -130,8 +131,9 @@ export default function StudentAiContextDock({ page = 'home' }) {
     const latestExam = vHist[0] || null;
     let wrongCount = 0;
     try {
-      const w = JSON.parse(localStorage.getItem('elec-wrong-questions') || '[]');
-      if (Array.isArray(w)) wrongCount = w.length;
+      const wrongItems = getWrongQuestions(uid).filter((w) => !w?.mastered);
+      const wrongBank = JSON.parse(localStorage.getItem('cs-wrong-bank') || '[]');
+      wrongCount = wrongItems.length + (Array.isArray(wrongBank) ? wrongBank.length : 0);
     } catch { /* ignore */ }
 
     let proactive = null;

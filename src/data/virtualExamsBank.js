@@ -1575,6 +1575,7 @@ export function consumeExamHeart(uid) {
   safeSet(SUB_KEY(uid), JSON.stringify(nextQuota));
   try {
     localStorage.setItem(`cs-user-subscription:${uid}`, JSON.stringify(nextQuota));
+    window.dispatchEvent(new CustomEvent('cs-ls', { detail: SUB_KEY(uid) }));
   } catch {}
   window.dispatchEvent(new CustomEvent('elec-quota-changed', { detail: nextQuota }));
   return { ok: true, hearts: nextHearts };

@@ -393,6 +393,7 @@ export function incrementOmrTrialUsed(uid, delta = 1, floorTotal = 0) {
       localStorage.setItem(key, String(next));
     } catch { /* ignore */ }
   }
+  emitTeacherTrialQuotaChange();
   return next;
 }
 

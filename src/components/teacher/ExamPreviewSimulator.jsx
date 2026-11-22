@@ -262,6 +262,9 @@ function readJsonStorage(key, fallback) {
 function writeJsonStorage(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: key }));
+    }
   } catch {
     // ignore storage quota errors
   }

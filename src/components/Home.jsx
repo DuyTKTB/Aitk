@@ -1507,7 +1507,15 @@ export default function Home() {
   useEffect(() => {
     const onWrong = () => setTick((n) => n + 1);
     window.addEventListener(WRONG_UPDATE_EVENT, onWrong);
-    return () => window.removeEventListener(WRONG_UPDATE_EVENT, onWrong);
+    window.addEventListener('cs-cloud-sync-update', onWrong);
+    window.addEventListener('elec-student-analytics-change', onWrong);
+    window.addEventListener('elec-exam-history-changed', onWrong);
+    return () => {
+      window.removeEventListener(WRONG_UPDATE_EVENT, onWrong);
+      window.removeEventListener('cs-cloud-sync-update', onWrong);
+      window.removeEventListener('elec-student-analytics-change', onWrong);
+      window.removeEventListener('elec-exam-history-changed', onWrong);
+    };
   }, []);
   useEffect(() => {
     const onOpenAsp = () => setHeroOnboardModalOpen(true);

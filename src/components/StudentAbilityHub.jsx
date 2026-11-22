@@ -7,6 +7,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getVirtualExamHistory } from '../data/virtualExamsBank.js';
 import { readStore } from '../lib/roadmapStore.js';
+import { getWrongQuestions } from '../lib/wrongQuestionService.js';
 import {
   computeStudentAbilityRadar,
   computeRealPredictedScore30,
@@ -54,12 +55,26 @@ export default function StudentAbilityHub({
   const [exporting, setExporting] = useState(false);
   const [shopOpen, setShopOpen] = useState(false);
   const [shopState, setShopState] = useState(() => getRewardShopState(uid));
+  const [syncTick, setSyncTick] = useState(0);
 
   useEffect(() => {
-    const sync = () => setShopState(getRewardShopState(uid));
+    const sync = () => {
+      setShopState(getRewardShopState(uid));
+      setSyncTick((t) => t + 1);
+    };
     sync();
     window.addEventListener('elec-shop-updated', sync);
-    return () => window.removeEventListener('elec-shop-updated', sync);
+    window.addEventListener('cs-cloud-sync-update', sync);
+    window.addEventListener('elec-student-analytics-change', sync);
+    window.addEventListener('cs-wrong-questions-update', sync);
+    window.addEventListener('elec-exam-history-changed', sync);
+    return () => {
+      window.removeEventListener('elec-shop-updated', sync);
+      window.removeEventListener('cs-cloud-sync-update', sync);
+      window.removeEventListener('elec-student-analytics-change', sync);
+      window.removeEventListener('cs-wrong-questions-update', sync);
+      window.removeEventListener('elec-exam-history-changed', sync);
+    };
   }, [uid]);
 
   const activeFrame = SHOP_CATALOG.find((x) => x.id === shopState.equippedFrame) || SHOP_CATALOG[0];
@@ -72,8 +87,9 @@ export default function StudentAbilityHub({
     let wrongCount = 0;
     try {
       pomodoroHistory = JSON.parse(localStorage.getItem('cs-pomo-history') || '{}') || {};
-      const wrongList = JSON.parse(localStorage.getItem('elec-wrong-questions') || '[]');
-      if (Array.isArray(wrongList)) wrongCount = wrongList.length;
+      const wrongItems = getWrongQuestions(uid).filter((w) => !w?.mastered);
+      const wrongBank = JSON.parse(localStorage.getItem('cs-wrong-bank') || '[]');
+      wrongCount = wrongItems.length + (Array.isArray(wrongBank) ? wrongBank.length : 0);
     } catch { /* ignore */ }
 
     const eloState = getStudentElo(uid);
@@ -108,7 +124,7 @@ export default function StudentAbilityHub({
       gainPerMonth,
       examsDone: virtualHistory.length,
     };
-  }, [uid, streakDays]);
+  }, [uid, streakDays, syncTick]);
 
   // SVG Radar geometry
   const cx = 130;

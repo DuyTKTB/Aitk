@@ -147,7 +147,11 @@ export function saveScheduleConfig(uid, partial = {}) {
     configuredOnce: true,
   };
   try {
-    localStorage.setItem(`${WEEKLY_SETTINGS_KEY}${uid || 'guest'}`, JSON.stringify(next));
+    const lsKey = `${WEEKLY_SETTINGS_KEY}${uid || 'guest'}`;
+    localStorage.setItem(lsKey, JSON.stringify(next));
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: lsKey }));
+    }
   } catch {
     /* ignore storage quota */
   }

@@ -65,9 +65,19 @@ const readManualDraft = (classId) => {
   } catch { return null; }
 };
 const writeManualDraft = (classId, d) => {
-  try { localStorage.setItem(draftKey(classId), JSON.stringify({ ...d, savedAt: Date.now() })); } catch { /* đầy bộ nhớ */ }
+  try {
+    const k = draftKey(classId);
+    localStorage.setItem(k, JSON.stringify({ ...d, savedAt: Date.now() }));
+    window.dispatchEvent(new CustomEvent('cs-ls', { detail: k }));
+  } catch { /* đầy bộ nhớ */ }
 };
-const clearManualDraft = (classId) => { try { localStorage.removeItem(draftKey(classId)); } catch { /* */ } };
+const clearManualDraft = (classId) => {
+  try {
+    const k = draftKey(classId);
+    localStorage.removeItem(k);
+    window.dispatchEvent(new CustomEvent('cs-ls', { detail: k }));
+  } catch { /* */ }
+};
 const fmtAgo = (t) => {
   const m = Math.round((Date.now() - t) / 60000);
   if (m < 1) return 'vừa xong';

@@ -118,6 +118,7 @@ export default function WrongNotebook() {
       const next = { ...prev, [qid]: causeId };
       try {
         localStorage.setItem('elec_wrong_causes_v1', JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'elec_wrong_causes_v1' }));
       } catch { /* ignore */ }
       return next;
     });
@@ -240,6 +241,24 @@ export default function WrongNotebook() {
 
   useEffect(() => {
     setPersonalNotes(loadWrongQuestionNotes(uid || 'guest'));
+    try {
+      setCustomCauses(JSON.parse(localStorage.getItem('elec_wrong_causes_v1') || '{}'));
+    } catch { /* ignore */ }
+  }, [uid]);
+
+  useEffect(() => {
+    const onCloudSync = () => {
+      setPersonalNotes(loadWrongQuestionNotes(uid || 'guest'));
+      try {
+        setCustomCauses(JSON.parse(localStorage.getItem('elec_wrong_causes_v1') || '{}'));
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('cs-cloud-sync-update', onCloudSync);
+    window.addEventListener('elec-student-analytics-change', onCloudSync);
+    return () => {
+      window.removeEventListener('cs-cloud-sync-update', onCloudSync);
+      window.removeEventListener('elec-student-analytics-change', onCloudSync);
+    };
   }, [uid]);
 
   const handleSavePersonalNote = (qid, text) => {

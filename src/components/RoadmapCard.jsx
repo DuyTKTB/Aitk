@@ -78,6 +78,14 @@ export default function RoadmapCard() {
   useEffect(() => subscribeRoadmap(() => setDueTick((t) => t + 1)), []);
   useEffect(() => subscribeCards(() => setDueTick((t) => t + 1)), []);
   useEffect(() => subscribeAspirations(() => setDueTick((t) => t + 1)), []);
+  useEffect(() => {
+    const onSync = () => {
+      setGrade(readGrade());
+      setDueTick((t) => t + 1);
+    };
+    window.addEventListener('cs-cloud-sync-update', onSync);
+    return () => window.removeEventListener('cs-cloud-sync-update', onSync);
+  }, []);
 
   const aspiration = useMemo(() => {
     const uid = user && user.uid;
@@ -108,7 +116,10 @@ export default function RoadmapCard() {
   const pick = (key) => {
     if (LEVEL_KEYS.indexOf(key) < 0) return;
     setGrade(key);
-    try { localStorage.setItem(GRADE_KEY, key); } catch { /* */ }
+    try {
+      localStorage.setItem(GRADE_KEY, key);
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: GRADE_KEY }));
+    } catch { /* */ }
   };
 
   /* Deep link #home?topic=<id>

@@ -52,9 +52,22 @@ export default function PeriodicTable({ preview = false }) {
   const [stateF, setStateF] = useState('');
   const [quizOpen, setQuizOpen] = useState(false);
   const gridRef = useRef(null);
+  const favSyncReadyRef = useRef(false);
   useEffect(() => {
-    try { localStorage.setItem('pt-favs', JSON.stringify([...favs])); } catch { /* bỏ qua */ }
+    if (!favSyncReadyRef.current) {
+      favSyncReadyRef.current = true;
+      return;
+    }
+    try {
+      localStorage.setItem('pt-favs', JSON.stringify([...favs]));
+      window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'pt-favs' }));
+    } catch { /* bỏ qua */ }
   }, [favs]);
+  useEffect(() => {
+    const onCloudSync = () => setFavs(loadFavs());
+    window.addEventListener('cs-cloud-sync-update', onCloudSync);
+    return () => window.removeEventListener('cs-cloud-sync-update', onCloudSync);
+  }, []);
   const toggleFav = (z) => setFavs((f) => { const n = new Set(f); if (n.has(z)) n.delete(z); else n.add(z); return n; });
   const pickRandom = () => setSel(ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)]);
   const close = useCallback(() => setSel(null), []);

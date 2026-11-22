@@ -14,6 +14,9 @@ import {
    - Chống infinite loop: cờ isRemoteUpdate
    ============================================================ */
 export function useLocalStorage(key, initial) {
+  const initialRef = useRef(initial);
+  initialRef.current = initial;
+
   const [value, setValue] = useState(() => {
     try {
       const s = localStorage.getItem(key);
@@ -30,11 +33,20 @@ export function useLocalStorage(key, initial) {
   const cur = useRef(value);
   cur.current = value;
   const isRemoteUpdate = useRef(false);
+  const dirtyRef = useRef(false);
+
+  const setStoredValue = useCallback((updater) => {
+    dirtyRef.current = true;
+    setValue(updater);
+  }, []);
+
   useEffect(() => {
     if (isRemoteUpdate.current) {
       isRemoteUpdate.current = false;
       return;
     }
+    if (!dirtyRef.current) return;
+    dirtyRef.current = false;
     try {
       const raw = JSON.stringify(value);
       if (localStorage.getItem(key) !== raw) {
@@ -45,27 +57,46 @@ export function useLocalStorage(key, initial) {
       /* bỏ qua khi bị chặn */
     }
   }, [key, value]);
+
   useEffect(() => {
-    const on = (e) => {
-      if (e.detail !== key) return;
+    const syncFromStorage = () => {
       try {
         const s = localStorage.getItem(key);
-        if (s !== null) {
-          const parsed = JSON.parse(s);
-          if (JSON.stringify(parsed) !== JSON.stringify(cur.current)) {
+        if (s === null) {
+          if (JSON.stringify(initialRef.current) !== JSON.stringify(cur.current)) {
             isRemoteUpdate.current = true;
-            setValue(parsed);
+            setValue(initialRef.current);
           }
+          return;
+        }
+        let parsed;
+        try { parsed = JSON.parse(s); } catch { parsed = s; }
+        if (JSON.stringify(parsed) !== JSON.stringify(cur.current)) {
+          isRemoteUpdate.current = true;
+          setValue(parsed);
         }
       } catch {
         /* bỏ qua */
       }
     };
+    const on = (e) => {
+      if (e.detail !== key) return;
+      syncFromStorage();
+    };
+    const onStorage = (e) => {
+      if (e.key === key) syncFromStorage();
+    };
     addEventListener('cs-ls', on);
-    return () => removeEventListener('cs-ls', on);
+    addEventListener('storage', onStorage);
+    addEventListener('cs-cloud-sync-update', syncFromStorage);
+    return () => {
+      removeEventListener('cs-ls', on);
+      removeEventListener('storage', onStorage);
+      removeEventListener('cs-cloud-sync-update', syncFromStorage);
+    };
   }, [key]);
 
-  return [value, setValue];
+  return [value, setStoredValue];
 }
 
 /* ============================================================
@@ -160,6 +191,7 @@ export function useLiveStreak() {
   useEffect(() => {
     const sync = () => setStreakObj(getStreakData());
     window.addEventListener(STREAK_CHANGE_EVENT, sync);
+    window.addEventListener('cs-cloud-sync-update', sync);
     const onCsLs = (e) => {
       if (e.detail === STREAK_KEY || e.detail === LEGACY_STREAK_KEY) sync();
     };
@@ -170,6 +202,7 @@ export function useLiveStreak() {
     window.addEventListener('storage', onStorage);
     return () => {
       window.removeEventListener(STREAK_CHANGE_EVENT, sync);
+      window.removeEventListener('cs-cloud-sync-update', sync);
       window.removeEventListener('cs-ls', onCsLs);
       window.removeEventListener('storage', onStorage);
     };
