@@ -31,6 +31,8 @@ import {
   verifyQuestionsWithAI,
   applyVerifySuggestion,
   suggestFormat,
+  detectTeacherCopilotRoute,
+  askTeacherCopilotWithAI,
   THPT_GRADES,
   FORMAT_GDPT,
   FORMAT_GDPT_ADV,
@@ -48,6 +50,7 @@ import { IconAlert } from '../Icons.jsx';
 import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 
 import '../../styles/autoexam-studio.css';
+import '../../styles/teacher-quantum-polish.css';
 
 /* ============ SVG ICONS ============ */
 const Svg = ({ size = 16, children, className = '' }) => (
@@ -118,6 +121,31 @@ const IcoMic = (p) => (
     <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
     <line x1="12" y1="19" x2="12" y2="23" />
     <line x1="8" y1="23" x2="16" y2="23" />
+  </Svg>
+);
+const IcoTarget = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="12" r="5" />
+    <circle cx="12" cy="12" r="1.5" />
+  </Svg>
+);
+const IcoClock = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <polyline points="12 7 12 12 15.5 14" />
+  </Svg>
+);
+const IcoAward = (p) => (
+  <Svg {...p}>
+    <circle cx="12" cy="8" r="5.5" />
+    <path d="M8.5 12.8 7 21l5-2.5L17 21l-1.5-8.2" />
+  </Svg>
+);
+const IcoArrowUp = (p) => (
+  <Svg {...p}>
+    <line x1="12" y1="19" x2="12" y2="5" />
+    <polyline points="5 12 12 5 19 12" />
   </Svg>
 );
 
@@ -341,6 +369,7 @@ export default function AutoExamStudio({
   const [matrixData, setMatrixData] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [workspaceTab, setWorkspaceTab] = useState('matrix');
+  const [studioMode, setStudioMode] = useState('auto'); // 'auto' | 'exam' | 'copilot'
 
   // Split resizer
   const [splitRatio, setSplitRatio] = useState(() => {
@@ -1333,7 +1362,57 @@ export default function AutoExamStudio({
     }
   };
 
-  /* ============ GỬI TIN NHẮN (FIX #4) ============ */
+  /* ============ COPILOT ĐỌC TÀI LIỆU & HỎI ĐÁP SƯ PHẠM ============ */
+  const handleTeacherCopilotQuery = async ({ queryText = '', files = [] } = {}) => {
+    setAnalyzing(true);
+    abortControllerRef.current = new AbortController();
+    const loadingText = files.length > 0
+      ? `Đang đọc toàn bộ ${files.length} tài liệu đính kèm và phân tích chuyên sâu...`
+      : `Đang phân tích và tổng hợp câu trả lời môn ${selectedSubject}...`;
+
+    setChatMessages((prev) => [
+      ...prev,
+      { role: 'user', text: queryText || `Phân tích tài liệu đính kèm (${files.map((f) => f.name).join(', ')})` },
+      { role: 'trace_loading', text: loadingText },
+    ]);
+
+    try {
+      const res = await askTeacherCopilotWithAI({
+        query: queryText,
+        subject: selectedSubject,
+        grade: selectedGrade,
+        matrix: matrixData,
+        questions,
+        files,
+        classInsights: insightText,
+        signal: abortControllerRef.current.signal,
+      });
+      sound.cheer();
+      setChatMessages((prev) => [
+        ...prev.filter((m) => m.role !== 'trace_loading'),
+        {
+          role: 'ai',
+          text: res.answer,
+          canBuildExam: res.canBuildExam,
+          suggestedTopic: res.suggestedTopic,
+          suggestedCount: res.suggestedCount,
+          suggestedGrade: res.suggestedGrade,
+        },
+      ]);
+    } catch (err) {
+      if (err?.name === 'AbortError') return;
+      const msg = err?.message || 'Chưa thể phân tích nội dung.';
+      showToast(msg, 'error');
+      setChatMessages((prev) => [
+        ...prev.filter((m) => m.role !== 'trace_loading'),
+        { role: 'ai', text: `Chưa thể xử lý yêu cầu: ${msg}. Thầy/cô vui lòng thử lại.` },
+      ]);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  /* ============ GỬI TIN NHẮN (FIX #4 + SMART COPILOT) ============ */
   const handleSendMessage = async (overrideText) => {
     let text = (typeof overrideText === 'string' ? overrideText : inputMessage).trim();
     if (!text && attachedFiles.length === 0) return;
@@ -1346,19 +1425,19 @@ export default function AutoExamStudio({
     const hasExplicitMatrixFile = attachedFiles.length > 0 && attachedFiles.some((f) =>
       /ma\s*tr[ậa]n|matrix|cautruc|dacta|khung/i.test(f.name || '') || f.kind === 'image'
     );
-    const mentionsMatrix = /ma\s*tr[ậa]n|b[ảa]ng\s*đ[ặa]c\s*t[ảa]|khung\s*ma\s*tr[ậa]n|g[ửu]i\s*ma\s*tr[ậa]n/i.test(text);
 
     if (!text && attachedFiles.length > 0) {
       text = hasExplicitMatrixFile
         ? 'Phân tích ma trận từ tài liệu đính kèm'
-        : 'Tạo đề thi bám sát tài liệu đính kèm';
+        : studioMode === 'exam'
+          ? 'Tạo đề thi bám sát tài liệu đính kèm'
+          : 'Phân tích tài liệu đính kèm và đề xuất hướng giảng dạy / ra đề';
     }
 
     setInputMessage('');
     sound.ding();
 
-    // Ưu tiên lệnh sửa câu hỏi khi đã có questions
-    if (questions.length > 0) {
+    if (questions.length > 0 && studioMode !== 'copilot') {
       const local = parseLocalCommand(text, questions.length);
       if (local) {
         handleLocalCommand(local, text);
@@ -1373,35 +1452,45 @@ export default function AutoExamStudio({
         handleRefineMatrix(text);
         return;
       }
-      setChatMessages((prev) => [
-        ...prev,
-        { role: 'user', text },
-        {
-          role: 'ai',
-          text: 'Tôi chưa hiểu yêu cầu. Thầy/cô có thể:\n'
-            + '• Sửa câu hỏi: "viết lại câu 3", "đổi phương án nhiễu câu 2", "câu 1 khó hơn"\n'
-            + '• Lệnh nhanh: "xóa câu 5", "câu 2 đáp án là C", "kiểm tra lại đáp án", "xem bản in A4"\n'
-            + '• Sửa ma trận: "tăng 2 câu vận dụng", "giảm 2 câu nhận biết"\n'
-            + '• Hoặc bấm "Xóa lịch sử" để tạo đề mới.',
-        },
-      ]);
+    }
+
+    const route = detectTeacherCopilotRoute({
+      text,
+      files: attachedFiles,
+      hasQuestions: questions.length > 0,
+      hasMatrix: Boolean(matrixData),
+      forceChat: studioMode === 'copilot',
+      midInterview: step >= 1 && step <= 3 && Boolean(topic),
+    });
+
+    if (route === 'copilot') {
+      await handleTeacherCopilotQuery({ queryText: text, files: attachedFiles });
       return;
     }
 
-    // Chưa có questions nhưng có ma trận → sinh đề hoặc refine ma trận
-    if (matrixData) {
+    if (route === 'matrix_chat') {
       if (/xác nhận|sinh câu hỏi|sinh đề|bắt đầu sinh/i.test(text)) {
         handleConfirmAndGenerateQuestions();
         return;
       }
-      handleRefineMatrix(text);
-      return;
+      if (/tạo đề mới|soạn đề mới|đề khác/i.test(text)) {
+        setMatrixData(null);
+        setQuestions([]);
+        setStep(0);
+      } else {
+        handleRefineMatrix(text);
+        return;
+      }
     }
 
-    // Kiểm tra nếu giáo viên gửi ma trận riêng (qua file đính kèm hoặc văn bản mô tả ma trận)
-    const isCustomMatrix = mentionsMatrix || (hasExplicitMatrixFile && !/đề\s+\d+\s+câu/i.test(text));
+    if (route === 'new_exam') {
+      setMatrixData(null);
+      setQuestions([]);
+      setStep(0);
+    }
 
-    if (isCustomMatrix && (attachedFiles.length > 0 || text.length > 15)) {
+    // Phân tích ma trận riêng do giáo viên gửi (file hoặc text)
+    if (route === 'custom_matrix' && (attachedFiles.length > 0 || text.length > 15)) {
       setChatMessages((prev) => [...prev, { role: 'user', text: text || 'Phân tích ma trận từ tài liệu đính kèm' }]);
       handleParseTeacherCustomMatrix({ text, files: attachedFiles });
       return;
@@ -1793,19 +1882,22 @@ export default function AutoExamStudio({
       <div className="aes-chat-only">
         <div className="aes-chat-center">
           <div className="aes-chat-hero">
-            <div className="aes-hero-mark">
+            <div className="aes-hero-pedestal">
               <AIMark
-                size={140}
+                size={88}
                 mode={analyzing ? 'think' : generating ? 'orbit' : 'idle'}
                 look
                 animate
               />
             </div>
+            <span className="aes-hero-kicker">
+              {greetingData.timeGreeting} · ELEC Teacher Studio
+            </span>
             <h1>
-              {greetingData.timeGreeting}, thầy/cô{' '}
+              Soạn giảng &amp; Khảo thí cùng{' '}
               <span className="aes-name-gradient">{greetingData.teacherName}</span>
             </h1>
-            <p>Hôm nay tôi hỗ trợ gì cho thầy cô?</p>
+            <p>Thiết kế ma trận GDPT 2025, đọc file Word/PDF &amp; phân tích điểm yếu lớp chỉ trong 1 câu lệnh</p>
           </div>
 
           <div
@@ -1823,8 +1915,77 @@ export default function AutoExamStudio({
               }
             }}
           >
+            {/* THANH CHẾ ĐỘ THÔNG MINH & MẪU NHANH */}
+            <div className="aes-smart-toolbar">
+              <div className="aes-mode-switch" role="tablist" aria-label="Chế độ trợ lý giáo viên">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={studioMode === 'auto'}
+                  className={`aes-mode-pill ${studioMode === 'auto' ? 'active' : ''}`}
+                  onClick={() => setStudioMode('auto')}
+                >
+                  Tự động thông minh
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={studioMode === 'exam'}
+                  className={`aes-mode-pill ${studioMode === 'exam' ? 'active' : ''}`}
+                  onClick={() => setStudioMode('exam')}
+                >
+                  Tạo ma trận &amp; Đề
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={studioMode === 'copilot'}
+                  className={`aes-mode-pill ${studioMode === 'copilot' ? 'active' : ''}`}
+                  onClick={() => setStudioMode('copilot')}
+                >
+                  Hỏi AI &amp; Đọc tài liệu
+                </button>
+              </div>
+
+              <div className="aes-preset-pills">
+                <button
+                  type="button"
+                  className="aes-preset-btn"
+                  onClick={() => {
+                    setStudioMode('exam');
+                    handlePlanMatrix({ grade: selectedGrade, count: 10, duration: 15, format: FORMAT_MCQ, subject: selectedSubject });
+                  }}
+                  title="Sinh nhanh đề kiểm tra 15 phút (10 câu)"
+                >
+                  15p · 10 câu
+                </button>
+                <button
+                  type="button"
+                  className="aes-preset-btn"
+                  onClick={() => {
+                    setStudioMode('exam');
+                    handlePlanMatrix({ grade: selectedGrade, count: 20, duration: 45, format: FORMAT_GDPT, subject: selectedSubject });
+                  }}
+                  title="Sinh nhanh đề 45 phút 3 phần chuẩn 2025 (20 câu)"
+                >
+                  45p · 20 câu
+                </button>
+                <button
+                  type="button"
+                  className="aes-preset-btn"
+                  onClick={() => {
+                    setStudioMode('exam');
+                    handlePlanMatrix({ grade: selectedGrade, count: 28, duration: 50, format: FORMAT_GDPT_ADV, subject: selectedSubject });
+                  }}
+                  title="Sinh đề thi thử THPTQG 2025 chuẩn 28 câu (18+4+6)"
+                >
+                  THPTQG 2025 · 28 câu
+                </button>
+              </div>
+            </div>
+
             {/* THANH CHỌN MÔN HỌC & KHỐI LỚP TRỰC QUAN */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.65rem', padding: '0 4px', flexWrap: 'wrap', gap: '0.6rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.2rem', padding: '0 4px', flexWrap: 'wrap', gap: '0.6rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--mut, #64748b)' }}>Môn học:</span>
                 {THPT_SUBJECTS.map((s) => (
@@ -1939,7 +2100,9 @@ export default function AutoExamStudio({
                 placeholder={
                   isBusy
                     ? 'AI đang xử lý...'
-                    : `Nhập yêu cầu tạo đề môn ${selectedSubject} (VD: Đề 20 câu 45p lớp 10)...`
+                    : studioMode === 'copilot'
+                      ? `Hỏi AI môn ${selectedSubject}, đính kèm Word/PDF để phân tích hoặc đánh giá đề...`
+                      : `Nhập yêu cầu tạo đề môn ${selectedSubject}, đính kèm tài liệu hoặc hỏi AI sư phạm...`
                 }
                 disabled={isBusy}
                 onKeyDown={(e) => {
@@ -1952,27 +2115,29 @@ export default function AutoExamStudio({
               <div className="aes-composer-bar">
                 <button
                   type="button"
-                  className="aes-composer-btn"
+                  className="aes-composer-pill-btn"
                   onClick={() => fileInputRef.current?.click()}
-                  title="Đính kèm tài liệu (PDF, Word, ảnh đề thi)"
+                  title="Đính kèm tài liệu (Word .docx, PDF, Excel, ảnh đề thi)"
                   disabled={isBusy}
                 >
-                  <IcoPaperclip size={16} />
+                  <IcoPaperclip size={14} />
+                  <span>Đính kèm file</span>
                 </button>
                 <button
                   type="button"
-                  className="aes-composer-btn"
+                  className="aes-composer-pill-btn"
                   onClick={handleToggleVoice}
                   title={isListeningVoice ? 'Đang nghe... Nhấp để dừng' : 'Nhập yêu cầu bằng giọng nói (Tiếng Việt)'}
-                  style={isListeningVoice ? { color: '#ef4444', background: 'rgba(239, 68, 68, 0.15)' } : {}}
+                  style={isListeningVoice ? { color: '#ef4444', borderColor: 'rgba(239,68,68,0.35)', background: 'rgba(239, 68, 68, 0.12)' } : {}}
                   aria-label="Nhập giọng nói"
                   disabled={isBusy}
                 >
-                  <IcoMic size={16} />
+                  <IcoMic size={14} />
+                  <span>{isListeningVoice ? 'Đang nghe...' : 'Giọng nói'}</span>
                 </button>
                 <button
                   type="button"
-                  className="aes-composer-btn"
+                  className="aes-composer-pill-btn"
                   onClick={() => {
                     const preset = PRESET_SAMPLE_EXAMS?.[0];
                     if (preset) handleLoadSampleExam(preset);
@@ -1980,11 +2145,12 @@ export default function AutoExamStudio({
                   title="Nạp đề mẫu chuẩn Bộ GD&ĐT"
                   disabled={isBusy}
                 >
-                  <IcoTemplate size={16} />
+                  <IcoTemplate size={14} />
+                  <span>Đề mẫu</span>
                 </button>
                 <button
                   type="button"
-                  className="aes-composer-btn"
+                  className="aes-composer-pill-btn"
                   onClick={() => {
                     setCustomMatrixGrade(selectedGrade);
                     setCustomMatrixSubject(selectedSubject);
@@ -1994,7 +2160,8 @@ export default function AutoExamStudio({
                   disabled={isBusy}
                   aria-label="Gửi ma trận riêng"
                 >
-                  <IcoMatrix size={16} />
+                  <IcoMatrix size={14} />
+                  <span>Ma trận riêng</span>
                 </button>
                 <div style={{ flex: 1 }} />
                 <button
@@ -2004,7 +2171,7 @@ export default function AutoExamStudio({
                   disabled={(!inputMessage.trim() && attachedFiles.length === 0) || isBusy}
                   aria-label="Gửi yêu cầu"
                 >
-                  <IcoSend size={15} />
+                  <IcoArrowUp size={16} />
                 </button>
               </div>
             </div>
@@ -2032,13 +2199,14 @@ export default function AutoExamStudio({
                   }}
                   disabled={isBusy}
                 >
-                  <div className="aes-quick-chip-icon">
-                    <IcoSpark size={16} />
+                  <div className={`aes-quick-chip-icon ${idx === 0 && weakTopic ? 'tone-emerald' : chip.isCustomMatrix ? 'tone-cyan' : idx === 2 ? 'tone-amber' : ''}`}>
+                    {idx === 0 && weakTopic ? <IcoTarget size={18} /> : chip.isCustomMatrix ? <IcoMatrix size={18} /> : idx <= 1 ? <IcoClock size={18} /> : <IcoAward size={18} />}
                   </div>
-                  <div className="aes-quick-chip-body">
+                  <div className="aes-quick-chip-body" style={{ flex: 1, minWidth: 0 }}>
                     <div className="aes-quick-chip-title">{chip.title}</div>
                     <div className="aes-quick-chip-sub">{chip.sub}</div>
                   </div>
+                  <span className="aes-quick-chip-arrow" aria-hidden="true">↗</span>
                 </button>
               ))}
             </div>
@@ -2286,7 +2454,30 @@ export default function AutoExamStudio({
                 <div key={i} className="aes-msg-advice">{msg.text}</div>
               );
             }
-            return <div key={i} className="aes-msg-ai">{msg.text}</div>;
+            return (
+              <div key={i} className="aes-msg-ai">
+                <MathText text={msg.text} />
+                {msg.canBuildExam && !isBusy && (
+                  <div className="aes-copilot-action-row">
+                    <button
+                      type="button"
+                      className="aes-copilot-action-btn"
+                      onClick={() => handlePlanMatrix({
+                        targetTopic: msg.suggestedTopic || topic || `Ôn tập ${selectedSubject}`,
+                        grade: msg.suggestedGrade || selectedGrade,
+                        count: msg.suggestedCount || selectedCount,
+                        duration: selectedDuration,
+                        format: selectedFormat,
+                        subject: selectedSubject,
+                      })}
+                    >
+                      <IcoRocket size={13} />
+                      <span>Dựng ma trận &amp; Sinh đề từ nội dung này</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
           })}
 
           {/* BƯỚC 1: HỎI LỚP */}

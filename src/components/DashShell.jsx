@@ -11,6 +11,7 @@ import { IcoArrowLeft, IcoSearch, IcoClose, IcoBell } from '../lib/sessionIcons.
 import '../styles/dash-vitality.css';
 import '../styles/teacher-ds.css';
 import '../styles/teacher-studio-v2.css';
+import '../styles/teacher-quantum-polish.css';
 
 /* ---------- LOGOMARK SVG CỦA APP ---------- */
 import { ElecFlaskBrandSvg } from './teacher/ElecBrandMark.jsx';
@@ -75,12 +76,29 @@ export function downloadCsv(filename, rows) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export function Avatar({ name = '?', size = 44 }) {
+export function Avatar({ name = '?', src = '', size = 44 }) {
+  const [imgFailed, setImgFailed] = useState(false);
   const str = String(name || '?');
   const ch = (str.trim().split(/\s+/).pop() || '?')[0].toUpperCase();
   let h = 0;
   for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 360;
-  const hue = 195 + (h % 90);
+  const hue = 214 + (h % 24);
+  if (src && !imgFailed) {
+    return (
+      <span
+        className="vt-avatar vt-avatar-photo"
+        style={{ width: size, height: size, borderRadius: '999px', overflow: 'hidden', flexShrink: 0 }}
+        aria-hidden="true"
+      >
+        <img
+          src={src}
+          alt={str}
+          onError={() => setImgFailed(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        />
+      </span>
+    );
+  }
   return (
     <span
       className="vt-avatar"
@@ -88,7 +106,7 @@ export function Avatar({ name = '?', size = 44 }) {
         width: size,
         height: size,
         fontSize: Math.round(size * 0.4),
-        background: `linear-gradient(145deg, hsl(${hue} 70% 55%), hsl(${hue + 18} 65% 42%))`,
+        background: `linear-gradient(145deg, hsl(${hue} 78% 54%), hsl(${hue + 14} 72% 42%))`,
       }}
       aria-hidden="true"
     >
@@ -446,7 +464,7 @@ export function Topbar({
             onClick={onOpenProfile}
             title={`${displayName}${roleLabel ? ` · ${roleLabel}` : ''} — Bấm để mở hồ sơ`}
           >
-            <Avatar name={displayName} size={28} />
+            <Avatar name={displayName} src={user?.photoURL || ''} size={28} />
             <span className="t-top-profile-meta">
               <b>{displayName}</b>
               {roleLabel ? <small>{roleLabel}</small> : null}

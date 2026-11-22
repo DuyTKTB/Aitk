@@ -1,0 +1,579 @@
+/* ============================================================================
+   teacher-quantum-polish.css — ELEC Quantum Lab Ceramic System (Teacher Portal)
+   Đồng bộ hoàn toàn hệ thẩm mỹ & đẳng cấp của ELEC AI Studio học sinh:
+   - Nền bàn làm việc Cobalt Mist (#e6ecf7 / Dark #050a18) + lưới Blueprint 38px
+   - Thẻ gốm trắng sắc nét (#ffffff / Dark #0d152a), viền hairline, hết tím nhòe
+   - Topbar gọn gàng đồng bộ Avatar thật, nút + Tạo đề AI Cobalt, pill ELEC Agent
+   - AutoExamStudio Hero Pedestal, Quick Presets & 4 Bento Cards sắc nét
+   ============================================================================ */
+
+/* ── 1. OUTER DESK, SIDEBAR & QUANTUM BLUEPRINT CANVAS ── */
+.t-root.t-shell {
+  background:
+    radial-gradient(640px 380px at 14% 8%, rgba(37, 99, 235, 0.08), transparent 72%),
+    #e6ecf7 !important;
+  color: #0f172a;
+}
+
+.t-root.t-shell[data-theme='dark'],
+[data-theme='dark'] .t-root.t-shell {
+  background:
+    radial-gradient(640px 380px at 14% 8%, rgba(37, 99, 235, 0.16), transparent 72%),
+    #050a18 !important;
+  color: #f1f5f9;
+}
+
+.t-root.t-shell .t-rail-sidebar {
+  background: #ffffff !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 4px 0 24px -12px rgba(15, 23, 42, 0.06) !important;
+}
+
+.t-root.t-shell[data-theme='dark'] .t-rail-sidebar,
+[data-theme='dark'] .t-root.t-shell .t-rail-sidebar {
+  background: #0b1224 !important;
+  border-right-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 4px 0 28px -12px rgba(0, 0, 0, 0.6) !important;
+}
+
+.t-root.t-shell .t-rail-btn.active {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  font-weight: 700 !important;
+  border-color: rgba(37, 99, 235, 0.18) !important;
+}
+
+.t-root.t-shell[data-theme='dark'] .t-rail-btn.active,
+[data-theme='dark'] .t-root.t-shell .t-rail-btn.active {
+  background: rgba(37, 99, 235, 0.2) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.28) !important;
+}
+
+.t-root.t-shell .t-main,
+.t-root.t-shell .t-main-scroll,
+.t-root.t-shell .t-body {
+  background-color: #f6f9ff !important;
+  background-image:
+    radial-gradient(760px 360px at 50% 0%, rgba(59, 130, 246, 0.06), transparent 68%),
+    linear-gradient(rgba(37, 99, 235, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.028) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 38px 38px, 38px 38px !important;
+}
+
+.t-root.t-shell[data-theme='dark'] .t-main,
+.t-root.t-shell[data-theme='dark'] .t-main-scroll,
+.t-root.t-shell[data-theme='dark'] .t-body,
+[data-theme='dark'] .t-root.t-shell .t-main,
+[data-theme='dark'] .t-root.t-shell .t-main-scroll,
+[data-theme='dark'] .t-root.t-shell .t-body {
+  background-color: #080f20 !important;
+  background-image:
+    radial-gradient(760px 360px at 50% 0%, rgba(56, 189, 248, 0.08), transparent 68%),
+    linear-gradient(rgba(56, 189, 248, 0.032) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.032) 1px, transparent 1px) !important;
+  background-size: 100% 100%, 38px 38px, 38px 38px !important;
+}
+
+/* ── 2. TOPBAR CERAMIC HARMONIZATION (Hết nút đen xì / pill tím nặng) ── */
+.t-root.t-shell .t-topbar-slim {
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(16px) !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07) !important;
+}
+
+.t-root.t-shell[data-theme='dark'] .t-topbar-slim,
+[data-theme='dark'] .t-root.t-shell .t-topbar-slim {
+  background: rgba(10, 16, 32, 0.82) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+.t-root.t-shell .t-top-seg-pill {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.085) !important;
+  border-radius: 999px !important;
+  padding: 3px !important;
+  box-shadow: 0 2px 8px -3px rgba(15, 23, 42, 0.06) !important;
+}
+
+.t-root.t-shell[data-theme='dark'] .t-top-seg-pill,
+[data-theme='dark'] .t-root.t-shell .t-top-seg-pill {
+  background: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+.t-root.t-shell .t-top-seg-btn {
+  border-radius: 999px !important;
+  font-weight: 650 !important;
+}
+
+.t-root.t-shell .t-top-seg-btn.accent {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px -3px rgba(37, 99, 235, 0.42) !important;
+}
+
+.t-root.t-shell .t-top-seg-btn.accent:hover {
+  filter: brightness(1.06) !important;
+}
+
+.t-root.t-shell .t-top-ai-btn {
+  height: 32px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 0 6px 16px -6px rgba(37, 99, 235, 0.45) !important;
+  font-weight: 700 !important;
+}
+
+.t-root.t-shell .t-top-profile-chip {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.085) !important;
+  border-radius: 999px !important;
+  padding: 3px 10px 3px 4px !important;
+  box-shadow: 0 2px 8px -3px rgba(15, 23, 42, 0.06) !important;
+}
+
+.t-root.t-shell[data-theme='dark'] .t-top-profile-chip,
+[data-theme='dark'] .t-root.t-shell .t-top-profile-chip {
+  background: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ── 3. GỌN THANH SUBNAV KÉP (.t-hub-subnav-bar + .cep-tabs) ── */
+.t-root.t-shell .t-hub-subnav-bar {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid rgba(15, 23, 42, 0.075) !important;
+  border-radius: 18px !important;
+  padding: 10px 16px !important;
+  margin-bottom: 10px !important;
+  box-shadow: 0 4px 16px -8px rgba(15, 23, 42, 0.06) !important;
+}
+
+.t-root.t-shell[data-theme='dark'] .t-hub-subnav-bar,
+[data-theme='dark'] .t-root.t-shell .t-hub-subnav-bar {
+  background: rgba(13, 21, 42, 0.86) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.t-root.t-shell .t-hub-subnav-pill {
+  border-radius: 999px !important;
+  font-weight: 650 !important;
+}
+
+.t-root.t-shell .t-hub-subnav-pill.active {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.42) !important;
+}
+
+.t-root.t-shell .cep-tabs {
+  display: inline-flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  padding: 4px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 4px 14px -8px rgba(15, 23, 42, 0.06) !important;
+  margin-bottom: 12px !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+}
+
+.t-root.t-shell[data-theme='dark'] .cep-tabs,
+[data-theme='dark'] .t-root.t-shell .cep-tabs {
+  background: rgba(13, 21, 42, 0.86) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+.t-root.t-shell .cep-tab {
+  border-radius: 999px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #475569 !important;
+  font-size: 0.8rem !important;
+  font-weight: 650 !important;
+  padding: 7px 14px !important;
+}
+
+.t-root.t-shell .cep-tab:hover {
+  color: #1d4ed8 !important;
+  background: rgba(37, 99, 235, 0.06) !important;
+}
+
+.t-root.t-shell .cep-tab.on {
+  background: linear-gradient(180deg, #3b76ff 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.38) !important;
+}
+
+.t-root.t-shell[data-theme='dark'] .cep-tab {
+  color: #cbd5e1 !important;
+}
+
+.t-root.t-shell[data-theme='dark'] .cep-tab.on {
+  color: #ffffff !important;
+}
+
+/* ── 4. AUTOEXAM STUDIO HERO, SELECTORS & CERAMIC COMPOSER (Đẹp ngang #ai Học sinh!) ── */
+.aes-chat-only {
+  background: transparent !important;
+  padding: 20px 18px 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: calc(100vh - 190px) !important;
+}
+
+.aes-chat-center {
+  max-width: 780px !important;
+  gap: 20px !important;
+}
+
+.aes-chat-hero {
+  gap: 10px !important;
+}
+
+.aes-hero-pedestal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 45%, #ffffff 0%, #eff6ff 74%, rgba(219, 234, 254, 0.55) 100%);
+  border: 1px solid rgba(37, 99, 235, 0.14);
+  box-shadow:
+    0 14px 34px -14px rgba(37, 99, 235, 0.24),
+    inset 0 1px 0 #ffffff;
+}
+
+[data-theme='dark'] .aes-hero-pedestal {
+  background: radial-gradient(circle at 50% 45%, rgba(30, 58, 138, 0.36) 0%, rgba(15, 23, 42, 0.72) 85%);
+  border-color: rgba(96, 165, 250, 0.22);
+  box-shadow: 0 16px 36px -14px rgba(0, 0, 0, 0.65);
+}
+
+.aes-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 13px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 3px 10px -4px rgba(15, 23, 42, 0.08);
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.aes-hero-kicker::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .aes-hero-kicker {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(96, 165, 250, 0.24);
+  color: #93c5fd;
+}
+
+.aes-chat-hero h1 {
+  font-size: clamp(1.5rem, 2.5vw, 2.05rem) !important;
+  font-weight: 780 !important;
+  letter-spacing: -0.032em !important;
+  color: #0f172a !important;
+}
+
+[data-theme='dark'] .aes-chat-hero h1 {
+  color: #f8fafc !important;
+}
+
+.aes-name-gradient {
+  background: linear-gradient(135deg, #2563eb 0%, #0284c7 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+[data-theme='dark'] .aes-name-gradient {
+  background: linear-gradient(135deg, #60a5fa 0%, #38bdf8 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Mode switcher + Subject + Grade Ceramic Pill Controls */
+.aes-smart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 2px;
+}
+
+.aes-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 8px -3px rgba(15, 23, 42, 0.05);
+}
+
+[data-theme='dark'] .aes-mode-switch {
+  background: rgba(15, 23, 42, 0.85);
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+.aes-mode-pill {
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+[data-theme='dark'] .aes-mode-pill {
+  color: #94a3b8;
+}
+
+.aes-mode-pill.active {
+  background: linear-gradient(180deg, #3b76ff 0%, #2563eb 100%);
+  color: #ffffff;
+  box-shadow: 0 3px 10px -2px rgba(37, 99, 235, 0.36);
+}
+
+.aes-preset-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.aes-preset-btn {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: rgba(255, 255, 255, 0.9);
+  color: #1d4ed8;
+  font-size: 0.73rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.aes-preset-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+[data-theme='dark'] .aes-preset-btn {
+  background: rgba(30, 58, 138, 0.28);
+  border-color: rgba(96, 165, 250, 0.28);
+  color: #93c5fd;
+}
+
+/* Composer Card (Hết viền tím!) */
+.aes-composer {
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.095) !important;
+  border-radius: 26px !important;
+  padding: 14px 16px 10px 18px !important;
+  box-shadow:
+    0 20px 48px -16px rgba(15, 23, 42, 0.11),
+    0 2px 6px rgba(15, 23, 42, 0.035) !important;
+}
+
+.aes-composer:focus-within {
+  border-color: rgba(37, 99, 235, 0.45) !important;
+  box-shadow:
+    0 22px 52px -14px rgba(37, 99, 235, 0.2),
+    0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+}
+
+[data-theme='dark'] .aes-composer {
+  background: #0d152a !important;
+  border-color: rgba(255, 255, 255, 0.11) !important;
+  box-shadow: 0 22px 54px -16px rgba(0, 0, 0, 0.68) !important;
+}
+
+.aes-composer-bar {
+  border-top: 1px solid rgba(15, 23, 42, 0.055) !important;
+  padding-top: 9px !important;
+  margin-top: 6px !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+}
+
+[data-theme='dark'] .aes-composer-bar {
+  border-top-color: rgba(255, 255, 255, 0.075) !important;
+}
+
+.aes-composer-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 31px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  background: rgba(248, 250, 252, 0.85);
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.aes-composer-pill-btn:hover {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.22);
+  color: #1d4ed8;
+}
+
+[data-theme='dark'] .aes-composer-pill-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .aes-composer-pill-btn:hover {
+  background: rgba(59, 130, 246, 0.16);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: #93c5fd;
+}
+
+.aes-composer-send {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #3b76ff 0%, #2563eb 100%) !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.36) !important;
+}
+
+.aes-composer-send:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.44) !important;
+}
+
+/* 4 Starter Bento Prompt Cards */
+.aes-quick-chip {
+  align-items: center !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.075) !important;
+  padding: 13px 14px !important;
+  box-shadow:
+    0 6px 20px -10px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 #ffffff !important;
+}
+
+.aes-quick-chip:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(37, 99, 235, 0.28) !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px -10px rgba(37, 99, 235, 0.16) !important;
+}
+
+[data-theme='dark'] .aes-quick-chip {
+  background: #0e172f !important;
+  border-color: rgba(255, 255, 255, 0.085) !important;
+  box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.5) !important;
+}
+
+.aes-quick-chip-icon {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 12px !important;
+  background: rgba(37, 99, 235, 0.09) !important;
+  color: #2563eb !important;
+}
+
+.aes-quick-chip-icon.tone-emerald {
+  background: rgba(16, 185, 129, 0.11) !important;
+  color: #059669 !important;
+}
+
+.aes-quick-chip-icon.tone-amber {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #d97706 !important;
+}
+
+.aes-quick-chip-icon.tone-cyan {
+  background: rgba(14, 165, 233, 0.12) !important;
+  color: #0284c7 !important;
+}
+
+.aes-quick-chip-arrow {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.045);
+  color: #475569;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.aes-quick-chip:hover .aes-quick-chip-arrow {
+  background: #2563eb;
+  color: #ffffff;
+  transform: translate(1px, -1px);
+}
+
+[data-theme='dark'] .aes-quick-chip-arrow {
+  background: rgba(255, 255, 255, 0.07);
+  color: #94a3b8;
+}
+
+/* Split Copilot Response Card Action Pill */
+.aes-copilot-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.aes-copilot-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.24);
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.aes-copilot-action-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+[data-theme='dark'] .aes-copilot-action-btn {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: #93c5fd;
+}

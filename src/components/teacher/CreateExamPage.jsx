@@ -34,6 +34,7 @@ import {
 import { useToast } from '../admin/AdminUI.jsx';
 import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 import './create-exam-page.css';
+import '../../styles/teacher-quantum-polish.css';
 
 const IcoDoc = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"

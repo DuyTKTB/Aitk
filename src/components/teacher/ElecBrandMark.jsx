@@ -35,7 +35,8 @@ export function ElecFlaskBrandSvg({
   const isMono = variant === 'current';
   const isColoredBg = variant === 'white' || variant === 'duo';
 
-  if (imgErr) {
+  /* Icon nhỏ (<= 24px) dùng SVG vector sắc nét thay cho bitmap bị bệt ở nút/chip */
+  if (imgErr || (Number(size) <= 24 && isMono)) {
     const gradId = `elec-lm-fb-${uid}`;
     return (
       <svg

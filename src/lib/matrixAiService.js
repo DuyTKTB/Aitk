@@ -76,9 +76,9 @@ export function parseExamIntent(text) {
     subject = 'Sinh học';
   } else if (/(?:hóa học|hoa hoc|\bhóa\b|\bhoa\b)/i.test(original) || /(?:phản ứng|axit|acid|bazơ|base|dung dịch|este|ester|lipit|lipid|amino acid|cacbohiđrat|kim loại|phi kim|bảng tuần hoàn|nguyên tử|oxi hóa|khử|điện phân|hóa trị|halogen)/i.test(original)) {
     subject = 'Hóa học';
-  } else if (/(?:vật lý|vật lí|vat ly|vat li|\blý\b|\bli\b)/i.test(original)) {
+  } else if (/(?:vật lý|vật lí|vat ly|vat li|\blý\b|\bli\b)/i.test(original) || /(?:giao thoa|sóng cơ|sóng dừng|con lắc|dao động điều hòa|cơ năng|động lượng|rơi tự do|ném xiên|newton|điện trường|tụ điện|định luật ôm|công suất điện|từ trường|cảm ứng điện từ|khí lí tưởng|vật lí nhiệt|hạt nhân|phóng xạ|y-âng|rlc)/i.test(original)) {
     subject = 'Vật lý';
-  } else if (/(?:toán học|toan hoc|\btoán\b|\btoan\b)/i.test(original)) {
+  } else if (/(?:toán học|toan hoc|\btoán\b|\btoan\b)/i.test(original) || /(?:tích phân|nguyên hàm|đạo hàm|cực trị|tiệm cận|oxyz|lượng giác|cấp số cộng|cấp số nhân|logarit|bất phương trình|tam thức bậc hai|vectơ|nhị thức newton|hệ thức lượng|xác suất có điều kiện)/i.test(original)) {
     subject = 'Toán học';
   }
 
@@ -114,6 +114,14 @@ export function parseExamIntent(text) {
       if (/(?:tế bào|sinh học tế bào|vi sinh vật|virus|phân bào|nguyên phân|giảm phân)/i.test(original)) grade = '10';
       else if (/(?:sinh học cơ thể|tuần hoàn|hô hấp thực vật|tiêu hóa|bài tiết|miễn dịch|cảm ứng|hướng động|tập tính)/i.test(original)) grade = '11';
       else if (/(?:di truyền|tiến hóa|sinh thái|menđen|đột biến|adn|arn|quần thể|hệ sinh thái)/i.test(original)) grade = '12';
+    } else if (subject === 'Vật lý') {
+      if (/(?:động học|rơi tự do|ném ngang|ném xiên|newton|ma sát|công cơ học|động năng|thế năng|cơ năng|động lượng|chuyển động tròn|mômen lực)/i.test(original)) grade = '10';
+      else if (/(?:dao động điều hòa|con lắc|sóng cơ|sóng dừng|giao thoa|sóng ánh sáng|y-âng|điện trường|coulomb|điện thế|tụ điện|định luật ôm|suất điện động)/i.test(original)) grade = '11';
+      else if (/(?:vật lí nhiệt|nội năng|nhiệt nóng chảy|nhiệt hóa hơi|khí lí tưởng|boyle|charles|từ trường|cảm ứng điện từ|dòng điện xoay chiều|rlc|hạt nhân|phóng xạ|bán rã)/i.test(original)) grade = '12';
+    } else if (subject === 'Toán học') {
+      if (/(?:mệnh đề|tập hợp|bất phương trình|hệ thức lượng|vectơ|tích vô hướng|tam thức bậc hai|tổ hợp|chỉnh hợp|hoán vị|nhị thức newton)/i.test(original)) grade = '10';
+      else if (/(?:lượng giác|dãy số|cấp số cộng|cấp số nhân|giới hạn|liên tục|lũy thừa|mũ|logarit|quan hệ song song|quan hệ vuông góc)/i.test(original)) grade = '11';
+      else if (/(?:đạo hàm|cực trị|tiệm cận|nguyên hàm|tích phân|diện tích hình phẳng|thể tích khối tròn xoay|oxyz|xác suất có điều kiện|bayes)/i.test(original)) grade = '12';
     } else {
       if (/(?:nguyên tử|bảng tuần hoàn|liên kết hóa học|oxi hóa khử|oxit hóa khử|nhiệt hóa học|năng lượng hóa học|tốc độ phản ứng|halogen|clor|clo|brom|iot)/i.test(original)) {
         grade = '10';
@@ -495,7 +503,62 @@ const PLAN_SCHEMA = {
 
 export function getGradeCurriculumGuideline(grade, subject = 'Hóa học') {
   const g = String(grade || '12');
-  const isBio = String(subject || '').toLowerCase().includes('sinh');
+  const sLower = String(subject || '').toLowerCase();
+  const isBio = sLower.includes('sinh');
+  const isPhysics = sLower.includes('lý') || sLower.includes('lí') || sLower.includes('phys');
+  const isMath = sLower.includes('toán') || sLower.includes('math');
+
+  if (isPhysics) {
+    if (g === '10') {
+      return `PHẠM VI KIẾN THỨC CHUẨN VẬT LÝ LỚP 10 (GDPT 2018):
+- Mở đầu & Sai số phép đo, chuyển động thẳng đều, biến đổi đều, rơi tự do, chuyển động ném ngang/ném xiên.
+- Động lực học: 3 định luật Newton, trọng lực, lực ma sát, lực cản, mômen lực, điều kiện cân bằng vật rắn.
+- Năng lượng, công, công suất, động năng, thế năng, định luật bảo toàn cơ năng, hiệu suất.
+- Động lượng, định luật bảo toàn động lượng, va chạm đàn hồi/mềm, chuyển động tròn đều (gia tốc hướng tâm, lực hướng tâm).
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ VẬT LÝ. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học hay Sinh học!`;
+    }
+    if (g === '11') {
+      return `PHẠM VI KIẾN THỨC CHUẨN VẬT LÝ LỚP 11 (GDPT 2018):
+- Dao động: dao động điều hòa (x, v, a, pha, năng lượng), con lắc lò xo, con lắc đơn, dao động tắt dần, cộng hưởng.
+- Sóng: bước sóng, truyền sóng, sóng ngang/dọc, giao thoa sóng cơ và giao thoa ánh sáng Y-âng, sóng dừng trên dây.
+- Trường tĩnh điện: định luật Coulomb, cường độ điện trường, điện thế, hiệu điện thế, tụ điện (nối tiếp, song song, năng lượng tụ).
+- Dòng điện không đổi: cường độ dòng điện, điện trở, suất điện động, định luật Ôm toàn mạch, công và công suất điện.
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ VẬT LÝ. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học hay Sinh học!`;
+    }
+    return `PHẠM VI KIẾN THỨC CHUẨN VẬT LÝ LỚP 12 (GDPT 2018 & THI TỐT NGHIỆP THPT 2025):
+- Vật lí nhiệt: Cấu trúc chất, sự chuyển thể, nội năng, định luật I nhiệt động lực học, nhiệt dung riêng, nhiệt nóng chảy riêng, nhiệt hóa hơi riêng.
+- Khí lí tưởng: Mô hình động học phân tử, quá trình đẳng nhiệt (Boyle), đẳng áp (Charles), phương trình trạng thái khí lí tưởng (pV = nRT), áp suất theo mô hình động học phân tử.
+- Từ trường & Điện từ: Từ trường dòng điện, lực từ (F = BIl sinα), cảm ứng điện từ (từ thông, Faraday, Lenz), đại cương dòng điện xoay chiều, mạch RLC.
+- Vật lí hạt nhân: Cấu trúc hạt nhân, độ hụt khối, năng lượng liên kết riêng, phản ứng hạt nhân (phân hạch, nhiệt hạch), hiện tượng phóng xạ & chu kì bán rã.
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ VẬT LÝ. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học hay Sinh học!`;
+  }
+
+  if (isMath) {
+    if (g === '10') {
+      return `PHẠM VI KIẾN THỨC CHUẨN TOÁN HỌC LỚP 10 (GDPT 2018):
+- Mệnh đề, tập hợp; Bất phương trình và hệ bất phương trình bậc nhất hai ẩn.
+- Hàm số bậc hai, dấu tam thức bậc hai, giải bất phương trình bậc hai một ẩn.
+- Hệ thức lượng trong tam giác, Vectơ và tích vô hướng trong mặt phẳng Oxy, phương trình đường thẳng và đường tròn.
+- Đại số tổ hợp (quy tắc cộng/nhân, hoán vị, chỉnh hợp, tổ hợp, nhị thức Newton) và Xác suất cổ điển.
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ TOÁN HỌC. TUYỆT ĐỐI KHÔNG đưa kiến thức Hóa học hay Sinh học vào đề Toán!`;
+    }
+    if (g === '11') {
+      return `PHẠM VI KIẾN THỨC CHUẨN TOÁN HỌC LỚP 11 (GDPT 2018):
+- Hàm số lượng giác và phương trình lượng giác cơ bản.
+- Dãy số, cấp số cộng, cấp số nhân; Giới hạn dãy số, giới hạn hàm số, hàm số liên tục.
+- Hàm số mũ và hàm số logarit, phương trình và bất phương trình mũ/logarit.
+- Quan hệ song song và quan hệ vuông góc trong không gian (góc, khoảng cách), tính đạo hàm.
+- Các quy tắc tính xác suất (biến cố hợp, giao, độc lập).
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ TOÁN HỌC. TUYỆT ĐỐI KHÔNG đưa kiến thức Hóa học hay Sinh học vào đề Toán!`;
+    }
+    return `PHẠM VI KIẾN THỨC CHUẨN TOÁN HỌC LỚP 12 (GDPT 2018 & THI TỐT NGHIỆP THPT 2025):
+- Ứng dụng đạo hàm để khảo sát và vẽ đồ thị hàm số (đơn điệu, cực trị, GTNN/GTLN, đường tiệm cận, bài toán tối ưu thực tiễn).
+- Vectơ và hệ trục tọa độ Oxyz trong không gian, phương trình mặt phẳng, đường thẳng và mặt cầu trong Oxyz.
+- Các số đặc trưng đo mức độ phân tán cho mẫu số liệu ghép nhóm (khoảng biến thiên, tứ phân vị, phương sai, độ lệch chuẩn).
+- Nguyên hàm, tích phân và ứng dụng tính diện tích hình phẳng, thể tích vật thể tròn xoay.
+- Xác suất có điều kiện và công thức xác suất toàn phần, công thức Bayes.
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ TOÁN HỌC. TUYỆT ĐỐI KHÔNG đưa kiến thức Hóa học hay Sinh học vào đề Toán!`;
+  }
 
   if (isBio) {
     if (g === '10') {
@@ -608,7 +671,7 @@ Chỉ trả JSON: {"title":"Tên đề ngắn gọn","topics":["..."],"aiPedagog
     customPrompt ? `Yêu cầu thêm của giáo viên: ${customPrompt}` : '',
     classInsights ? `Phân tích lớp:\n${String(classInsights).slice(0, 800)}` : '',
     `DANH SÁCH Ô CẦN ĐẶT TÊN:\n${slotLines}`,
-    textParts.length ? `Tài liệu tham khảo:\n${textParts.join('\n\n').slice(0, 4000)}` : '',
+    textParts.length ? `Tài liệu tham khảo:\n${textParts.join('\n\n').slice(0, 24000)}` : '',
   ].filter(Boolean).join('\n\n');
 
   const meta = {
@@ -707,7 +770,7 @@ Chỉ trả về DUY NHẤT mã JSON hợp lệ.`;
   const user = [
     `Hãy phân tích ma trận đề thi do giáo viên cung cấp sau đây:`,
     text ? `Nội dung / Mô tả từ giáo viên:\n${text}` : '',
-    textParts.length ? `Nội dung trích xuất từ tài liệu đính kèm:\n${textParts.join('\n\n').slice(0, 3500)}` : '',
+    textParts.length ? `Nội dung trích xuất từ tài liệu đính kèm:\n${textParts.join('\n\n').slice(0, 24000)}` : '',
     imageParts.length || pdfParts.length ? `(Có tài liệu/ảnh chụp ma trận đính kèm bên dưới)` : '',
   ].filter(Boolean).join('\n\n');
 
@@ -971,6 +1034,11 @@ function typeRules(type, subject = 'Hóa học') {
 - Không dùng "options"/"correct".`;
   }
   if (type === 'short_answer') {
+    const sLower = String(subject || '').toLowerCase();
+    const isBio = sLower.includes('sinh');
+    const isPhysics = sLower.includes('lý') || sLower.includes('lí') || sLower.includes('phys');
+    const isMath = sLower.includes('toán') || sLower.includes('math');
+
     if (isBio) {
       return `DẠNG TRẢ LỜI NGẮN (thi tốt nghiệp THPT 2025 môn Sinh học): đáp án là MỘT SỐ (thập phân dùng dấu phẩy, vd "12,5" hoặc "4"), không kèm đơn vị trong "answer".
 - Đề bài phải nói rõ yêu cầu làm tròn (vd "làm tròn đến hàng phần mười") và đại lượng cần tính.
@@ -979,6 +1047,22 @@ function typeRules(type, subject = 'Hóa học') {
   * Bước 1: Liệt kê dữ kiện đề bài (số lượng nuclêôtit từng loại, số liên kết hiđro, tần số alen, tỉ lệ kiểu gen/kiểu hình, hiệu suất sinh thái...).
   * Bước 2: Nêu rõ công thức sinh học, sơ đồ lai hoặc phương trình áp dụng.
   * Bước 3: Biểu thức tính toán cụ thể dẫn đến đáp số cuối cùng (khớp 100% với "answer").
+- Không dùng "options"/"correct".`;
+    }
+    if (isPhysics) {
+      return `DẠNG TRẢ LỜI NGẮN (thi tốt nghiệp THPT 2025 môn Vật lý): đáp án là MỘT SỐ (thập phân dùng dấu phẩy, vd "2,5" hoặc "40"), không kèm đơn vị trong "answer".
+- Đề bài phải ghi rõ đơn vị tính ở cuối câu hỏi và yêu cầu làm tròn (nếu có).
+- "explain": Nêu định luật/công thức Vật lý, hướng biến đổi đại lượng và đáp số.
+- "work": BẮT BUỘC TRÌNH BÀY ĐẦY ĐỦ CÁC BƯỚC GIẢI:
+  * Bước 1: Tóm tắt dữ kiện và quy đổi sang đơn vị chuẩn SI.
+  * Bước 2: Viết công thức Vật lý và thay số chính xác.
+  * Bước 3: Kết luận đáp số khớp 100% với "answer".
+- Không dùng "options"/"correct".`;
+    }
+    if (isMath) {
+      return `DẠNG TRẢ LỜI NGẮN (thi tốt nghiệp THPT 2025 môn Toán học): đáp án là MỘT SỐ (thập phân dùng dấu phẩy, vd "-3,5" hoặc "12"), viết đúng yêu cầu làm tròn.
+- "explain": Nêu hướng tiếp cận giải toán, công thức/định lí áp dụng và đáp số.
+- "work": BẮT BUỘC TRÌNH BÀY ĐẦY ĐỦ CÁC BƯỚC BIẾN ĐỔI TOÁN HỌC đến kết quả khớp 100% với "answer".
 - Không dùng "options"/"correct".`;
     }
     return `DẠNG TRẢ LỜI NGẮN (thi tốt nghiệp THPT 2025 môn Hóa học): đáp án là MỘT SỐ (thập phân dùng dấu phẩy, vd "12,5" hoặc "4"), không kèm đơn vị trong "answer".
@@ -999,9 +1083,12 @@ function typeRules(type, subject = 'Hóa học') {
 
 function buildSystem(type, subject = 'Hóa học', grade = '12') {
   const g = String(grade || '12');
-  const isBio = String(subject || '').toLowerCase().includes('sinh');
-  const isChem = String(subject || '').toLowerCase().includes('hóa') || (!isBio && !subject);
-  const subjName = isBio ? 'Sinh học' : isChem ? 'Hóa học' : subject;
+  const sLower = String(subject || '').toLowerCase();
+  const isBio = sLower.includes('sinh');
+  const isPhysics = sLower.includes('lý') || sLower.includes('lí') || sLower.includes('phys');
+  const isMath = sLower.includes('toán') || sLower.includes('math');
+  const isChem = sLower.includes('hóa') || (!isBio && !isPhysics && !isMath);
+  const subjName = isBio ? 'Sinh học' : isPhysics ? 'Vật lý' : isMath ? 'Toán học' : isChem ? 'Hóa học' : subject;
 
   return `Bạn là giáo viên ${subjName} THPT giàu kinh nghiệm, ra đề lớp ${g} theo chương trình GDPT 2018 và định dạng đề thi tốt nghiệp THPT 2025.
 ${typeRules(type, subjName)}
@@ -1012,13 +1099,15 @@ QUY TẮC BẮT BUỘC VỀ CHẤT LƯỢNG VÀ ĐỘ CHÍNH XÁC (ĐỀ NÀO RA
 1. ĐÂY LÀ ĐỀ THI MÔN ${subjName.toUpperCase()}. TOÀN BỘ 100% CÂU HỎI PHẢI THUỘC ĐÚNG MÔN ${subjName.toUpperCase()}. TUYỆT ĐỐI KHÔNG ĐƯỢC LẪN LỘN SANG MÔN KHÁC!
 ${isChem ? '   - CẤM các câu hỏi thuộc môn Sinh học (tế bào, ribosome, nhân đôi ADN, phiên mã, dịch mã, mã di truyền, đột biến gen, NST, nguyên phân, giảm phân, quy luật di truyền, hệ sinh thái...). Mọi câu hỏi Este-Lipid, Carbohydrate, Amino acid, Protein PHẢI THUẦN TÚY HÓA HỌC.' : ''}
 ${isBio ? '   - CẤM các câu hỏi thuộc môn Hóa học (cân bằng phương trình hóa học, tính số mol, pin điện hóa, halogen, phản ứng hữu cơ vô cơ...). Mọi câu hỏi PHẢI THUẦN TÚY SINH HỌC.' : ''}
+${isPhysics ? '   - Sử dụng hằng số chuẩn Vật lý (g = 9,8 m/s² hoặc 10 m/s² theo đề, c = 3.10^8 m/s, R = 8,31 J/(mol.K), k = 1,38.10^-23 J/K); ghi rõ đơn vị đo.' : ''}
+${isMath ? '   - Lời giải Toán học chặt chẽ, đúng điều kiện xác định, phân biệt rành mạch khoảng đồng biến/nghịch biến và ký hiệu xác suất chuẩn.' : ''}
 2. Trả JSON {"questions":[...]} đúng số phần tử yêu cầu; mỗi phần tử là MỘT câu riêng, không gộp.
 3. TUYỆT ĐỐI không chèn tiêu đề "PHẦN I/II/III" hay "Câu 1:" vào nội dung.
 4. Đúng 100% chương trình lớp ${g}, KHÔNG vi phạm phạm vi chương trình lớp khác.
 5. Kiến thức môn học và toán học chính xác tuyệt đối:
    - Các phương trình, công thức và bản chất khoa học phải chuẩn xác 100%.
    - Bản giải nháp ("work") và Lời giải chi tiết ("explain") phải đầy đủ, cặn kẽ từng bước, không viết tắt, không qua loa.
-6. Ký hiệu công thức: Viết công thức hóa học/toán học chuẩn xác, dễ đọc (ví dụ H2SO4, Fe2O3, Cu2+, SO4^2-, ->, <=>).
+6. Ký hiệu công thức: Viết công thức chuẩn xác, dễ đọc.
 ${isChem ? `7. ${CHEM_RULES}` : ''}`;
 }
 
@@ -1301,7 +1390,7 @@ export async function generateQuestionsFromApprovedMatrix({
 
   const { textParts, imageParts, pdfParts } = buildFileContext(files || []);
   const refText = textParts.length
-    ? `Tài liệu tham khảo (chỉ để bám nội dung, KHÔNG chép nguyên vào câu hỏi):\n${textParts.join('\n').slice(0, 4000)}`
+    ? `Tài liệu tham khảo (chỉ để bám nội dung, KHÔNG chép nguyên vào câu hỏi):\n${textParts.join('\n').slice(0, 24000)}`
     : '';
   const systems = {};
   const sysOf = (t) => (systems[t] ||= buildSystem(t, subject, grade));
@@ -1544,9 +1633,10 @@ function specOf(question) {
   };
 }
 
-export async function askPedagogyAI({ question, matrix, classInsights = '', signal } = {}) {
+export async function askPedagogyAI({ question, matrix, subject = '', classInsights = '', signal } = {}) {
+  const subj = subject || matrix?.subject || 'KHTN & Toán học';
   const raw = await callModel({
-    system: `Bạn là trợ lý sư phạm Hóa học THPT Việt Nam (lớp 10–12, GDPT 2018).
+    system: `Bạn là trợ lý sư phạm môn ${subj} THPT Việt Nam (lớp 10–12, GDPT 2018).
 Trả lời ngắn, cụ thể, có ví dụ số liệu hoặc câu hỏi gợi ý dạy ngay được.
 Chỉ trả JSON: {"answer":"..."}.`,
     parts: [{
@@ -1565,6 +1655,128 @@ Chỉ trả JSON: {"answer":"..."}.`,
   } catch {
     return String(raw || '').trim() || 'Chưa nhận được gợi ý.';
   }
+}
+
+/* ============ TEACHER COPILOT INTELLIGENCE ============ */
+export function detectTeacherCopilotRoute({
+  text = '',
+  files = [],
+  hasQuestions = false,
+  hasMatrix = false,
+  forceChat = false,
+  midInterview = false,
+} = {}) {
+  const cleanText = String(text || '').trim();
+  const wantsBuildExam = /(?:tạo|soạn|ra|dựng|sinh|lập)\s*(?:đề|ma trận|bài kiểm tra|phiếu bài tập|câu hỏi)|\b\d{1,3}\s*(?:câu|phút|p)\b|thi thử|thptqg|tốt nghiệp/i.test(cleanText);
+  const wantsAnalysisOrQA = /(?:phân tích|tóm tắt|nhận xét|đánh giá|giải thích|tại sao|vì sao|so sánh|chấm|những lỗi|điểm yếu|gợi ý bài giảng|giáo án|kế hoạch dạy|biện luận|kiến thức trọng tâm|trích xuất|đọc giúp|đọc file)/i.test(cleanText);
+  const mentionsMatrix = /ma\s*tr[ậa]n|b[ảa]ng\s*đ[ặa]c\s*t[ảa]|khung\s*ma\s*tr[ậa]n/i.test(cleanText);
+  const hasFiles = Array.isArray(files) && files.length > 0;
+  const hasExplicitMatrixFile = hasFiles && files.some((f) => /ma\s*tr[ậa]n|matrix|cautruc|dacta|khung/i.test(f.name || ''));
+
+  if (forceChat) return 'copilot';
+
+  if (hasQuestions) {
+    if (wantsBuildExam && /tạo đề mới|soạn đề mới|đề khác|làm đề mới/i.test(cleanText)) return 'new_exam';
+    return 'copilot';
+  }
+
+  if (hasMatrix) return 'matrix_chat';
+
+  if (mentionsMatrix || (hasExplicitMatrixFile && !wantsAnalysisOrQA)) return 'custom_matrix';
+
+  if (wantsAnalysisOrQA && !wantsBuildExam) return 'copilot';
+  if (hasFiles && (!cleanText || /đọc|phân tích|nhận xét|tóm tắt|tài liệu|file/i.test(cleanText)) && !wantsBuildExam) {
+    return 'copilot';
+  }
+
+  if (!midInterview && !wantsBuildExam && cleanText.length > 0 && cleanText.includes('?')) {
+    return 'copilot';
+  }
+
+  return 'exam_plan';
+}
+
+export async function askTeacherCopilotWithAI({
+  query = '',
+  subject = 'Hóa học',
+  grade = '12',
+  matrix = null,
+  questions = [],
+  files = [],
+  classInsights = '',
+  signal,
+} = {}) {
+  const subj = subject || matrix?.subject || 'Hóa học';
+  const g = String(grade || matrix?.grade || '12');
+  const { textParts, imageParts, pdfParts } = buildFileContext(files || []);
+
+  const examDigest = Array.isArray(questions) && questions.length > 0
+    ? questions.slice(0, 32).map((q, idx) => {
+        const lvl = q.level || q.levelKey || '';
+        const ans = q.type === 'true_false'
+          ? (q.statements || []).map((st, si) => `${'abcd'[si]}) ${st.answer ? 'Đ' : 'S'}`).join(' ')
+          : q.type === 'short_answer'
+            ? `Đáp án: ${q.answer}`
+            : `Đáp án: ${'ABCD'[q.correct] ?? '?'}`;
+        return `Câu ${idx + 1} (${lvl}): ${String(q.q || '').slice(0, 220)} [${ans}]`;
+      }).join('\n')
+    : '';
+
+  const matrixSummary = matrix
+    ? `Ma trận đang mở: "${matrix.title || subj}" · ${matrix.totalQuestions || questions.length} câu · ${matrix.duration || 45} phút.`
+    : '';
+
+  const system = `Bạn là Trợ lý Khảo thí & Sư phạm Thông minh ELEC AI chuyên môn ${subj} THPT (Lớp ${g}, GDPT 2018 & Đề Tốt nghiệp 2025).
+Nhiệm vụ của bạn:
+- Đọc toàn bộ tài liệu đính kèm (Word .docx, PDF, Excel, ảnh), ma trận đề và danh sách câu hỏi đang soạn (nếu có) để trả lời sâu sắc, trực diện, chuẩn khoa học.
+- Nếu giáo viên gửi đề thi/tài liệu để phân tích: hãy bóc tách ma trận chủ đề, tỉ lệ mức độ nhận thức (NB/TH/VD/VDC), các điểm dễ sai / bẫy học sinh, và gợi ý hướng ra đề hoặc ôn tập cụ thể cho lớp.
+- Nếu giáo viên hỏi giải thích một câu hỏi trong đề đang mở: đối chiếu trực tiếp dữ kiện & lời giải của câu đó và giải thích cặn kẽ từng bước.
+- Trình bày bằng tiếng Việt rõ ràng (markdown gọn, đánh số ý, công thức rõ). Cuối câu trả lời trả thêm JSON metadata ngắn nếu thầy/cô có thể chuyển ngay nội dung này thành đề thi.
+
+Cấu trúc trả về ĐÚNG JSON:
+{
+  "answer": "Nội dung phân tích chi tiết dành cho giáo viên (markdown đẹp)",
+  "canBuildExam": true hoặc false,
+  "suggestedTopic": "Tên chủ đề đề xuất (nếu canBuildExam = true)",
+  "suggestedCount": 10,
+  "suggestedGrade": "${g}"
+}`;
+
+  const user = [
+    query ? `Yêu cầu của giáo viên: ${query}` : 'Hãy phân tích chi tiết tài liệu đính kèm bên dưới.',
+    matrixSummary,
+    classInsights ? `Dữ liệu lớp học hiện tại:\n${String(classInsights).slice(0, 1200)}` : '',
+    examDigest ? `DANH SÁCH CÂU HỎI ĐANG MỞ:\n${examDigest}` : '',
+    textParts.length ? `NỘI DUNG TÀI LIỆU ĐÍNH KÈM:\n${textParts.join('\n\n').slice(0, 24000)}` : '',
+  ].filter(Boolean).join('\n\n');
+
+  const raw = await callModel({
+    system,
+    parts: [...imageParts, ...pdfParts, { text: user }],
+    temperature: 0.3,
+    signal,
+  });
+
+  try {
+    const parsed = parseJsonLoose(raw);
+    if (parsed && parsed.answer) {
+      return {
+        answer: String(parsed.answer).trim(),
+        canBuildExam: Boolean(parsed.canBuildExam),
+        suggestedTopic: String(parsed.suggestedTopic || '').trim(),
+        suggestedCount: Number(parsed.suggestedCount) || 10,
+        suggestedGrade: THPT_GRADES.includes(String(parsed.suggestedGrade)) ? String(parsed.suggestedGrade) : g,
+      };
+    }
+  } catch { /* fallback raw text */ }
+
+  return {
+    answer: String(raw || '').trim() || 'Đã tiếp nhận yêu cầu nhưng chưa phân tích được nội dung.',
+    canBuildExam: Boolean(textParts.length || files?.length),
+    suggestedTopic: query.slice(0, 60),
+    suggestedCount: 10,
+    suggestedGrade: g,
+  };
 }
 
 export async function rewriteQuestionWithAI({
