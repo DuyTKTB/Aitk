@@ -114,4 +114,84 @@ describe('Profile Mobile Architecture & Helpers', () => {
     expect(formatCredits(500)).toBe('500');
     expect(formatCredits(12000)).toBe('12.0k');
   });
+
+  it('computes honest zero baseline and live activity metrics for Profile Atlas Dashboard', async () => {
+    const { buildAtlasMetrics, formatCompactAtlasNumber } = await import(
+      '../src/components/ProfileAtlasDashboard.jsx'
+    );
+
+    const idle = buildAtlasMetrics({
+      uid: 'idle-atlas-' + Date.now(),
+      examHistory: [],
+      streakDays: 0,
+      credits: 0,
+      isPro: false,
+      roadmapSessionsOverride: [],
+      pomodoroHistoryOverride: {},
+      wrongPendingOverride: 0,
+    });
+
+    expect(idle.hasRealActivity).toBe(false);
+    expect(idle.overallReadiness).toBe(0);
+    expect(idle.axes).toHaveLength(6);
+    expect(idle.axes.every((a) => a.score === 0)).toBe(true);
+    expect(idle.latestExamScoreText).toBe('Chưa có bài thi');
+
+    const active = buildAtlasMetrics({
+      uid: 'active-atlas-' + Date.now(),
+      examHistory: [
+        {
+          id: 'ex1',
+          title: 'Đề thi thử KHTN 01',
+          score: 8.5,
+          totalPoints: 10,
+          pct: 85,
+          timeSpent: 900,
+          total: 20,
+          completedAt: '2026-11-20T09:00:00Z',
+        },
+      ],
+      streakDays: 6,
+      credits: 100_000_000,
+      isPro: true,
+      tierLabel: 'VIP',
+      classes: [{ id: 'c1' }],
+      friends: [{ id: 'f1' }, { id: 'f2' }],
+      roadmapSessionsOverride: [{ id: 'rs1' }],
+      pomodoroHistoryOverride: { '2026-11-20': 25 },
+      wrongPendingOverride: 2,
+    });
+
+    expect(active.hasRealActivity).toBe(true);
+    expect(active.overallReadiness).toBeGreaterThan(0);
+    expect(active.axes).toHaveLength(6);
+    for (let i = 1; i < active.axes.length; i++) {
+      expect(active.axes[i - 1].score).toBeGreaterThanOrEqual(active.axes[i].score);
+    }
+    expect(active.latestExamScoreText).toBe('8.5/10 điểm');
+    expect(active.latestExamDate).toBe('20.11');
+    expect(active.classCount).toBe(1);
+    expect(active.friendCount).toBe(2);
+
+    expect(formatCompactAtlasNumber(100_000_000)).toBe('100M');
+    expect(formatCompactAtlasNumber(12_500)).toBe('12.5k');
+    expect(formatCompactAtlasNumber(500)).toBe('500');
+  });
+
+  it('wires Atlas shell, reactive sync events, and core profile panels into ProfilePage', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const src = fs.readFileSync(path.resolve('src/components/ProfilePage.jsx'), 'utf8');
+
+    expect(src).toContain("import ProfileAtlasDashboard from './ProfileAtlasDashboard.jsx'");
+    expect(src).toContain("import '../styles/profile-atlas.css'");
+    expect(src).toContain('pf-atlas-top-shell');
+    expect(src).toContain('pf-atlas-pills-scroll');
+    expect(src).toContain('pf-atlas-lower-grid');
+    expect(src).toContain("window.addEventListener('cs-streak-change'");
+    expect(src).toContain("window.addEventListener('cs-cloud-sync-update'");
+    expect(src).toContain('<ProfileEditSection');
+    expect(src).toContain('<StudentAbilityHub');
+    expect(src).toContain('<ActivityHeatmap365');
+  });
 });

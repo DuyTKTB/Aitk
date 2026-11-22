@@ -37,9 +37,11 @@ import {
 import { readStore } from '../lib/roadmapStore.js';
 import UserAvatar from './UserAvatar.jsx';
 import StudentAvatar from './StudentAvatar.jsx';
+import ProfileAtlasDashboard from './ProfileAtlasDashboard.jsx';
 import './ProfileFB.css';
 import '../styles/profile-modern-mobile.css';
 import '../styles/profile-apple-luxe.css';
+import '../styles/profile-atlas.css';
 
 const AVATAR_COLORS = ['#ff4d1a', '#a7c4f2', '#b7dc9a', '#ffc46b', '#f2b6c6', '#c1b4f0', '#8fd6c4', '#ff9b85'];
 const hashStr = (s = '') => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; };
@@ -370,9 +372,17 @@ export default function ProfilePage({ credits: propCredits }) {
   const [feedbackTopic, setFeedbackTopic] = useState('Góp ý tính năng');
   const [historyFilter, setHistoryFilter] = useState('all'); // 'all' | 'exam' | 'roadmap' | 'fav'
 
+  const [syncTick, setSyncTick] = useState(0);
+  const [contextTagsVisible, setContextTagsVisible] = useState({
+    subject: true,
+    tier: true,
+    ident: true,
+  });
+
   const toastTimer = useRef(null);
   const dlg = useRef(null);
   const fileInputRef = useRef(null);
+  const abilityHubRef = useRef(null);
 
   const email = user?.email || '';
   const display = user?.displayName || '';
@@ -416,7 +426,7 @@ export default function ProfilePage({ credits: propCredits }) {
     return `${pre}••••@${parts[1]}`;
   }, [email, showEmail]);
 
-  /* Chuỗi streak hiện tại */
+  /* Chuỗi streak hiện tại (tự cập nhật khi cs-streak-change / cloud sync) */
   const currentStreak = useMemo(() => {
     try {
       const data = getStreakData();
@@ -424,7 +434,7 @@ export default function ProfilePage({ credits: propCredits }) {
     } catch {
       return 0;
     }
-  }, []);
+  }, [syncTick]);
 
   /* Mini Streak Calendar 30 ngày trong tháng */
   const calendarDays = useMemo(() => {
@@ -490,10 +500,26 @@ export default function ProfilePage({ credits: propCredits }) {
   }, [tab]);
 
   useEffect(() => {
-    setSubQuota(getSubscriptionAndQuota(uid));
-    setFavIds(getFavoriteExamIds(uid));
-    setExamHistory(getVirtualExamHistory(uid));
-    setReports(getUserReports(uid));
+    const syncProfileStores = () => {
+      setSubQuota(getSubscriptionAndQuota(uid));
+      setFavIds(getFavoriteExamIds(uid));
+      setExamHistory(getVirtualExamHistory(uid));
+      setReports(getUserReports(uid));
+      setSyncTick((t) => t + 1);
+    };
+    syncProfileStores();
+    window.addEventListener('cs-streak-change', syncProfileStores);
+    window.addEventListener('cs-cloud-sync-update', syncProfileStores);
+    window.addEventListener('elec-fav-exams-changed', syncProfileStores);
+    window.addEventListener('elec-exam-history-changed', syncProfileStores);
+    window.addEventListener('elec-quota-changed', syncProfileStores);
+    return () => {
+      window.removeEventListener('cs-streak-change', syncProfileStores);
+      window.removeEventListener('cs-cloud-sync-update', syncProfileStores);
+      window.removeEventListener('elec-fav-exams-changed', syncProfileStores);
+      window.removeEventListener('elec-exam-history-changed', syncProfileStores);
+      window.removeEventListener('elec-quota-changed', syncProfileStores);
+    };
   }, [uid, pro?.isPro]);
 
   /* Tải lớp học và bạn bè */
@@ -844,11 +870,11 @@ export default function ProfilePage({ credits: propCredits }) {
   const roadmapSessions = useMemo(() => {
     const st = readStore(uid);
     return (st?.sessions || []).slice(0, 15);
-  }, [uid, tab]);
+  }, [uid, tab, syncTick]);
 
-  /* Tính điểm trung bình */
+  /* Tính điểm trung bình thực tế từ lịch sử thi */
   const avgScore = useMemo(() => {
-    if (!examHistory || examHistory.length === 0) return '8.5';
+    if (!examHistory || examHistory.length === 0) return '—';
     const sum = examHistory.reduce((acc, h) => acc + (parseFloat(h.score10) || 0), 0);
     return (sum / examHistory.length).toFixed(1);
   }, [examHistory]);
@@ -891,8 +917,10 @@ export default function ProfilePage({ credits: propCredits }) {
     { id: 'settings', label: 'Chỉnh sửa hồ sơ', icon: PfSvg.settings, mascot: '/img/elec/elec-fighting.png' },
   ];
 
+  const visibleTagCount = Object.values(contextTagsVisible).filter(Boolean).length;
+
   return (
-    <section className="pf pf-modern-container">
+    <section className="pf pf-modern-container pf-atlas-container">
       {/* Toast thông báo */}
       <div className={'pf-toast' + (toast ? ' show ' + toast.type : '')} role="status" aria-live="polite">
         {toast && (
@@ -905,375 +933,433 @@ export default function ProfilePage({ credits: propCredits }) {
       </div>
 
       {tab !== 'settings' && (
-        <>
+        <header className="pf-atlas-top-shell">
           {/* ============================================================
-         1. ĐẦU TRANG (HEADER CARD)
-         ============================================================ */}
-      <div className="pf-m-header-card">
-        <div className="pf-m-header-top">
-          <div className="pf-m-avatar-wrap">
-            <div className="pf-m-avatar" style={{ '--av': color, background: 'transparent', border: 'none' }}>
-              <UserAvatar user={user} size={84} title={display} />
-              {uploading && (
-                <div className="pf-avatar-loading">
-                  <IcoSpinner size={24} className="pf-spin" />
-                </div>
-              )}
-            </div>
-
-            <button
-              type="button"
-              className="pf-m-avatar-edit-btn"
-              onClick={() => setAvatarMenuOpen(true)}
-              aria-label="Đổi ảnh đại diện hoặc màu sắc"
-              title="Đổi ảnh đại diện"
-            >
-              <IcoCamera size={14} />
-            </button>
-          </div>
-
-          <div className="pf-m-user-info">
-            <div className="pf-m-name-row">
-              <span className="pf-m-name">{display || (isTeacherAccount ? 'Giáo viên ELEC AI' : 'Học sinh ELEC AI')}</span>
-              {ent.hasVipAccess && <VerifiedBadge isVip size={18} />}
-              <span className={`pf-m-badge-pill ${ent.hasVipAccess ? 'vip' : 'free'}`}>
-                {effectivePlanName}
-              </span>
-            </div>
-
-            <div className="pf-m-school">
-              <span>{isTeacherAccount ? 'Giáo viên — Quản lý lớp học' : rankFor(tier)}</span>
-              <span>•</span>
-              <span>Tham gia {daysJoined} ngày</span>
-            </div>
-
-            <div className="pf-m-email-row">
-              <span>{maskedEmail}</span>
+             1. ATLAS TOPBAR (IDENTITY + DARK PILL CTA + UTILITY CIRCLES)
+             ============================================================ */}
+          <div className="pf-atlas-topbar">
+            <div className="pf-atlas-identity">
               <button
                 type="button"
-                className="pf-m-eye-btn"
-                onClick={() => setShowEmail((s) => !s)}
-                aria-label={showEmail ? 'Ẩn email' : 'Hiện email'}
-                title={showEmail ? 'Ẩn email' : 'Hiện email'}
+                className="pf-atlas-avatar-trigger"
+                onClick={() => setAvatarMenuOpen(true)}
+                aria-label="Đổi ảnh đại diện hoặc màu sắc"
+                title="Đổi ảnh đại diện"
               >
-                {showEmail ? PfSvg.eyeOff : PfSvg.eye}
+                <UserAvatar user={user} size={57} title={display} />
+                {uploading && (
+                  <div className="pf-avatar-loading">
+                    <IcoSpinner size={22} className="pf-spin" />
+                  </div>
+                )}
+                <span className="pf-atlas-avatar-edit-dot" aria-hidden="true">
+                  <IcoCamera size={12} />
+                </span>
+              </button>
+
+              <div className="pf-atlas-name-block">
+                <div className="pf-atlas-name-line">
+                  <span className="pf-atlas-name">
+                    {display || (isTeacherAccount ? 'Giáo viên ELEC AI' : 'Học sinh ELEC AI')}
+                  </span>
+                  {ent.hasVipAccess && <VerifiedBadge isVip size={17} />}
+                  <span className={`pf-atlas-plan-chip ${ent.hasVipAccess ? 'vip' : 'free'}`}>
+                    {effectivePlanName}
+                  </span>
+                </div>
+
+                <div className="pf-atlas-subline">
+                  <span>{isTeacherAccount ? 'Giáo viên — Quản lý lớp học' : rankFor(tier)}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>Tham gia {daysJoined} ngày</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{maskedEmail}</span>
+                  <button
+                    type="button"
+                    className="pf-atlas-eye-toggle"
+                    onClick={() => setShowEmail((s) => !s)}
+                    aria-label={showEmail ? 'Ẩn email' : 'Hiện email'}
+                    title={showEmail ? 'Ẩn email' : 'Hiện email'}
+                  >
+                    {showEmail ? PfSvg.eyeOff : PfSvg.eye}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pf-atlas-top-actions">
+              {isTeacherAccount && (
+                <a
+                  href="#classroom"
+                  className="pf-atlas-cta-dark"
+                >
+                  {PfSvg.crown}
+                  <span>Quản lý lớp học</span>
+                </a>
+              )}
+
+              <button
+                type="button"
+                className="pf-atlas-cta-dark"
+                onClick={() => selectTab('settings')}
+              >
+                {PfSvg.edit}
+                <span>Chỉnh sửa hồ sơ</span>
+              </button>
+
+              <button
+                type="button"
+                className="pf-atlas-icon-circle"
+                onClick={handleShareProfile}
+                aria-label="Chia sẻ hồ sơ"
+                title="Chia sẻ hồ sơ"
+              >
+                {PfSvg.share}
+              </button>
+
+              <button
+                type="button"
+                className="pf-atlas-icon-circle"
+                onClick={() => {
+                  setShowPayment(false);
+                  window.dispatchEvent(new CustomEvent('elec-open-credit-topup'));
+                }}
+                aria-label="Nạp ELEC AI Credit"
+                title={`ELEC AI Credit: ${credits != null ? credits.toLocaleString('vi-VN') : 0}`}
+              >
+                {PfSvg.bolt}
+              </button>
+
+              <button
+                type="button"
+                className="pf-atlas-icon-circle danger"
+                onClick={() => setAskLogout(true)}
+                aria-label="Đăng xuất"
+                title="Đăng xuất"
+              >
+                {PfSvg.logout}
               </button>
             </div>
           </div>
-        </div>
 
-        <div className="pf-m-header-actions">
-          {isTeacherAccount && (
-            <a
-              href="#classroom"
-              className="pf-m-btn primary"
-              style={{ textDecoration: 'none' }}
-            >
-              {PfSvg.crown}
-              <span>Vào quản lý lớp học</span>
-            </a>
-          )}
-          <button
-            type="button"
-            className={'pf-m-btn' + (isTeacherAccount ? '' : ' primary')}
-            onClick={() => selectTab('settings')}
-          >
-            {PfSvg.edit}
-            <span>Chỉnh sửa hồ sơ</span>
-          </button>
+          {/* ============================================================
+             2. PILL FILTER TABS + SLIDERS BADGE + CONTEXT TAG CHIPS
+             ============================================================ */}
+          <div className="pf-atlas-tabs-bar">
+            <nav className="pf-atlas-pills-scroll" role="tablist" aria-label="Danh mục hồ sơ">
+              {MAIN_TABS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === t.id}
+                  className={`pf-atlas-pill ${tab === t.id ? 'on' : ''}`}
+                  onClick={() => selectTab(t.id)}
+                >
+                  <span aria-hidden="true" style={{ display: 'inline-flex' }}>{t.icon}</span>
+                  <span>{t.label}</span>
+                </button>
+              ))}
+            </nav>
 
-          <button
-            type="button"
-            className="pf-m-btn"
-            onClick={handleShareProfile}
-          >
-            {PfSvg.share}
-            <span>Chia sẻ hồ sơ</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ============================================================
-         2. HÀNG SỐ LIỆU NHANH (5 QUICK STATS TILES) — 100% SVG NÉT MẢNH
-         ============================================================ */}
-      <div className="pf-m-quick-stats" role="region" aria-label="Số liệu học tập nhanh">
-        <a href="#leaderboard" className="pf-m-stat-tile" title="Chuỗi học tập liên tiếp — Bấm xem Bảng xếp hạng">
-          <span className="pf-m-stat-val fire">
-            <span className="pf-m-stat-ico" aria-hidden="true">{PfSvg.flame}</span>
-            <span>{currentStreak}</span>
-          </span>
-          <span className="pf-m-stat-lbl">Chuỗi ngày</span>
-        </a>
-
-        <button
-          type="button"
-          className="pf-m-stat-tile"
-          onClick={() => {
-            setShowPayment(false);
-            window.dispatchEvent(new CustomEvent('elec-open-credit-topup'));
-          }}
-          title="Điểm và ELEC AI Credit khả dụng — Bấm nạp ELEC Credit"
-        >
-          <span className="pf-m-stat-val bolt">
-            <span className="pf-m-stat-ico" aria-hidden="true">{PfSvg.bolt}</span>
-            <span>{credits != null ? credits.toLocaleString('vi-VN') : 0}</span>
-          </span>
-          <span className="pf-m-stat-lbl">Điểm AI</span>
-        </button>
-
-        <a href="#my-classes" className="pf-m-stat-tile" title="Hạng trong lớp học — Bấm vào Lớp học">
-          <span className="pf-m-stat-val trophy">
-            <span className="pf-m-stat-ico" aria-hidden="true">{PfSvg.trophy}</span>
-            <span>#1</span>
-          </span>
-          <span className="pf-m-stat-lbl">Hạng lớp</span>
-        </a>
-
-        <button type="button" className="pf-m-stat-tile" onClick={() => selectTab('history')} title="Số đề đã hoàn thành — Bấm xem Lịch sử">
-          <span className="pf-m-stat-val exam">
-            <span className="pf-m-stat-ico" aria-hidden="true">{PfSvg.exam}</span>
-            <span>{(examHistory?.length || 0) + (roadmapSessions?.length || 0)}</span>
-          </span>
-          <span className="pf-m-stat-lbl">Bài đã làm</span>
-        </button>
-
-        <button type="button" className="pf-m-stat-tile" onClick={() => selectTab('history')} title="Điểm trung bình các bài thi">
-          <span className="pf-m-stat-val target">
-            <span className="pf-m-stat-ico" aria-hidden="true">{PfSvg.target}</span>
-            <span>{avgScore}</span>
-          </span>
-          <span className="pf-m-stat-lbl">Điểm TB</span>
-        </button>
-      </div>
-
-      {/* ============================================================
-         3. THANH TAB DÍNH KHI CUỘN (5 STICKY TABS)
-         ============================================================ */}
-      <div className="pf-m-tabs-wrap">
-        <nav className="pf-m-tabs" role="tablist" aria-label="Danh mục hồ sơ">
-          {MAIN_TABS.map((t) => (
             <button
-              key={t.id}
               type="button"
-              role="tab"
-              aria-selected={tab === t.id}
-              className={`pf-m-tab-btn ${tab === t.id ? 'on' : ''}`}
-              onClick={() => selectTab(t.id)}
+              className="pf-atlas-filter-btn"
+              title={visibleTagCount < 3 ? 'Khôi phục tất cả thẻ ngữ cảnh' : 'Mở cài đặt hồ sơ'}
+              aria-label="Tùy chỉnh thẻ lọc hồ sơ"
+              onClick={() => {
+                if (visibleTagCount < 3) {
+                  setContextTagsVisible({ subject: true, tier: true, ident: true });
+                } else {
+                  selectTab('settings');
+                }
+              }}
             >
-              {t.mascot ? (
-                <img src={t.mascot} alt="" className="pf-m-tab-mascot" />
-              ) : (
-                <span aria-hidden="true">{t.icon}</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="4" y1="21" x2="4" y2="14" />
+                <line x1="4" y1="10" x2="4" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12" y2="3" />
+                <line x1="20" y1="21" x2="20" y2="16" />
+                <line x1="20" y1="12" x2="20" y2="3" />
+                <line x1="1" y1="14" x2="7" y2="14" />
+                <line x1="9" y1="8" x2="15" y2="8" />
+                <line x1="17" y1="16" x2="23" y2="16" />
+              </svg>
+              {visibleTagCount > 0 && (
+                <span className="pf-atlas-filter-badge">{visibleTagCount}</span>
               )}
-              <span>{t.label}</span>
             </button>
-          ))}
-        </nav>
-      </div>
+          </div>
 
-              </>
+          {visibleTagCount > 0 && (
+            <div className="pf-atlas-chip-row" aria-label="Ngữ cảnh hồ sơ">
+              {contextTagsVisible.subject && (
+                <button
+                  type="button"
+                  className="pf-atlas-tag-chip"
+                  onClick={() => setContextTagsVisible((s) => ({ ...s, subject: false }))}
+                  title="Bấm để ẩn thẻ này"
+                >
+                  <span>Khoa học Tự nhiên · GDPT 2025</span>
+                  <span aria-hidden="true">×</span>
+                </button>
+              )}
+
+              {contextTagsVisible.tier && (
+                <button
+                  type="button"
+                  className="pf-atlas-tag-chip"
+                  onClick={() => setContextTagsVisible((s) => ({ ...s, tier: false }))}
+                  title="Bấm để ẩn thẻ này"
+                >
+                  <span>
+                    {effectivePlanName} · {avgScore === '—' ? 'Chưa có ĐTB' : `ĐTB ${avgScore}`}
+                  </span>
+                  <span aria-hidden="true">×</span>
+                </button>
+              )}
+
+              {contextTagsVisible.ident && (
+                <button
+                  type="button"
+                  className="pf-atlas-tag-chip neutral"
+                  onClick={copyId}
+                  title="Bấm sao chép mã định danh thanh toán"
+                >
+                  <span>{copied ? 'Đã sao chép ' : ''}{identCode}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </header>
       )}
 
       {/* ============================================================
-         4. TAB 1: TỔNG QUAN (OVERVIEW)
+         4. TAB 1: TỔNG QUAN (SPATIAL PEARL + ROYAL COBALT ATLAS)
          ============================================================ */}
       {tab === 'overview' && (
-        <div className="ns9-sub-bento-grid">
-          {/* Thẻ 1: Gói đang sử dụng */}
-          <article className="ns9-sub-card ns9-sub-current">
-            <div className="ns9-sub-current-left">
-              <h2 className="ns9-sub-card-title">Gói đang sử dụng</h2>
+        <>
+          <ProfileAtlasDashboard
+            uid={uid || 'guest'}
+            credits={credits}
+            isPro={ent.hasVipAccess}
+            tierLabel={effectivePlanName}
+            currentStreak={currentStreak}
+            examHistory={examHistory}
+            classes={classes}
+            friends={friends}
+            favIds={favIds}
+            heartsCount={heartsCount}
+            maxHeartsCount={maxHeartsCount}
+            isTeacher={isTeacherAccount}
+            createdAt={user?.metadata?.creationTime || null}
+            onSelectTab={selectTab}
+            onOpenCreditTopUp={() => {
+              setShowPayment(false);
+              window.dispatchEvent(new CustomEvent('elec-open-credit-topup'));
+            }}
+            onScrollToAbilityHub={() => {
+              abilityHubRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          />
 
-              <div className="ns9-sub-plan-hero">
-                <span className="ns9-sub-sprout-ico" aria-hidden="true">
-                  {effectivePlanName === 'Free' ? (
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M7 20h10" />
-                      <path d="M10 20c5.5-2.5.8-6.4 3-10" />
-                      <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
-                      <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
-                    </svg>
-                  ) : (
-                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M2 6l4 5 6-7 6 7 4-5-2 13H4L2 6z" />
-                      <path d="M4 22h16" />
-                    </svg>
-                  )}
-                </span>
+          <div className="pf-atlas-lower-grid">
+            {/* Thẻ 1: Gói đang sử dụng */}
+            <article className="ns9-sub-card ns9-sub-current">
+              <div className="ns9-sub-current-left">
+                <h2 className="ns9-sub-card-title">Gói đang sử dụng</h2>
 
-                <div className="ns9-sub-plan-meta">
-                  <div className="ns9-sub-plan-name-row">
-                    <strong>{effectivePlanName}</strong>
-                    <span className="ns9-sub-active-pill">• Đang sử dụng</span>
-                  </div>
-                  <small>{planDesc}</small>
-                </div>
-              </div>
-
-              <div className="ns9-sub-specs">
-                <div className="ns9-sub-spec-row">
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {PfSvg.history} Thời hạn
+                <div className="ns9-sub-plan-hero">
+                  <span className="ns9-sub-sprout-ico" aria-hidden="true">
+                    {effectivePlanName === 'Free' ? (
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M7 20h10" />
+                        <path d="M10 20c5.5-2.5.8-6.4 3-10" />
+                        <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
+                        <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+                      </svg>
+                    ) : (
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 6l4 5 6-7 6 7 4-5-2 13H4L2 6z" />
+                        <path d="M4 22h16" />
+                      </svg>
+                    )}
                   </span>
-                  <b>{durationLabel}</b>
+
+                  <div className="ns9-sub-plan-meta">
+                    <div className="ns9-sub-plan-name-row">
+                      <strong>{effectivePlanName}</strong>
+                      <span className="ns9-sub-active-pill">• Đang sử dụng</span>
+                    </div>
+                    <small>{planDesc}</small>
+                  </div>
                 </div>
-                {isTeacher && pro.pro?.key && (
+
+                <div className="ns9-sub-specs">
                   <div className="ns9-sub-spec-row">
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      {PfSvg.crown} Mã Key PRO
+                      {PfSvg.history} Thời hạn
                     </span>
-                    <b style={{ fontFamily: 'monospace' }}>{pro.pro.key}</b>
+                    <b>{durationLabel}</b>
                   </div>
-                )}
-                <div className="ns9-sub-spec-row">
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {PfSvg.doc} Kỳ thi
-                  </span>
-                  <b>{examAccessLabel}</b>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {isTeacherAccount && (
-                  <a
-                    href="#classroom"
-                    className="ns9-sub-upgrade-btn"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    Vào quản lý lớp học <span>→</span>
-                  </a>
-                )}
-                <button
-                  type="button"
-                  className="ns9-sub-upgrade-btn"
-                  style={isTeacherAccount ? { background: 'rgba(148, 163, 184, 0.14)', color: 'inherit', boxShadow: 'none' } : undefined}
-                  onClick={() => selectTab('vip')}
-                >
-                  {isTeacher ? 'Gia hạn / Nâng cấp Giáo viên VIP' : isTeacherAccount ? 'Nâng cấp Giáo viên VIP (399k/tháng)' : 'Nâng cấp gói'} <span>→</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="ns9-sub-current-right">
-              <ElecSubMascot />
-            </div>
-          </article>
-
-          {/* Thẻ 2: Hạn mức sử dụng */}
-          <article className="ns9-sub-card ns9-sub-quota">
-            <h2 className="ns9-sub-card-title">Hạn mức sử dụng</h2>
-
-            <div className="ns9-hearts-box">
-              <div className="ns9-hearts-top">
-                <span className="ns9-hearts-label">
-                  <i className="ns9-heart-dot" aria-hidden="true">{PfSvg.heartFilled}</i>
-                  <b>Mạng luyện tập</b>
-                </span>
-                <span className={heartsCount >= maxHeartsCount ? 'ns9-hearts-full-pill' : heartsCount === 0 ? 'ns9-hearts-full-pill is-empty' : 'ns9-hearts-full-pill is-recovering'}>
-                  {heartsCount >= maxHeartsCount ? 'Đã đầy' : heartsCount === 0 ? 'Hết lượt' : 'Đang hồi phục'}
-                </span>
-              </div>
-
-              <div className="ns9-hearts-main">
-                <div className="ns9-hearts-num">
-                  <strong>{heartsCount}</strong>
-                  <span>/{maxHeartsCount}</span>
-                </div>
-                <div className="ns9-hearts-icons" aria-label={`${heartsCount} mạng luyện tập`}>
-                  {Array.from({ length: 5 }, (_, i) => {
-                    const threshold = Math.round(((i + 1) / 5) * maxHeartsCount);
-                    const isFilled = heartsCount >= threshold || (i === 0 && heartsCount > 0);
-                    return (
-                      <span key={i} className={`ns9-heart-svg ${isFilled ? 'filled' : 'empty'}`} aria-hidden="true">
-                        {isFilled ? PfSvg.heartFilled : PfSvg.heartEmpty}
+                  {isTeacher && pro.pro?.key && (
+                    <div className="ns9-sub-spec-row">
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {PfSvg.crown} Mã Key PRO
                       </span>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <small className="ns9-hearts-sub">mạng luyện tập còn lại</small>
-              <div className="ns9-hearts-bar">
-                <i style={{ width: `${Math.min(100, Math.max(0, Math.round(((heartsCount || 5) / (maxHeartsCount || 5)) * 100)))}%` }} />
-              </div>
-            </div>
-
-            <div className="ns9-credit-quota-box">
-              <div className="ns9-credit-quota-top">
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  {PfSvg.sparkleAi} Điểm &amp; ELEC AI Credit khả dụng
-                </span>
-                <b>{credits != null ? credits.toLocaleString('vi-VN') : 0} điểm</b>
-              </div>
-              <div className="ns9-credit-quota-bar">
-                <i style={{ width: credits != null && credits > 0 ? `${Math.min(100, Math.max(5, Math.round((Math.log10(credits + 1) / 7) * 100)))}%` : '0%' }} />
-              </div>
-            </div>
-          </article>
-
-          {/* Thẻ 3: Lịch chuỗi 30 ngày (Mini Streak Calendar) */}
-          <article className="pf-m-card">
-            <div className="pf-m-cal-head">
-              <span className="pf-m-cal-title">Lịch duy trì chuỗi học tập</span>
-              <span className="pf-m-cal-streak-tag">
-                <span className="pf-m-cal-fire-ico" aria-hidden="true">{PfSvg.flame}</span>
-                <span>{currentStreak} ngày liên tiếp</span>
-              </span>
-            </div>
-
-            <div className="pf-m-cal-weekdays">
-              <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
-            </div>
-
-            <div className="pf-m-cal-grid">
-              {calendarDays.map((c, i) => (
-                <div
-                  key={i}
-                  className={`pf-m-cal-day ${c.empty ? 'empty' : ''} ${c.hasStreak ? 'has-streak' : ''} ${c.isToday ? 'is-today' : ''}`}
-                >
-                  {c.day && <span>{c.day}</span>}
-                  {c.hasStreak && (
-                    <span className="pf-m-cal-fire-dot" aria-hidden="true">
-                      {PfSvg.flame}
-                    </span>
+                      <b style={{ fontFamily: 'monospace' }}>{pro.pro.key}</b>
+                    </div>
                   )}
+                  <div className="ns9-sub-spec-row">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {PfSvg.doc} Kỳ thi
+                    </span>
+                    <b>{examAccessLabel}</b>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </article>
 
-          {/* Thẻ 4: Nhập mã kích hoạt (+15 điểm / lượt) */}
-          <article className="ns9-sub-card ns9-sub-code">
-            <h2 className="ns9-sub-card-title">Mã kích hoạt</h2>
-            <p className="ns9-sub-code-sub">
-              Nhập mã quà tặng hoặc key kích hoạt từ Admin (Ví dụ mã thưởng Credit: <b>ELEC15</b>)
-            </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {isTeacherAccount && (
+                    <a
+                      href="#classroom"
+                      className="ns9-sub-upgrade-btn"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      Vào quản lý lớp học <span>→</span>
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    className="ns9-sub-upgrade-btn"
+                    style={isTeacherAccount ? { background: 'rgba(148, 163, 184, 0.14)', color: 'inherit', boxShadow: 'none' } : undefined}
+                    onClick={() => selectTab('vip')}
+                  >
+                    {isTeacher ? 'Gia hạn / Nâng cấp Giáo viên VIP' : isTeacherAccount ? 'Nâng cấp Giáo viên VIP (399k/tháng)' : 'Nâng cấp gói'} <span>→</span>
+                  </button>
+                </div>
+              </div>
 
-            <form className="ns9-sub-code-form" onSubmit={handleRedeemCode}>
-              <input
-                type="text"
-                value={activationInput}
-                onChange={(e) => setActivationInput(e.target.value)}
-                placeholder="Nhập mã quà tặng hoặc key kích hoạt"
-                aria-label="Nhập mã kích hoạt"
+              <div className="ns9-sub-current-right">
+                <ElecSubMascot />
+              </div>
+            </article>
+
+            {/* Thẻ 2: Hạn mức sử dụng */}
+            <article className="ns9-sub-card ns9-sub-quota">
+              <h2 className="ns9-sub-card-title">Hạn mức sử dụng</h2>
+
+              <div className="ns9-hearts-box">
+                <div className="ns9-hearts-top">
+                  <span className="ns9-hearts-label">
+                    <i className="ns9-heart-dot" aria-hidden="true">{PfSvg.heartFilled}</i>
+                    <b>Mạng luyện tập</b>
+                  </span>
+                  <span className={heartsCount >= maxHeartsCount ? 'ns9-hearts-full-pill' : heartsCount === 0 ? 'ns9-hearts-full-pill is-empty' : 'ns9-hearts-full-pill is-recovering'}>
+                    {heartsCount >= maxHeartsCount ? 'Đã đầy' : heartsCount === 0 ? 'Hết lượt' : 'Đang hồi phục'}
+                  </span>
+                </div>
+
+                <div className="ns9-hearts-main">
+                  <div className="ns9-hearts-num">
+                    <strong>{heartsCount}</strong>
+                    <span>/{maxHeartsCount}</span>
+                  </div>
+                  <div className="ns9-hearts-icons" aria-label={`${heartsCount} mạng luyện tập`}>
+                    {Array.from({ length: 5 }, (_, i) => {
+                      const threshold = Math.round(((i + 1) / 5) * maxHeartsCount);
+                      const isFilled = heartsCount >= threshold || (i === 0 && heartsCount > 0);
+                      return (
+                        <span key={i} className={`ns9-heart-svg ${isFilled ? 'filled' : 'empty'}`} aria-hidden="true">
+                          {isFilled ? PfSvg.heartFilled : PfSvg.heartEmpty}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <small className="ns9-hearts-sub">mạng luyện tập còn lại</small>
+                <div className="ns9-hearts-bar">
+                  <i style={{ width: `${Math.min(100, Math.max(0, Math.round(((heartsCount || 5) / (maxHeartsCount || 5)) * 100)))}%` }} />
+                </div>
+              </div>
+
+              <div className="ns9-credit-quota-box">
+                <div className="ns9-credit-quota-top">
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {PfSvg.sparkleAi} Điểm &amp; ELEC AI Credit khả dụng
+                  </span>
+                  <b>{credits != null ? credits.toLocaleString('vi-VN') : 0} điểm</b>
+                </div>
+                <div className="ns9-credit-quota-bar">
+                  <i style={{ width: credits != null && credits > 0 ? `${Math.min(100, Math.max(5, Math.round((Math.log10(credits + 1) / 7) * 100)))}%` : '0%' }} />
+                </div>
+              </div>
+            </article>
+
+            {/* Thẻ 3: Lịch chuỗi 30 ngày (Mini Streak Calendar) */}
+            <article className="pf-m-card">
+              <div className="pf-m-cal-head">
+                <span className="pf-m-cal-title">Lịch duy trì chuỗi học tập</span>
+                <span className="pf-m-cal-streak-tag">
+                  <span className="pf-m-cal-fire-ico" aria-hidden="true">{PfSvg.flame}</span>
+                  <span>{currentStreak} ngày liên tiếp</span>
+                </span>
+              </div>
+
+              <div className="pf-m-cal-weekdays">
+                <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
+              </div>
+
+              <div className="pf-m-cal-grid">
+                {calendarDays.map((c, i) => (
+                  <div
+                    key={i}
+                    className={`pf-m-cal-day ${c.empty ? 'empty' : ''} ${c.hasStreak ? 'has-streak' : ''} ${c.isToday ? 'is-today' : ''}`}
+                  >
+                    {c.day && <span>{c.day}</span>}
+                    {c.hasStreak && (
+                      <span className="pf-m-cal-fire-dot" aria-hidden="true">
+                        {PfSvg.flame}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            {/* Thẻ 4 (Full-span): Nhập mã kích hoạt (+15 điểm / lượt) */}
+            <article className="ns9-sub-card ns9-sub-code s9-hm365-fullspan">
+              <h2 className="ns9-sub-card-title">Mã kích hoạt</h2>
+              <p className="ns9-sub-code-sub">
+                Nhập mã quà tặng hoặc key kích hoạt từ Admin (Ví dụ mã thưởng Credit: <b>ELEC15</b>)
+              </p>
+
+              <form className="ns9-sub-code-form" onSubmit={handleRedeemCode}>
+                <input
+                  type="text"
+                  value={activationInput}
+                  onChange={(e) => setActivationInput(e.target.value)}
+                  placeholder="Nhập mã quà tặng hoặc key kích hoạt"
+                  aria-label="Nhập mã kích hoạt"
+                />
+                <button type="submit">Kiểm tra</button>
+              </form>
+            </article>
+
+            {/* Thẻ 5 (Full-span): Hồ sơ Năng lực 6 trục + Thẻ Học Bá (.png) + Bản đồ nhiệt 26 tuần */}
+            <div ref={abilityHubRef} id="pf-ability-hub-anchor" className="s9-hm365-fullspan">
+              <StudentAbilityHub
+                uid={uid || 'guest'}
+                displayName={user?.displayName || name || 'Học sinh ELEC AI'}
+                streakDays={currentStreak}
               />
-              <button type="submit">Kiểm tra</button>
-            </form>
-          </article>
-
-          {/* Thẻ 5 (Full-span): Hồ sơ Năng lực 6 trục + Thẻ Học Bá (.png) + Bản đồ nhiệt 26 tuần */}
-          <div className="s9-hm365-fullspan">
-            <StudentAbilityHub
-              uid={uid || 'guest'}
-              displayName={user?.displayName || name || 'Học sinh ELEC AI'}
-              streakDays={currentStreak}
-            />
+            </div>
+            <div className="s9-hm365-fullspan">
+              <ActivityHeatmap365 uid={uid || 'guest'} streakDays={currentStreak} />
+            </div>
           </div>
-          <div className="s9-hm365-fullspan">
-            <ActivityHeatmap365 uid={uid || 'guest'} streakDays={currentStreak} />
-          </div>
-
-          </div>
+        </>
       )}
 
       {/* ============================================================

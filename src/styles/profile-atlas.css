@@ -1,0 +1,1459 @@
+/* ============================================================================
+   profile-atlas.css — GIAO DIỆN HỒ SƠ SPATIAL PEARL + ROYAL COBALT ATLAS
+   ----------------------------------------------------------------------------
+   • Thiết kế 3 cột bất đối xứng chuẩn Biomedical / Spatial Pearl Bento:
+     Nền trắng ngà (#f4f6fb), thẻ trắng bo tròn mềm (24px–28px),
+     điểm nhấn Cobalt Royal (#1a5cff -> #0e46e6) và chữ đen sắc nét (#0f172a).
+   • Hỗ trợ đầy đủ Light Mode (mặc định), Dark Mode ([data-theme="dark"]) và
+     Responsive hoàn hảo trên Tablet (<=1024px) & Mobile (<=680px).
+   ============================================================================ */
+
+.pf.pf-modern-container.pf-atlas-container {
+  max-width: 1260px;
+  padding: 18px 22px 84px;
+  gap: 18px;
+}
+
+/* Shell tổng cho Header & Atlas Overview */
+.pf-atlas-top-shell {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 248, 253, 0.92) 100%);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 28px;
+  padding: 20px 24px 18px;
+  box-shadow: 0 18px 48px -20px rgba(15, 23, 42, 0.1), 0 2px 8px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+[data-theme="dark"] .pf-atlas-top-shell {
+  background: linear-gradient(180deg, rgba(22, 29, 46, 0.95) 0%, rgba(15, 21, 36, 0.95) 100%);
+  border-color: rgba(148, 163, 184, 0.14);
+  box-shadow: 0 20px 50px rgba(2, 6, 23, 0.55);
+}
+
+/* Hàng trên cùng trong Profile Shell: Nhận diện người dùng + Nav CTA + Avatar */
+.pf-atlas-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pf-atlas-identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pf-atlas-avatar-trigger {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  padding: 0;
+  border: 2.5px solid #ffffff;
+  background: transparent;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(26, 92, 255, 0.18);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pf-atlas-avatar-trigger:hover {
+  transform: scale(1.04);
+}
+
+[data-theme="dark"] .pf-atlas-avatar-trigger {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.pf-atlas-avatar-edit-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #1a5cff;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 8px rgba(26, 92, 255, 0.35);
+}
+
+.pf-atlas-name-block {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pf-atlas-name-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pf-atlas-name {
+  font-size: 1.32rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+[data-theme="dark"] .pf-atlas-name {
+  color: #f8fafc;
+}
+
+.pf-atlas-plan-chip {
+  font-size: 0.72rem;
+  font-weight: 750;
+  padding: 3px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pf-atlas-plan-chip.vip {
+  background: rgba(26, 92, 255, 0.1);
+  color: #1a5cff;
+  border: 1px solid rgba(26, 92, 255, 0.22);
+}
+
+.pf-atlas-plan-chip.free {
+  background: rgba(15, 23, 42, 0.06);
+  color: #475569;
+}
+
+[data-theme="dark"] .pf-atlas-plan-chip.vip {
+  background: rgba(59, 130, 246, 0.22);
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+[data-theme="dark"] .pf-atlas-plan-chip.free {
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+.pf-atlas-subline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.81rem;
+  color: #64748b;
+}
+
+[data-theme="dark"] .pf-atlas-subline {
+  color: #94a3b8;
+}
+
+.pf-atlas-eye-toggle {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.pf-atlas-eye-toggle:hover {
+  color: #1a5cff;
+  background: rgba(26, 92, 255, 0.08);
+}
+
+/* Hành động phải trên thanh Topbar (Nút Đen tròn + Chuông / Share + Logout) */
+.pf-atlas-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pf-atlas-cta-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  border: none;
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 8px 20px -6px rgba(17, 24, 39, 0.38);
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  white-space: nowrap;
+}
+
+.pf-atlas-cta-dark:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -6px rgba(17, 24, 39, 0.45);
+}
+
+[data-theme="dark"] .pf-atlas-cta-dark {
+  background: #1a5cff;
+  box-shadow: 0 8px 20px -6px rgba(26, 92, 255, 0.5);
+}
+
+[data-theme="dark"] .pf-atlas-cta-dark:hover {
+  background: #2f6bff;
+}
+
+.pf-atlas-icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+  color: #0f172a;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  transition: all 0.18s ease;
+  padding: 0;
+}
+
+.pf-atlas-icon-circle:hover {
+  border-color: rgba(26, 92, 255, 0.3);
+  color: #1a5cff;
+  transform: translateY(-1px);
+}
+
+.pf-atlas-icon-circle.danger:hover {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+[data-theme="dark"] .pf-atlas-icon-circle {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(148, 163, 184, 0.16);
+  color: #e2e8f0;
+}
+
+/* Hàng Pill Filter Tabs chuẩn ảnh mẫu ("Visits | Docs | Labs | Tests | [⚙ 1]") */
+.pf-atlas-tabs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pf-atlas-pills-scroll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+  max-width: 100%;
+}
+
+.pf-atlas-pills-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.pf-atlas-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.84rem;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px -4px rgba(15, 23, 42, 0.05);
+  transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  font-family: inherit;
+}
+
+.pf-atlas-pill:hover {
+  color: #1a5cff;
+  border-color: rgba(26, 92, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.pf-atlas-pill.on {
+  background: #1a5cff;
+  border-color: #1a5cff;
+  color: #ffffff;
+  box-shadow: 0 10px 22px -6px rgba(26, 92, 255, 0.45);
+}
+
+[data-theme="dark"] .pf-atlas-pill {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(148, 163, 184, 0.14);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .pf-atlas-pill.on {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.pf-atlas-filter-btn {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  color: #475569;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  transition: all 0.18s ease;
+}
+
+.pf-atlas-filter-btn:hover {
+  color: #1a5cff;
+  border-color: rgba(26, 92, 255, 0.28);
+}
+
+.pf-atlas-filter-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #93c5fd;
+  color: #0f172a;
+  font-size: 0.66rem;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  border: 2px solid #ffffff;
+}
+
+[data-theme="dark"] .pf-atlas-filter-btn {
+  background: rgba(30, 41, 59, 0.85);
+  border-color: rgba(148, 163, 184, 0.16);
+  color: #cbd5e1;
+}
+
+/* Tag chip giống "Heart ×" bên dưới hàng pill */
+.pf-atlas-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pf-atlas-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pf-atlas-tag-chip:hover {
+  background: #bfdbfe;
+}
+
+.pf-atlas-tag-chip.neutral {
+  background: rgba(15, 23, 42, 0.05);
+  color: #475569;
+}
+
+[data-theme="dark"] .pf-atlas-tag-chip {
+  background: rgba(37, 99, 235, 0.25);
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .pf-atlas-tag-chip.neutral {
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+}
+
+/* ============================================================================
+   ATLAS OVERVIEW WORKSPACE (3 CỘT CHUẨN ẢNH MẪU)
+   ============================================================================ */
+.pf-atlas-stage-wrap {
+  background: linear-gradient(155deg, #f7f9fc 0%, #eff3fb 55%, #f5f7fc 100%);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 30px;
+  padding: 22px;
+  box-shadow: 0 22px 54px -22px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+[data-theme="dark"] .pf-atlas-stage-wrap {
+  background: linear-gradient(155deg, #0f172a 0%, #131d36 55%, #0c1324 100%);
+  border-color: rgba(148, 163, 184, 0.14);
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.65);
+}
+
+.pf-atlas-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.38fr) minmax(0, 1.15fr) minmax(0, 0.78fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+@media (max-width: 1120px) {
+  .pf-atlas-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  }
+  .pf-atlas-col-right {
+    grid-column: 1 / -1;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .pf-atlas-stage-wrap {
+    padding: 14px;
+    border-radius: 22px;
+  }
+  .pf-atlas-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  .pf-atlas-col-right {
+    grid-column: auto;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 520px) {
+  .pf-atlas-col-right {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- CỘT 1: LỊCH SỬ THẺ NHỎ + THẺ NĂNG LỰC BUBBLE COBALT ---- */
+.pf-atlas-col-left {
+  display: grid;
+  grid-template-columns: minmax(145px, 0.72fr) minmax(0, 1.28fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .pf-atlas-col-left {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pf-atlas-subcol-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pf-atlas-month-lbl {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.01em;
+  padding-left: 4px;
+  margin-bottom: -2px;
+}
+
+[data-theme="dark"] .pf-atlas-month-lbl {
+  color: #94a3b8;
+}
+
+.pf-atlas-mini-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 22px;
+  padding: 14px 15px;
+  box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.09);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  flex: 1;
+  min-height: 142px;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+  font-family: inherit;
+}
+
+.pf-atlas-mini-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(26, 92, 255, 0.24);
+  box-shadow: 0 16px 32px -12px rgba(26, 92, 255, 0.16);
+}
+
+[data-theme="dark"] .pf-atlas-mini-card {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.pf-atlas-mini-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pf-atlas-mini-ico {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  color: #334155;
+  display: grid;
+  place-items: center;
+}
+
+[data-theme="dark"] .pf-atlas-mini-ico {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+
+.pf-atlas-mini-date {
+  font-size: 0.74rem;
+  font-weight: 650;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-atlas-mini-title {
+  font-size: 0.93rem;
+  font-weight: 750;
+  color: #0f172a;
+  line-height: 1.28;
+  letter-spacing: -0.015em;
+}
+
+[data-theme="dark"] .pf-atlas-mini-title {
+  color: #f8fafc;
+}
+
+.pf-atlas-mini-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pf-atlas-mini-foot span {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .pf-atlas-mini-foot span {
+  color: #94a3b8;
+}
+
+.pf-atlas-dots-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px;
+}
+
+.pf-atlas-dot-pill {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: all 0.2s ease;
+}
+
+.pf-atlas-dot-pill.active {
+  width: 14px;
+  background: #1a5cff;
+}
+
+/* Hero Cobalt Bubble Feature Card (Thay thế "Cardiology 03.12 + 98/100 Bubble") */
+.pf-atlas-bubble-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 26px;
+  padding: 15px 14px 12px;
+  box-shadow: 0 14px 36px -14px rgba(15, 23, 42, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+[data-theme="dark"] .pf-atlas-bubble-card {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.pf-atlas-bubble-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.pf-atlas-bubble-head-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.94rem;
+  font-weight: 750;
+  color: #0f172a;
+}
+
+[data-theme="dark"] .pf-atlas-bubble-head-left {
+  color: #f8fafc;
+}
+
+.pf-atlas-avatar-stack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.pf-atlas-stack-circles {
+  display: flex;
+  align-items: center;
+}
+
+.pf-atlas-stack-pill {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  margin-left: -7px;
+  display: grid;
+  place-items: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.pf-atlas-stack-pill:first-child {
+  margin-left: 0;
+}
+
+.pf-atlas-stack-caption {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .pf-atlas-stack-caption {
+  color: #94a3b8;
+}
+
+/* Sân khấu Bong bóng Xanh Royal Cobalt */
+.pf-atlas-blue-canvas {
+  position: relative;
+  border-radius: 22px;
+  background: linear-gradient(155deg, #3377ff 0%, #1a5cff 45%, #0c44d8 100%);
+  padding: 12px;
+  min-height: 215px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3), 0 12px 26px -10px rgba(26, 92, 255, 0.52);
+}
+
+.pf-atlas-bubbles-field {
+  position: relative;
+  width: 100%;
+  height: 138px;
+  margin-bottom: 10px;
+}
+
+.pf-atlas-bubble {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.05;
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-atlas-bubble:hover {
+  transform: scale(1.06);
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.16));
+  z-index: 4;
+}
+
+.pf-atlas-bubble.b-hero {
+  width: 96px;
+  height: 96px;
+  left: -4px;
+  bottom: -6px;
+  z-index: 3;
+}
+
+.pf-atlas-bubble.b-hero strong {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.pf-atlas-bubble.b-hero span {
+  font-size: 0.65rem;
+  opacity: 0.88;
+  font-weight: 600;
+}
+
+.pf-atlas-bubble.b-md-top {
+  width: 66px;
+  height: 66px;
+  left: 34%;
+  top: 6px;
+  z-index: 2;
+}
+
+.pf-atlas-bubble.b-md-top strong {
+  font-size: 1.02rem;
+  font-weight: 780;
+}
+
+.pf-atlas-bubble.b-md-top span {
+  font-size: 0.56rem;
+  opacity: 0.85;
+}
+
+.pf-atlas-bubble.b-md-bot {
+  width: 64px;
+  height: 64px;
+  left: 41%;
+  bottom: 0;
+  z-index: 2;
+}
+
+.pf-atlas-bubble.b-md-bot strong {
+  font-size: 0.98rem;
+  font-weight: 780;
+}
+
+.pf-atlas-bubble.b-md-bot span {
+  font-size: 0.56rem;
+  opacity: 0.85;
+}
+
+.pf-atlas-bubble.b-sm-1 {
+  width: 52px;
+  height: 52px;
+  right: 8px;
+  top: 0;
+}
+
+.pf-atlas-bubble.b-sm-1 strong {
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.pf-atlas-bubble.b-sm-1 span {
+  font-size: 0.52rem;
+  opacity: 0.85;
+}
+
+.pf-atlas-bubble.b-sm-2 {
+  width: 48px;
+  height: 48px;
+  right: 2px;
+  top: 52px;
+}
+
+.pf-atlas-bubble.b-sm-2 strong {
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.pf-atlas-bubble.b-sm-2 span {
+  font-size: 0.5rem;
+  opacity: 0.85;
+}
+
+.pf-atlas-bubble.b-sm-3 {
+  width: 44px;
+  height: 44px;
+  right: 16px;
+  bottom: 0;
+}
+
+.pf-atlas-bubble.b-sm-3 strong {
+  font-size: 0.74rem;
+  font-weight: 750;
+}
+
+.pf-atlas-bubble.b-sm-3 span {
+  font-size: 0.48rem;
+  opacity: 0.82;
+}
+
+.pf-atlas-bubble small {
+  font-size: 0.58em;
+  opacity: 0.78;
+  font-weight: 600;
+}
+
+/* Footer trắng lồng bên trong card xanh */
+.pf-atlas-blue-footer {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 11px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 8px 18px rgba(10, 32, 110, 0.22);
+}
+
+[data-theme="dark"] .pf-atlas-blue-footer {
+  background: #0f172a;
+}
+
+.pf-atlas-blue-footer-copy b {
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 780;
+  color: #0f172a;
+}
+
+.pf-atlas-blue-footer-copy small {
+  display: block;
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+[data-theme="dark"] .pf-atlas-blue-footer-copy b {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .pf-atlas-blue-footer-copy small {
+  color: #94a3b8;
+}
+
+.pf-atlas-open-sq {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+  color: #0f172a;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.pf-atlas-open-sq:hover {
+  background: #1a5cff;
+  color: #ffffff;
+  border-color: #1a5cff;
+}
+
+/* ---- CỘT 2: CENTERPIECE 3D INTERACTIVE + GLASSY HOTSPOTS + < > CONTROLS ---- */
+.pf-atlas-col-center {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 335px;
+  padding: 8px 46px 14px 8px;
+}
+
+@media (max-width: 760px) {
+  .pf-atlas-col-center {
+    min-height: 290px;
+    padding: 8px 42px 12px 8px;
+  }
+}
+
+.pf-atlas-sculpture-stage {
+  position: relative;
+  width: 245px;
+  height: 265px;
+  display: grid;
+  place-items: center;
+}
+
+.pf-atlas-ambient-glow {
+  position: absolute;
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.18) 0%, rgba(26, 92, 255, 0.12) 48%, transparent 72%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.pf-atlas-mascot-hero {
+  width: 205px;
+  height: 205px;
+  object-fit: contain;
+  filter: drop-shadow(0 24px 30px rgba(26, 92, 255, 0.22));
+  animation: pfAtlasFloat 4.8s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes pfAtlasFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+/* Hotspot kính mờ phát sáng giống ảnh mẫu */
+.pf-atlas-hotspot {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.56) 52%, rgba(255, 255, 255, 0.18) 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 22px rgba(26, 92, 255, 0.2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 4;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease;
+  padding: 0;
+}
+
+.pf-atlas-hotspot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(26, 92, 255, 0.28);
+}
+
+.pf-atlas-hotspot.is-active,
+.pf-atlas-hotspot:hover {
+  transform: scale(1.14);
+  box-shadow: 0 0 0 6px rgba(26, 92, 255, 0.16), 0 10px 24px rgba(26, 92, 255, 0.3);
+}
+
+.pf-atlas-hotspot.is-active::after {
+  background: #1a5cff;
+}
+
+.pf-atlas-hotspot-badge {
+  position: absolute;
+  top: -7px;
+  right: -8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  font-size: 0.64rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Info pill khi chọn hotspot */
+.pf-atlas-hotspot-readout {
+  margin-top: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(26, 92, 255, 0.18);
+  color: #0f172a;
+  font-size: 0.77rem;
+  font-weight: 650;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  text-align: center;
+}
+
+[data-theme="dark"] .pf-atlas-hotspot-readout {
+  background: rgba(30, 41, 59, 0.92);
+  color: #f8fafc;
+  border-color: rgba(59, 130, 246, 0.32);
+}
+
+.pf-atlas-carousel-pill {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 999px;
+  padding: 4px 10px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
+}
+
+[data-theme="dark"] .pf-atlas-carousel-pill {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+.pf-atlas-carousel-pill button {
+  background: transparent;
+  border: none;
+  color: #334155;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.pf-atlas-carousel-pill button:hover {
+  background: rgba(26, 92, 255, 0.1);
+  color: #1a5cff;
+}
+
+[data-theme="dark"] .pf-atlas-carousel-pill button {
+  color: #cbd5e1;
+}
+
+/* 3 nút tròn dọc bên phải mô hình 3D */
+.pf-atlas-right-rail-btns {
+  position: absolute;
+  right: 4px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 5;
+}
+
+.pf-atlas-rail-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: #ffffff;
+  color: #475569;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -6px rgba(15, 23, 42, 0.14);
+  transition: all 0.18s ease;
+}
+
+.pf-atlas-rail-circle:hover {
+  transform: scale(1.07);
+  color: #1a5cff;
+}
+
+.pf-atlas-rail-circle.on {
+  background: #1a5cff;
+  border-color: #1a5cff;
+  color: #ffffff;
+  box-shadow: 0 10px 22px -6px rgba(26, 92, 255, 0.52);
+}
+
+[data-theme="dark"] .pf-atlas-rail-circle {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(148, 163, 184, 0.16);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .pf-atlas-rail-circle.on {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+/* ---- CỘT 3: TELEMETRY STACKED CARDS ---- */
+.pf-atlas-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.pf-atlas-metric-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 24px;
+  padding: 16px 16px 12px;
+  box-shadow: 0 12px 30px -12px rgba(15, 23, 42, 0.09);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  text-align: left;
+  font-family: inherit;
+}
+
+.pf-atlas-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px -12px rgba(26, 92, 255, 0.16);
+}
+
+[data-theme="dark"] .pf-atlas-metric-card {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.pf-atlas-metric-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pf-atlas-metric-val-wrap {
+  text-align: right;
+  margin-left: auto;
+}
+
+.pf-atlas-metric-big {
+  font-size: 1.95rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-theme="dark"] .pf-atlas-metric-big {
+  color: #f8fafc;
+}
+
+.pf-atlas-metric-unit {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: #94a3b8;
+  margin-left: 3px;
+}
+
+.pf-atlas-metric-lbl {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 650;
+  color: #475569;
+  margin-top: 3px;
+}
+
+[data-theme="dark"] .pf-atlas-metric-lbl {
+  color: #cbd5e1;
+}
+
+.pf-atlas-wave-box {
+  position: relative;
+  border-radius: 14px;
+  padding-top: 12px;
+  overflow: hidden;
+}
+
+.pf-atlas-now-badge {
+  position: absolute;
+  top: 2px;
+  right: 26%;
+  background: #1a5cff;
+  color: #ffffff;
+  font-size: 0.64rem;
+  font-weight: 750;
+  padding: 2px 8px;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(26, 92, 255, 0.35);
+}
+
+/* Split Card: Top trắng + Bottom Blue Block ("851 ms + 95/100 Sensory") */
+.pf-atlas-split-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  border-radius: 26px;
+  padding: 15px 10px 10px;
+  box-shadow: 0 12px 30px -12px rgba(15, 23, 42, 0.09);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+[data-theme="dark"] .pf-atlas-split-card {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(148, 163, 184, 0.14);
+}
+
+.pf-atlas-split-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0 6px;
+}
+
+.pf-atlas-split-blue {
+  background: linear-gradient(155deg, #2b6bff 0%, #1652f0 56%, #0d41d8 100%);
+  border-radius: 20px;
+  padding: 14px 12px 12px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  box-shadow: 0 12px 24px -10px rgba(26, 92, 255, 0.5);
+  cursor: pointer;
+}
+
+.pf-atlas-split-blue-ico {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  display: grid;
+  place-items: center;
+}
+
+.pf-atlas-split-blue-score {
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-atlas-split-blue-score small {
+  font-size: 0.78rem;
+  font-weight: 600;
+  opacity: 0.78;
+}
+
+.pf-atlas-split-blue-sub {
+  font-size: 0.74rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.pf-atlas-split-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.16);
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-top: 2px;
+}
+
+.pf-atlas-split-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+}
+
+.pf-atlas-split-dots span.on {
+  background: #ffffff;
+  width: 7px;
+  height: 7px;
+}
+
+/* ---- BOTTOM INTERACTIVE CHRONOLOGICAL TIMELINE BAR ---- */
+.pf-atlas-timeline-dock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.pf-atlas-zoom-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.pf-atlas-zoom-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  background: #ffffff;
+  color: #334155;
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  transition: all 0.16s ease;
+}
+
+.pf-atlas-zoom-btn:hover {
+  color: #1a5cff;
+  border-color: rgba(26, 92, 255, 0.3);
+}
+
+[data-theme="dark"] .pf-atlas-zoom-btn {
+  background: rgba(30, 41, 59, 0.92);
+  border-color: rgba(148, 163, 184, 0.16);
+  color: #e2e8f0;
+}
+
+.pf-atlas-timeline-track {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1a5cff 0%, #3b7bff 36%, #bfd6ff 56%, #ffffff 74%, #ffffff 100%);
+  border: 1px solid rgba(26, 92, 255, 0.14);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.4), 0 8px 20px -10px rgba(26, 92, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.pf-atlas-timeline-track::-webkit-scrollbar {
+  display: none;
+}
+
+[data-theme="dark"] .pf-atlas-timeline-track {
+  background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 38%, rgba(30, 41, 59, 0.95) 70%);
+  border-color: rgba(96, 165, 250, 0.22);
+}
+
+.pf-atlas-tl-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 4px 6px;
+  border-radius: 999px;
+  font-family: inherit;
+  transition: transform 0.15s ease;
+}
+
+.pf-atlas-tl-node:hover {
+  transform: translateY(-1px);
+}
+
+.pf-atlas-tl-node.on-blue {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.pf-atlas-tl-node.on-light {
+  color: #334155;
+}
+
+[data-theme="dark"] .pf-atlas-tl-node.on-light {
+  color: #e2e8f0;
+}
+
+.pf-atlas-tl-yr {
+  font-size: 0.74rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-atlas-tl-orb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #1a5cff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+}
+
+.pf-atlas-tl-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pf-atlas-tl-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.65;
+  display: block;
+}
+
+.pf-atlas-tl-count {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.14);
+}
+
+/* Hàng thẻ chi tiết gọn gàng bên dưới Atlas */
+.pf-atlas-lower-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 980px) {
+  .pf-atlas-lower-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .pf-atlas-lower-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
