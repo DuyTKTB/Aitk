@@ -1734,6 +1734,36 @@ body.on-ai-page .ds-page.elec-studio .ds-user-menu-tier .ds-tier-badge {
   border-radius: 999px !important;
 }
 
+/* --- 2H. Mobile / Narrow PWA Drawer Stacking Fix (Chặn overlay đè sidebar) --- */
+@media (max-width: 900px) {
+  body.on-ai-page .ds-page.elec-studio .ds-sidebar-overlay {
+    display: block !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 100000 !important;
+    background: rgba(15, 23, 42, 0.45) !important;
+    backdrop-filter: blur(4px) !important;
+    pointer-events: auto !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-sidebar,
+  body.on-ai-page .ds-page.elec-studio .ds-sidebar.open {
+    position: fixed !important;
+    z-index: 100020 !important;
+    background: #ffffff !important;
+    pointer-events: auto !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-sidebar,
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-sidebar.open {
+    background: #0b1224 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-user-menu {
+    z-index: 100030 !important;
+  }
+}
+
 
 /* ============================================================================
    3. PHÒNG THI ẢO (.ns9-vex-page) & KHO CÔNG CỤ (.tools-page)
