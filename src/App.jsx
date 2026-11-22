@@ -83,6 +83,7 @@ import OutOfCreditsModal from './components/OutOfCreditsModal.jsx';
 import FeedbackModal from './components/FeedbackModal.jsx';
 import CreditTopUp from './components/CreditTopUp.jsx';
 import StreakModal from './components/StreakModal.jsx';
+import './styles/apple-cobalt-polish.css';
 import ElecIntroLoader, { PageLoader } from './components/ElecIntroLoader.jsx';
 const OnboardingSurveyModal = lazy(() => import('./components/OnboardingSurveyModal.jsx'));
 const VerifyEmailGate = lazy(() => import('./components/VerifyEmailGate.jsx'));

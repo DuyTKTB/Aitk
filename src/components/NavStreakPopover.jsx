@@ -169,17 +169,11 @@ export default function NavStreakPopover({ userId, streakCount = 0, hasStreakTod
         onClick={toggleOpen}
         style={{ cursor: 'pointer', pointerEvents: 'auto' }}
       >
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill={hasStreakToday ? '#ea580c' : '#f97316'}
-          style={{ opacity: hasStreakToday ? 1 : 0.75, pointerEvents: 'none' }}
+        <SvgFlame
+          size={15}
+          active={hasStreakToday || streakCount > 0}
           className={`ns9-streak-svg anim-ico-svg anim-ico-flame ${hasStreakToday ? 'active' : 'idle'}`}
-          aria-hidden="true"
-        >
-          <path d="M12 2c1.5 3.5 4 5.5 4 9a4 4 0 0 1-8 0c0-1.5.5-3 1.2-4.2C8 8.5 6 11 6 14a6 6 0 0 0 12 0c0-5-3.5-8.5-6-12z" />
-        </svg>
+        />
         <span style={{ pointerEvents: 'none' }}>{streakCount}</span>
       </button>
 

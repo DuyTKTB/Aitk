@@ -77,6 +77,27 @@ const IcoCamera = ico(<><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2
 const IcoSend = ico(<path d="M12 19V5M5 12l7-7 7 7" />, 1.9);
 const IcoArrow = ico(<path d="M7 17L17 7M9 7h8v8" />, 1.85);
 const IcoSpark = ico(<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z" />);
+
+/* ── Góc khoét lõm SVG (Orizon × Vespa Organic Corner Fillet) cho thẻ Showcase ── */
+function CutoutFillet({ corner = 'tr', size = 20, className = '' }) {
+  const fillPath =
+    corner === 'tr'
+      ? 'M19 -1 H0 V0 C9.94 0 18 8.06 18 18 H19 V-1 Z'
+      : 'M-1 21 V0 H0 C0 11.05 8.95 20 20 20 V21 H-1 Z';
+  return (
+    <svg
+      className={`ns9-cutout-fillet ${className}`}
+      width={size}
+      height={size}
+      viewBox={corner === 'tr' ? '0 0 18 18' : '0 0 20 20'}
+      fill="none"
+      style={{ overflow: 'visible' }}
+      aria-hidden="true"
+    >
+      <path d={fillPath} fill="var(--cover-frame-bg)" />
+    </svg>
+  );
+}
 const IcoTarget = ico(<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" /></>);
 const IcoRoute = ico(<><circle cx="6" cy="19" r="3" /><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /><circle cx="18" cy="5" r="3" /></>);
 const IcoExam = ico(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></>);
@@ -262,7 +283,7 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
               <span className="ns9-uh-greeting">{hello}, <b>{displayName}</b>!</span>
               <span className="ns9-uh-ai-live">
                 <span className="ns9-uh-ai-pulse" />
-                ELEC AI
+                ELEC Quantum
               </span>
             </div>
             {/* Pill Nguyện vọng hoặc Nhắc chọn mục tiêu */}
@@ -288,12 +309,12 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
           </div>
         </div>
 
-        {/* Hàng giữa: Lịch sử đã hỏi gần đây (full-width gọn gàng chuẩn Linear) */}
+        {/* Hàng giữa: Strip câu hỏi gần đây 1 dòng gọn gàng chuẩn Linear */}
         <div className="ns9-uh-mid-area">
           <div className="ns9-uh-recent-chats">
             <div className="ns9-uh-recent-head">
               <span className="ns9-uh-recent-title">
-                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <circle cx="10" cy="10" r="7.5" />
                   <path d="M10 6v4l2.8 1.5" />
                 </svg>
@@ -325,14 +346,13 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
                     {rc.subject === 'hoa' ? 'Hóa' : rc.subject === 'ly' ? 'Lý' : rc.subject === 'sinh' ? 'Sinh' : 'KHTN'}
                   </span>
                   <span className="ns9-uh-recent-text">{rc.title}</span>
-                  <span className="ns9-uh-recent-time">{rc.time}</span>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Hàng 2: Khung hỏi nhanh Gia sư AI tinh gọn */}
+        {/* Hàng 2: Khung composer Apple Glass tích hợp toolbar gọn đẹp */}
         <form className="ns9-uh-composer" onSubmit={submit}>
           <label htmlFor="unified-ai-input" className="sr-only">Hỏi Trợ lý ELEC AI</label>
           <div className="ns9-uh-input-wrap">
@@ -346,27 +366,32 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
                 if (e.key === 'Enter' && !e.shiftKey) submit(e);
               }}
             />
-            <button
-              type="submit"
-              className="ns9-uh-send-btn"
-              disabled={!val.trim()}
-              aria-label="Gửi câu hỏi"
-              title="Gửi câu hỏi cho ELEC AI"
-            >
-              <IcoSend size={16} />
-            </button>
+            <div className="ns9-uh-composer-foot">
+              <div className="ns9-uh-composer-tools">
+                <button
+                  type="button"
+                  className="ns9-uh-chip-ocr"
+                  onClick={() => goAI({ action: 'capture' })}
+                  title="Mở camera hoặc tải ảnh đề bài để AI nhận diện OCR và giải từng bước"
+                >
+                  <IcoCamera size={14} />
+                  <span>Chụp đề OCR</span>
+                </button>
+                <span className="ns9-uh-composer-hint">Enter để gửi · AI giải từng bước</span>
+              </div>
+              <button
+                type="submit"
+                className="ns9-uh-send-btn"
+                disabled={!val.trim()}
+                aria-label="Gửi câu hỏi"
+                title="Gửi câu hỏi cho ELEC AI"
+              >
+                <IcoSend size={15} />
+              </button>
+            </div>
           </div>
 
           <div className="ns9-uh-chips-bar" role="toolbar" aria-label="Gợi ý câu hỏi nhanh">
-            <button
-              type="button"
-              className="ns9-uh-chip-ocr"
-              onClick={() => goAI({ action: 'capture' })}
-              title="Mở camera hoặc tải ảnh đề bài để AI nhận diện OCR và giải từng bước"
-            >
-              <IcoCamera size={14} />
-              <span>Chụp ảnh OCR</span>
-            </button>
             {pills.slice(0, 4).map((p) => (
               <button
                 key={p.label}
@@ -382,34 +407,59 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
         </form>
       </article>
 
-      {/* ── CỘT PHẢI: BÊN CẠNH AI LÀ HÌNH ẢNH ── */}
+      {/* ── CỘT PHẢI: KHUNG KHOÉT GÓC KIẾN TRÚC (ORIZON × VESPA CUTOUT SHOWCASE) ── */}
       <aside className="ns9-uh-visual-col" aria-label="Hình ảnh trường đại học mục tiêu">
         {hasAspiration ? (
-          /* TRƯỜNG HỢP 1: ĐÃ CHỌN TRƯỜNG -> HIỆN ẢNH KHUÔN VIÊN TRƯỜNG ĐÓ */
+          /* TRƯỜNG HỢP 1: ĐÃ CHỌN TRƯỜNG -> KHUNG KHOÉT LÕM HIỂN THỊ KHUÔN VIÊN & CHIẾN LƯỢC */
           <div
-            className="ns9-uh-cover-card"
+            className="ns9-uh-cover-card ns9-cutout-frame"
             onClick={onOpenWishHero}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && onOpenWishHero()}
             title={`Bấm để xem phân tích chiến lược tuyển sinh ${schoolName}`}
           >
-            <img
-              src={coverUrl}
-              alt={`Khuôn viên ${schoolName}`}
-              className="ns9-uh-cover-photo"
-              loading="eager"
-            />
-            <div className="ns9-uh-cover-vignette" />
-            <div className="ns9-uh-cover-badge">
-              <span className="ns9-uh-cb-school">{schoolCode} · {schoolName}</span>
-              {activeAsp?.targetScore && (
-                <span className="ns9-uh-cb-score">Mục tiêu {activeAsp.targetScore}đ</span>
-              )}
-            </div>
-            <div className="ns9-uh-cover-foot">
-              <span className="ns9-uh-cf-pill">
-                <IcoSpark size={13} />
-                <span>Chiến lược AI đỗ {schoolCode}</span>
-                <IcoArrow size={12} />
-              </span>
+            <div className="ns9-uh-photo-stage">
+              <img
+                src={coverUrl}
+                alt={`Khuôn viên ${schoolName}`}
+                className="ns9-uh-cover-photo"
+                loading="eager"
+              />
+              <div className="ns9-uh-cover-vignette" />
+
+              {/* Góc khoét trên-phải (Vespa Top-Right Cutout): Điểm mục tiêu */}
+              <div className="ns9-uh-cutout-top">
+                <CutoutFillet corner="tr" size={18} className="is-left" />
+                <span className="ns9-ct-dot" aria-hidden="true" />
+                <span className="ns9-ct-score">
+                  {activeAsp?.targetScore ? `Mục tiêu ${activeAsp.targetScore}đ` : schoolCode}
+                </span>
+                <CutoutFillet corner="tr" size={18} className="is-down" />
+              </div>
+
+              {/* Thẻ kính thông số bay nổi (Vespa Spec Tag) */}
+              <div className="ns9-uh-telemetry-pill">
+                <span className="ns9-tp-dot" aria-hidden="true" />
+                <span>{activeAsp?.examId || 'THPTQG'} · Khối {activeAsp?.block || activeAsp?.major?.blocks?.[0] || 'A00'}</span>
+              </div>
+
+              {/* Vịnh khoét dưới-trái (Orizon Bottom-Left Cutout): Trường + Ngành + Nút mũi tên */}
+              <div className="ns9-uh-cutout-bottom">
+                <CutoutFillet corner="bl" size={20} className="is-up" />
+                <div className="ns9-cb-text">
+                  <span className="ns9-cb-kicker">
+                    <span className="ns9-cb-code">{schoolCode}</span>
+                    {majorName && <span className="ns9-cb-major">· {majorName}</span>}
+                  </span>
+                  <strong className="ns9-cb-school-title">{schoolName}</strong>
+                  <span className="ns9-cb-sub-action">Chiến lược AI đỗ {schoolCode}</span>
+                </div>
+                <span className="ns9-cb-arrow-circle" aria-hidden="true">
+                  <IcoArrow size={14} />
+                </span>
+                <CutoutFillet corner="bl" size={20} className="is-right" />
+              </div>
             </div>
           </div>
         ) : (
@@ -1227,7 +1277,7 @@ function DailyDiscoverySection() {
         {/* THẺ B: THỬ THÁCH KHTN 10 GIÂY */}
         <article className="ns9-disc-card ns9-quiz-card">
           <div className="ns9-disc-head">
-            <span className="ns9-disc-badge" style={{ background: 'rgba(255, 149, 0, 0.12)', color: '#ff9500' }}>
+            <span className="ns9-disc-badge is-quiz">
               Thử sức 10 giây · {curQ.subject}
             </span>
             <span className="ns9-quiz-score-tag">

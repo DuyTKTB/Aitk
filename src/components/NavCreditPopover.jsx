@@ -31,20 +31,24 @@ function formatTxTime(iso) {
   }
 }
 
-const SvgZap = ({ size = 13, className = '' }) => (
+const SvgZap = ({ size = 14, className = '' }) => (
   <svg
     width={size}
     height={size}
     viewBox="0 0 24 24"
     fill="none"
-    stroke="currentColor"
-    strokeWidth="2.4"
-    strokeLinecap="round"
-    strokeLinejoin="round"
     className={className}
     aria-hidden="true"
   >
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    <path
+      d="M13.3 2.3 4.9 13.2h6.3l-1 8.5L19.1 10.8h-6.3l.5-8.5Z"
+      fill="currentColor"
+    />
+    <path
+      d="M13 4.8 7.8 11.8h4.1l-.4 4.5 5-5.5h-3.9l.4-6Z"
+      fill="#38bdf8"
+      opacity="0.55"
+    />
   </svg>
 );
 

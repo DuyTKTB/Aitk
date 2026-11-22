@@ -90,10 +90,17 @@ export function getStreakMascot(streakDays, hasStreakToday) {
   };
 }
 
-/* ── Icon SVG sắc nét ── */
-export const SvgFlame = ({ size = 24, active = true }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={active ? '#f97316' : '#94a3b8'} stroke={active ? '#ea580c' : 'none'} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M12 2c1.5 3.5 4 5.5 4 9a4 4 0 0 1-8 0c0-1.5.5-3 1.2-4.2C8 8.5 6 11 6 14a6 6 0 0 0 12 0c0-5-3.5-8.5-6-12z" />
+/* ── Icon SVG sắc nét (2-tone Solar Flame) ── */
+export const SvgFlame = ({ size = 24, active = true, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+    <path
+      d="M12 2.2C14.8 5.4 18.5 8.7 18.5 14A6.5 6.5 0 0 1 5.5 14C5.5 11.4 6.8 9.2 8.2 7.8C8.2 9.5 9.1 10.6 10.2 11.1C9.7 8.2 10.4 4.9 12 2.2Z"
+      fill={active ? '#f97316' : '#94a3b8'}
+    />
+    <path
+      d="M12.2 11.2C13.6 12.6 14.6 13.9 14.6 15.6A2.6 2.6 0 0 1 9.4 15.6C9.4 14.2 10.3 12.7 12.2 11.2Z"
+      fill={active ? '#fde047' : '#cbd5e1'}
+    />
   </svg>
 );
 

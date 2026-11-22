@@ -295,29 +295,26 @@
    4. LIVING AMBIENT HIGHLIGHTS (STREAK FLAME, CREDITS ZAP, HOT)
    ------------------------------------------------------------ */
 
-/* === STREAK FLAME: Organic Fire Breathing Aura === */
+/* === STREAK FLAME: Crisp Breathing Pulse (không dùng drop-shadow mờ làm nhòe icon 15px) === */
 @keyframes anim-flame-ambient {
   0%, 100% {
-    transform: scale(1) rotate(-1deg);
-    filter: drop-shadow(0 0 3px rgba(249, 115, 22, 0.5));
+    transform: scale(1);
   }
   50% {
-    transform: scale(1.14) rotate(3deg) translateY(-1px);
-    filter: drop-shadow(0 0 9px rgba(249, 115, 22, 0.85));
+    transform: scale(1.08) translateY(-0.5px);
   }
 }
 
 .ns9-streak-svg.active,
 .mhead-streak-svg.active,
 .anim-ico-flame {
-  animation: anim-flame-ambient 2.4s ease-in-out infinite !important;
-  transform-origin: 50% 90%;
+  animation: anim-flame-ambient 2.6s ease-in-out infinite !important;
+  transform-origin: 50% 85%;
 }
 
 .ns9-nav-streak-pill:hover .ns9-streak-svg,
 .mhead-streak-pill:hover .mhead-streak-svg {
-  transform: scale(1.25) rotate(-4deg) translateY(-2px) !important;
-  filter: drop-shadow(0 0 12px rgba(249, 115, 22, 1)) !important;
+  transform: scale(1.16) rotate(-3deg) !important;
 }
 
 /* === CREDIT ZAP: Electric Voltage Surge === */

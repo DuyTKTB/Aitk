@@ -122,8 +122,9 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
               }}
               title={hasStreakToday ? `Chuỗi ${streakCount} ngày (Đã giữ chuỗi hôm nay)` : `Chuỗi ${streakCount} ngày (Chưa học hôm nay)`}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" className={`mhead-streak-svg anim-ico-svg anim-ico-flame ${hasStreakToday ? 'active' : 'idle'}`} aria-hidden="true">
-                <path d="M12 2c1.5 3.5 4 5.5 4 9a4 4 0 0 1-8 0c0-1.5.5-3 1.2-4.2C8 8.5 6 11 6 14a6 6 0 0 0 12 0c0-5-3.5-8.5-6-12z" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className={`mhead-streak-svg anim-ico-svg anim-ico-flame ${hasStreakToday ? 'active' : 'idle'}`} aria-hidden="true">
+                <path d="M12 2.2C14.8 5.4 18.5 8.7 18.5 14A6.5 6.5 0 0 1 5.5 14C5.5 11.4 6.8 9.2 8.2 7.8C8.2 9.5 9.1 10.6 10.2 11.1C9.7 8.2 10.4 4.9 12 2.2Z" fill={hasStreakToday || streakCount > 0 ? '#f97316' : '#94a3b8'} />
+                <path d="M12.2 11.2C13.6 12.6 14.6 13.9 14.6 15.6A2.6 2.6 0 0 1 9.4 15.6C9.4 14.2 10.3 12.7 12.2 11.2Z" fill={hasStreakToday || streakCount > 0 ? '#fde047' : '#cbd5e1'} />
               </svg>
               <span>{streakCount}</span>
             </button>
@@ -135,9 +136,9 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
               className="mhead-credit-pill"
               title="Điểm AI / XP của bạn — Bấm nạp ELEC AI Credit"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-zap" aria-hidden="true">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="anim-ico-svg anim-ico-zap" aria-hidden="true">
+                <path d="M13.3 2.3 4.9 13.2h6.3l-1 8.5L19.1 10.8h-6.3l.5-8.5Z" fill="currentColor" />
+                <path d="M13 4.8 7.8 11.8h4.1l-.4 4.5 5-5.5h-3.9l.4-6Z" fill="#38bdf8" opacity="0.55" />
               </svg>
               <span>{formatCompactCredits(credits)}</span>
             </button>

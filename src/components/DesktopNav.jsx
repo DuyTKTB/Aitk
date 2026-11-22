@@ -22,15 +22,25 @@ const NavNotchEar = ({ side = 'left' }) => (
     height="22"
     viewBox="0 0 22 22"
     fill="none"
+    style={{ overflow: 'visible' }}
     aria-hidden="true"
   >
     <path
       d={
         side === 'left'
-          ? 'M22 0 H0 C12.15 0 22 9.85 22 22 V0 Z'
-          : 'M0 0 H22 C9.85 0 0 9.85 0 22 V0 Z'
+          ? 'M23 -1 H0 V0 C12.15 0 22 9.85 22 22 H23 V-1 Z'
+          : 'M-1 -1 H22 V0 C9.85 0 0 9.85 0 22 H-1 V-1 Z'
       }
-      fill="currentColor"
+      fill="var(--notch-bg)"
+    />
+    <path
+      d={
+        side === 'left'
+          ? 'M0 0.5 C11.9 0.5 21.5 10.1 21.5 22'
+          : 'M22 0.5 C10.1 0.5 0.5 10.1 0.5 22'
+      }
+      stroke="var(--notch-border)"
+      strokeWidth="1"
     />
   </svg>
 );
@@ -619,11 +629,15 @@ export default function DesktopNav({
               >
                 <img
                   src="/img/logo.png"
-                  alt="ELEC AI"
+                  alt=""
                   className="nav-logo-img"
                 />
               </motion.div>
             )}
+            <span className="nav-brand-wordmark" aria-hidden="true">
+              <span className="nav-bw-elec">ELEC</span>
+              <span className="nav-bw-ai">AI</span>
+            </span>
           </a>
 
           <span className="nav-zone-divider" aria-hidden="true" />
