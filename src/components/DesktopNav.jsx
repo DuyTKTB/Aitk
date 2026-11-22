@@ -15,6 +15,26 @@ import {
   IconCalendar, IconTarget, IconQuiz, IconGamepad, IcoBook,
 } from './Icons.jsx';
 
+const NavNotchEar = ({ side = 'left' }) => (
+  <svg
+    className={`nav-notch-ear is-${side}`}
+    width="22"
+    height="22"
+    viewBox="0 0 22 22"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d={
+        side === 'left'
+          ? 'M22 0 H0 C12.15 0 22 9.85 22 22 V0 Z'
+          : 'M0 0 H22 C9.85 0 0 9.85 0 22 V0 Z'
+      }
+      fill="currentColor"
+    />
+  </svg>
+);
+
 /* ============ APPLE SF-SYMBOLS × LINEAR PRECISION VECTORS (20×20 PIXEL-SNAPPED GRID) ============ */
 const NavIconHome = ({ size = 15 }) => (
   <svg width={size} height={size} viewBox="0 0 20 20" fill="none" aria-hidden="true" className="nav-svg-pro">
@@ -586,8 +606,9 @@ export default function DesktopNav({
 
   return (
     <div className={'nav-wrap' + (scrolled ? ' scrolled' : '')} ref={wrapRef}>
+      <div className="nav-top-canopy" aria-hidden="true" />
       <nav className="nav-apple" aria-label="Điều hướng chính">
-        {/* ============ CỤM TRÁI: LOGO ELEC AI + MỤC TIÊU HỌC TẬP ============ */}
+        {/* ============ CỤM TRÁI: CÁNH NOTCH TRÁI — LOGO + MỤC TIÊU ============ */}
         <div className="nav-left-cluster">
           <a className="nav-logo" href="#home" aria-label="Trang chủ ELEC AI">
             {!introPlaying && (
@@ -609,10 +630,13 @@ export default function DesktopNav({
 
           {/* Context Switcher phẳng chuẩn Linear: Thi THPTQG · Chọn NV */}
           <StudyGoalNavDropdown uid={user?.uid} autoOpenForNewStudent={false} />
+          <NavNotchEar side="right" />
         </div>
 
-        {/* ============ CỤM GIỮA: 6 MỤC ĐIỀU HƯỚNG TỐI GIẢN CHUẨN APPLE / LINEAR ============ */}
-        <div className="nav-links">
+        {/* ============ CỤM GIỮA: ORGANIC CENTER NOTCH BRIDGE — 6 MỤC CHÍNH ============ */}
+        <div className="nav-center-notch">
+          <NavNotchEar side="left" />
+          <div className="nav-links">
           {/* 1. Trang chủ */}
           <a
             href="#home"
@@ -873,10 +897,13 @@ export default function DesktopNav({
               </div>
             )}
           </div>
+          </div>
+          <NavNotchEar side="right" />
         </div>
 
-        {/* ============ CỤM PHẢI: METRIC PHẲNG + ICON GHOST TINH GỌN + AVATAR ============ */}
-        <div className="nav-actions">
+        {/* ============ CỤM PHẢI: CUTOUT CẮT GÓC PHẢI — METRIC · ICON TRÒN · AVATAR ============ */}
+        <div className="nav-actions nav-right-cutout">
+          <NavNotchEar side="left" />
           <div className="nav-status-hud">
             <NavStreakPopover
               userId={user?.uid}

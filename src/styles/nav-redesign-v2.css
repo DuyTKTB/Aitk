@@ -1,8 +1,8 @@
 /* ============================================================
-   nav-redesign-v2.css — Apple visionOS × Linear Spatial Navbar (V4)
-   - Bố cục 3 phân khu thoáng cân đối, không lồng nhiều lớp viền/pill
+   nav-redesign-v2.css — Organic Inverted-Radius Liquid Notch (V5)
+   - Dải canopy liền mép trên nối 3 vịnh khoét cong (Orizon × Vespa UI)
    - Mega menu "Công cụ" lưới 2 cột rộng rãi + ô tìm nhanh
-   - Responsive 3 nấc chuẩn (1260px / 960px): 0 tràn ngang
+   - Responsive 3 nấc chuẩn (1260px / 960px / 768px): 0 tràn ngang
    ============================================================ */
 
 /* ── 1. FIX BADGE ĐIỂM 26/30, 100/150 TRONG STUDY GOAL DROPDOWN ── */
@@ -134,10 +134,10 @@
 }
 
 /* ============================================================
-   4. APPLE visionOS × LINEAR SPATIAL HEADER (V4)
-   - Bố cục 3 phân khu cân đối (Trái: Logo | Switcher · Giữa: 6 Tabs · Phải: Metric | Ghost Icons | Avatar)
-   - Loại bỏ hoàn toàn "hộp lồng hộp / viền chồng viền"
-   - Chỉ 1 điểm nhấn Cobalt #2f6bff duy nhất ở tab đang chọn
+   4. ORGANIC INVERTED-RADIUS LIQUID NOTCH (V5 — ORIZON × VESPA)
+   - Dải canopy liền mép trên (top: 0) kết nối 3 vịnh khoét cong mượt
+   - Đường bo lõm SVG (NavNotchEar) khớp tuyệt đối 22px, không tạo stacking/containing block bằng filter
+   - Chỉ 1 điểm nhấn Cobalt #2563eb duy nhất ở tab đang chọn
    ============================================================ */
 
 /* Menu "Thêm ⌄" chỉ hiện ở khoảng laptop/tablet <= 1260px */
@@ -198,43 +198,126 @@
   color: #93c5fd;
 }
 
-/* ── Vỏ ngoài thanh điều hướng: Rộng thoáng 3 phân khu, kính visionOS mảnh 48px ── */
+/* ── Vỏ ngoài thanh điều hướng: Neo sát mép trên (top: 0) kết nối 3 vịnh khoét ── */
+.nav-wrap {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  transform: none !important;
+  pointer-events: none !important;
+  z-index: 9000 !important;
+  --notch-bg: #ffffff;
+  --notch-shadow:
+    0 10px 26px -10px rgba(15, 23, 42, 0.13),
+    0 3px 10px -4px rgba(15, 23, 42, 0.06),
+    0 1px 0 rgba(15, 23, 42, 0.05);
+}
+
+/* Tắt lớp blur 96px cũ của home-glass.css để khoảng hở giữa 3 vịnh trong suốt tuyệt đối */
+.nav-wrap::before {
+  display: none !important;
+}
+
+.nav-wrap.scrolled {
+  --notch-shadow:
+    0 14px 32px -10px rgba(15, 23, 42, 0.17),
+    0 4px 14px -4px rgba(15, 23, 42, 0.08),
+    0 1px 0 rgba(15, 23, 42, 0.07);
+}
+
+[data-theme='dark'] .nav-wrap {
+  --notch-bg: #0d152c;
+  --notch-shadow:
+    0 14px 34px -10px rgba(0, 0, 0, 0.65),
+    0 4px 12px -4px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(148, 163, 184, 0.12);
+}
+
+/* Dải canopy liền mép trên (6px che kín mép tiếp giáp 1px, tránh lộ đường shadow) */
+.nav-top-canopy {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: var(--notch-bg);
+  z-index: 3;
+  pointer-events: none;
+}
+
 .nav-wrap > nav.nav-apple {
-  width: min(1240px, calc(100vw - 24px)) !important;
-  max-width: calc(100vw - 24px) !important;
-  height: 48px !important;
-  min-height: 48px !important;
-  padding: 0 8px 0 10px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 52px !important;
+  min-height: 52px !important;
+  padding: 0 !important;
+  margin: 0 !important;
   gap: 12px !important;
+  display: flex !important;
+  align-items: flex-start !important;
   justify-content: space-between !important;
-  border-radius: 999px !important;
+  border-radius: 0 !important;
   overflow: visible !important;
-  background: rgba(255, 255, 255, 0.78) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(185%) !important;
-  backdrop-filter: blur(24px) saturate(185%) !important;
-  border: 1px solid rgba(15, 23, 42, 0.08) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 8px 28px -12px rgba(15, 23, 42, 0.12) !important;
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  pointer-events: none !important;
 }
 
-.nav-wrap.scrolled > nav.nav-apple {
-  background: rgba(255, 255, 255, 0.9) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 12px 34px -10px rgba(15, 23, 42, 0.15) !important;
-}
-
-[data-theme='dark'] .nav-wrap > nav.nav-apple {
-  background: rgba(13, 19, 34, 0.78) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    0 12px 34px -12px rgba(0, 0, 0, 0.65) !important;
-}
-
+.nav-wrap.scrolled > nav.nav-apple,
+[data-theme='dark'] .nav-wrap > nav.nav-apple,
 [data-theme='dark'] .nav-wrap.scrolled > nav.nav-apple {
-  background: rgba(13, 19, 34, 0.92) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* 3 Vịnh khoét gốm trắng liền dải canopy trên */
+.nav-wrap > nav.nav-apple .nav-left-cluster,
+.nav-wrap > nav.nav-apple .nav-center-notch,
+.nav-wrap > nav.nav-apple .nav-actions.nav-right-cutout {
+  position: relative !important;
+  z-index: 2 !important;
+  margin-top: 5px !important;
+  background: var(--notch-bg) !important;
+  box-shadow: var(--notch-shadow) !important;
+  pointer-events: auto !important;
+  overflow: visible !important;
+  flex-shrink: 0 !important;
+}
+
+/* Tự nâng tầng z-index khi vịnh mở popover/dropdown, tránh bị vịnh kế bên đè mép */
+.nav-wrap > nav.nav-apple .nav-left-cluster:has(.sg-dropdown-panel),
+.nav-wrap > nav.nav-apple .nav-center-notch:has(.nav-more-popover),
+.nav-wrap > nav.nav-apple .nav-actions.nav-right-cutout:has(.elec-cp-popover, .elec-sp-popover, .ns9-uprof-menu) {
+  z-index: 10 !important;
+}
+
+/* SVG tai nối cong lõm (inverted corner fillet) khớp 22px với bo đáy từng vịnh */
+.nav-notch-ear {
+  position: absolute;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  color: var(--notch-bg);
+  pointer-events: none !important;
+  z-index: 1;
+  display: block;
+}
+
+.nav-notch-ear.is-left {
+  right: calc(100% - 1px);
+}
+
+.nav-notch-ear.is-right {
+  left: calc(100% - 1px);
 }
 
 /* Đường phân khu Hairline 1px nhẹ nhàng (Linear signature) */
@@ -249,13 +332,14 @@
   background: rgba(255, 255, 255, 0.13);
 }
 
-/* ── PHÂN KHU TRÁI: LOGO + LINEAR CONTEXT SWITCHER ── */
+/* ── VỊNH TRÁI (VESPA CORNER): LOGO + STUDY GOAL CONTEXT SWITCHER ── */
 .nav-wrap > nav.nav-apple .nav-left-cluster {
   display: inline-flex !important;
   align-items: center !important;
   gap: 4px !important;
-  flex-shrink: 0 !important;
-  height: 100% !important;
+  height: 44px !important;
+  padding: 0 16px 0 14px !important;
+  border-radius: 0 0 22px 0 !important;
 }
 
 .nav-wrap > nav.nav-apple .nav-logo {
@@ -266,7 +350,7 @@
 }
 
 .nav-wrap > nav.nav-apple .nav-logo-img {
-  height: 31px !important;
+  height: 30px !important;
 }
 
 .nav-wrap > nav.nav-apple .sg-nav-trigger {
@@ -321,11 +405,19 @@
   color: #e2e8f0 !important;
 }
 
-/* ── PHÂN KHU GIỮA: 6 MỤC ĐIỀU HƯỚNG PHẲNG — SẮC NÉT — KHÔNG RỐI ── */
+/* ── VỊNH GIỮA (ORIZON NOTCH): 6 MỤC ĐIỀU HƯỚNG & PILL COBALT ĐƠN SẮC ── */
+.nav-wrap > nav.nav-apple .nav-center-notch {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 46px !important;
+  padding: 0 10px !important;
+  border-radius: 0 0 22px 22px !important;
+}
+
 .nav-wrap > nav.nav-apple .nav-links {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 2px !important;
+  gap: 1.5px !important;
   flex-shrink: 0 !important;
 }
 
@@ -334,19 +426,19 @@
   display: inline-flex !important;
   align-items: center !important;
   height: 32px !important;
-  padding: 0 11px !important;
+  padding: 0 10px !important;
   border-radius: 999px !important;
-  font-size: 0.8rem !important;
+  font-size: 0.795rem !important;
   font-weight: 600 !important;
   letter-spacing: -0.012em !important;
-  gap: 5.5px !important;
+  gap: 5px !important;
   color: #475569 !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   transform: none !important;
   text-decoration: none !important;
-  transition: background 0.14s ease, color 0.14s ease !important;
+  transition: background 0.14s ease, color 0.14s ease, box-shadow 0.14s ease !important;
   white-space: nowrap !important;
 }
 
@@ -395,8 +487,8 @@
   color: #ffffff !important;
   font-weight: 650 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 2px 8px rgba(37, 99, 235, 0.28) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 4px 12px rgba(37, 99, 235, 0.28) !important;
   transform: none !important;
 }
 
@@ -423,15 +515,31 @@
   background: rgba(255, 255, 255, 0.92);
 }
 
-/* ── PHÂN KHU PHẢI: METRIC PHẲNG · 3 GHOST ICON · AVATAR TRÒN MẢNH ── */
-.nav-wrap > nav.nav-apple .nav-actions {
+/* Mega Menu "Công cụ" neo vừa vặn dưới Vịnh giữa (đáy vịnh = 51px) */
+.nav-drop-menu.nav-drop-tools,
+.nav-drop-tools {
+  top: 60px !important;
+}
+
+@media (min-width: 769px) {
+  .sg-dropdown-panel,
+  .elec-cp-popover,
+  .elec-sp-popover,
+  .ns9-uprof-menu {
+    top: calc(100% + 14px) !important;
+  }
+}
+
+/* ── VỊNH PHẢI (VESPA CUTOUT): METRIC · 3 NÚT TRÒN TÁC VỤ · AVATAR ── */
+.nav-wrap > nav.nav-apple .nav-actions.nav-right-cutout {
   display: inline-flex !important;
   align-items: center !important;
   gap: 5px !important;
+  height: 44px !important;
   margin-left: 0 !important;
-  padding-left: 0 !important;
+  padding: 0 14px 0 16px !important;
   border-left: none !important;
-  flex-shrink: 0 !important;
+  border-radius: 0 0 0 22px !important;
 }
 
 .nav-wrap > nav.nav-apple .nav-status-hud {
@@ -500,7 +608,7 @@
 .nav-wrap > nav.nav-apple .nav-actions-icons-cluster {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 1px !important;
+  gap: 2px !important;
 }
 
 .nav-wrap > nav.nav-apple .nav-action-icon-btn {
@@ -521,20 +629,40 @@
   transition: background 0.14s ease, color 0.14s ease, transform 0.12s ease !important;
 }
 
+.nav-wrap > nav.nav-apple .nav-action-icon-btn.nav-search-btn {
+  background: rgba(15, 23, 42, 0.055) !important;
+  color: #0f172a !important;
+}
+
 [data-theme='dark'] .nav-wrap > nav.nav-apple .nav-action-icon-btn {
   color: #94a3b8 !important;
 }
 
+[data-theme='dark'] .nav-wrap > nav.nav-apple .nav-action-icon-btn.nav-search-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #e2e8f0 !important;
+}
+
 .nav-wrap > nav.nav-apple .nav-action-icon-btn:hover {
-  background: rgba(47, 107, 255, 0.09) !important;
+  background: rgba(47, 107, 255, 0.1) !important;
   color: #1d4ed8 !important;
   box-shadow: none !important;
   transform: none !important;
 }
 
+.nav-wrap > nav.nav-apple .nav-action-icon-btn.nav-search-btn:hover {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
 [data-theme='dark'] .nav-wrap > nav.nav-apple .nav-action-icon-btn:hover {
-  background: rgba(59, 130, 246, 0.2) !important;
+  background: rgba(59, 130, 246, 0.22) !important;
   color: #60a5fa !important;
+}
+
+[data-theme='dark'] .nav-wrap > nav.nav-apple .nav-action-icon-btn.nav-search-btn:hover {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
 }
 
 .nav-wrap > nav.nav-apple .nav-action-icon-btn:active {
@@ -577,7 +705,7 @@
   box-shadow: 0 1px 4px rgba(29, 78, 216, 0.28) !important;
 }
 
-/* ── RESPONSIVE 3 NẤC CHUẨN (1260PX / 960PX) ── */
+/* ── RESPONSIVE 3 NẤC CHUẨN (1260PX / 960PX / 768PX) ── */
 @media (max-width: 1260px) {
   .nav-item-collapsible {
     display: none !important;
@@ -588,10 +716,19 @@
   }
 
   .nav-wrap > nav.nav-apple {
-    width: auto !important;
-    max-width: calc(100vw - 20px) !important;
-    padding: 0 7px 0 8px !important;
-    gap: 6px !important;
+    gap: 8px !important;
+  }
+
+  .nav-wrap > nav.nav-apple .nav-left-cluster {
+    padding: 0 12px 0 10px !important;
+  }
+
+  .nav-wrap > nav.nav-apple .nav-center-notch {
+    padding: 0 8px !important;
+  }
+
+  .nav-wrap > nav.nav-apple .nav-actions.nav-right-cutout {
+    padding: 0 10px 0 12px !important;
   }
 
   .nav-wrap > nav.nav-apple .nav-item {
@@ -625,7 +762,24 @@
   }
 
   .nav-wrap > nav.nav-apple {
-    padding: 0 6px !important;
     gap: 4px !important;
+  }
+
+  .nav-wrap > nav.nav-apple .nav-left-cluster {
+    padding: 0 10px 0 8px !important;
+  }
+
+  .nav-wrap > nav.nav-apple .nav-center-notch {
+    padding: 0 6px !important;
+  }
+
+  .nav-wrap > nav.nav-apple .nav-actions.nav-right-cutout {
+    padding: 0 8px 0 10px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav-wrap {
+    display: none !important;
   }
 }
