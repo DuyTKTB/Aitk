@@ -13,23 +13,24 @@
   white-space: nowrap !important;
 }
 
-/* ── 3. MEGA MENU "CÔNG CỤ": RỘNG RÃI 2 CỘT, 0 CẮT CHỮ "...", CÓ TÌM NHANH ── */
+/* ── 2. MEGA MENU "CÔNG CỤ": COMMAND PALETTE GỌN GÀNG, CHỮ 1 DÒNG SẠCH SẼ ── */
 .nav-drop-tools {
-  width: min(820px, calc(100vw - 28px)) !important;
-  max-width: calc(100vw - 28px) !important;
-  padding: 18px 20px !important;
-  border-radius: 22px !important;
+  width: min(640px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+  padding: 14px 16px 12px !important;
+  border-radius: 18px !important;
 }
 
 .nav-tools-search-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 13px;
-  border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  background: rgba(248, 250, 252, 0.9);
-  margin: 0 0 12px;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.03);
+  margin: 0 0 10px;
 }
 
 .nav-tools-search-row input {
@@ -40,7 +41,7 @@
   background: transparent !important;
   box-shadow: none !important;
   font-family: inherit;
-  font-size: 0.83rem;
+  font-size: 0.8rem;
   color: #0f172a;
 }
 
@@ -48,57 +49,79 @@
   border: none;
   background: rgba(148, 163, 184, 0.2);
   color: #475569;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   cursor: pointer;
   display: grid;
   place-items: center;
 }
 
 .nav-tools-folder-content {
-  max-height: min(56vh, 460px);
+  max-height: min(52vh, 390px);
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 2px;
 }
 
 .nav-tools-grid-2col,
 .nav-tools-grid-3col {
   display: grid !important;
   grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 10px !important;
+  gap: 4px 8px !important;
 }
 
 .nav-tool-item-bento {
   height: auto !important;
-  min-height: 66px !important;
-  padding: 11px 13px !important;
-  align-items: flex-start !important;
+  min-height: 0 !important;
+  padding: 7.5px 10px !important;
+  align-items: center !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+}
+
+.nav-tool-item-bento:hover {
+  background: rgba(47, 107, 255, 0.065) !important;
+  border-color: rgba(47, 107, 255, 0.14) !important;
+  box-shadow: none !important;
+}
+
+.nav-tool-item-bento.active {
+  background: rgba(47, 107, 255, 0.09) !important;
+  border-color: rgba(47, 107, 255, 0.22) !important;
 }
 
 .nav-tool-bento-info {
   min-width: 0 !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 .nav-tool-bento-title {
-  white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-  line-height: 1.28 !important;
-  font-size: 0.85rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.25 !important;
+  font-size: 0.8rem !important;
+  font-weight: 650 !important;
 }
 
 .nav-tool-bento-desc {
-  white-space: normal !important;
-  display: -webkit-box !important;
-  -webkit-line-clamp: 2 !important;
-  -webkit-box-orient: vertical !important;
+  display: block !important;
+  white-space: nowrap !important;
   overflow: hidden !important;
-  line-height: 1.38 !important;
-  font-size: 0.74rem !important;
-  margin-top: 2px !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.3 !important;
+  font-size: 0.71rem !important;
+  margin-top: 1px !important;
+}
+
+.nav-mega-copy {
+  font-size: 11px;
+  color: var(--mut, #64748b);
+  font-weight: 500;
+  letter-spacing: -0.005em;
 }
 
 [data-theme='dark'] .nav-tools-search-row {

@@ -487,10 +487,10 @@ export const SUBJECT_TOOL_GROUPS = [
 ];
 
 const FOLDER_TABS = [
-  { id: 'suite', label: 'Tiện ích Học tập', Icon: IconSparkles, color: '#2f6bff', mascot: '/img/elec/elec-celebrate.png' },
-  { id: 'hoa', label: 'Môn Hóa học', Icon: IconFlask, color: '#2f6bff', mascot: '/img/elec/elec-think.png' },
-  { id: 'ly', label: 'Môn Vật lí', Icon: IconPhysics, color: '#2f6bff', mascot: '/img/elec/elec-fighting.png' },
-  { id: 'sinh', label: 'Môn Sinh học', Icon: IconDna, color: '#2f6bff', mascot: '/img/elec/elec-happy.png' },
+  { id: 'suite', label: 'Tiện ích Học tập', Icon: IconSparkles, color: '#2f6bff' },
+  { id: 'hoa', label: 'Môn Hóa học', Icon: IconFlask, color: '#2f6bff' },
+  { id: 'ly', label: 'Môn Vật lí', Icon: IconPhysics, color: '#2f6bff' },
+  { id: 'sinh', label: 'Môn Sinh học', Icon: IconDna, color: '#2f6bff' },
 ];
 
 const ALL_TOOL_IDS = SUBJECT_TOOL_GROUPS.flatMap((g) => g.tools.map((t) => t.id));
@@ -742,23 +742,22 @@ export default function DesktopNav({
               <div className="nav-drop-menu open nav-drop-tools">
                 <div className="nav-mega-head">
                   <div className="nav-mega-title-wrap">
-                    <h3 className="nav-mega-title">Hệ sinh thái công cụ Khoa học Tự nhiên &amp; AI</h3>
-                    <p className="nav-mega-subtitle">Phân chia rõ ràng theo từng phân môn Hóa học · Vật lí · Sinh học · KHTN</p>
+                    <h3 className="nav-mega-title">Công cụ Khoa học Tự nhiên</h3>
                   </div>
                   <a href="#tools" className="nav-mega-all" onClick={() => setToolOpen(false)}>
-                    Xem tất cả công cụ
-                    <span className="nav-mega-all-ico"><IconArrow size={15} /></span>
+                    <span>Xem tất cả</span>
+                    <IconArrow size={13} />
                   </a>
                 </div>
 
-                {/* Ô tìm nhanh công cụ xuyên suốt 4 phân môn */}
+                {/* Ô tìm nhanh công cụ */}
                 <div className="nav-tools-search-row">
                   <IconSearch size={14} />
                   <input
                     type="text"
                     value={toolSearch}
                     onChange={(e) => setToolSearch(e.target.value)}
-                    placeholder="Tìm nhanh công cụ (VD: Pomodoro, Sổ lỗi sai, Bảng tuần hoàn, Điểm chuẩn...)"
+                    placeholder="Tìm nhanh công cụ (Ném xiên, Bảng tuần hoàn, Pomodoro, Điểm chuẩn...)"
                     aria-label="Tìm nhanh công cụ"
                   />
                   {toolSearch && (
@@ -773,7 +772,7 @@ export default function DesktopNav({
                   )}
                 </div>
 
-                {/* Thanh tab chọn tệp môn học */}
+                {/* Thanh tab chọn tệp môn học (Icon Vector thuần nhất) */}
                 {!matchedToolsAcrossFolders && (
                   <div className="nav-tools-folder-tabs" role="tablist" aria-label="Chọn tệp môn học">
                     {FOLDER_TABS.map((tab) => {
@@ -789,11 +788,7 @@ export default function DesktopNav({
                           style={{ '--tab-color': tab.color }}
                           onClick={() => setToolFolder(tab.id)}
                         >
-                          {tab.mascot ? (
-                            <img src={tab.mascot} alt="" className="nav-tools-folder-mascot" />
-                          ) : (
-                            <TabIcon size={14} />
-                          )}
+                          <TabIcon size={13} />
                           <span>{tab.label}</span>
                         </button>
                       );
@@ -801,7 +796,7 @@ export default function DesktopNav({
                   </div>
                 )}
 
-                {/* Danh sách công cụ theo tab hoặc theo tìm kiếm */}
+                {/* Danh sách công cụ gọn phẳng chuẩn Apple / Linear */}
                 <div className="nav-tools-folder-content">
                   {matchedToolsAcrossFolders ? (
                     matchedToolsAcrossFolders.length > 0 ? (
@@ -816,7 +811,7 @@ export default function DesktopNav({
                               onClick={() => setToolOpen(false)}
                             >
                               <span className="nav-tool-bento-icon" style={{ background: tool.tintBg, color: tool.tintText }}>
-                                <ToolIcon size={18} />
+                                <ToolIcon size={16} />
                               </span>
                               <span className="nav-tool-bento-info">
                                 <span className="nav-tool-bento-title">{tool.name}</span>
@@ -827,7 +822,7 @@ export default function DesktopNav({
                         })}
                       </div>
                     ) : (
-                      <p style={{ padding: '16px 6px', margin: 0, fontSize: '0.82rem', opacity: 0.7 }}>
+                      <p style={{ padding: '14px 6px', margin: 0, fontSize: '0.8rem', opacity: 0.7 }}>
                         Không tìm thấy công cụ nào khớp với &ldquo;{toolSearch}&rdquo;.
                       </p>
                     )
@@ -852,16 +847,11 @@ export default function DesktopNav({
                                   className="nav-tool-bento-icon"
                                   style={{ background: group.tintBg, color: group.tintText }}
                                 >
-                                  <ToolIcon size={18} />
+                                  <ToolIcon size={16} />
                                 </span>
                                 <span className="nav-tool-bento-info">
                                   <span className="nav-tool-bento-title">{tool.name}</span>
                                   <span className="nav-tool-bento-desc">{tool.desc}</span>
-                                </span>
-                                <span className="nav-tool-bento-arrow" aria-hidden="true">
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="9 18 15 12 9 6" />
-                                  </svg>
                                 </span>
                               </a>
                             );
@@ -872,13 +862,14 @@ export default function DesktopNav({
                   )}
                 </div>
 
-                {isAdmin && (
-                  <div className="nav-mega-foot">
+                <div className="nav-mega-foot">
+                  <span className="nav-mega-copy">© 2026 ELEC Science AI · Bản quyền Nguyễn Thế Duy (Duy TK)</span>
+                  {isAdmin && (
                     <a href="#admin" className="nav-mega-admin" onClick={() => setToolOpen(false)}>
-                      <IconDash size={15} /> Trang quản trị hệ thống
+                      <IconDash size={14} /> Quản trị
                     </a>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
           </div>

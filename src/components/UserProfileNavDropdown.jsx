@@ -457,6 +457,10 @@ export default function UserProfileNavDropdown({ user, page, onLogout, isTeacher
             <span>Đăng xuất</span>
           </button>
         </div>
+
+        <div className="ns9-uprof-copy">
+          © 2026 ELEC Science AI · Nguyễn Thế Duy (Duy TK)
+        </div>
       </div>
     </>
   ) : null;

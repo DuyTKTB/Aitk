@@ -43,21 +43,21 @@ const IcoCap = ({ size = 14, className = '' }) => (
 );
 
 const IcoChevron = ({ size = 12, className = '' }) => (
-  <svg className={`anim-ico-svg anim-ico-chevron ${className}`} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <polyline points="6 9 12 15 18 9" />
+  <svg className={`anim-ico-svg anim-ico-chevron ${className}`} width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m5.5 7.5 4.5 4.5 4.5-4.5" />
   </svg>
 );
 
-const IcoPencil = ({ size = 14, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+const IcoPencil = ({ size = 13, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
     className={`anim-ico-svg anim-ico-pencil anim-ico-edit ${className}`} aria-hidden="true">
     <path d="M12 20h9" />
     <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
   </svg>
 );
 
-const IcoTrash = ({ size = 14, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+const IcoTrash = ({ size = 13, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"
     className={`anim-ico-svg anim-ico-trash ${className}`} aria-hidden="true">
     <polyline points="3 6 5 6 21 6" />
     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
@@ -66,33 +66,31 @@ const IcoTrash = ({ size = 14, className = '' }) => (
   </svg>
 );
 
-const IcoPlus = ({ size = 14, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"
+const IcoPlus = ({ size = 13, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"
     className={`anim-ico-svg anim-ico-plus ${className}`} aria-hidden="true">
-    <line x1="12" y1="5" x2="12" y2="19" />
-    <line x1="5" y1="12" x2="19" y2="12" />
+    <path d="M10 4v12M4 10h12" />
   </svg>
 );
 
-const IcoArrowRight = ({ size = 15, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"
+const IcoArrowRight = ({ size = 13, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
     className={`anim-ico-svg anim-ico-arrow ${className}`} aria-hidden="true">
-    <line x1="5" y1="12" x2="19" y2="12" />
-    <polyline points="12 5 19 12 12 19" />
+    <path d="M4 10h12M11 5l5 5-5 5" />
   </svg>
 );
 
 const IcoUp = ({ size = 13, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
     className={`anim-ico-svg anim-ico-up ${className}`} aria-hidden="true">
-    <polyline points="18 15 12 9 6 15" />
+    <path d="m14.5 12-4.5-4.5L5.5 12" />
   </svg>
 );
 
 const IcoDown = ({ size = 13, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
     className={`anim-ico-svg anim-ico-down ${className}`} aria-hidden="true">
-    <polyline points="6 9 12 15 18 9" />
+    <path d="m5.5 8 4.5 4.5L14.5 8" />
   </svg>
 );
 
@@ -146,31 +144,13 @@ const IcoUniversity = ({ size = 16, className = '' }) => (
   </svg>
 );
 
-/* Vòng tròn tiến độ điểm mục tiêu / thang điểm kỳ thi (VD: 23/30, 100/150) */
+/* Pill điểm mục tiêu dạng số học gọn chuẩn Apple / Linear (không bao giờ tràn vòng tròn) */
 function ScoreCircle({ value, scale }) {
-  const R = 17;
-  const C = 2 * Math.PI * R;
-  const pct = Math.min(1, Math.max(0.08, (Number(value) || 0) / (Number(scale) || 30)));
   return (
-    <div className="sg-score-ring" aria-label={`Mục tiêu ${value} trên ${scale} điểm`}>
-      <svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
-        <circle cx="21" cy="21" r={R} className="sg-ring-bg" />
-        <circle
-          cx="21"
-          cy="21"
-          r={R}
-          className="sg-ring-fg"
-          strokeDasharray={C}
-          strokeDashoffset={C * (1 - pct)}
-          transform="rotate(-90 21 21)"
-        />
-      </svg>
-      <div className="sg-ring-txt">
-        <b>{value}</b>
-        <small>/{scale}</small>
-      </div>
-
-    </div>
+    <span className="sg-exam-score-chip" aria-label={`Mục tiêu ${value} trên ${scale} điểm`}>
+      <b>{value}</b>
+      <small>/{scale}</small>
+    </span>
   );
 }
 
@@ -441,20 +421,9 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
           <div className="sg-sheet-grip" aria-hidden="true" />
 
           <div className="sg-panel-head">
-            <div className="sg-head-main">
-              <div className="sg-head-row-top">
-                <h3>Mục tiêu học tập &amp; Nguyện vọng</h3>
-                <button
-                  type="button"
-                  className="sg-close-btn"
-                  onClick={() => setPanelOpen(false)}
-                  aria-label="Đóng bảng mục tiêu học tập"
-                >
-                  <IcoClose size={18} />
-                </button>
-              </div>
-              <div className="sg-head-row-sub">
-                <p>Chọn kỳ thi mục tiêu và theo dõi tiến độ 3 nguyện vọng đại học ưu tiên</p>
+            <div className="sg-head-row-top">
+              <h3>Mục tiêu &amp; Nguyện vọng</h3>
+              <div className="sg-head-actions">
                 <button
                   type="button"
                   className="sg-ref-badge sg-ref-badge-btn"
@@ -464,8 +433,16 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                   }}
                   title="Xem toàn bộ đề án tuyển sinh các trường đại học năm 2026"
                 >
-                  <span>Đề án tuyển sinh 2026</span>
+                  <span>Đề án 2026</span>
                   <IcoArrowRight size={11} />
+                </button>
+                <button
+                  type="button"
+                  className="sg-close-btn"
+                  onClick={() => setPanelOpen(false)}
+                  aria-label="Đóng bảng mục tiêu học tập"
+                >
+                  <IcoClose size={16} />
                 </button>
               </div>
             </div>
@@ -630,10 +607,12 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                         <div className="sg-wish-body">
                           <div className="sg-wish-title">
                             <b className="code">{asp.school?.code || 'NV' + asp.priority}</b>
-                            <span className="name"> · {asp.school?.name || 'Trường Đại học'}</span>
+                            <span className="name">· {asp.school?.name || 'Trường Đại học'}</span>
+                          </div>
+                          <div className="sg-wish-major" title={asp.major?.name}>
+                            {asp.major?.name || 'Ngành xét tuyển'}
                           </div>
                           <div className="sg-wish-major-line">
-                            <span className="major" title={asp.major?.name}>{asp.major?.name || 'Ngành xét tuyển'}</span>
                             <span className="meta-tag">Khối {asp.block || 'A00'}</span>
                             <span className="meta-score">Mục tiêu <b>{asp.targetScore}đ</b></span>
                             <span className="meta-chem" title="Mục tiêu điểm môn Hóa học">Hóa ~{aspTargetChem}đ</span>
@@ -688,24 +667,17 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                 </ol>
               )}
 
-              {/* ── KHỐI GIA SƯ ELEC AI TỰ ĐIỀU TRA & HOẠCH ĐỊNH LỘ TRÌNH DẪN TỚI LỘ TRÌNH ── */}
+              {/* ── TÓM TẮT CHIẾN LƯỢC MỤC TIÊU (GỌN GÀNG, KHÔNG RỐI MẮT) ── */}
               {activeAsp && (
                 <div className="sg-ai-investigate-card">
-                  {/* 1. Header: Avatar + Title + Status Pill */}
                   <div className="sg-ai-card-head">
                     <div className="sg-ai-brand-group">
                       <div className="sg-ai-avatar">
-                        <IcoSparkle size={15} />
+                        <IcoSparkle size={13} />
                       </div>
-                      <div className="sg-ai-title-wrap">
-                        <div className="sg-ai-eyebrow">
-                          <span>ELEC AI TUTOR</span>
-                          <span className="sg-ai-live-dot" title="Đã đồng bộ dữ liệu thời gian thực" />
-                        </div>
-                        <h4 className="sg-ai-title">
-                          Chiến lược đỗ <b>{activeAsp.school?.code || 'Đại học'}</b> · {activeAsp.major?.name || 'Ngành xét tuyển'}
-                        </h4>
-                      </div>
+                      <h4 className="sg-ai-title">
+                        Chiến lược <b>{activeAsp.school?.code || 'ĐH'}</b> · {activeAsp.major?.name || 'Ngành xét tuyển'}
+                      </h4>
                     </div>
                     {(() => {
                       const safety = getSafetyBadge(activeAsp.targetScore, activeAsp.cutoffScore);
@@ -718,7 +690,6 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                     })()}
                   </div>
 
-                  {/* 2. Three-Cell Metric Strip */}
                   <div className="sg-ai-metrics-strip">
                     <div className="sg-ai-metric-cell">
                       <span className="sg-ai-metric-label">Chuẩn tham khảo</span>
@@ -736,49 +707,6 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                     </div>
                   </div>
 
-                  {/* 3. Connected Timeline Stepper */}
-                  <div className="sg-ai-timeline">
-                    <div className="sg-ai-tl-step">
-                      <div className="sg-ai-tl-indicator s1">
-                        <span>1</span>
-                      </div>
-                      <div className="sg-ai-tl-content">
-                        <div className="sg-ai-tl-top">
-                          <span className="sg-ai-tl-name">Nền tảng &amp; Lấp lỗ hổng chuyên đề</span>
-                          <span className="sg-ai-tl-target s1">6.5+</span>
-                        </div>
-                        <p className="sg-ai-tl-desc">Este-Lipid, Cân bằng hóa học, Đại cương kim loại</p>
-                      </div>
-                    </div>
-
-                    <div className="sg-ai-tl-step">
-                      <div className="sg-ai-tl-indicator s2">
-                        <span>2</span>
-                      </div>
-                      <div className="sg-ai-tl-content">
-                        <div className="sg-ai-tl-top">
-                          <span className="sg-ai-tl-name">Luyện đề thực chiến &amp; Tối ưu tốc độ</span>
-                          <span className="sg-ai-tl-target s2">8.0+</span>
-                        </div>
-                        <p className="sg-ai-tl-desc">Điện phân, Bài toán CO₂ + kiềm, Phản ứng tráng bạc</p>
-                      </div>
-                    </div>
-
-                    <div className="sg-ai-tl-step">
-                      <div className="sg-ai-tl-indicator s3">
-                        <span>3</span>
-                      </div>
-                      <div className="sg-ai-tl-content">
-                        <div className="sg-ai-tl-top">
-                          <span className="sg-ai-tl-name">Bứt phá 9+ Ma trận {activeAsp.school?.code || 'ĐH'}</span>
-                          <span className="sg-ai-tl-target s3">9.0+</span>
-                        </div>
-                        <p className="sg-ai-tl-desc">4 câu phân loại cuối đề, Rèn phản xạ áp lực 50 phút</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 4. Action Buttons (Không bao giờ tràn viền) */}
                   <div className="sg-ai-inv-actions">
                     <button
                       type="button"
@@ -788,8 +716,8 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                         window.location.hash = '#roadmap';
                       }}
                     >
-                      <span>Vào Lộ trình cá nhân</span>
-                      <IcoArrowRight size={14} />
+                      <span>Vào Lộ trình</span>
+                      <IcoArrowRight size={13} />
                     </button>
                     <button
                       type="button"
@@ -799,48 +727,27 @@ export default function StudyGoalNavDropdown({ uid, autoOpenForNewStudent = fals
                         window.location.hash = '#roadmap?mode=diagnostic';
                       }}
                     >
-                      <span>Test đầu vào (12 câu)</span>
+                      <span>Test 12 câu</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="sg-ai-btn-secondary"
+                      onClick={() => {
+                        setSelectedSchoolId(activeAsp?.school?.code || activeAsp?.school?.id || 'NEU');
+                        setUniversityModalOpen(true);
+                        setPanelOpen(false);
+                      }}
+                    >
+                      <span>Đề án {activeAsp?.school?.code || 'ĐH'}</span>
                     </button>
                   </div>
                 </div>
               )}
-
-              {activeAsp && (
-                <div className="sg-admission-footer">
-                  <button
-                    type="button"
-                    className="sg-admission-btn"
-                    onClick={() => {
-                      setSelectedSchoolId(activeAsp?.school?.code || activeAsp?.school?.id || 'NEU');
-                      setUniversityModalOpen(true);
-                      setPanelOpen(false);
-                    }}
-                  >
-                    <span className="sg-adm-btn-left">
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
-                        <path d="M6 6h10" />
-                        <path d="M6 10h10" />
-                      </svg>
-                      <span>Xem Đề án tuyển sinh chi tiết {activeAsp?.school?.shortName || activeAsp?.school?.code || 'trường'} (2026)</span>
-                    </span>
-                    <IcoArrowRight size={16} />
-                  </button>
-                  {showAdmissionNote && (
-                    <div className="sg-admission-detail">
-                      <p>
-                        <b>{activeAsp?.school?.name || 'Trường Đại học'}</b> ({activeAsp?.school?.city || 'Việt Nam'}) — Ngành{' '}
-                        <b>{activeAsp?.major?.name || 'Ngành xét tuyển'}</b> (Mã: <code>{activeAsp?.major?.majorCode || ''}</code>).
-                      </p>
-                      <p>
-                        Tổ hợp xét tuyển: <b>{(activeAsp?.major?.blocks || ['A00']).join(', ')}</b> · Điểm chuẩn tham khảo:{' '}
-                        <b>{activeAsp.cutoffScore ?? 'Xét riêng'}</b> ({activeAsp.referenceLabel}).
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
+          </div>
+
+          <div className="sg-copyright-foot">
+            <span>© 2026 ELEC Science AI · Bản quyền Nguyễn Thế Duy (Duy TK)</span>
           </div>
         </div>
       </>
