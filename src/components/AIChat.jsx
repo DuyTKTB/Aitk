@@ -2901,6 +2901,80 @@ export default function AIChat({ onExit }) {
 
                 {hmenu === 'more' && (
                   <div className="ai2-popover align-right" role="menu" onClick={(e) => e.stopPropagation()}>
+                    <div className="elec-m-only-block">
+                      <div className="ai2-pop-head">Khối lớp (SGK GDPT 2018)</div>
+                      <div className="elec-pop-grade-row">
+                        {GRADE_OPTIONS.map((gr) => (
+                          <button
+                            key={gr}
+                            type="button"
+                            className={`elec-pop-grade-chip ${grade === gr ? 'active' : ''}`}
+                            onClick={() => {
+                              setGrade(gr);
+                              setHmenu(null);
+                            }}
+                          >
+                            {gr === 'Tự động' ? 'Tự động' : gr}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="ai2-pop-sep" />
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={`ai2-pop-item ${quickRefOpen ? 'active' : ''}`}
+                        onClick={() => {
+                          setQuickRefOpen((v) => !v);
+                          setCasioOpen(false);
+                          setHmenu(null);
+                        }}
+                      >
+                        <span className="ai2-pop-item-txt">
+                          <b>Tra cứu KHTN</b>
+                          <small>118 nguyên tố, tính M & hằng số</small>
+                        </span>
+                        <IcoSparkle size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={`ai2-pop-item ${casioOpen ? 'active' : ''}`}
+                        onClick={() => {
+                          setCasioOpen((v) => !v);
+                          setQuickRefOpen(false);
+                          setHmenu(null);
+                        }}
+                      >
+                        <span className="ai2-pop-item-txt">
+                          <b>Máy tính Casio fx-580VN X</b>
+                          <small>Bấm nhanh phương trình & số phức</small>
+                        </span>
+                        <IcoCalc size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitemcheckbox"
+                        aria-checked={tempMode}
+                        className={`ai2-pop-item ${tempMode ? 'active' : ''}`}
+                        onClick={() => {
+                          toggleTempMode();
+                          setHmenu(null);
+                        }}
+                      >
+                        <span className="ai2-pop-item-txt">
+                          <b>Chat tạm thời (ẩn danh)</b>
+                          <small>{tempMode ? 'Đang bật — không lưu lịch sử' : 'Không lưu vào lịch sử'}</small>
+                        </span>
+                        {tempMode ? (
+                          <IcoCheck size={15} />
+                        ) : (
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="3 2.5" aria-hidden="true">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                          </svg>
+                        )}
+                      </button>
+                      <div className="ai2-pop-sep" />
+                    </div>
                     {ttsSupported && (
                       <button
                         type="button"
@@ -2998,7 +3072,7 @@ export default function AIChat({ onExit }) {
               </div>
 
               <h1 className="ds-empty-title gm-hero-title elec-hero-title">
-                Chinh phục Lý · Hóa · Sinh cùng <span>ELEC</span>
+                Chinh phục <em className="elec-hero-keep">Lý · Hóa · Sinh</em> cùng <span>ELEC</span>
               </h1>
             </div>
           ) : (
@@ -3571,6 +3645,34 @@ export default function AIChat({ onExit }) {
               >
                 <IcoWand size={16} />
                 <span>Prompt mẫu nhanh</span>
+              </button>
+              <button
+                type="button"
+                className="ds-attach-btn elec-m-only-flex"
+                onClick={() => {
+                  setInput('Hãy chấm từng dòng trong ảnh nháp/bài giải viết tay này của mình, chỉ rõ dòng nào bắt đầu biến đổi sai dấu, sai đơn vị hay sai công thức và sửa lại từ dòng đó.');
+                  fileRef.current?.click();
+                  setAttachOpen(false);
+                }}
+              >
+                <IcoShieldCheck size={16} />
+                <span>Chấm nháp viết tay</span>
+              </button>
+              <button
+                type="button"
+                className="ds-attach-btn elec-m-only-flex"
+                onClick={() => {
+                  if (activeChalkboardLesson) {
+                    setActiveChalkboardLesson(null);
+                  } else {
+                    setActiveInteractiveQuiz(null);
+                    setActiveChalkboardLesson(getDefaultPresetForSubject(subjectLens));
+                  }
+                  setAttachOpen(false);
+                }}
+              >
+                <IcoWand size={16} />
+                <span>Mở Bảng 3D KHTN</span>
               </button>
             </div>
           )}

@@ -1734,8 +1734,72 @@ body.on-ai-page .ds-page.elec-studio .ds-user-menu-tier .ds-tier-badge {
   border-radius: 999px !important;
 }
 
-/* --- 2H. Mobile / Narrow PWA Drawer Stacking Fix (Chặn overlay đè sidebar) --- */
+/* --- 2H. Mobile & Narrow PWA Quantum Architecture (Native Clean, 0 Crushing) --- */
+.elec-hero-keep {
+  font-style: normal;
+  font-weight: inherit;
+}
+
+.elec-m-only-block,
+.elec-m-only-flex {
+  display: none !important;
+}
+
+.elec-pop-grade-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 10px 8px;
+}
+
+.elec-pop-grade-chip {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(15, 23, 42, 0.035);
+  color: #334155;
+  font-size: 0.74rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.elec-pop-grade-chip.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+[data-theme='dark'] .elec-pop-grade-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+
 @media (max-width: 900px) {
+  body.on-ai-page .ds-page.elec-studio {
+    background: #ffffff !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio:has(.ds-stage-chat.is-gm-empty) {
+    background:
+      radial-gradient(480px 300px at 50% 0%, rgba(37, 99, 235, 0.08), transparent 72%),
+      #f7faff !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio,
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio:has(.ds-stage-chat.is-gm-empty) {
+    background: #080f20 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-content {
+    background: transparent !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio:not(:has(.is-gm-empty)) .ds-live-bg {
+    display: none !important;
+  }
+
   body.on-ai-page .ds-page.elec-studio .ds-sidebar-overlay {
     display: block !important;
     position: fixed !important;
@@ -1761,6 +1825,380 @@ body.on-ai-page .ds-page.elec-studio .ds-user-menu-tier .ds-tier-badge {
 
   body.on-ai-page .ds-page.elec-studio .ds-user-menu {
     z-index: 100030 !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .elec-m-only-block {
+    display: block !important;
+  }
+
+  .elec-m-only-flex {
+    display: flex !important;
+  }
+
+  /* 1. Thanh tiêu đề Mobile bản địa: Mờ đục sạch sẽ, không dồn khay làm nát nút trái */
+  body.on-ai-page .ds-page.elec-studio .ds-header.gm-header {
+    height: calc(52px + env(safe-area-inset-top, 0px)) !important;
+    min-height: 52px !important;
+    padding: env(safe-area-inset-top, 0px) 12px 0 !important;
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(18px) !important;
+    -webkit-backdrop-filter: blur(18px) !important;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.07) !important;
+    z-index: 90 !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-header.gm-header {
+    background: rgba(8, 15, 32, 0.92) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-header-inner {
+    height: 52px !important;
+    padding: 0 !important;
+    gap: 8px !important;
+    justify-content: space-between !important;
+    overflow: visible !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-head-left,
+  body.on-ai-page .ds-page.elec-studio .ai2-head-right {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-head-left {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    gap: 8px !important;
+    justify-content: flex-start !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-head-right {
+    flex: 0 0 auto !important;
+    gap: 6px !important;
+    margin-left: auto !important;
+  }
+
+  /* Ẩn các nút dài thừa trên topbar (đã đưa toàn bộ vào menu ⋯) */
+  body.on-ai-page .ds-page.elec-studio .ai2-brand-group,
+  body.on-ai-page .ds-page.elec-studio .elec-grade-trigger,
+  body.on-ai-page .ds-page.elec-studio .ai2-head-right .elec-casio-toggle-btn,
+  body.on-ai-page .ds-page.elec-studio .ai2-head-right .gm-temp-btn {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-menu-btn,
+  body.on-ai-page .ds-page.elec-studio .ai2-icon-btn {
+    width: 34px !important;
+    height: 34px !important;
+    flex: 0 0 34px !important;
+    border-radius: 11px !important;
+    background: rgba(15, 23, 42, 0.045) !important;
+    border: 1px solid rgba(15, 23, 42, 0.075) !important;
+    color: #0f172a !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-menu-btn,
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ai2-icon-btn {
+    background: rgba(255, 255, 255, 0.065) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: #f1f5f9 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-mode-trigger {
+    height: 32px !important;
+    padding: 0 11px !important;
+    max-width: 138px !important;
+    border-radius: 999px !important;
+    background: rgba(37, 99, 235, 0.085) !important;
+    border: 1px solid rgba(37, 99, 235, 0.16) !important;
+    color: #1d4ed8 !important;
+    font-size: 0.77rem !important;
+    font-weight: 700 !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ai2-mode-trigger {
+    background: rgba(59, 130, 246, 0.16) !important;
+    border-color: rgba(96, 165, 250, 0.28) !important;
+    color: #93c5fd !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-head-right .nav-credit-pill {
+    height: 30px !important;
+    padding: 0 10px !important;
+    font-size: 0.74rem !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ai2-popover {
+    max-width: calc(100vw - 24px) !important;
+    max-height: 70dvh !important;
+    overflow-y: auto !important;
+    z-index: 420 !important;
+  }
+
+  /* 2. Màn hình chờ Empty Welcome Mobile gọn gàng cân đối */
+  body.on-ai-page .ds-page.elec-studio .ds-stage-split {
+    height: calc(100dvh - 52px - env(safe-area-inset-top, 0px)) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-hero {
+    gap: 6px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-hero-anim-wrap {
+    padding: 6px 12px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-hero-aimark {
+    width: 68px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-hero-kicker {
+    padding: 4px 11px !important;
+    font-size: 0.7rem !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-hero-title {
+    font-size: 1.24rem !important;
+    line-height: 1.26 !important;
+    padding: 0 4px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-discover {
+    margin-top: 10px !important;
+    gap: 8px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-prompt-card {
+    padding: 10px 12px !important;
+    border-radius: 16px !important;
+    gap: 10px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-prompt-ico {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+  }
+
+  /* 3. Luồng đọc hội thoại Mobile thoáng rộng edge-to-edge */
+  body.on-ai-page .ds-page.elec-studio .ds-main:not(.ds-main-empty) {
+    padding: 12px 14px 20px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-chat {
+    gap: 16px !important;
+    padding: 2px 0 16px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-msg-model {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio svg.ds-avatar {
+    width: 28px !important;
+    height: 28px !important;
+    padding: 4px !important;
+    border-radius: 9px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-content {
+    font-size: 0.92rem !important;
+    line-height: 1.66 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-content ul,
+  body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-content ol {
+    padding-left: 1.15rem !important;
+    margin: 6px 0 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-section-header-card,
+  body.on-ai-page .ds-page.elec-studio .ds-step-header-card {
+    margin: 12px 0 8px !important;
+    padding: 7px 10px !important;
+    border-radius: 12px !important;
+    gap: 8px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-section-badge-roman,
+  body.on-ai-page .ds-page.elec-studio .ds-step-badge-pill {
+    min-width: 23px !important;
+    height: 23px !important;
+    padding: 0 7px !important;
+    font-size: 0.7rem !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-section-header-title,
+  body.on-ai-page .ds-page.elec-studio .ds-step-header-title {
+    font-size: 0.87rem !important;
+    line-height: 1.32 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-msg-user-text {
+    max-width: 88% !important;
+    padding: 10px 14px !important;
+    border-radius: 18px 18px 5px 18px !important;
+    font-size: 0.9rem !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-msg-doc-pill .elec-doc-name {
+    max-width: 195px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-method-strip {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    padding-bottom: 2px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-method-strip::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-method-pill {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    height: 27px !important;
+    font-size: 0.72rem !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-followups {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px !important;
+    padding: 2px 14px 4px 0 !important;
+    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 18px), transparent 100%);
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-followups::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-followup-chip {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    height: 28px !important;
+    font-size: 0.72rem !important;
+    padding: 0 11px !important;
+  }
+
+  .elec-hero-keep {
+    font-style: normal;
+    font-weight: inherit;
+    white-space: nowrap;
+  }
+
+  /* 4. Composer & Nút cuộn ↓ Mobile (0 cắt nút thành chấm nhỏ, 0 che chữ) */
+  body.on-ai-page .ds-page.elec-studio .ds-input-wrap {
+    padding: 4px 10px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    background: linear-gradient(to top, rgba(255, 255, 255, 0.96) 66%, rgba(255, 255, 255, 0)) !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .ds-input-wrap {
+    background: linear-gradient(to top, rgba(8, 15, 32, 0.96) 66%, rgba(8, 15, 32, 0)) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-input-inner .ds-jump {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    top: -44px !important;
+    width: 34px !important;
+    height: 34px !important;
+    box-shadow: 0 6px 18px -4px rgba(15, 23, 42, 0.2) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer {
+    border-radius: 22px !important;
+    padding: 10px 10px 8px 12px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-composer-bar {
+    gap: 6px !important;
+    padding-top: 7px !important;
+    margin-top: 4px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-composer-left {
+    display: flex !important;
+    align-items: center !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    gap: 5px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 16px !important;
+    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 18px), transparent 100%);
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-composer-left::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer .gm-tool-circle {
+    width: 30px !important;
+    height: 30px !important;
+    flex-shrink: 0 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer .gm-tool-pill {
+    width: auto !important;
+    height: 30px !important;
+    padding: 0 10px !important;
+    gap: 5px !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    font-size: 0.73rem !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer .gm-tool-pill span {
+    display: inline !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .gm-composer-right {
+    gap: 5px !important;
+    flex: 0 0 auto !important;
+    padding-left: 6px !important;
+    border-left: 1px solid rgba(15, 23, 42, 0.07) !important;
+  }
+
+  [data-theme='dark'] body.on-ai-page .ds-page.elec-studio .gm-composer-right {
+    border-left-color: rgba(255, 255, 255, 0.09) !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-input-bar.gm-composer .gm-send-btn {
+    width: 34px !important;
+    height: 34px !important;
+    flex-shrink: 0 !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .ds-attach-menu {
+    max-width: calc(100vw - 24px) !important;
+    border-radius: 18px !important;
+  }
+
+  body.on-ai-page .ds-page.elec-studio .elec-disclaimer {
+    font-size: 0.64rem !important;
+    line-height: 1.35 !important;
+    margin-top: 5px !important;
+    padding: 0 6px !important;
   }
 }
 
@@ -1953,4 +2391,54 @@ body:not(.on-landing) .sf-bot {
 
 [data-theme='dark'] body:not(.on-landing) .sf-bot {
   border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ============================================================================
+   5. MOBILE POLISH CHO PHÒNG THI ẢO & KHO CÔNG CỤ
+   ============================================================================ */
+@media (max-width: 768px) {
+  /* Xóa viền lồng đôi (double pill) trên ô tìm kiếm Phòng thi ảo */
+  .ns9-vex-page .ns9-vex-search-box {
+    background: #ffffff !important;
+    border: 1px solid rgba(15, 23, 42, 0.1) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 2px 8px -4px rgba(15, 23, 42, 0.06) !important;
+  }
+
+  [data-theme='dark'] .ns9-vex-page .ns9-vex-search-box {
+    background: #0d152c !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .ns9-vex-page .ns9-vex-search-box input {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .ns9-vex-page .ns9-vex-struct-title {
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .ns9-vex-page .ns9-vex-struct-title svg {
+    flex-shrink: 0 !important;
+    margin-top: 2px !important;
+  }
+
+  /* Gọn bộ lọc ToolsPage để lộ thẻ nội dung sớm hơn trên màn hình 390px */
+  section.wrap.tools-page .tn-tabs,
+  section.wrap.tools-page .tools-tabs {
+    padding-right: 18px !important;
+    scrollbar-width: none !important;
+  }
+
+  section.wrap.tools-page .tn-tabs::-webkit-scrollbar,
+  section.wrap.tools-page .tools-tabs::-webkit-scrollbar {
+    display: none !important;
+  }
 }
