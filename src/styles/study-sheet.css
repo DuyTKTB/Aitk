@@ -62,8 +62,8 @@
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 100004;
-    background: rgba(15, 23, 42, 0.65);
+    z-index: 100024 !important;
+    background: rgba(15, 23, 42, 0.58);
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     animation: ss-fade-in 0.2s ease;
@@ -82,8 +82,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 100005;
-    max-height: 86dvh;
+    z-index: 100025 !important;
+    max-height: 88dvh;
     background: #ffffff;
     color: #0f172a;
     border-top: 1px solid rgba(148, 163, 184, 0.22);
@@ -134,11 +134,22 @@
   }
 
   .ss-head-mascot {
-    width: 40px;
-    height: 40px;
+    width: 38px !important;
+    height: 38px !important;
+    max-width: 38px !important;
+    max-height: 38px !important;
+    padding: 3px;
+    border-radius: 12px;
+    background: #eff6ff;
+    border: 1px solid rgba(37, 99, 235, 0.16);
     object-fit: contain;
     flex-shrink: 0;
-    filter: drop-shadow(0 4px 10px rgba(37, 99, 235, 0.28));
+    box-shadow: 0 4px 10px -4px rgba(37, 99, 235, 0.25);
+  }
+
+  [data-theme="dark"] .ss-head-mascot {
+    background: rgba(37, 99, 235, 0.2);
+    border-color: rgba(96, 165, 250, 0.28);
   }
 
   .ss-head-title-wrap {
@@ -199,15 +210,33 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 14px;
+    padding: 11px 14px;
     border-radius: 18px;
-    background: rgba(37, 99, 235, 0.06);
-    border: 1px solid rgba(37, 99, 235, 0.18);
+    background: #f8faff;
+    border: 1px solid rgba(37, 99, 235, 0.14);
   }
 
   [data-theme="dark"] .ss-profile-card {
     background: rgba(30, 41, 59, 0.72);
     border-color: rgba(59, 130, 246, 0.25);
+  }
+
+  .ss-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1.5px solid rgba(37, 99, 235, 0.22);
+    box-shadow: 0 3px 10px -4px rgba(37, 99, 235, 0.2);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  [data-theme="dark"] .ss-avatar {
+    background: #1e293b;
+    border-color: rgba(96, 165, 250, 0.3);
   }
 
   .ss-profile-meta {
@@ -293,18 +322,20 @@
 
   .ss-hl-card {
     display: flex;
+    flex-direction: row;
     align-items: center;
-    gap: 10px;
-    padding: 11px 12px;
+    gap: 9px;
+    padding: 10px 11px;
     border-radius: 16px;
     text-decoration: none;
     color: inherit;
     font: inherit;
     text-align: left;
     cursor: pointer;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    background: rgba(248, 250, 252, 0.9);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: #f8fafd;
     transition: transform 0.15s ease;
+    min-width: 0;
   }
 
   .ss-hl-icon.companion {

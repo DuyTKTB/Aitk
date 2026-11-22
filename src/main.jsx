@@ -19,7 +19,7 @@ import './admin.css';
 import './admin-dashboard.css';
 import './admin-upgrade.css';
 import './stats.css';
-import './study-sheet.css';
+import './styles/study-sheet.css';
 
 /* ============ CSS TRANG CHỦ ============ */
 import './nav-home-v2.css';

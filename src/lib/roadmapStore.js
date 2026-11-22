@@ -179,9 +179,11 @@ export function subscribeRoadmap(cb) {
   const onEvt = () => cb();
   const onStorage = (e) => { if (e.key && e.key.indexOf('cs-roadmap-v') === 0) cb(); };
   window.addEventListener(EVT, onEvt);
+  window.addEventListener('cs-cloud-sync-update', onEvt);
   window.addEventListener('storage', onStorage);
   return () => {
     window.removeEventListener(EVT, onEvt);
+    window.removeEventListener('cs-cloud-sync-update', onEvt);
     window.removeEventListener('storage', onStorage);
   };
 }

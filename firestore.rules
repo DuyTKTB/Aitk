@@ -645,7 +645,10 @@ service cloud.firestore {
     // 9. AI CHATS — Lịch sử hội thoại AI dự phòng
     // ===============================================================
     match /ai_chats/{chatId} {
-      allow read, write: if signedIn() && resource.data.user_id == request.auth.uid;
+      allow read, update, delete: if signedIn() && (
+        !exists(/databases/$(database)/documents/ai_chats/$(chatId)) ||
+        resource.data.user_id == request.auth.uid
+      );
       allow create: if signedIn() && request.resource.data.user_id == request.auth.uid;
     }
 

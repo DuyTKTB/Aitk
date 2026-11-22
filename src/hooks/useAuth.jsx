@@ -21,6 +21,7 @@ import { supabase } from '../lib/supabase.js';
 import { getTier, clearTierCache } from '../lib/tier.js';
 import { invalidateVipCache } from '../lib/vipService.js';
 import { saveUserProfile, syncUserProfileFromCloud } from '../lib/userProfileService.js';
+import { initCloudStudySyncForUser, stopCloudStudySync } from '../lib/cloudStudySync.js';
 import { canonicalizeEmail } from '../lib/authValidation.js';
 import { requestBrandedPasswordReset } from '../lib/emailOtp.js';
 import {
@@ -268,6 +269,9 @@ export function AuthProvider({ children }) {
             if (mountedRef.current) setProfileReady(true);
           });
 
+        // Kích hoạt đồng bộ toàn bộ dữ liệu học tập (Chuỗi ngày, XP, Tiến độ, Nguyện vọng, Lịch sử thi, Lịch sử hỏi...)
+        initCloudStudySyncForUser(u.uid);
+
         try {
           const t = await getTier(u.uid);
           if (mountedRef.current) setTier(t);
@@ -299,6 +303,7 @@ export function AuthProvider({ children }) {
           clearTierCache();
           invalidateVipCache();
         } catch {}
+        stopCloudStudySync();
         setUser(null);
         setIsLoggedIn(false);
         setProfileReady(false);
@@ -497,6 +502,7 @@ export function AuthProvider({ children }) {
   /* ============ LOGOUT ============ */
   const logout = useCallback(async () => {
     clearPostAuthRedirect();
+    stopCloudStudySync();
     try {
       localStorage.removeItem('cs-vip-status');
       localStorage.removeItem('cs-vip');

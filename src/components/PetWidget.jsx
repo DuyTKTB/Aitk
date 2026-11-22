@@ -104,6 +104,7 @@ export default function PetWidget() {
   const saveStoredSessions = (list) => {
     try {
       localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(list));
+      window.dispatchEvent(new CustomEvent('cs-companion-sessions-update', { detail: { uid } }));
     } catch (err) {
       console.warn('[ELEC AI] Save sessions error:', err);
     }
@@ -118,6 +119,16 @@ export default function PetWidget() {
     setSessions(loadStoredSessions());
     setActiveSessionId(null);
   }, [SESSIONS_STORAGE_KEY]);
+
+  useEffect(() => {
+    const onCloudSync = () => {
+      setSessions(loadStoredSessions());
+      setAspState(getUserAspirationsState(uid));
+      setWrongQuestions(getWrongQuestions(uid));
+    };
+    window.addEventListener('cs-cloud-sync-update', onCloudSync);
+    return () => window.removeEventListener('cs-cloud-sync-update', onCloudSync);
+  }, [uid, SESSIONS_STORAGE_KEY]);
 
   // Modal open state
   const [isOpen, setIsOpen] = useState(false);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CREDIT_PACKAGES,
   BANK_INFO,
@@ -349,9 +350,9 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
     return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div className="ns9-cr-backdrop" onClick={handleClose} role="dialog" aria-modal="true">
       <div className="ns9-cr-modal" onClick={(e) => e.stopPropagation()}>
         {/* Nút đóng */}
@@ -728,6 +729,7 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

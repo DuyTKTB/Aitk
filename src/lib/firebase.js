@@ -21,7 +21,7 @@ import {
 import {
   getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
   doc, setDoc, getDoc,
-  collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, limit,
+  collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, limit, onSnapshot,
   serverTimestamp, increment, arrayUnion, arrayRemove, writeBatch, Timestamp,
 } from 'firebase/firestore';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -56,11 +56,26 @@ const PROTECTED_LS_PREFIXES = [
   'cs-user-meta',
   'cs-vip',
   'cs-user-subscription:',
+  'cs-study-owner',
+  'cs-study-sync-meta',
   'cs-streak',
+  'cs-xp',
+  'cs-progress-v1',
+  'cs-quiz-stats',
+  'cs-wrong-',
+  'cs-srs',
+  'elec-aspirations-v2:',
+  'cs-aspirations-v1:',
+  'elec_exam_history_v1_',
+  'elec_fav_exams_v1_',
   'elec_exam_draft_',
   'cs-ai-chats:',
+  'cs-ai-chats-owner',
   'cs-ai-active:',
   'cs-ai-pinned:',
+  'cs-ai-bookmarks',
+  'cs-ai-deleted:',
+  'cs-elec-companion-sessions:',
   'cs-aes:',
 ];
 
@@ -449,6 +464,6 @@ export function translateAuthError(code) {
    thay vì từ 'firebase/firestore' trực tiếp (giảm số import path) */
 export {
   doc, setDoc, getDoc,
-  collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, limit,
+  collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, limit, onSnapshot,
   serverTimestamp, increment, arrayUnion, arrayRemove, writeBatch, Timestamp,
 };

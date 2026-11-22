@@ -206,29 +206,87 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
   const { subject } = useCurrentSubject();
   const pills = SUBJECT_PROMPT_PILLS[subject] || SUBJECT_PROMPT_PILLS.all;
 
-  // Lịch sử hỏi đáp gần đây (đọc từ companion sessions trong localStorage hoặc danh sách đề xuất chuẩn KHTN)
-  const [recentChats, setRecentChats] = useState(() => {
+  const inferSubjectTag = (text = '') => {
+    const t = String(text).toLowerCase();
+    if (/hóa|este|amin|lipit|peptit|pthh|kim loại|điện phân|axit|bazơ/.test(t)) return 'hoa';
+    if (/lý|lí|dao động|con lắc|rlc|sóng|mạch|điện|từ trường|nhiệt|hạt nhân/.test(t)) return 'ly';
+    if (/sinh|gen|adn|arn|men-đen|nhiễm sắc thể|tiêu hóa|hô hấp|tiến hóa/.test(t)) return 'sinh';
+    return 'khtn';
+  };
+
+  const buildRecentChats = (targetUid) => {
+    const items = [];
+    const seenTitle = new Set();
     try {
-      const raw = localStorage.getItem(`cs-elec-companion-sessions:${uid}`);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.slice(0, 3).map((s) => ({
-            id: s.id,
-            title: s.title || 'Câu hỏi luyện thi KHTN',
-            subject: (s.title?.toLowerCase().includes('hóa') || s.title?.toLowerCase().includes('este') || s.title?.toLowerCase().includes('pthh')) ? 'hoa' : (s.title?.toLowerCase().includes('lý') || s.title?.toLowerCase().includes('dao động') || s.title?.toLowerCase().includes('rlc')) ? 'ly' : (s.title?.toLowerCase().includes('sinh') || s.title?.toLowerCase().includes('gen') || s.title?.toLowerCase().includes('adn')) ? 'sinh' : 'khtn',
-            time: 'Gần đây',
-            prompt: s.messages?.[0]?.text || s.title,
-          }));
-        }
+      const compRaw = localStorage.getItem(`cs-elec-companion-sessions:${targetUid}`);
+      const compParsed = compRaw ? JSON.parse(compRaw) : [];
+      if (Array.isArray(compParsed)) {
+        compParsed.forEach((s) => {
+          const title = s?.title || 'Câu hỏi luyện thi KHTN';
+          if (seenTitle.has(title)) return;
+          seenTitle.add(title);
+          items.push({
+            id: `comp_${s.id}`,
+            title,
+            subject: inferSubjectTag(title),
+            updatedAt: Number(s.updatedAt) || Number(s.createdAt) || 0,
+            prompt: s.messages?.[0]?.text || title,
+          });
+        });
       }
     } catch { /* */ }
+
+    try {
+      const scopedRaw = targetUid ? localStorage.getItem(`cs-ai-chats:${targetUid}`) : null;
+      const aiParsed = scopedRaw ? JSON.parse(scopedRaw) : [];
+      if (Array.isArray(aiParsed)) {
+        aiParsed.forEach((c) => {
+          if (!c?.id || !c?.title || c.title === 'Trò chuyện mới') return;
+          const title = c.title;
+          if (seenTitle.has(title)) return;
+          seenTitle.add(title);
+          items.push({
+            id: `ai_${c.id}`,
+            chatId: c.id,
+            title,
+            subject: inferSubjectTag(`${title} ${c.messages?.[0]?.text || ''}`),
+            updatedAt: Number(c.updatedAt) || Number(c.createdAt) || 0,
+            prompt: c.messages?.[0]?.text || title,
+          });
+        });
+      }
+    } catch { /* */ }
+
+    if (items.length > 0) {
+      return items.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 3);
+    }
+
     return [
       { id: 'rc_1', title: 'Cân bằng PTHH Fe + HNO₃ loãng sinh NO', subject: 'hoa', time: 'Hôm nay', prompt: 'Cân bằng phản ứng Fe + HNO₃ loãng bằng phương pháp thăng bằng electron' },
       { id: 'rc_2', title: 'Dao động con lắc lò xo & đồ thị li độ', subject: 'ly', time: 'Hôm qua', prompt: 'Phương pháp giải đồ thị li độ - thời gian của con lắc lò xo' },
       { id: 'rc_3', title: 'Quy luật di truyền Men-đen & liên kết gen', subject: 'sinh', time: '2 ngày trước', prompt: 'Tính xác suất kiểu hình đời F2 trong quy luật phân li độc lập Men-đen' },
     ];
-  });
+  };
+
+  // Lịch sử hỏi đáp gần đây (đồng bộ từ Firestore qua companion sessions & #ai chats)
+  const [recentChats, setRecentChats] = useState(() => buildRecentChats(uid));
+
+  useEffect(() => {
+    const refresh = () => setRecentChats(buildRecentChats(uid));
+    refresh();
+    const onLs = (e) => {
+      const k = e?.detail;
+      if (!k || k === `cs-elec-companion-sessions:${uid}` || k === `cs-ai-chats:${uid}`) refresh();
+    };
+    window.addEventListener('cs-cloud-sync-update', refresh);
+    window.addEventListener('cs-companion-sessions-update', refresh);
+    window.addEventListener('cs-ls', onLs);
+    return () => {
+      window.removeEventListener('cs-cloud-sync-update', refresh);
+      window.removeEventListener('cs-companion-sessions-update', refresh);
+      window.removeEventListener('cs-ls', onLs);
+    };
+  }, [uid]);
 
   const submit = (e) => {
     e?.preventDefault();
@@ -237,6 +295,11 @@ function UnifiedAiCampusHero({ hello, name, activeAsp, onOpenWishHero }) {
   };
 
   const handleSelectRecentChat = (item) => {
+    if (item?.chatId) {
+      try { localStorage.setItem('cs-ai-active', JSON.stringify(item.chatId)); } catch {}
+      window.location.hash = 'ai';
+      return;
+    }
     if (item?.prompt) {
       setVal(item.prompt);
     }

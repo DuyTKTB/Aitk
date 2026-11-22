@@ -110,6 +110,8 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
             <img
               src="/img/elec/elec-cool.png"
               alt="Bé Elec"
+              width="38"
+              height="38"
               className="ss-head-mascot"
             />
             <div className="ss-head-title-wrap">
@@ -125,8 +127,8 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
         <div className="ss-content-scroll">
           {/* ----- 1. THẺ HỒ SƠ NGƯỜI DÙNG NHANH ----- */}
           <div className="ss-profile-card">
-            <div className="ss-avatar" style={{ '--av': '#2f6bff', background: 'transparent' }}>
-              <UserAvatar user={user} size={44} title={displayName} />
+            <div className="ss-avatar">
+              <UserAvatar user={user} size={42} title={displayName} />
             </div>
             <div className="ss-profile-meta">
               <div className="ss-profile-name-row">
@@ -152,7 +154,7 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
           <div className="ss-highlights-grid">
             <a href="#ai" className="ss-hl-card ss-hl-ai" onClick={onClose}>
               <div className="ss-hl-icon ai">
-                <IconRobot size={20} />
+                <IconRobot size={19} />
               </div>
               <div className="ss-hl-info">
                 <b>Trợ lý ELEC AI</b>
@@ -169,7 +171,7 @@ export default function StudySheet({ open, onClose, theme = 'dark', onToggleThem
               }}
             >
               <div className="ss-hl-icon companion">
-                <img src="/img/elec/elec-think.png" alt="" width="24" height="24" style={{ objectFit: 'contain' }} />
+                <IconCalendar size={19} />
               </div>
               <div className="ss-hl-info">
                 <b>Sổ tay &amp; Kế hoạch AI</b>

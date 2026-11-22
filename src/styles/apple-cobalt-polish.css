@@ -2441,4 +2441,14 @@ body:not(.on-landing) .sf-bot {
   section.wrap.tools-page .tools-tabs::-webkit-scrollbar {
     display: none !important;
   }
+
+  /* Pill lịch sử hỏi trên Trang chủ cuộn ngang rõ chữ, không bẹp thành 3 chữ cái */
+  .ns9-home-wrap .ns9-uh-recent-item {
+    flex: 0 0 auto !important;
+    max-width: 220px !important;
+  }
+
+  .sm-backdrop {
+    z-index: 100025 !important;
+  }
 }

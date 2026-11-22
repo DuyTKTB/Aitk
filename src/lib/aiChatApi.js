@@ -23,6 +23,13 @@ import {
   limit,
   writeBatch,
 } from './firebase.js';
+import {
+  getDeletedChatTombstones,
+  isChatDeletedByTombstone,
+  recordLocalChatDeleted,
+  recordLocalAllChatsCleared,
+  schedulePushCloudStudyState,
+} from './cloudStudySync.js';
 
 const COLLECTION = 'ai_chats';
 const MAX_CHATS = 100;
@@ -183,11 +190,25 @@ export function mergeChatsById(serverChats = [], localChats = []) {
 }
 
 /**
- * Lấy danh sách chat của user từ Firebase Firestore `ai_chats` (mới nhất trước).
+ * Lấy danh sách chat của user từ Firebase Firestore `ai_chats` + fallback users/{uid}.studyState.aiChatsBackup.
  */
 export async function fetchChats(userId) {
   if (!userId || !canSyncFirestore(userId)) return [];
   const uid = activeFirebaseUid(userId);
+  const byId = new Map();
+  const tombstones = getDeletedChatTombstones(uid);
+
+  const ingest = (raw) => {
+    if (!raw || !raw.id) return;
+    if (isChatDeletedByTombstone(raw, tombstones)) return;
+    const prev = byId.get(String(raw.id));
+    const curUpd = Number(raw.updated_at || raw.updatedAt || raw.created_at || 0);
+    const prevUpd = prev ? Number(prev.updated_at || prev.updatedAt || prev.created_at || 0) : -1;
+    if (!prev || curUpd > prevUpd || (curUpd === prevUpd && (raw.messages?.length || 0) >= (prev.messages?.length || 0))) {
+      byId.set(String(raw.id), raw);
+    }
+  };
+
   try {
     const q = query(
       collection(db, COLLECTION),
@@ -195,11 +216,10 @@ export async function fetchChats(userId) {
       limit(MAX_CHATS + 10)
     );
     const snap = await getDocs(q);
-    const rows = [];
     snap.forEach((docSnap) => {
       const d = docSnap.data() || {};
       if (d.kind === 'teacher_studio' || d.kind === 'teacher_floating') return;
-      rows.push({
+      ingest({
         id: d.chat_id || docSnap.id,
         title: d.title || 'Trò chuyện mới',
         messages: Array.isArray(d.messages) ? d.messages : [],
@@ -208,12 +228,44 @@ export async function fetchChats(userId) {
         updated_at: d.updated_at || d.created_at || Date.now(),
       });
     });
-    rows.sort((a, b) => Number(b.updated_at || 0) - Number(a.updated_at || 0));
-    return rows.slice(0, MAX_CHATS);
   } catch (err) {
     console.warn('[aiChatApi] fetchChats Firestore error:', err?.message || err);
-    return [];
   }
+
+  // Fallback / bổ sung từ users/{uid}.studyState (nếu ai_chats rules chưa deploy hoặc có tombstone mới hơn)
+  try {
+    const uSnap = await getDoc(doc(db, 'users', uid));
+    if (uSnap.exists()) {
+      const st = uSnap.data()?.studyState;
+      const cloudTomb = {
+        ids: { ...(tombstones.ids || {}), ...(st?.aiDeletedIds || {}) },
+        clearAllAt: Math.max(Number(tombstones.clearAllAt) || 0, Number(st?.aiClearAllAt) || 0),
+      };
+      if (Array.isArray(st?.aiChatsBackup)) {
+        st.aiChatsBackup.forEach((b) => {
+          if (!b || !b.id) return;
+          ingest({
+            id: b.id,
+            title: b.title || 'Trò chuyện mới',
+            messages: Array.isArray(b.messages) ? b.messages : [],
+            pinned: Boolean(b.pinned),
+            created_at: b.createdAt || Date.now(),
+            updated_at: b.updatedAt || b.createdAt || Date.now(),
+          });
+        });
+      }
+      // Lọc lại một lần nữa theo tombstone mới nhất từ server
+      for (const [id, ch] of byId.entries()) {
+        if (isChatDeletedByTombstone(ch, cloudTomb)) {
+          byId.delete(id);
+        }
+      }
+    }
+  } catch { /* ignore */ }
+
+  const rows = Array.from(byId.values());
+  rows.sort((a, b) => Number(b.updated_at || 0) - Number(a.updated_at || 0));
+  return rows.slice(0, MAX_CHATS);
 }
 
 /**
@@ -237,9 +289,11 @@ export async function createChat(userId, chat) {
 
   try {
     await setDoc(doc(db, COLLECTION, docId), payload, { merge: true });
+    schedulePushCloudStudyState(uid, 900);
     return payload;
   } catch (err) {
     console.warn('[aiChatApi] createChat Firestore error:', err?.message || err);
+    schedulePushCloudStudyState(uid, 500);
     return null;
   }
 }
@@ -265,20 +319,23 @@ export async function updateChat(chatId, updates = {}) {
 
   try {
     await setDoc(doc(db, COLLECTION, docId), sanitizeForFirestore(patch), { merge: true });
+    schedulePushCloudStudyState(uid, 900);
     return patch;
   } catch (err) {
     console.warn('[aiChatApi] updateChat Firestore error:', err?.message || err);
+    schedulePushCloudStudyState(uid, 500);
     return null;
   }
 }
 
 /**
- * Xóa 1 đoạn chat trên Firestore.
+ * Xóa 1 đoạn chat trên Firestore + ghi tombstone để thiết bị khác không hồi sinh.
  */
 export async function deleteChat(chatId, userId = '') {
   if (!chatId) return;
   const uid = activeFirebaseUid(userId);
   if (!uid || !db) return;
+  recordLocalChatDeleted(uid, chatId);
   try {
     await deleteDoc(doc(db, COLLECTION, chatDocId(uid, chatId)));
   } catch { /* ignore */ }
@@ -290,6 +347,7 @@ export async function deleteChat(chatId, userId = '') {
 export async function deleteAllChats(userId) {
   if (!userId || !canSyncFirestore(userId)) return;
   const uid = activeFirebaseUid(userId);
+  recordLocalAllChatsCleared(uid);
   try {
     const q = query(collection(db, COLLECTION), where('user_id', '==', uid));
     const snap = await getDocs(q);
@@ -413,15 +471,19 @@ export async function clearTeacherStudioState(userId) {
  * Sync debounced — gọi khi có thay đổi.
  */
 const syncTimers = new Map();
+const pendingSyncPayloads = new Map();
 
-export function debouncedSync(chatId, updates, delay = 1200) {
+export function debouncedSync(chatId, updates, delay = 1000) {
   const existing = syncTimers.get(chatId);
   if (existing) clearTimeout(existing);
+  pendingSyncPayloads.set(chatId, updates);
 
   const timer = setTimeout(async () => {
     syncTimers.delete(chatId);
+    const payload = pendingSyncPayloads.get(chatId) || updates;
+    pendingSyncPayloads.delete(chatId);
     try {
-      await updateChat(chatId, updates);
+      await updateChat(chatId, payload);
     } catch { /* ignore */ }
   }, delay);
 
@@ -429,9 +491,22 @@ export function debouncedSync(chatId, updates, delay = 1200) {
 }
 
 /**
- * Cancel tất cả debounced timers (dùng khi unmount).
+ * Đẩy ngay mọi thay đổi đang chờ (dùng khi chuyển tab/unmount/đóng trang).
+ */
+export function flushPendingSyncs() {
+  for (const timer of syncTimers.values()) clearTimeout(timer);
+  syncTimers.clear();
+  for (const [chatId, payload] of pendingSyncPayloads.entries()) {
+    updateChat(chatId, payload).catch(() => {});
+  }
+  pendingSyncPayloads.clear();
+}
+
+/**
+ * Cancel tất cả debounced timers (dùng khi đổi user).
  */
 export function cancelAllSyncs() {
   for (const timer of syncTimers.values()) clearTimeout(timer);
   syncTimers.clear();
+  pendingSyncPayloads.clear();
 }

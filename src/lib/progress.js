@@ -31,10 +31,22 @@ function write(next) {
   window.dispatchEvent(new Event(EVT));
 }
 const subscribe = (cb) => {
-  const onStorage = (e) => { if (e.key === KEY) { cache = { ...DEFAULT, ...readJSON(KEY, {}) }; cb(); } };
+  const reload = () => {
+    cache = { ...DEFAULT, ...readJSON(KEY, {}) };
+    cb();
+  };
+  const onStorage = (e) => { if (e.key === KEY) reload(); };
+  const onCsLs = (e) => { if (e?.detail === KEY) reload(); };
   window.addEventListener(EVT, cb);
+  window.addEventListener('cs-cloud-sync-update', reload);
+  window.addEventListener('cs-ls', onCsLs);
   window.addEventListener('storage', onStorage);
-  return () => { window.removeEventListener(EVT, cb); window.removeEventListener('storage', onStorage); };
+  return () => {
+    window.removeEventListener(EVT, cb);
+    window.removeEventListener('cs-cloud-sync-update', reload);
+    window.removeEventListener('cs-ls', onCsLs);
+    window.removeEventListener('storage', onStorage);
+  };
 };
 
 /** Gọi mỗi khi người học làm xong MỘT việc (1 câu quiz, 1 thẻ ôn, 1 phương trình…).

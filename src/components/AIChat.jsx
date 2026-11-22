@@ -17,8 +17,15 @@ import {
   migrateLocalChats,
   mergeChatsById,
   debouncedSync,
+  flushPendingSyncs,
   cancelAllSyncs,
 } from '../lib/aiChatApi.js';
+import {
+  getDeletedChatTombstones,
+  isChatDeletedByTombstone,
+  schedulePushCloudStudyState,
+  CLOUD_SYNC_EVENT,
+} from '../lib/cloudStudySync.js';
 import AIMark from './AIMark.jsx';
 import UserAvatarLogo from './UserAvatar.jsx';
 import { getQuota, canSend, consumeQuota } from '../lib/quota.js';
@@ -941,10 +948,13 @@ export default function AIChat({ onExit }) {
     }
   }, [messages, loading, streaming]);
 
-  /* SYNC CHAT THEO TÀI KHOẢN FIREBASE UID LÊN FIRESTORE (ai_chats) */
+  const syncedAtMapRef = useRef({});
+
+  /* SYNC CHAT THEO TÀI KHOẢN FIREBASE UID LÊN FIRESTORE (ai_chats + tombstones) */
   useEffect(() => {
     if (!uid) {
       setSynced(true);
+      syncedAtMapRef.current = {};
       return undefined;
     }
 
@@ -952,16 +962,22 @@ export default function AIChat({ onExit }) {
     setSynced(false);
 
     const readScopedLocalChats = (targetUid) => {
+      const tombstones = getDeletedChatTombstones(targetUid);
       try {
         const scoped = localStorage.getItem(`cs-ai-chats:${targetUid}`);
         if (scoped) {
           const parsed = JSON.parse(scoped);
-          if (Array.isArray(parsed)) return parsed;
+          if (Array.isArray(parsed)) {
+            return parsed.filter((c) => !isChatDeletedByTombstone(c, tombstones));
+          }
         }
         const owner = localStorage.getItem('cs-ai-chats-owner');
-        if (!owner || owner === targetUid) {
+        // Chỉ lấy từ khóa cũ `cs-ai-chats` nếu đúng tài khoản sở hữu (tránh rò rỉ lịch sử khách/máy khác)
+        if (owner === targetUid) {
           const legacy = JSON.parse(localStorage.getItem('cs-ai-chats') || '[]');
-          if (Array.isArray(legacy)) return legacy;
+          if (Array.isArray(legacy)) {
+            return legacy.filter((c) => !isChatDeletedByTombstone(c, tombstones));
+          }
         }
       } catch { /* ignore */ }
       return [];
@@ -971,47 +987,64 @@ export default function AIChat({ onExit }) {
     const prevOwner = (() => {
       try { return localStorage.getItem('cs-ai-chats-owner') || ''; } catch { return ''; }
     })();
-    if (prevOwner && prevOwner !== uid) {
+    if (prevOwner !== uid) {
       setChats(localForUid);
       setActiveId(localForUid[0]?.id || null);
       setPinnedIds([]);
     }
     try { localStorage.setItem('cs-ai-chats-owner', uid); } catch { /* ignore */ }
 
-    (async () => {
+    const runPullSync = async () => {
       try {
         const serverChats = await fetchChatsServer(uid);
         if (cancelled) return;
 
-        const mapped = serverChats.map((c) => ({
-          id: c.id,
-          title: c.title || 'Trò chuyện mới',
-          messages: Array.isArray(c.messages) ? c.messages : [],
-          createdAt: Number(c.created_at) || Date.now(),
-          updatedAt: Number(c.updated_at) || Date.now(),
-          pinned: Boolean(c.pinned),
-        }));
+        const tombstones = getDeletedChatTombstones(uid);
+        const mapped = serverChats
+          .map((c) => ({
+            id: c.id,
+            title: c.title || 'Trò chuyện mới',
+            messages: Array.isArray(c.messages) ? c.messages : [],
+            createdAt: Number(c.created_at) || Date.now(),
+            updatedAt: Number(c.updated_at) || Date.now(),
+            pinned: Boolean(c.pinned),
+          }))
+          .filter((c) => !isChatDeletedByTombstone(c, tombstones));
 
-        const merged = mergeChatsById(mapped, localForUid);
-        const serverIds = new Set(mapped.map((m) => m.id));
-        const localOnly = merged.filter((c) => !serverIds.has(c.id));
+        const serverById = new Map(mapped.map((m) => [m.id, m]));
+        mapped.forEach((m) => {
+          syncedAtMapRef.current[m.id] = Math.max(syncedAtMapRef.current[m.id] || 0, Number(m.updatedAt) || 0);
+        });
 
-        if (merged.length > 0) {
-          setChats(merged);
-          try {
-            localStorage.setItem(`cs-ai-chats:${uid}`, JSON.stringify(merged.slice(0, 60)));
-          } catch { /* ignore */ }
-          const nextPinned = mapped.filter((c) => c.pinned).map((c) => c.id);
-          if (nextPinned.length > 0) {
-            setPinnedIds((prev) => Array.from(new Set([...(prev || []), ...nextPinned])));
-          }
-          if (activeId && !merged.some((c) => c.id === activeId)) {
-            setActiveId(merged[0]?.id || null);
-          }
+        const curLocal = readScopedLocalChats(uid);
+        const merged = mergeChatsById(mapped, curLocal).filter(
+          (c) => !isChatDeletedByTombstone(c, tombstones)
+        );
+        const needsUpload = merged.filter((c) => {
+          const srv = serverById.get(c.id);
+          return !srv || (Number(c.updatedAt) || 0) > (Number(srv.updatedAt) || 0);
+        });
+
+        setChats(merged);
+        try {
+          localStorage.setItem(`cs-ai-chats:${uid}`, JSON.stringify(merged.slice(0, 60)));
+        } catch { /* ignore */ }
+
+        const nextPinned = mapped.filter((c) => c.pinned).map((c) => c.id);
+        if (nextPinned.length > 0) {
+          setPinnedIds((prev) => Array.from(new Set([...(prev || []), ...nextPinned])));
+        }
+        if (merged.length === 0) {
+          setActiveId(null);
+        } else if (activeId && !merged.some((c) => c.id === activeId)) {
+          setActiveId(merged[0]?.id || null);
         }
 
-        if (localOnly.length > 0) {
-          migrateLocalChats(uid, localOnly).catch(() => {});
+        if (needsUpload.length > 0) {
+          migrateLocalChats(uid, needsUpload).catch(() => {});
+          needsUpload.forEach((c) => {
+            syncedAtMapRef.current[c.id] = Math.max(syncedAtMapRef.current[c.id] || 0, Number(c.updatedAt) || 0);
+          });
         }
 
         if (!cancelled) setSynced(true);
@@ -1019,35 +1052,67 @@ export default function AIChat({ onExit }) {
         console.warn('[AIChat] Không load được chat từ server:', e?.message || e);
         if (!cancelled) setSynced(true);
       }
-    })();
+    };
+
+    runPullSync();
+
+    // Khi đổi từ thiết bị khác quay lại tab hoặc nhận tín hiệu sync, kéo lại ngay
+    const onVisiblePull = () => {
+      if (document.visibilityState === 'visible') {
+        runPullSync();
+      } else if (document.visibilityState === 'hidden') {
+        flushPendingSyncs();
+      }
+    };
+    const onCloudSync = (e) => {
+      if (e?.detail?.uid && e.detail.uid !== uid) return;
+      runPullSync();
+    };
+    const onPageHide = () => flushPendingSyncs();
+
+    document.addEventListener('visibilitychange', onVisiblePull);
+    window.addEventListener(CLOUD_SYNC_EVENT, onCloudSync);
+    window.addEventListener('pagehide', onPageHide);
 
     return () => {
       cancelled = true;
+      flushPendingSyncs();
       cancelAllSyncs();
+      document.removeEventListener('visibilitychange', onVisiblePull);
+      window.removeEventListener(CLOUD_SYNC_EVENT, onCloudSync);
+      window.removeEventListener('pagehide', onPageHide);
     };
   }, [uid]);
 
   useEffect(() => {
     if (!uid || !synced) return undefined;
     const timer = setTimeout(() => {
-      const now = Date.now();
       const allChats = chatsRef.current || [];
       try {
         localStorage.setItem('cs-ai-chats-owner', uid);
         localStorage.setItem(`cs-ai-chats:${uid}`, JSON.stringify(allChats.slice(0, 60)));
       } catch { /* ignore */ }
-      const recent = allChats.filter((c) => now - (c.updatedAt || 0) < 45000);
-      recent.forEach((c) => {
-        debouncedSync(c.id, {
-          userId: uid,
-          title: c.title,
-          messages: slimServerMessages(c.messages),
-          pinned: pinnedIds.includes(c.id),
-        });
+      allChats.forEach((c) => {
+        const curUpd = Number(c.updatedAt) || 0;
+        const lastSyncedUpd = syncedAtMapRef.current[c.id] || 0;
+        if (curUpd > lastSyncedUpd) {
+          syncedAtMapRef.current[c.id] = curUpd;
+          debouncedSync(c.id, {
+            userId: uid,
+            title: c.title,
+            messages: slimServerMessages(c.messages),
+            pinned: pinnedIds.includes(c.id),
+          });
+        }
       });
-    }, 800);
+    }, 650);
     return () => clearTimeout(timer);
   }, [chats, pinnedIds, uid, synced]);
+
+  useEffect(() => {
+    if (!uid || !synced) return;
+    schedulePushCloudStudyState(uid, 900);
+  }, [bookmarks, grade, mode, deepThink, uid, synced]);
 
   /* Auto TTS */
   useEffect(() => {
