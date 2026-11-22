@@ -15,6 +15,7 @@ import {
   deleteChat as deleteChatServer,
   deleteAllChats as deleteAllChatsServer,
   migrateLocalChats,
+  mergeChatsById,
   debouncedSync,
   cancelAllSyncs,
 } from '../lib/aiChatApi.js';
@@ -940,44 +941,82 @@ export default function AIChat({ onExit }) {
     }
   }, [messages, loading, streaming]);
 
-  /* SYNC CHAT LÊN SERVER */
+  /* SYNC CHAT THEO TÀI KHOẢN FIREBASE UID LÊN FIRESTORE (ai_chats) */
   useEffect(() => {
-    if (!uid) { setSynced(true); return undefined; }
+    if (!uid) {
+      setSynced(true);
+      return undefined;
+    }
 
     let cancelled = false;
+    setSynced(false);
+
+    const readScopedLocalChats = (targetUid) => {
+      try {
+        const scoped = localStorage.getItem(`cs-ai-chats:${targetUid}`);
+        if (scoped) {
+          const parsed = JSON.parse(scoped);
+          if (Array.isArray(parsed)) return parsed;
+        }
+        const owner = localStorage.getItem('cs-ai-chats-owner');
+        if (!owner || owner === targetUid) {
+          const legacy = JSON.parse(localStorage.getItem('cs-ai-chats') || '[]');
+          if (Array.isArray(legacy)) return legacy;
+        }
+      } catch { /* ignore */ }
+      return [];
+    };
+
+    const localForUid = readScopedLocalChats(uid);
+    const prevOwner = (() => {
+      try { return localStorage.getItem('cs-ai-chats-owner') || ''; } catch { return ''; }
+    })();
+    if (prevOwner && prevOwner !== uid) {
+      setChats(localForUid);
+      setActiveId(localForUid[0]?.id || null);
+      setPinnedIds([]);
+    }
+    try { localStorage.setItem('cs-ai-chats-owner', uid); } catch { /* ignore */ }
+
     (async () => {
       try {
         const serverChats = await fetchChatsServer(uid);
         if (cancelled) return;
 
-        if (serverChats.length > 0) {
-          const mapped = serverChats.map((c) => ({
-            id: c.id,
-            title: c.title,
-            messages: c.messages || [],
-            createdAt: new Date(c.created_at).getTime(),
-            updatedAt: new Date(c.updated_at).getTime(),
-          }));
-          setChats(mapped);
-          setPinnedIds(serverChats.filter((c) => c.pinned).map((c) => c.id));
+        const mapped = serverChats.map((c) => ({
+          id: c.id,
+          title: c.title || 'Trò chuyện mới',
+          messages: Array.isArray(c.messages) ? c.messages : [],
+          createdAt: Number(c.created_at) || Date.now(),
+          updatedAt: Number(c.updated_at) || Date.now(),
+          pinned: Boolean(c.pinned),
+        }));
 
-          if (activeId && !mapped.some((c) => c.id === activeId)) {
-            setActiveId(mapped[0]?.id || null);
+        const merged = mergeChatsById(mapped, localForUid);
+        const serverIds = new Set(mapped.map((m) => m.id));
+        const localOnly = merged.filter((c) => !serverIds.has(c.id));
+
+        if (merged.length > 0) {
+          setChats(merged);
+          try {
+            localStorage.setItem(`cs-ai-chats:${uid}`, JSON.stringify(merged.slice(0, 60)));
+          } catch { /* ignore */ }
+          const nextPinned = mapped.filter((c) => c.pinned).map((c) => c.id);
+          if (nextPinned.length > 0) {
+            setPinnedIds((prev) => Array.from(new Set([...(prev || []), ...nextPinned])));
           }
-        } else {
-          const local = chatsRef.current || [];
-          if (local.length > 0) {
-            try {
-              await migrateLocalChats(uid, local);
-            } catch (e) {
-              console.warn('[AIChat] Migrate fail:', e.message);
-            }
+          if (activeId && !merged.some((c) => c.id === activeId)) {
+            setActiveId(merged[0]?.id || null);
           }
+        }
+
+        if (localOnly.length > 0) {
+          migrateLocalChats(uid, localOnly).catch(() => {});
         }
 
         if (!cancelled) setSynced(true);
       } catch (e) {
-        console.warn('[AIChat] Không load được chat từ server:', e.message);
+        console.warn('[AIChat] Không load được chat từ server:', e?.message || e);
         if (!cancelled) setSynced(true);
       }
     })();
@@ -992,11 +1031,15 @@ export default function AIChat({ onExit }) {
     if (!uid || !synced) return undefined;
     const timer = setTimeout(() => {
       const now = Date.now();
-      const recent = (chatsRef.current || []).filter(
-        (c) => now - (c.updatedAt || 0) < 30000
-      );
+      const allChats = chatsRef.current || [];
+      try {
+        localStorage.setItem('cs-ai-chats-owner', uid);
+        localStorage.setItem(`cs-ai-chats:${uid}`, JSON.stringify(allChats.slice(0, 60)));
+      } catch { /* ignore */ }
+      const recent = allChats.filter((c) => now - (c.updatedAt || 0) < 45000);
       recent.forEach((c) => {
         debouncedSync(c.id, {
+          userId: uid,
           title: c.title,
           messages: slimServerMessages(c.messages),
           pinned: pinnedIds.includes(c.id),
@@ -1213,7 +1256,7 @@ export default function AIChat({ onExit }) {
     e?.stopPropagation();
     setPinnedIds((prev) => {
       const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      updateChatServer(id, { pinned: next.includes(id) }).catch(() => {});
+      updateChatServer(id, { pinned: next.includes(id), userId: uid }).catch(() => {});
       return next;
     });
   }, [setPinnedIds]);
@@ -1523,7 +1566,7 @@ export default function AIChat({ onExit }) {
     const id = renamingId;
     if (t && id) {
       setChats((prev) => prev.map((c) => (c.id === id ? { ...c, title: t.slice(0, 60) } : c)));
-      updateChatServer(id, { title: t.slice(0, 60) }).catch(() => {});
+      updateChatServer(id, { title: t.slice(0, 60), userId: uid }).catch(() => {});
     }
     setRenamingId(null);
   };
@@ -1588,7 +1631,7 @@ export default function AIChat({ onExit }) {
         setChats(rest);
         if (activeId === id) setActiveId(rest[0]?.id || null);
         setPinnedIds((prev) => prev.filter((x) => x !== id));
-        deleteChatServer(id).catch((err) => console.warn('[AIChat] deleteChat fail:', err.message));
+        deleteChatServer(id, uid).catch((err) => console.warn('[AIChat] deleteChat fail:', err.message));
       },
     });
   };
@@ -1605,6 +1648,7 @@ export default function AIChat({ onExit }) {
         tts.stop();
         setSpeakingId(null);
         if (uid) {
+          try { localStorage.removeItem(`cs-ai-chats:${uid}`); } catch { /* ignore */ }
           deleteAllChatsServer(uid).catch((err) => console.warn('[AIChat] deleteAll fail:', err.message));
         }
       },

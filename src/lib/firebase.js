@@ -58,6 +58,10 @@ const PROTECTED_LS_PREFIXES = [
   'cs-user-subscription:',
   'cs-streak',
   'elec_exam_draft_',
+  'cs-ai-chats:',
+  'cs-ai-active:',
+  'cs-ai-pinned:',
+  'cs-aes:',
 ];
 
 function isProtectedStorageKey(k) {
@@ -444,6 +448,7 @@ export function translateAuthError(code) {
 /* Re-export Firestore functions — để các module khác import từ firebase.js
    thay vì từ 'firebase/firestore' trực tiếp (giảm số import path) */
 export {
+  doc, setDoc, getDoc,
   collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, limit,
   serverTimestamp, increment, arrayUnion, arrayRemove, writeBatch, Timestamp,
 };

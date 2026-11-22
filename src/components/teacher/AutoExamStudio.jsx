@@ -44,6 +44,11 @@ import { readFile, validateFiles, fmtSize } from '../../lib/fileReader.js';
 import { exportToWord, exportBundleZip } from '../../lib/examExport.js';
 import { generateShuffledVersions } from '../../lib/examShuffle.js';
 import sound from '../../lib/gameSound.js';
+import {
+  loadTeacherStudioState,
+  saveTeacherStudioState,
+  clearTeacherStudioState,
+} from '../../lib/aiChatApi.js';
 import ExamPreviewSimulator from './ExamPreviewSimulator.jsx';
 import AIMark from '../AIMark.jsx';
 import { IconAlert } from '../Icons.jsx';
@@ -599,16 +604,34 @@ export default function AutoExamStudio({
     showToast(`Đã nạp đề ôn bù điểm yếu: "${topicsStr}"`, 'info');
   }, [initialPreset]);
 
-  /* ============ LƯU / LOAD LỊCH SỬ CHAT ============ */
+  /* ============ LƯU / LOAD LỊCH SỬ CHAT + ĐỒNG BỘ FIRESTORE THEO TÀI KHOẢN ============ */
+  const uid = user?.uid || '';
+  const studioSyncedRef = useRef(false);
+
   useEffect(() => {
+    let cancelled = false;
+    studioSyncedRef.current = false;
+
+    const scopedKey = (k) => (uid ? `cs-aes:${uid}:${k}` : `aes_${k}`);
+    const readWithLegacy = (k) => {
+      if (uid) {
+        const scopedVal = localStorage.getItem(scopedKey(k));
+        if (scopedVal !== null) return scopedVal;
+        const owner = localStorage.getItem('aes_owner_uid');
+        if (!owner || owner === uid) return localStorage.getItem(`aes_${k}`);
+        return null;
+      }
+      return localStorage.getItem(`aes_${k}`);
+    };
+
     try {
-      const savedChat = localStorage.getItem('aes_chat_history');
-      const savedMatrix = localStorage.getItem('aes_matrix');
-      const savedQuestions = localStorage.getItem('aes_questions');
-      const savedTopic = localStorage.getItem('aes_topic');
-      const savedStep = localStorage.getItem('aes_step');
-      const savedSlots = localStorage.getItem('aes_slots');
-      const savedSubject = localStorage.getItem('aes_subject');
+      const savedChat = readWithLegacy('chat_history');
+      const savedMatrix = readWithLegacy('matrix');
+      const savedQuestions = readWithLegacy('questions');
+      const savedTopic = readWithLegacy('topic');
+      const savedStep = readWithLegacy('step');
+      const savedSlots = readWithLegacy('slots');
+      const savedSubject = readWithLegacy('subject');
 
       if (!initialClass?.subject && savedSubject && THPT_SUBJECTS.includes(savedSubject)) {
         setSelectedSubject(savedSubject);
@@ -627,37 +650,77 @@ export default function AutoExamStudio({
       if (savedTopic) setTopic(savedTopic);
       if (savedStep) setStep(Number(savedStep) || 0);
       if (savedSlots) setSlots(JSON.parse(savedSlots));
+      if (uid) localStorage.setItem('aes_owner_uid', uid);
     } catch (e) {
       console.warn('[AutoExamStudio] Load lịch sử fail:', e);
     }
-  }, []);
 
-  // Save khi có thay đổi (debounced 800ms)
+    if (!uid) {
+      studioSyncedRef.current = true;
+      return undefined;
+    }
+
+    (async () => {
+      try {
+        const cloud = await loadTeacherStudioState(uid);
+        if (cancelled) return;
+        const localUpdatedAt = Number(localStorage.getItem(`cs-aes:${uid}:updated_at`) || 0);
+        if (cloud && (cloud.updatedAt > localUpdatedAt || (!localStorage.getItem(`cs-aes:${uid}:chat_history`) && (cloud.chatMessages.length || cloud.matrixData || cloud.questions.length)))) {
+          if (cloud.selectedSubject && THPT_SUBJECTS.includes(cloud.selectedSubject)) setSelectedSubject(cloud.selectedSubject);
+          if (cloud.chatMessages?.length) setChatMessages(cloud.chatMessages.slice(-50));
+          if (cloud.matrixData) setMatrixData(cloud.matrixData);
+          if (cloud.questions?.length) setQuestions(cloud.questions);
+          if (cloud.topic) setTopic(cloud.topic);
+          if (cloud.step) setStep(cloud.step);
+          if (cloud.slots) setSlots(cloud.slots);
+        }
+      } catch { /* ignore */ } finally {
+        if (!cancelled) studioSyncedRef.current = true;
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [uid]);
+
+  // Save khi có thay đổi (localStorage theo uid + Firestore ai_chats)
   useEffect(() => {
     if (chatMessages.length === 0 && !matrixData && questions.length === 0) return;
     const timer = setTimeout(() => {
+      const now = Date.now();
+      const setScoped = (k, val) => {
+        localStorage.setItem(uid ? `cs-aes:${uid}:${k}` : `aes_${k}`, val);
+      };
       try {
-        if (chatMessages.length > 0) {
-          localStorage.setItem('aes_chat_history', JSON.stringify(chatMessages.slice(-50)));
-        }
-        if (matrixData) {
-          localStorage.setItem('aes_matrix', JSON.stringify(matrixData));
-        }
-        if (questions.length > 0) {
-          localStorage.setItem('aes_questions', JSON.stringify(questions));
-        }
-        if (topic) localStorage.setItem('aes_topic', topic);
-        if (selectedSubject) localStorage.setItem('aes_subject', selectedSubject);
-        if (step > 0) localStorage.setItem('aes_step', String(step));
-        if (slots.grade || slots.count || slots.duration) {
-          localStorage.setItem('aes_slots', JSON.stringify(slots));
+        if (chatMessages.length > 0) setScoped('chat_history', JSON.stringify(chatMessages.slice(-50)));
+        if (matrixData) setScoped('matrix', JSON.stringify(matrixData));
+        if (questions.length > 0) setScoped('questions', JSON.stringify(questions));
+        if (topic) setScoped('topic', topic);
+        if (selectedSubject) setScoped('subject', selectedSubject);
+        if (step > 0) setScoped('step', String(step));
+        if (slots.grade || slots.count || slots.duration) setScoped('slots', JSON.stringify(slots));
+        if (uid) {
+          localStorage.setItem('aes_owner_uid', uid);
+          localStorage.setItem(`cs-aes:${uid}:updated_at`, String(now));
         }
       } catch (e) {
         console.warn('[AutoExamStudio] Save lịch sử fail:', e);
       }
-    }, 800);
+
+      if (uid && studioSyncedRef.current) {
+        saveTeacherStudioState(uid, {
+          chatMessages,
+          matrixData,
+          questions,
+          topic,
+          selectedSubject,
+          step,
+          slots,
+          updatedAt: now,
+        }).catch(() => {});
+      }
+    }, 900);
     return () => clearTimeout(timer);
-  }, [chatMessages, matrixData, questions, topic, selectedSubject, step, slots]);
+  }, [chatMessages, matrixData, questions, topic, selectedSubject, step, slots, uid]);
 
   /* ============ DRAGGABLE RESIZER ============ */
   const handleSplitPointerDown = (e) => {
@@ -1748,14 +1811,14 @@ export default function AutoExamStudio({
     setSlots({ grade: null, count: null, duration: null });
     notesRef.current = '';
     try {
-      localStorage.removeItem('aes_chat_history');
-      localStorage.removeItem('aes_matrix');
-      localStorage.removeItem('aes_questions');
-      localStorage.removeItem('aes_topic');
-      localStorage.removeItem('aes_subject');
-      localStorage.removeItem('aes_step');
-      localStorage.removeItem('aes_slots');
-      localStorage.removeItem('aes_draft');
+      ['chat_history', 'matrix', 'questions', 'topic', 'subject', 'step', 'slots', 'draft'].forEach((k) => {
+        localStorage.removeItem(`aes_${k}`);
+        if (uid) localStorage.removeItem(`cs-aes:${uid}:${k}`);
+      });
+      if (uid) {
+        localStorage.removeItem(`cs-aes:${uid}:updated_at`);
+        clearTeacherStudioState(uid).catch(() => {});
+      }
     } catch { /* ignore */ }
     sound.ding();
     showToast('Đã xóa lịch sử. Sẵn sàng tạo đề mới!', 'success');

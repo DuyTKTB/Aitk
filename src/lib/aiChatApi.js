@@ -1,30 +1,54 @@
-import { supabase } from './supabase.js';
+/* ============================================================
+   aiChatApi.js — Đồng bộ lịch sử chat AI & Teacher Studio lên Firebase Firestore
+   ------------------------------------------------------------
+   • Dùng collection `ai_chats` trên Firestore (khớp firestore.rules:
+     resource.data.user_id == request.auth.uid) thay cho Supabase vốn luôn bị
+     tắt do người dùng đăng nhập bằng Firebase Auth.
+   • Tự động dọn dữ liệu thừa (ảnh base64, text quá dài) & lọc `undefined`
+     để không bao giờ vượt giới hạn 1MB/document của Firestore.
+   • Hợp nhất thông minh dữ liệu server + cục bộ (`mergeChatsById`) khi
+     đăng nhập lại hoặc chuyển thiết bị cùng 1 tài khoản.
+   ============================================================ */
+import {
+  db,
+  auth,
+  doc,
+  setDoc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  deleteDoc,
+  limit,
+  writeBatch,
+} from './firebase.js';
 
-const TABLE = 'ai_chats';
+const COLLECTION = 'ai_chats';
 const MAX_CHATS = 100;
+const MAX_CLOUD_MESSAGES = 60;
+const MAX_CLOUD_MSG_CHARS = 12000;
+const MAX_CLOUD_DOC_TEXT_CHARS = 1500;
 
-/**
- * Kiểm tra xem client có session Supabase hợp lệ hay không trước khi gọi API
- * để tránh các lỗi mạng HTTP 401 Unauthorized khi người dùng đăng nhập bằng Firebase Auth.
- */
-let hasCheckedAuth = false;
-let isSupabaseAuthed = false;
+function activeFirebaseUid(expectedUid) {
+  const curUid = auth?.currentUser?.uid || '';
+  if (!curUid) return '';
+  if (expectedUid && curUid !== expectedUid) return '';
+  return curUid;
+}
 
-async function canSyncToSupabase() {
-  if (hasCheckedAuth) return isSupabaseAuthed;
-  try {
-    const { data } = await supabase.auth.getSession();
-    isSupabaseAuthed = Boolean(data?.session);
-  } catch {
-    isSupabaseAuthed = false;
-  }
-  hasCheckedAuth = true;
-  return isSupabaseAuthed;
+function canSyncFirestore(expectedUid) {
+  return Boolean(db && activeFirebaseUid(expectedUid));
+}
+
+export function chatDocId(userId, chatId) {
+  const cleanUid = String(userId || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const cleanChat = String(chatId || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+  return `${cleanUid}__${cleanChat}`;
 }
 
 /**
- * Chuyển chuỗi UID bất kỳ (ví dụ Firebase UID "X6EIQPJ...") thành UUID hợp lệ theo chuẩn RFC 4122
- * để PostgreSQL không bị lỗi "invalid input syntax for type uuid".
+ * Giữ lại helper toValidUUID để tương thích ngược nếu module khác gọi.
  */
 export function toValidUUID(str) {
   if (!str) return null;
@@ -45,170 +69,352 @@ export function toValidUUID(str) {
 }
 
 /**
- * Lấy danh sách chat của user (mới nhất trước)
+ * Loại bỏ mọi giá trị `undefined`, `NaN`, `Infinity` đệ quy để Firestore setDoc không báo lỗi.
+ */
+export function sanitizeForFirestore(val) {
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+  if (typeof val === 'string' || typeof val === 'boolean') return val;
+  if (Array.isArray(val)) return val.map((item) => sanitizeForFirestore(item));
+  if (typeof val === 'object') {
+    const out = {};
+    for (const [k, v] of Object.entries(val)) {
+      if (v === undefined || typeof v === 'function' || typeof v === 'symbol') continue;
+      out[k] = sanitizeForFirestore(v);
+    }
+    return out;
+  }
+  return String(val);
+}
+
+/**
+ * Rút gọn ảnh base64 / tài liệu quá nặng trước khi đẩy lên Firestore (< 1MB/doc).
+ */
+export function prepareMessagesForCloud(messages) {
+  if (!Array.isArray(messages)) return [];
+  return messages.slice(-MAX_CLOUD_MESSAGES).map((m) => {
+    if (!m || typeof m !== 'object') return { role: 'user', text: String(m || '') };
+    const copy = { ...m };
+
+    if (Array.isArray(copy.parts)) {
+      copy.parts = copy.parts.map((p) => {
+        if (!p || typeof p !== 'object') return p;
+        if (p.inlineData) return { text: '[ảnh đã gửi]' };
+        if (typeof p.text === 'string' && p.text.length > MAX_CLOUD_MSG_CHARS) {
+          return { ...p, text: `${p.text.slice(0, MAX_CLOUD_MSG_CHARS)}\n...(đã rút gọn khi đồng bộ)` };
+        }
+        return p;
+      });
+    }
+
+    if (typeof copy.text === 'string' && copy.text.length > MAX_CLOUD_MSG_CHARS) {
+      copy.text = `${copy.text.slice(0, MAX_CLOUD_MSG_CHARS)}\n...(đã rút gọn khi đồng bộ)`;
+    }
+
+    if (copy.preview && typeof copy.preview === 'object') {
+      const nextPreview = { ...copy.preview };
+      if (Array.isArray(nextPreview.images)) {
+        nextPreview.images = nextPreview.images.map((im) => ({
+          width: im?.width || 0,
+          height: im?.height || 0,
+          name: im?.name || 'ảnh',
+        }));
+      }
+      if (Array.isArray(nextPreview.docs)) {
+        nextPreview.docs = nextPreview.docs.map((d) => ({
+          id: d?.id || d?.name || 'doc',
+          kind: d?.kind || 'file',
+          name: d?.name || 'Tài liệu',
+          size: d?.size || 0,
+          metaLabel: d?.metaLabel || '',
+          text: typeof d?.text === 'string' ? d.text.slice(0, MAX_CLOUD_DOC_TEXT_CHARS) : '',
+        }));
+      }
+      copy.preview = nextPreview;
+    }
+
+    return sanitizeForFirestore(copy);
+  });
+}
+
+/**
+ * Hợp nhất danh sách chat cloud + cục bộ theo ID (giữ bản mới hơn, không làm mất tin nhắn).
+ */
+export function mergeChatsById(serverChats = [], localChats = []) {
+  const byId = new Map();
+  const normalize = (c) => {
+    if (!c || !c.id) return null;
+    const updatedAt = Number(c.updatedAt || (c.updated_at ? new Date(c.updated_at).getTime() : 0) || c.createdAt || 0);
+    const createdAt = Number(c.createdAt || (c.created_at ? new Date(c.created_at).getTime() : 0) || updatedAt || Date.now());
+    return {
+      ...c,
+      id: String(c.id),
+      title: c.title || 'Trò chuyện mới',
+      messages: Array.isArray(c.messages) ? c.messages : [],
+      createdAt,
+      updatedAt,
+    };
+  };
+
+  for (const raw of (localChats || [])) {
+    const item = normalize(raw);
+    if (item) byId.set(item.id, item);
+  }
+
+  for (const raw of (serverChats || [])) {
+    const srv = normalize(raw);
+    if (!srv) continue;
+    const prev = byId.get(srv.id);
+    if (!prev) {
+      byId.set(srv.id, srv);
+      continue;
+    }
+    const prevLen = prev.messages?.length || 0;
+    const srvLen = srv.messages?.length || 0;
+    // Ưu tiên bản mới hơn theo updatedAt; nếu cùng mốc thì giữ bản có nhiều tin nhắn hơn
+    if (srv.updatedAt > prev.updatedAt || (srv.updatedAt === prev.updatedAt && srvLen >= prevLen)) {
+      byId.set(srv.id, srv);
+    }
+  }
+
+  return Array.from(byId.values())
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+    .slice(0, MAX_CHATS);
+}
+
+/**
+ * Lấy danh sách chat của user từ Firebase Firestore `ai_chats` (mới nhất trước).
  */
 export async function fetchChats(userId) {
-  if (!userId) return [];
-  if (!(await canSyncToSupabase())) return [];
-
-  const validUid = toValidUUID(userId);
+  if (!userId || !canSyncFirestore(userId)) return [];
+  const uid = activeFirebaseUid(userId);
   try {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .select('id, title, messages, pinned, created_at, updated_at')
-      .eq('user_id', validUid)
-      .order('updated_at', { ascending: false })
-      .limit(MAX_CHATS);
-
-    if (error) return [];
-    return data || [];
-  } catch {
+    const q = query(
+      collection(db, COLLECTION),
+      where('user_id', '==', uid),
+      limit(MAX_CHATS + 10)
+    );
+    const snap = await getDocs(q);
+    const rows = [];
+    snap.forEach((docSnap) => {
+      const d = docSnap.data() || {};
+      if (d.kind === 'teacher_studio' || d.kind === 'teacher_floating') return;
+      rows.push({
+        id: d.chat_id || docSnap.id,
+        title: d.title || 'Trò chuyện mới',
+        messages: Array.isArray(d.messages) ? d.messages : [],
+        pinned: Boolean(d.pinned),
+        created_at: d.created_at || Date.now(),
+        updated_at: d.updated_at || d.created_at || Date.now(),
+      });
+    });
+    rows.sort((a, b) => Number(b.updated_at || 0) - Number(a.updated_at || 0));
+    return rows.slice(0, MAX_CHATS);
+  } catch (err) {
+    console.warn('[aiChatApi] fetchChats Firestore error:', err?.message || err);
     return [];
   }
 }
 
 /**
- * Tạo chat mới
+ * Tạo đoạn chat mới trên Firestore `ai_chats`.
  */
 export async function createChat(userId, chat) {
-  if (!userId || !chat?.id) return null;
-  if (!(await canSyncToSupabase())) return null;
-
-  const validUid = toValidUUID(userId);
-  const validChatId = toValidUUID(chat.id) || chat.id;
+  if (!userId || !chat?.id || !canSyncFirestore(userId)) return null;
+  const uid = activeFirebaseUid(userId);
+  const docId = chatDocId(uid, chat.id);
+  const now = Date.now();
+  const payload = sanitizeForFirestore({
+    chat_id: String(chat.id),
+    user_id: uid,
+    kind: 'student_chat',
+    title: String(chat.title || 'Trò chuyện mới').slice(0, 120),
+    messages: prepareMessagesForCloud(chat.messages || []),
+    pinned: Boolean(chat.pinned),
+    created_at: Number(chat.createdAt || now),
+    updated_at: Number(chat.updatedAt || now),
+  });
 
   try {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .insert({
-        id: validChatId,
-        user_id: validUid,
-        title: chat.title || 'Trò chuyện mới',
-        messages: chat.messages || [],
-        pinned: Boolean(chat.pinned),
-      })
-      .select()
-      .single();
-
-    if (error) return null;
-    return data;
-  } catch {
+    await setDoc(doc(db, COLLECTION, docId), payload, { merge: true });
+    return payload;
+  } catch (err) {
+    console.warn('[aiChatApi] createChat Firestore error:', err?.message || err);
     return null;
   }
 }
 
 /**
- * Cập nhật chat (title, messages, pinned)
+ * Cập nhật đoạn chat (tự tạo doc nếu trước đó chưa kịp đẩy lên cloud).
  */
-export async function updateChat(chatId, updates) {
+export async function updateChat(chatId, updates = {}) {
   if (!chatId) return null;
-  if (!(await canSyncToSupabase())) return null;
+  const uid = activeFirebaseUid(updates.userId);
+  if (!uid || !db) return null;
 
-  const validChatId = toValidUUID(chatId) || chatId;
-  const patch = {};
-  if (updates.title !== undefined) patch.title = updates.title;
-  if (updates.messages !== undefined) patch.messages = updates.messages;
+  const docId = chatDocId(uid, chatId);
+  const patch = {
+    chat_id: String(chatId),
+    user_id: uid,
+    kind: 'student_chat',
+    updated_at: Date.now(),
+  };
+  if (updates.title !== undefined) patch.title = String(updates.title || 'Trò chuyện mới').slice(0, 120);
+  if (updates.messages !== undefined) patch.messages = prepareMessagesForCloud(updates.messages);
   if (updates.pinned !== undefined) patch.pinned = Boolean(updates.pinned);
 
-  if (Object.keys(patch).length === 0) return null;
-
   try {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .update(patch)
-      .eq('id', validChatId)
-      .select()
-      .single();
-
-    if (error) return null;
-    return data;
-  } catch {
+    await setDoc(doc(db, COLLECTION, docId), sanitizeForFirestore(patch), { merge: true });
+    return patch;
+  } catch (err) {
+    console.warn('[aiChatApi] updateChat Firestore error:', err?.message || err);
     return null;
   }
 }
 
 /**
- * Xóa 1 chat
+ * Xóa 1 đoạn chat trên Firestore.
  */
-export async function deleteChat(chatId) {
+export async function deleteChat(chatId, userId = '') {
   if (!chatId) return;
-  if (!(await canSyncToSupabase())) return;
-
-  const validChatId = toValidUUID(chatId) || chatId;
+  const uid = activeFirebaseUid(userId);
+  if (!uid || !db) return;
   try {
-    await supabase.from(TABLE).delete().eq('id', validChatId);
+    await deleteDoc(doc(db, COLLECTION, chatDocId(uid, chatId)));
   } catch { /* ignore */ }
 }
 
 /**
- * Xóa tất cả chat của user
+ * Xóa toàn bộ lịch sử chat học sinh của user trên Firestore (giữ nguyên phiên Teacher Studio).
  */
 export async function deleteAllChats(userId) {
-  if (!userId) return;
-  if (!(await canSyncToSupabase())) return;
-
-  const validUid = toValidUUID(userId);
+  if (!userId || !canSyncFirestore(userId)) return;
+  const uid = activeFirebaseUid(userId);
   try {
-    await supabase.from(TABLE).delete().eq('user_id', validUid);
-  } catch { /* ignore */ }
+    const q = query(collection(db, COLLECTION), where('user_id', '==', uid));
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+    const batch = writeBatch(db);
+    let count = 0;
+    snap.forEach((docSnap) => {
+      const d = docSnap.data() || {};
+      if (d.kind === 'teacher_studio' || d.kind === 'teacher_floating') return;
+      batch.delete(docSnap.ref);
+      count += 1;
+    });
+    if (count > 0) await batch.commit();
+  } catch (err) {
+    console.warn('[aiChatApi] deleteAllChats Firestore error:', err?.message || err);
+  }
 }
 
 /**
- * Gộp chat cũ (local) lên server — dùng khi migrate lần đầu
+ * Đẩy các cuộc trò chuyện cục bộ lên Firestore theo từng batch nhỏ.
  */
 export async function migrateLocalChats(userId, localChats) {
   if (!userId || !Array.isArray(localChats) || localChats.length === 0) {
     return { migrated: 0 };
   }
-  if (!(await canSyncToSupabase())) return { migrated: 0 };
+  if (!canSyncFirestore(userId)) return { migrated: 0 };
+  const uid = activeFirebaseUid(userId);
 
-  const validUid = toValidUUID(userId);
   const recent = [...localChats]
+    .filter((c) => c && c.id)
     .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0))
-    .slice(0, 50);
+    .slice(0, 40);
 
-  const rows = recent.map((c) => ({
-    id: toValidUUID(c.id) || c.id,
-    user_id: validUid,
-    title: c.title || 'Trò chuyện mới',
-    messages: stripImagesForSync(c.messages || []),
-    pinned: false,
-  }));
+  if (!recent.length) return { migrated: 0 };
 
   try {
-    const { error } = await supabase
-      .from(TABLE)
-      .upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
-
-    if (error) return { migrated: 0 };
-    return { migrated: rows.length };
-  } catch {
+    const batch = writeBatch(db);
+    recent.forEach((c) => {
+      const now = Date.now();
+      const docRef = doc(db, COLLECTION, chatDocId(uid, c.id));
+      batch.set(docRef, sanitizeForFirestore({
+        chat_id: String(c.id),
+        user_id: uid,
+        kind: 'student_chat',
+        title: String(c.title || 'Trò chuyện mới').slice(0, 120),
+        messages: prepareMessagesForCloud(c.messages || []),
+        pinned: Boolean(c.pinned),
+        created_at: Number(c.createdAt || now),
+        updated_at: Number(c.updatedAt || c.createdAt || now),
+      }), { merge: true });
+    });
+    await batch.commit();
+    return { migrated: recent.length };
+  } catch (err) {
+    console.warn('[aiChatApi] migrateLocalChats Firestore error:', err?.message || err);
     return { migrated: 0 };
   }
 }
 
-/**
- * Strip ảnh inline khỏi messages trước khi sync lên server
- */
-function stripImagesForSync(messages) {
-  return messages.map((m) => {
-    if (!m.parts) return m;
-    const strippedParts = m.parts.map((p) => {
-      if (p.inlineData) {
-        return { text: '[ảnh đã gửi]' };
-      }
-      return p;
+/* ============================================================
+   TEACHER AUTOEXAM STUDIO — ĐỒNG BỘ PHIÊN SOẠN ĐỀ LÊN FIRESTORE
+   ============================================================ */
+export async function loadTeacherStudioState(userId) {
+  if (!userId || !canSyncFirestore(userId)) return null;
+  const uid = activeFirebaseUid(userId);
+  try {
+    const snap = await getDoc(doc(db, COLLECTION, chatDocId(uid, 'teacher_studio')));
+    if (!snap.exists()) return null;
+    const d = snap.data() || {};
+    return {
+      chatMessages: Array.isArray(d.chatMessages) ? d.chatMessages : [],
+      matrixData: d.matrixData || null,
+      questions: Array.isArray(d.questions) ? d.questions : [],
+      topic: d.topic || '',
+      selectedSubject: d.selectedSubject || '',
+      step: Number(d.step) || 0,
+      slots: d.slots || { grade: null, count: null, duration: null },
+      updatedAt: Number(d.updated_at) || 0,
+    };
+  } catch (err) {
+    console.warn('[aiChatApi] loadTeacherStudioState error:', err?.message || err);
+    return null;
+  }
+}
+
+export async function saveTeacherStudioState(userId, state = {}) {
+  if (!userId || !canSyncFirestore(userId)) return null;
+  const uid = activeFirebaseUid(userId);
+  try {
+    const payload = sanitizeForFirestore({
+      chat_id: 'teacher_studio',
+      user_id: uid,
+      kind: 'teacher_studio',
+      title: String(state.topic || 'Phiên làm việc AI Giáo viên').slice(0, 120),
+      chatMessages: Array.isArray(state.chatMessages) ? state.chatMessages.slice(-40) : [],
+      matrixData: state.matrixData || null,
+      questions: Array.isArray(state.questions) ? state.questions.slice(0, 80) : [],
+      topic: String(state.topic || ''),
+      selectedSubject: String(state.selectedSubject || ''),
+      step: Number(state.step) || 0,
+      slots: state.slots || { grade: null, count: null, duration: null },
+      updated_at: Number(state.updatedAt || Date.now()),
     });
-    return { ...m, parts: strippedParts };
-  });
+    await setDoc(doc(db, COLLECTION, chatDocId(uid, 'teacher_studio')), payload, { merge: true });
+    return payload;
+  } catch (err) {
+    console.warn('[aiChatApi] saveTeacherStudioState error:', err?.message || err);
+    return null;
+  }
+}
+
+export async function clearTeacherStudioState(userId) {
+  if (!userId || !canSyncFirestore(userId)) return;
+  const uid = activeFirebaseUid(userId);
+  try {
+    await deleteDoc(doc(db, COLLECTION, chatDocId(uid, 'teacher_studio')));
+  } catch { /* ignore */ }
 }
 
 /**
- * Sync debounced — gọi khi có thay đổi
+ * Sync debounced — gọi khi có thay đổi.
  */
-let syncTimers = new Map();
+const syncTimers = new Map();
 
-export function debouncedSync(chatId, updates, delay = 1500) {
+export function debouncedSync(chatId, updates, delay = 1200) {
   const existing = syncTimers.get(chatId);
   if (existing) clearTimeout(existing);
 
@@ -223,7 +429,7 @@ export function debouncedSync(chatId, updates, delay = 1500) {
 }
 
 /**
- * Cancel tất cả debounced timers (dùng khi unmount)
+ * Cancel tất cả debounced timers (dùng khi unmount).
  */
 export function cancelAllSyncs() {
   for (const timer of syncTimers.values()) clearTimeout(timer);
