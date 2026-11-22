@@ -306,15 +306,15 @@
     width: 100%;
     max-width: 100%;
     margin-inline: 0;
-    height: calc(62px + env(safe-area-inset-bottom, 0px));
-    padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px));
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom, 0px));
     border-radius: 20px 20px 0 0;
-    background: #ffffff;
+    background: rgba(255, 255, 255, 0.84);
     border: none;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
-    backdrop-filter: blur(16px) saturate(160%);
+    border-top: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 -6px 24px -8px rgba(15, 23, 42, 0.08);
+    -webkit-backdrop-filter: blur(22px) saturate(185%);
+    backdrop-filter: blur(22px) saturate(185%);
     z-index: 9999;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -322,20 +322,20 @@
   }
 
   [data-theme='dark'] .bn {
-    background: #151824;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.4);
+    background: rgba(13, 19, 34, 0.86);
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 -6px 28px rgba(0, 0, 0, 0.45);
   }
 
-  /* Chỉ báo trượt: 5 cột bằng nhau — viên nhộng xanh nhạt bao quanh icon + chữ */
+  /* Chỉ báo trượt: 5 cột bằng nhau — nền Cobalt nhạt tinh giản */
   .bn-ind {
     position: absolute;
     top: 6px;
     bottom: calc(6px + env(safe-area-inset-bottom, 0px));
-    left: 6px;
-    width: calc((100% - 12px) / 5);
-    border-radius: 16px;
-    background: #dbeafe !important;
+    left: 8px;
+    width: calc((100% - 16px) / 5);
+    border-radius: 14px;
+    background: rgba(47, 107, 255, 0.1) !important;
     transform: translateX(calc(var(--i, 0) * 100%));
     opacity: 0;
     transition: transform .3s cubic-bezier(0.2, 0.9, 0.3, 1), opacity .2s;
@@ -343,7 +343,7 @@
   }
 
   [data-theme='dark'] .bn-ind {
-    background: rgba(59, 130, 246, 0.22) !important;
+    background: rgba(59, 130, 246, 0.18) !important;
   }
 
   .bn-ind.show { opacity: 1; }
@@ -355,26 +355,26 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    gap: 2.5px;
     color: #64748b;
     text-decoration: none;
     transition: color .2s;
   }
 
   .bn-item.on {
-    color: #0071e3 !important;
+    color: #2563eb !important;
   }
 
   [data-theme='dark'] .bn-item.on {
     color: #60a5fa !important;
   }
 
-  .bn-item:focus-visible { outline: 2px solid var(--acc); outline-offset: -4px; border-radius: 16px; }
+  .bn-item:focus-visible { outline: 2px solid var(--acc); outline-offset: -4px; border-radius: 14px; }
 
   .bn-ico {
     display: grid;
     place-items: center;
-    height: 24px;
+    height: 22px;
     position: relative;
   }
 
@@ -382,21 +382,20 @@
     display: block;
   }
 
-  /* Huy hiệu HOT đỏ ngay trên đầu mũ cử nhân */
-  .bn-badge-dot {
+  /* Chấm chỉ báo 5px tinh tế thay huy hiệu HOT */
+  .bn-live-dot {
     position: absolute;
-    top: -7px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #ef4444;
-    color: #ffffff;
-    font-size: 0.52rem;
-    font-weight: 900;
-    padding: 1px 5px;
-    border-radius: 999px;
-    line-height: 1.1;
-    letter-spacing: 0.02em;
-    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45);
+    top: 0;
+    right: -4px;
+    width: 5.5px;
+    height: 5.5px;
+    border-radius: 50%;
+    background: #f97316;
+    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.92);
+  }
+
+  [data-theme='dark'] .bn-live-dot {
+    box-shadow: 0 0 0 1.5px rgba(13, 19, 34, 0.92);
   }
 
   .bn-label {

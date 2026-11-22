@@ -150,11 +150,9 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
               aria-label="Chat cộng đồng học tập ELEC AI"
               title="Chat cộng đồng học tập ELEC AI"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                <circle cx="8" cy="10" r="1.1" fill="currentColor" />
-                <circle cx="12" cy="10" r="1.1" fill="currentColor" />
-                <circle cx="16" cy="10" r="1.1" fill="currentColor" />
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M16.8 11.8a2.2 2.2 0 0 1-2.2 2.2H7L3.5 17V5.2A2.2 2.2 0 0 1 5.7 3h8.9a2.2 2.2 0 0 1 2.2 2.2v6.6Z" />
+                <path d="M7.2 7.6h5.6M7.2 10.3h3.6" />
               </svg>
             </button>
 
@@ -166,9 +164,9 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
               aria-label="Tìm kiếm nhanh toàn hệ thống"
               title="Tìm kiếm nhanh toàn hệ thống"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-search" aria-hidden="true">
-                <circle cx="11" cy="11" r="7.5" />
-                <line x1="20.5" y1="20.5" x2="16.2" y2="16.2" />
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" className="anim-ico-svg anim-ico-search" aria-hidden="true">
+                <circle cx="8.8" cy="8.8" r="5.3" />
+                <path d="m12.8 12.8 3.9 3.9" />
               </svg>
             </button>
 
@@ -190,8 +188,8 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
             onClick={handleBack}
             aria-label="Quay lại"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="15 18 9 12 15 6" />
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m12.5 5-5 5 5 5" />
             </svg>
             <span>Quay lại</span>
           </button>
@@ -200,8 +198,9 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
 
           <div className="mhead-subpage-actions">
             <a href="#ai" className="mhead-subpage-ico-btn is-ai" aria-label="Hỏi Gia sư AI" title="Mở Gia sư AI">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 8.8h6.1z" />
+              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 2.3C9.45 6.35 11.65 8.55 15.7 9C11.65 9.45 9.45 11.65 9 15.7C8.55 11.65 6.35 9.45 2.3 9C6.35 8.55 8.55 6.35 9 2.3Z" />
+                <path d="M15.7 12.6C15.95 14.05 16.75 14.85 18.2 15.1C16.75 15.35 15.95 16.15 15.7 17.6C15.45 16.15 14.65 15.35 13.2 15.1C14.65 14.85 15.45 14.05 15.7 12.6Z" fill="currentColor" stroke="none" />
               </svg>
             </a>
             {typeof onMenu === 'function' && (
@@ -212,11 +211,11 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
                 aria-label="Mở menu tiện ích"
                 title="Chuyển nhanh công cụ khác"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.8" />
-                  <rect x="14" y="3.5" width="6.5" height="6.5" rx="1.8" />
-                  <rect x="14" y="14" width="6.5" height="6.5" rx="1.8" />
-                  <rect x="3.5" y="14" width="6.5" height="6.5" rx="1.8" />
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="5.6" height="5.6" rx="1.6" />
+                  <rect x="11.4" y="3" width="5.6" height="5.6" rx="1.6" />
+                  <rect x="3" y="11.4" width="5.6" height="5.6" rx="1.6" />
+                  <rect x="11.4" y="11.4" width="5.6" height="5.6" rx="1.6" />
                 </svg>
               </button>
             )}

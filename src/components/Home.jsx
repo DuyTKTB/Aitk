@@ -31,6 +31,7 @@ import '../styles/home-apple-bento.css';
 import '../styles/home-aurora.css';
 import '../styles/roadmap-upgrade.css';
 import '../styles/student-v9-upgrades.css';
+import '../styles/apple-cobalt-polish.css';
 
 /* ============================================================
    Home.jsx — TRANG CHỦ HỌC SINH THPT CHUẨN KHOA HỌC & HIỆN ĐẠI
@@ -54,8 +55,8 @@ import '../styles/student-v9-upgrades.css';
    6. Phòng Thi Lớp Học & Nhập Mã Thi Nhanh (Classroom Quick Join).
    ============================================================ */
 
-/* ── Bộ Icon SVG Chuẩn Apple Bento ── */
-const ico = (d, sw = 1.9) => ({ size = 20, className = '' }) => (
+/* ── Bộ Icon SVG Chuẩn Apple Bento (1.65px SF-Symbol crispness) ── */
+const ico = (d, sw = 1.65) => ({ size = 20, className = '' }) => (
   <svg
     width={size}
     height={size}
@@ -73,8 +74,8 @@ const ico = (d, sw = 1.9) => ({ size = 20, className = '' }) => (
 );
 
 const IcoCamera = ico(<><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z" /><circle cx="12" cy="12.5" r="3.5" /></>);
-const IcoSend = ico(<path d="M12 19V5M5 12l7-7 7 7" />, 2.2);
-const IcoArrow = ico(<path d="M7 17L17 7M9 7h8v8" />, 2.2);
+const IcoSend = ico(<path d="M12 19V5M5 12l7-7 7 7" />, 1.9);
+const IcoArrow = ico(<path d="M7 17L17 7M9 7h8v8" />, 1.85);
 const IcoSpark = ico(<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z" />);
 const IcoTarget = ico(<><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="1" /></>);
 const IcoRoute = ico(<><circle cx="6" cy="19" r="3" /><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /><circle cx="18" cy="5" r="3" /></>);
@@ -537,7 +538,6 @@ function MobileAppLaunchpad({ dueTotal = 0 }) {
     {
       id: 'ocr',
       label: 'Chụp giải đề',
-      badge: 'AI',
       onClick: () => goAI({ action: 'capture' }),
       icon: <IcoCamera size={22} />,
     },
@@ -545,7 +545,6 @@ function MobileAppLaunchpad({ dueTotal = 0 }) {
       id: 'exams',
       label: 'Phòng thi',
       href: '#virtual-exams',
-      badge: 'HOT',
       icon: <IcoExam size={22} />,
     },
     {
@@ -559,7 +558,6 @@ function MobileAppLaunchpad({ dueTotal = 0 }) {
       id: 'sim-lab',
       label: 'Lab 2D',
       href: '#sim-lab',
-      badge: 'MỚI',
       icon: <IcoFlask size={22} />,
     },
     {

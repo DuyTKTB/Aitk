@@ -57,6 +57,7 @@ import '../../styles/roadmap-page.css';
 import '../../styles/roadmap-page-v2.css';
 import '../../styles/roadmap-upgrade.css';
 import '../../styles/roadmap-studio-pro.css';
+import '../../styles/apple-cobalt-polish.css';
 
 const GRADE_KEY = 'cs-roadmap-grade-v2';
 
@@ -92,7 +93,7 @@ const Svg = ({ size = 15, children }) => (
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2"
+    strokeWidth="1.65"
     strokeLinecap="round"
     strokeLinejoin="round"
     aria-hidden="true"

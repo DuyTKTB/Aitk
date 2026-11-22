@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 // 🎨 Import CSS cho trang Công cụ
 import './tools-neo.css';
+import '../styles/apple-cobalt-polish.css';
 import {
   IconMicroscope, IconScale, IconTimer,
   IconCalendar, IconNote, IconTarget, IconQuiz,

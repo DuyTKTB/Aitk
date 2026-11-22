@@ -1,50 +1,46 @@
 import { useEffect } from 'react';
-import { IconHome } from './Icons.jsx';
 
 /* ============================================================
    BottomNav — mobile (≤ 768px)
-   Chuẩn 5 mục cân đối theo Phương án A:
-   1. Trang chủ | 2. Phòng thi ảo | 3. Lộ trình | 4. Lớp học | 5. Thêm (Hồ sơ, Công cụ)
+   Chuẩn Apple iOS 18 Floating Glass Tab Bar:
+   Bộ icon SF-Symbols 20×20 nét mảnh 1.6px đồng nhất, bỏ badge HOT rực rỡ
    ============================================================ */
 
+const IconHomeBar = ({ size = 20, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none"
+    stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round"
+    className={`nav-svg-pro ${className}`} aria-hidden="true">
+    <path d="M3 8.8 10 3l7 5.8v6.8a1.7 1.7 0 0 1-1.7 1.7h-2.9v-4.1a2.4 2.4 0 0 0-4.8 0v4.1H4.7A1.7 1.7 0 0 1 3 15.6V8.8Z" />
+  </svg>
+);
+
 const IconGradCap = ({ size = 20, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
-    className={`anim-ico-svg anim-ico-cap anim-ico-quiz ${className}`} aria-hidden="true">
-    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-    <path d="M6 12v5c3 3 9 3 12 0v-5" />
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none"
+    stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round"
+    className={`nav-svg-pro ${className}`} aria-hidden="true">
+    <rect x="4" y="2.8" width="12" height="14.4" rx="2.4" />
+    <path d="M7.5 6h5M7.2 11l1.9 1.9 3.8-4.1" />
   </svg>
 );
 
 const IconRoadmap = ({ size = 20, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
-    className={`anim-ico-svg anim-ico-roadmap anim-ico-book ${className}`} aria-hidden="true">
-    <circle cx="12" cy="12" r="8.5" />
-    <circle cx="12" cy="12" r="3.5" />
-    <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22" />
-  </svg>
-);
-
-const IconClass = ({ size = 20, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"
-    className={`anim-ico-svg anim-ico-class ${className}`} aria-hidden="true">
-    <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
-    <path d="M6 6h10" />
-    <path d="M6 10h10" />
-    <path d="M6 14h6" />
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none"
+    stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round"
+    className={`nav-svg-pro ${className}`} aria-hidden="true">
+    <circle cx="4.8" cy="14.5" r="2.1" />
+    <circle cx="15.2" cy="5.5" r="2.1" />
+    <path d="M6.9 14.5c3.5 0 2.6-9 6.2-9" />
   </svg>
 );
 
 const IconGridMore = ({ size = 20, className = '' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-    className={`anim-ico-svg anim-ico-tools ${className}`} aria-hidden="true">
-    <rect x="3.5" y="3.5" width="6.5" height="6.5" rx="2" />
-    <rect x="14" y="3.5" width="6.5" height="6.5" rx="2" />
-    <rect x="14" y="14" width="6.5" height="6.5" rx="2" />
-    <rect x="3.5" y="14" width="6.5" height="6.5" rx="2" />
+  <svg width={size} height={size} viewBox="0 0 20 20" fill="none"
+    stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round"
+    className={`nav-svg-pro ${className}`} aria-hidden="true">
+    <rect x="3" y="3" width="5.6" height="5.6" rx="1.6" />
+    <rect x="11.4" y="3" width="5.6" height="5.6" rx="1.6" />
+    <rect x="3" y="11.4" width="5.6" height="5.6" rx="1.6" />
+    <rect x="11.4" y="11.4" width="5.6" height="5.6" rx="1.6" />
   </svg>
 );
 
@@ -68,13 +64,13 @@ const isTextField = (el) => Boolean(el) && (
 
 export default function BottomNav({ page, onOpenMore }) {
   const ITEMS = [
-    { id: 'home', label: 'Trang chủ', href: '#home', icon: <IconHome size={20} className="anim-ico-svg anim-ico-home" /> },
+    { id: 'home', label: 'Trang chủ', href: '#home', icon: <IconHomeBar size={19} /> },
     {
       id: 'virtual-exams',
       label: 'Phòng thi',
       href: '#virtual-exams',
-      icon: <IconGradCap size={20} />,
-      badge: 'HOT',
+      icon: <IconGradCap size={19} />,
+      liveDot: true,
     },
     {
       id: 'ai',
@@ -94,13 +90,13 @@ export default function BottomNav({ page, onOpenMore }) {
       id: 'roadmap',
       label: 'Lộ trình',
       href: '#roadmap',
-      icon: <IconRoadmap size={20} />,
+      icon: <IconRoadmap size={19} />,
     },
     {
       id: 'more',
       label: 'Tiện ích',
       href: '#more',
-      icon: <IconGridMore size={20} />,
+      icon: <IconGridMore size={19} />,
       isAction: true,
     },
   ];
@@ -133,7 +129,7 @@ export default function BottomNav({ page, onOpenMore }) {
   return (
     <nav className="bn" aria-label="Điều hướng di động" style={{ '--i': Math.max(idx, 0) }}>
       <span className={'bn-ind' + (showInd ? ' show' : '')} aria-hidden="true" />
-      {ITEMS.map(({ id, label, href, icon, badge, isAction, isCenterAi }) => {
+      {ITEMS.map(({ id, label, href, icon, liveDot, isAction, isCenterAi }) => {
         const on = id === current;
         return (
           <a
@@ -153,7 +149,7 @@ export default function BottomNav({ page, onOpenMore }) {
           >
             <span className="bn-ico">
               {icon}
-              {badge && <span className="bn-badge-dot">{badge}</span>}
+              {liveDot && <span className="bn-live-dot" aria-hidden="true" />}
             </span>
             <span className="bn-label">{label}</span>
           </a>

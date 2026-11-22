@@ -59,6 +59,7 @@ import '../styles/ai-fullscreen.css';
 import '../styles/styles/ai-chatgpt.css';
 import '../styles/ai-redesign-v2.css';
 import '../styles/ai-chat-studio-pro.css';
+import '../styles/apple-cobalt-polish.css';
 
 const fmtCreditsShort = (n) => {
   if (n == null) return '...';
@@ -104,7 +105,7 @@ const SUBJECT_CARDS = {
 function SubjectGlyph({ kind }) {
   if (kind === 'ly') {
     return (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="2" />
         <ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(30 12 12)" />
         <ellipse cx="12" cy="12" rx="10" ry="4.2" transform="rotate(-30 12 12)" />
@@ -113,7 +114,7 @@ function SubjectGlyph({ kind }) {
   }
   if (kind === 'hoa') {
     return (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M9 3h6" />
         <path d="M10 3v6.2L4.7 18.6A2 2 0 0 0 6.4 21h11.2a2 2 0 0 0 1.7-2.4L14 9.2V3" />
         <path d="M7.5 15h9" />
@@ -122,7 +123,7 @@ function SubjectGlyph({ kind }) {
   }
   if (kind === 'sinh') {
     return (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M2 15c6.667-6 13.333 0 20-6" />
         <path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993" />
         <path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993" />
@@ -138,7 +139,7 @@ function SubjectGlyph({ kind }) {
     );
   }
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
