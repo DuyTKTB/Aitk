@@ -156,6 +156,33 @@ export const TOPICS_BY_SUBJECT = {
 };
 
 /* ============ HELPERS ============ */
+export const resolveTopicsSubjectKey = (subject) => {
+  const raw = String(subject || '').trim();
+  if (!raw) return '';
+  if (TOPICS_BY_SUBJECT[raw]) return raw;
+  const folded = raw.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const alias = {
+    'toan hoc': 'Toán', 'toan': 'Toán',
+    'vat ly': 'Vật lí', 'vat li': 'Vật lí', 'ly': 'Vật lí', 'li': 'Vật lí',
+    'hoa hoc': 'Hóa học', 'hoa': 'Hóa học',
+    'sinh hoc': 'Sinh học', 'sinh': 'Sinh học',
+    'khoa hoc tu nhien': 'KHTN', 'khtn': 'KHTN',
+    'tieng anh': 'Tiếng Anh', 'anh': 'Tiếng Anh', 'ngoai ngu': 'Tiếng Anh',
+    'ngu van': 'Ngữ văn', 'van': 'Ngữ văn',
+    'lich su': 'Lịch sử', 'su': 'Lịch sử',
+    'dia ly': 'Địa lí', 'dia li': 'Địa lí', 'dia': 'Địa lí',
+    'gdkt&pl': 'GDCD', 'gdktpl': 'GDCD', 'giao duc kinh te va phap luat': 'GDCD', 'gdcd': 'GDCD',
+    'tin hoc': 'Tin học', 'tin': 'Tin học',
+    'cong nghe': 'Công nghệ',
+  }[folded];
+  if (alias && TOPICS_BY_SUBJECT[alias]) return alias;
+  for (const k of Object.keys(TOPICS_BY_SUBJECT)) {
+    const kf = k.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase().trim();
+    if (kf === folded) return k;
+  }
+  return '';
+};
+
 export const getTopicsForSubject = (subject) => {
   if (!subject) {
     // Trả về tất cả chuyên đề (dùng cho filter "Tất cả môn")
@@ -165,12 +192,13 @@ export const getTopicsForSubject = (subject) => {
     });
     return all;
   }
-  return TOPICS_BY_SUBJECT[subject] || [];
+  const key = resolveTopicsSubjectKey(subject);
+  return (key && TOPICS_BY_SUBJECT[key]) || [];
 };
 
 export const getTopicName = (topicId, subject) => {
   if (subject) {
-    const list = TOPICS_BY_SUBJECT[subject] || [];
+    const list = TOPICS_BY_SUBJECT[resolveTopicsSubjectKey(subject)] || [];
     const found = list.find((t) => t.id === topicId);
     if (found) return found.name;
   }

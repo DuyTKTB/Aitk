@@ -6,30 +6,23 @@
    • Hoạt động mượt 1 chạm trên cả chuột Desktop và màn hình cảm ứng Mobile
    ============================================================ */
 import { memo, useMemo } from 'react';
-import MathText, { normalizeMathString } from '../MathText.jsx';
+import MathText, { isLikelyCurrencyPair, normalizeMathString } from '../MathText.jsx';
 
+const CODE_SPLIT_RE = /(```[\s\S]*?```|`[^`\n]+`)/g;
 const MATH_SPLIT_RE = /(\$\$[\s\S]+?\$\$|\$(?:\\\$|[^$])+\$)/g;
 
 /**
- * Tách văn bản thành các đoạn giữ nguyên biểu thức toán ($...$ / $$...$$)
+ * Tách văn bản thành các đoạn giữ nguyên mã nguồn (`...` / ```...```) và biểu thức toán ($...$ / $$...$$),
  * và tách phần chữ thường thành từng từ (word) + khoảng trắng để có thể nhấn tô sáng.
  */
 export function tokenizeForHighlight(rawText) {
   const normalized = normalizeMathString(rawText == null ? '' : String(rawText));
   if (!normalized) return [];
-  const segments = normalized.split(MATH_SPLIT_RE).filter((s) => s !== '');
   const tokens = [];
   let wordIdx = 0;
 
-  for (const seg of segments) {
-    const isDisplay = seg.startsWith('$$') && seg.endsWith('$$') && seg.length > 4;
-    const isInline = seg.startsWith('$') && seg.endsWith('$') && seg.length > 2;
-    if (isDisplay || isInline) {
-      tokens.push({ type: 'math', value: seg, key: `m-${tokens.length}` });
-      continue;
-    }
-    // Tách theo khoảng trắng / xuống dòng, giữ nguyên khoảng trắng gốc
-    const parts = seg.split(/(\s+)/);
+  const pushPlainText = (plain) => {
+    const parts = plain.split(/(\s+)/);
     for (const part of parts) {
       if (!part) continue;
       if (/^\s+$/.test(part)) {
@@ -37,6 +30,24 @@ export function tokenizeForHighlight(rawText) {
       } else {
         tokens.push({ type: 'word', value: part, idx: wordIdx++, key: `w-${wordIdx}` });
       }
+    }
+  };
+
+  const codeChunks = normalized.split(CODE_SPLIT_RE).filter((c) => c !== '');
+  for (const chunk of codeChunks) {
+    if (chunk.startsWith('`')) {
+      tokens.push({ type: 'code', value: chunk, key: `c-${tokens.length}` });
+      continue;
+    }
+    const segments = chunk.split(MATH_SPLIT_RE).filter((s) => s !== '');
+    for (const seg of segments) {
+      const isDisplay = seg.startsWith('$$') && seg.endsWith('$$') && seg.length > 4;
+      const isInline = seg.startsWith('$') && seg.endsWith('$') && seg.length > 2;
+      if (isDisplay || (isInline && !isLikelyCurrencyPair(seg))) {
+        tokens.push({ type: 'math', value: seg, key: `m-${tokens.length}` });
+        continue;
+      }
+      pushPlainText(seg);
     }
   }
   return tokens;
@@ -66,7 +77,7 @@ const HighlightableMathText = memo(function HighlightableMathText({
         if (tk.type === 'space') {
           return <span key={tk.key}>{tk.value}</span>;
         }
-        if (tk.type === 'math') {
+        if (tk.type === 'math' || tk.type === 'code') {
           return <MathText key={tk.key}>{tk.value}</MathText>;
         }
         const lit = !!highlightedMap?.[tk.idx];

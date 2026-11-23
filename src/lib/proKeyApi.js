@@ -345,7 +345,7 @@ export async function adminRevokeProUser(userId) {
 export const adminRevokeProDirect = adminRevokeProUser;
 
 /* ============================================================
-   ADMIN: CẤP & HỦY QUYỀN VIP TRỰC TIẾP (HỌC SINH VIP 199K)
+   ADMIN: CẤP & HỦY QUYỀN VIP TRỰC TIẾP (HỌC SINH VIP 299K/NĂM)
    ============================================================ */
 export async function adminGrantVipDirect({ userId, durationDays = 30, note = 'Cấp VIP trực tiếp bởi Admin' } = {}) {
   let uid = String(userId || '').trim();

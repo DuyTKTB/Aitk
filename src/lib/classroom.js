@@ -13,6 +13,7 @@ import {
   orderBy, limit, writeBatch, runTransaction,
 } from 'firebase/firestore';
 import { scoreExam, scoreQuestion, isAnswered, qType } from './examScoring.js';
+import { getSubjectExamProfile } from './subjects.js';
 import { stripUndefined } from './examSubmit.js';
 import { serverNow } from './serverClock.js';
 import {
@@ -134,6 +135,43 @@ function upsertLocalTeacherItem(prefix, teacherId, item) {
   writeLocalTeacherList(prefix, teacherId, [item, ...cur]);
 }
 
+function removeLocalTeacherItem(prefix, itemId) {
+  try {
+    if (typeof localStorage === 'undefined' || !itemId) return;
+    const keyPrefix = `cs-local-${prefix}:`;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(keyPrefix)) continue;
+      try {
+        const raw = localStorage.getItem(k);
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (!Array.isArray(parsed)) continue;
+        const next = parsed.filter((x) => x?.id !== itemId);
+        if (next.length !== parsed.length) {
+          localStorage.setItem(k, JSON.stringify(next));
+        }
+      } catch { /* ignore malformed entry */ }
+    }
+  } catch { /* ignore storage errors */ }
+}
+
+function computeExamTotalPoints(questions = [], subject = '') {
+  const list = Array.isArray(questions) ? questions : [];
+  if (!list.length) return 0;
+  const prof = getSubjectExamProfile(subject);
+  const ppq = prof?.pointPerQuestion || {};
+  const total = list.reduce((sum, q) => {
+    const explicit = Number(q?.points);
+    if (explicit > 0) return sum + explicit;
+    const t = qType(q);
+    if (t === 'true_false') return sum + (ppq.true_false || 1);
+    if (t === 'short_answer') return sum + (ppq.short_answer > 0 ? ppq.short_answer : 0.25);
+    if (t === 'essay') return sum + (ppq.essay > 0 ? ppq.essay : 1);
+    return sum + (ppq.single_choice > 0 ? ppq.single_choice : 0.25);
+  }, 0);
+  return Math.round(total * 100) / 100;
+}
+
 function isFallbackRecoverableError(e) {
   const code = String(e?.code || '').toLowerCase();
   const msg = String(e?.message || '').toLowerCase();
@@ -143,11 +181,13 @@ function isFallbackRecoverableError(e) {
 /* ============================================================
    CLASSES
    ============================================================ */
-export async function createClass({ name, teacherId, teacherName, subject, requireApproval = true, maxStudents = null }) {
+export async function createClass({ name, teacherId, teacherName, subject, grade = null, requireApproval = true, maxStudents = null }) {
   const cap = Number(maxStudents || 0);
+  const parsedGrade = grade !== null && grade !== undefined && String(grade).trim() !== '' ? Number(grade) : NaN;
   const data = {
     name: name || 'Lớp mới',
     subject: subject || 'Hóa học',
+    ...(Number.isFinite(parsedGrade) && parsedGrade >= 1 && parsedGrade <= 12 ? { grade: parsedGrade } : {}),
     teacherId,
     teacherName,
     key: generateClassKey(name),
@@ -162,10 +202,8 @@ export async function createClass({ name, teacherId, teacherName, subject, requi
   try {
     const newDocRef = doc(collection(db, 'classes'));
     const classData = { id: newDocRef.id, ...data };
+    await setDoc(newDocRef, stripUndefined(data));
     upsertLocalTeacherItem('classes', teacherId, { ...classData, createdAt: Date.now() });
-    setDoc(newDocRef, stripUndefined(data)).catch((err) => {
-      console.warn('[createClass] setDoc background warning:', err?.message);
-    });
     return classData;
   } catch (e) {
     if (isFallbackRecoverableError(e) && teacherId) {
@@ -186,7 +224,10 @@ export async function getClassesByTeacher(teacherId) {
     const cloudList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     const localList = readLocalTeacherList('classes', teacherId);
     const map = new Map(cloudList.map((c) => [c.id, c]));
-    localList.forEach((c) => { if (c?.id && !map.has(c.id)) map.set(c.id, c); });
+    // Chỉ giữ các lớp tạo tạm offline (`local-cls-...`), không hồi sinh lớp cloud đã bị xóa
+    localList.forEach((c) => {
+      if (c?.id && /^local-/.test(String(c.id)) && !map.has(c.id)) map.set(c.id, c);
+    });
     const merged = Array.from(map.values());
     writeLocalTeacherList('classes', teacherId, merged);
     return merged;
@@ -346,7 +387,7 @@ export async function approveMember(classId, studentId, opts = {}) {
       return {
         ok: false,
         limitReached: true,
-        error: `Lớp đã đạt tối đa ${effectiveMax} học sinh theo gói Miễn phí. Nâng cấp Giáo viên VIP (399.000đ/tháng) để không giới hạn sĩ số!`,
+        error: `Lớp đã đạt tối đa ${effectiveMax} học sinh theo gói Miễn phí. Nâng cấp Giáo viên VIP (999.000đ/năm) để không giới hạn sĩ số!`,
       };
     }
 
@@ -405,7 +446,7 @@ export async function approveAllMembers(classId, opts = {}) {
         return {
           ok: false,
           limitReached: true,
-          error: `Lớp đã đạt tối đa ${effectiveMax} học sinh theo gói Miễn phí. Nâng cấp Giáo viên VIP (399.000đ/tháng) để không giới hạn sĩ số!`,
+          error: `Lớp đã đạt tối đa ${effectiveMax} học sinh theo gói Miễn phí. Nâng cấp Giáo viên VIP (999.000đ/năm) để không giới hạn sĩ số!`,
         };
       }
       toApprove = pending.slice(0, slots);
@@ -526,10 +567,8 @@ export async function deleteClass(classId) {
   try {
     const exams = await getExamsByClass(classId);
     await Promise.all(exams.map((ex) => deleteExam(ex.id).catch(() => {})));
-    await Promise.race([
-      deleteDoc(doc(db, 'classes', classId)),
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]);
+    await deleteDoc(doc(db, 'classes', classId));
+    removeLocalTeacherItem('classes', classId);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: friendlyFirestoreError(e, 'xóa lớp') };
@@ -580,7 +619,7 @@ export async function createExam({
   }
   const cleanClassId = typeof classId === 'string' ? classId.trim() : '';
   const effectiveIsDraft = !cleanClassId ? true : Boolean(isDraft);
-  const totalPoints = Math.round((questions || []).reduce((s, q) => s + (Number(q.points) || 1), 0) * 100) / 100;
+  const totalPoints = computeExamTotalPoints(questions || [], subject);
 
   const rawQuestions = questions || [];
   const publicQuestions = stripAnswerKeys(rawQuestions);
@@ -682,17 +721,34 @@ export async function updateTeacherExam(examId, patch) {
   if (!examId) throw new Error('Thiếu examId.');
   try {
     const nextPatch = { ...(patch || {}) };
+    if (nextPatch.classId !== undefined && nextPatch.isDraft === undefined) {
+      nextPatch.isDraft = !String(nextPatch.classId || '').trim();
+    }
     let privateKey = null;
     if (Array.isArray(nextPatch.questions)) {
+      if (nextPatch.totalPoints === undefined) {
+        nextPatch.totalPoints = computeExamTotalPoints(nextPatch.questions, nextPatch.subject || '');
+      }
       privateKey = extractAnswerKey(nextPatch.questions);
       nextPatch.questions = stripAnswerKeys(nextPatch.questions);
       nextPatch.secureAnswerKey = true;
     }
 
-    await updateDoc(doc(db, 'exams', examId), stripUndefined({
+    const cleanPatch = stripUndefined({
       ...nextPatch,
       updatedAt: serverTimestamp(),
-    }));
+    });
+    if (Array.isArray(nextPatch.questions)) {
+      const estimatedBytes = estimateFirestoreDocBytes(cleanPatch);
+      if (estimatedBytes > MAX_FIRESTORE_EXAM_BYTES) {
+        const mb = (estimatedBytes / 1024 / 1024).toFixed(2);
+        throw new Error(
+          `Đề thi quá lớn (~${mb} MB), vượt giới hạn 1 MB của hệ thống do chứa nhiều ảnh dung lượng cao. Vui lòng nén hoặc bớt hình ảnh rồi lưu lại.`
+        );
+      }
+    }
+
+    await updateDoc(doc(db, 'exams', examId), cleanPatch);
 
     if (privateKey) {
       await setDoc(
@@ -736,7 +792,10 @@ export async function getExamsByTeacher(teacherId) {
     const cloudList = await Promise.all(rawCloud.map((ex) => hydrateExamAnswerKey(ex)));
     const localList = readLocalTeacherList('exams', teacherId);
     const map = new Map(cloudList.map((e) => [e.id, e]));
-    localList.forEach((e) => { if (e?.id && !map.has(e.id)) map.set(e.id, e); });
+    // Chỉ giữ các đề tạo tạm offline (`local-...`), không hồi sinh đề cloud đã bị xóa
+    localList.forEach((e) => {
+      if (e?.id && /^local-/.test(String(e.id)) && !map.has(e.id)) map.set(e.id, e);
+    });
     const merged = Array.from(map.values());
     writeLocalTeacherList('exams', teacherId, merged);
     return merged;
@@ -824,10 +883,8 @@ export async function deleteExam(examId) {
     await kill(query(collection(db, 'examSessions'), where('examId', '==', examId)));
     await kill(collection(db, 'exams', examId, 'attempts'));
     await kill(collection(db, 'exams', examId, 'private'));
-    await Promise.race([
-      deleteDoc(doc(db, 'exams', examId)),
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]);
+    await deleteDoc(doc(db, 'exams', examId));
+    removeLocalTeacherItem('exams', examId);
   } catch (e) {
     console.error('[deleteExam] Lỗi:', e.code, e.message);
     throw new Error(friendlyFirestoreError(e, 'xóa đề'));
@@ -1236,6 +1293,51 @@ async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMet
   };
 }
 
+/**
+ * Giáo viên chấm điểm thủ công các câu Tự luận (`essay`) trên bài nộp của học sinh.
+ * Cập nhật `detail[i]`, tổng điểm `score`, số câu đúng `correctCount` trên Firestore.
+ */
+export async function gradeSubmissionEssays({ submission, exam, essayScores = {}, teacherNote = '' } = {}) {
+  if (!submission?.id) throw new Error('Thiếu mã bài nộp cần chấm.');
+  const questions = Array.isArray(exam?.questions) ? exam.questions : [];
+  const origDetail = Array.isArray(submission.detail) ? submission.detail : [];
+  const nextDetail = questions.map((q, idx) => {
+    const cur = { ...(origDetail[idx] || { index: idx, type: qType(q), picked: submission.answers?.[idx] ?? '' }) };
+    if (qType(q) === 'essay') {
+      const maxPts = Number(q?.points) > 0 ? Number(q.points) : 1;
+      const rawInput = essayScores[idx];
+      if (rawInput !== undefined && rawInput !== '' && Number.isFinite(Number(rawInput))) {
+        const clamped = Math.round(Math.max(0, Math.min(maxPts, Number(rawInput))) * 100) / 100;
+        cur.earned = clamped;
+        cur.isCorrect = clamped >= maxPts * 0.5 && clamped > 0;
+        cur.needsManualGrading = false;
+        cur.manualGraded = true;
+      }
+    }
+    return cur;
+  });
+  origDetail.forEach((d, idx) => {
+    if (idx >= nextDetail.length) nextDetail.push(d);
+  });
+
+  const nextScore = Math.round(nextDetail.reduce((sum, d) => sum + (Number(d?.earned) || 0), 0) * 100) / 100;
+  const nextCorrectCount = nextDetail.filter((d) => d?.isCorrect).length;
+  const hasPending = nextDetail.some((d) => d?.needsManualGrading);
+
+  const patch = stripUndefined({
+    detail: nextDetail,
+    score: nextScore,
+    correctCount: nextCorrectCount,
+    graded: !hasPending,
+    manualGraded: true,
+    manualGradedAt: serverTimestamp(),
+    ...(String(teacherNote || '').trim() ? { teacherComment: String(teacherNote).trim() } : {}),
+  });
+
+  await updateDoc(doc(db, 'submissions', submission.id), patch);
+  return { ...submission, ...patch, manualGradedAt: Date.now() };
+}
+
 export async function getSubmissionsByExam(examId) {
   if (!examId) return [];
   try {
@@ -1616,10 +1718,14 @@ export function listenExamsByClass(classId, cb) {
 export function listenExamsByTeacher(teacherId, cb) {
   if (!teacherId) return () => {};
   const q = query(collection(db, 'exams'), where('teacherId', '==', teacherId));
-  return onSnapshot(q, (snap) => {
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    list.sort((a, b) => (tsMs(b.createdAt) || 0) - (tsMs(a.createdAt) || 0));
-    cb(list);
+  let seq = 0;
+  return onSnapshot(q, async (snap) => {
+    const ticket = ++seq;
+    const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    rawList.sort((a, b) => (tsMs(b.createdAt) || 0) - (tsMs(a.createdAt) || 0));
+    const hydrated = await Promise.all(rawList.map((ex) => hydrateExamAnswerKey(ex)));
+    if (ticket !== seq) return;
+    cb(hydrated);
   }, (err) => {
     console.warn('[listenExamsByTeacher] Lỗi:', err.code, err.message);
   });

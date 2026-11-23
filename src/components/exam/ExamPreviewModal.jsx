@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import MathText from '../MathText.jsx';
+import MathText, { MathTextConfigContext } from '../MathText.jsx';
+import { subjectUsesMath } from '../../lib/subjects.js';
 import { buildExamQuestionsForPaper } from '../../data/virtualExamsBank.js';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -25,15 +26,21 @@ export default function ExamPreviewModal({
     }
   }, [exam]);
 
+  const partOf = (q) =>
+    q.type === 'essay' || q.part === 4
+      ? 4
+      : q.part || (q.type === 'true_false' || Array.isArray(q.statements) ? 2 : q.type === 'short_answer' ? 3 : 1);
+
   const structure = useMemo(() => {
-    let p1 = 0; let p2 = 0; let p3 = 0;
+    let p1 = 0; let p2 = 0; let p3 = 0; let p4 = 0;
     questions.forEach((q) => {
-      const p = q.part || (q.type === 'true_false' || Array.isArray(q.statements) ? 2 : q.type === 'short_answer' ? 3 : 1);
+      const p = partOf(q);
       if (p === 2) p2++;
       else if (p === 3) p3++;
+      else if (p === 4) p4++;
       else p1++;
     });
-    return { p1, p2, p3, total: questions.length };
+    return { p1, p2, p3, p4, total: questions.length };
   }, [questions]);
 
   if (!exam) return null;
@@ -41,9 +48,11 @@ export default function ExamPreviewModal({
   const previewQs = questions.slice(0, 5);
   const solvedQs = questions.slice(0, 4);
   const remainingCount = Math.max(0, questions.length - previewQs.length);
+  const disableChem = Boolean(exam?.subject) && !subjectUsesMath(exam.subject);
 
   const formatAnswerLabel = (q) => {
-    const p = q.part || (q.type === 'true_false' || Array.isArray(q.statements) ? 2 : q.type === 'short_answer' ? 3 : 1);
+    const p = partOf(q);
+    if (p === 4) return 'Tự luận';
     if (p === 2 && Array.isArray(q.statements)) {
       return q.statements.map((s, i) => `${String.fromCharCode(97 + i)}-${s.answer ? 'Đ' : 'S'}`).join(' · ');
     }
@@ -53,6 +62,7 @@ export default function ExamPreviewModal({
   };
 
   return (
+    <MathTextConfigContext.Provider value={{ disableChemFormat: disableChem }}>
     <div
       className="s9-modal-backdrop"
       role="dialog"
@@ -73,7 +83,11 @@ export default function ExamPreviewModal({
             </div>
             <h3>{exam.title}</h3>
             <p className="s9-pm-sub">
-              Cấu trúc chuẩn GDPT 2025: <b>Phần I: {structure.p1} câu</b> · <b>Phần II: {structure.p2} câu</b> · <b>Phần III: {structure.p3} câu</b>
+              Cấu trúc đề:{' '}
+              {structure.p1 > 0 && <><b>Phần I: {structure.p1} câu</b></>}
+              {structure.p2 > 0 && <>{structure.p1 > 0 ? ' · ' : ''}<b>Phần II: {structure.p2} câu</b></>}
+              {structure.p3 > 0 && <>{(structure.p1 + structure.p2) > 0 ? ' · ' : ''}<b>Phần III: {structure.p3} câu</b></>}
+              {structure.p4 > 0 && <>{(structure.p1 + structure.p2 + structure.p3) > 0 ? ' · ' : ''}<b>Tự luận: {structure.p4} câu</b></>}
               {exam.author ? ` · Biên soạn: ${exam.author}` : ''}
             </p>
           </div>
@@ -113,17 +127,22 @@ export default function ExamPreviewModal({
             <>
               <ol className="s9-pm-qlist">
                 {previewQs.map((q, idx) => {
-                  const p = q.part || (q.type === 'true_false' || Array.isArray(q.statements) ? 2 : q.type === 'short_answer' ? 3 : 1);
+                  const p = partOf(q);
                   return (
                     <li key={q.id || idx} className="s9-pm-qcard">
                       <div className="s9-pm-qhead">
                         <b>Câu {idx + 1}</b>
                         <span className="s9-pm-qpart">
-                          {p === 2 ? 'Đúng / Sai' : p === 3 ? 'Trả lời ngắn' : 'Trắc nghiệm 4 lựa chọn'}
+                          {p === 2 ? 'Đúng / Sai' : p === 3 ? 'Trả lời ngắn' : p === 4 ? 'Tự luận / Đọc hiểu mở' : 'Trắc nghiệm 4 lựa chọn'}
                         </span>
                       </div>
+                      {q.passage && (
+                        <div className="s9-pm-passage" style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'rgba(14,165,233,0.06)', fontSize: '0.88rem' }}>
+                          <MathText as="div">{q.passage}</MathText>
+                        </div>
+                      )}
                       <div className="s9-pm-qtext">
-                        <MathText as="div">{q.q || q.content || ''}</MathText>
+                        <MathText as="div">{q.q || q.content || (q.passage ? '(Chọn phương án / trả lời theo ngữ liệu trên)' : '')}</MathText>
                       </div>
 
                       {p === 2 && Array.isArray(q.statements) ? (
@@ -136,6 +155,8 @@ export default function ExamPreviewModal({
                         </ul>
                       ) : p === 3 ? (
                         <div className="s9-pm-sa-hint">Điền đáp án số ngắn gọn khi vào phòng thi</div>
+                      ) : p === 4 ? (
+                        <div className="s9-pm-sa-hint">Trình bày câu trả lời tự luận khi vào phòng thi</div>
                       ) : (
                         <ul className="s9-pm-opts">
                           {(q.options || []).map((opt, oi) => (
@@ -233,5 +254,6 @@ export default function ExamPreviewModal({
         </footer>
       </div>
     </div>
+    </MathTextConfigContext.Provider>
   );
 }

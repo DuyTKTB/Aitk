@@ -1,10 +1,14 @@
 import { isAdmin as checkIsAdmin } from './isAdmin.js';
 import { getUserRole } from './userRole.js';
 
-export const TEACHER_VIP_MONTHLY_PRICE = 399000;
-export const TEACHER_VIP_PRICE_TEXT = '399.000đ';
-export const STUDENT_VIP_MONTHLY_PRICE = 199000;
-export const STUDENT_VIP_PRICE_TEXT = '199.000đ';
+export const TEACHER_VIP_ANNUAL_PRICE = 999000;
+export const TEACHER_VIP_MONTHLY_PRICE = TEACHER_VIP_ANNUAL_PRICE;
+export const TEACHER_VIP_PRICE_TEXT = '999.000đ';
+export const TEACHER_VIP_PERIOD_TEXT = '999.000đ/năm';
+export const STUDENT_VIP_ANNUAL_PRICE = 299000;
+export const STUDENT_VIP_MONTHLY_PRICE = STUDENT_VIP_ANNUAL_PRICE;
+export const STUDENT_VIP_PRICE_TEXT = '299.000đ';
+export const STUDENT_VIP_PERIOD_TEXT = '299.000đ/năm';
 
 export const FREE_TEACHER_LIMITS = Object.freeze({
   maxClasses: 1,
@@ -32,121 +36,41 @@ export const STUDENT_FREE_EXCLUDED_MODULES = Object.freeze([
 ]);
 
 export const SUBSCRIPTION_CATALOG = Object.freeze({
-  // ======================== HỌC SINH (chuẩn 199k/tháng) ========================
-  'hs-1m': {
-    id: 'hs-1m',
-    role: 'student',
-    planCode: 'VIP',
-    label: 'ELEC AI Học Sinh VIP — 1 tháng',
-    shortLabel: 'Học Sinh VIP 1 tháng',
-    sublabel: 'Mở khóa toàn bộ bộ đề PRO/VIP & Gia sư AI',
-    months: 1,
-    days: 30,
-    amount: STUDENT_VIP_MONTHLY_PRICE,
-    price: STUDENT_VIP_MONTHLY_PRICE,
-    originalPrice: 249000,
-    period: '/ 1 tháng',
-    badge: 'Chuẩn 199k/tháng',
-    featured: true,
-    bonusCredits: 60,
-  },
-  'hs-3m': {
-    id: 'hs-3m',
-    role: 'student',
-    planCode: 'VIP',
-    label: 'ELEC AI Học Sinh VIP — 3 tháng',
-    shortLabel: 'Học Sinh VIP 3 tháng',
-    sublabel: 'Ôn thi tăng tốc theo quý (~133k/tháng), tiết kiệm 33%',
-    months: 3,
-    days: 90,
-    amount: 399000,
-    price: 399000,
-    originalPrice: STUDENT_VIP_MONTHLY_PRICE * 3,
-    period: '/ 3 tháng',
-    badge: 'Tiết kiệm 33%',
-    bonusCredits: 150,
-  },
-  'hs-6m': {
-    id: 'hs-6m',
-    role: 'student',
-    planCode: 'VIP',
-    label: 'ELEC AI Học Sinh VIP — 6 tháng',
-    shortLabel: 'Học Sinh VIP 6 tháng',
-    sublabel: 'Đồng hành trọn 1 học kỳ (~116k/tháng), tiết kiệm 41%',
-    months: 6,
-    days: 180,
-    amount: 699000,
-    price: 699000,
-    originalPrice: STUDENT_VIP_MONTHLY_PRICE * 6,
-    period: '/ 6 tháng',
-    badge: 'Tiết kiệm 41%',
-    bonusCredits: 320,
-  },
+  // ======================== HỌC SINH (299k / 1 năm) ========================
   'hs-12m': {
     id: 'hs-12m',
     role: 'student',
     planCode: 'VIP',
-    label: 'ELEC AI Học Sinh VIP — 12 tháng',
-    shortLabel: 'Học Sinh VIP 12 tháng',
-    sublabel: 'Trọn năm học 2026–2027 (~83k/tháng) & tặng 700 Credit AI',
+    label: 'ELEC AI Học Sinh VIP — 1 năm',
+    shortLabel: 'Học Sinh VIP 1 năm',
+    sublabel: 'Trọn 1 năm học (≈24.900đ/tháng) · Mở khóa 100% kho đề PRO/VIP & tặng 700 Credit AI',
     months: 12,
     days: 365,
-    amount: 999000,
-    price: 999000,
-    originalPrice: STUDENT_VIP_MONTHLY_PRICE * 12,
-    period: '/ 12 tháng',
-    badge: 'Tiết kiệm 58%',
+    amount: STUDENT_VIP_ANNUAL_PRICE,
+    price: STUDENT_VIP_ANNUAL_PRICE,
+    originalPrice: 599000,
+    period: '/ 1 năm',
+    badge: '299k / 1 năm',
+    featured: true,
     bonusCredits: 700,
   },
 
-  // ======================== GIÁO VIÊN VIP (399k/tháng) ========================
-  'gv-1m': {
-    id: 'gv-1m',
-    role: 'teacher',
-    planCode: 'PRO',
-    label: 'ELEC AI Giáo Viên VIP — 1 tháng',
-    shortLabel: 'Giáo Viên VIP 1 tháng',
-    sublabel: 'Mở khóa toàn bộ hệ sinh thái giảng dạy, AI soạn đề, OMR & Giám sát thi',
-    months: 1,
-    days: 30,
-    amount: TEACHER_VIP_MONTHLY_PRICE,
-    price: TEACHER_VIP_MONTHLY_PRICE,
-    originalPrice: 499000,
-    period: '/ 1 tháng',
-    badge: 'Gói chuẩn 399k/tháng',
-    featured: true,
-    bonusCredits: 100,
-  },
-  'gv-6m': {
-    id: 'gv-6m',
-    role: 'teacher',
-    planCode: 'PRO',
-    label: 'ELEC AI Giáo Viên VIP — 6 tháng',
-    shortLabel: 'Giáo Viên VIP 6 tháng',
-    sublabel: 'Ổn định trọn 1 học kỳ, tiết kiệm 17% so với gia hạn từng tháng',
-    months: 6,
-    days: 180,
-    amount: 1990000,
-    price: 1990000,
-    originalPrice: TEACHER_VIP_MONTHLY_PRICE * 6,
-    period: '/ 6 tháng',
-    badge: 'Tiết kiệm 17%',
-    bonusCredits: 350,
-  },
+  // ======================== GIÁO VIÊN VIP (999k / 1 năm) ========================
   'gv-12m': {
     id: 'gv-12m',
     role: 'teacher',
     planCode: 'PRO',
-    label: 'ELEC AI Giáo Viên VIP — 12 tháng',
-    shortLabel: 'Giáo Viên VIP 12 tháng',
-    sublabel: 'Đồng hành cả năm học cho giáo viên & tổ bộ môn, tiết kiệm 25%',
+    label: 'ELEC AI Giáo Viên VIP — 1 năm',
+    shortLabel: 'Giáo Viên VIP 1 năm',
+    sublabel: 'Trọn 1 năm học (≈83.250đ/tháng) · Không giới hạn lớp, AI tạo đề, OMR & tặng 800 Credit AI',
     months: 12,
     days: 365,
-    amount: 3590000,
-    price: 3590000,
-    originalPrice: TEACHER_VIP_MONTHLY_PRICE * 12,
-    period: '/ 12 tháng',
-    badge: 'Tiết kiệm 25%',
+    amount: TEACHER_VIP_ANNUAL_PRICE,
+    price: TEACHER_VIP_ANNUAL_PRICE,
+    originalPrice: 1990000,
+    period: '/ 1 năm',
+    badge: '999k / 1 năm',
+    featured: true,
     bonusCredits: 800,
   },
 });
@@ -195,14 +119,29 @@ export function findPackageById(id) {
   if (!id) return null;
   if (SUBSCRIPTION_CATALOG[id]) return SUBSCRIPTION_CATALOG[id];
   const normalized = String(id).trim().toLowerCase();
-  // Backward compatibility for legacy teacher IDs if any deep link/cache holds them
-  if (normalized === 'gv-khoi-dau' || normalized === 'gv-1m') return SUBSCRIPTION_CATALOG['gv-1m'];
-  if (normalized === 'gv-chuyen-nghiep' || normalized === 'gv-6m') return SUBSCRIPTION_CATALOG['gv-6m'];
-  if (normalized === 'gv-toan-nang' || normalized === 'gv-12m') return SUBSCRIPTION_CATALOG['gv-12m'];
-  if (normalized === 'hs-ve-dich' || normalized === 'hs-12m') return SUBSCRIPTION_CATALOG['hs-12m'];
-  if (normalized === 'hs-tinh-anh' || normalized === 'hs-6m') return SUBSCRIPTION_CATALOG['hs-6m'];
-  if (normalized === 'hs-hoc-ba-3m' || normalized === 'hs-3m') return SUBSCRIPTION_CATALOG['hs-3m'];
-  if (normalized === 'hs-hoc-ba' || normalized === 'hs-1m') return SUBSCRIPTION_CATALOG['hs-1m'];
+  // Backward compatibility for legacy package IDs if any deep link/cache holds them
+  if (
+    normalized === 'gv-khoi-dau' ||
+    normalized === 'gv-1m' ||
+    normalized === 'gv-chuyen-nghiep' ||
+    normalized === 'gv-6m' ||
+    normalized === 'gv-toan-nang' ||
+    normalized === 'gv-12m'
+  ) {
+    return SUBSCRIPTION_CATALOG['gv-12m'];
+  }
+  if (
+    normalized === 'hs-ve-dich' ||
+    normalized === 'hs-12m' ||
+    normalized === 'hs-tinh-anh' ||
+    normalized === 'hs-6m' ||
+    normalized === 'hs-hoc-ba-3m' ||
+    normalized === 'hs-3m' ||
+    normalized === 'hs-hoc-ba' ||
+    normalized === 'hs-1m'
+  ) {
+    return SUBSCRIPTION_CATALOG['hs-12m'];
+  }
   return null;
 }
 
@@ -240,7 +179,7 @@ function hasActiveSubQuota(subQuota, expectedPlanName) {
  * Resolve strict role-separated entitlements for Student vs Teacher.
  * - Student VIP unlocks student VIP modules only; NEVER unlocks Teacher VIP.
  * - Teacher FREE stays on FREE (1 class, 40 students, 3 exams, 5 OMR sheets, 20 bank items) and sees FREE VirtualExamRoom.
- * - Teacher VIP (399k/tháng) unlocks all Teacher VIP tools + VirtualExamRoom VIP + DocStudio.
+ * - Teacher VIP (999k/năm) unlocks all Teacher VIP tools + VirtualExamRoom VIP + DocStudio.
  */
 export function resolveEntitlements({
   user = null,

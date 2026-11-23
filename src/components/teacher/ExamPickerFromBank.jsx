@@ -16,9 +16,10 @@
      • excludeIds: câu đã có trong đề hiển thị "Đã có trong đề", không chọn lại được.
    ============================================================ */
 import React, { useState, useMemo, useEffect } from 'react';
-import MathText from '../MathText.jsx';
+import MathText, { MathTextConfigContext } from '../MathText.jsx';
 import { getQuestions, norm } from '../../lib/questionBank.js';
-import { CHEM_TOPICS } from '../../data/chemTopics.js';
+import { getTopicsForSubject, getTopicName } from '../../data/topicsBySubject.js';
+import { getSubject, subjectUsesMath } from '../../lib/subjects.js';
 import { IcoClose, IcoSearch, IcoLibrary } from '../../lib/sessionIcons.jsx';
 import '../../styles/question-bank.css';
 
@@ -54,6 +55,16 @@ export function BankQuestionChoices({ q }) {
             </em>
           </span>
         ))}
+      </div>
+    );
+  }
+  if (q.type === 'essay') {
+    return (
+      <div className="qb-item-opts">
+        <span className="qb-item-opt correct">
+          <b>Tự luận:</b>
+          <span>{q.answer ? q.answer : 'Mở / tự luận (chưa có gợi ý)'}</span>
+        </span>
       </div>
     );
   }
@@ -108,7 +119,11 @@ export default function ExamPickerFromBank({
         if (!alive) return;
         setList(rows);
         // Chỉ áp dụng bộ lọc mặc định nếu ngân hàng có câu khớp
-        if (defaultSubject && rows.some((q) => q.subject === defaultSubject)) setFilterSubject(defaultSubject);
+        if (defaultSubject) {
+          const defId = getSubject(defaultSubject)?.id || defaultSubject;
+          const match = rows.find((q) => q.subject === defaultSubject || (q.subject && (getSubject(q.subject)?.id || q.subject) === defId));
+          if (match?.subject) setFilterSubject(match.subject);
+        }
         if (defaultGrade && rows.some((q) => q.grade === defaultGrade)) setFilterGrade(defaultGrade);
       })
       .catch((e) => console.warn('[ExamPickerFromBank] lỗi:', e))
@@ -132,9 +147,10 @@ export default function ExamPickerFromBank({
     [list]
   );
   const availableTopics = useMemo(() => {
-    const ids = new Set(list.map((q) => q.topicId).filter(Boolean));
-    return CHEM_TOPICS.filter((t) => ids.has(t.id));
-  }, [list]);
+    const src = filterSubject ? list.filter((q) => q.subject === filterSubject) : list;
+    const ids = new Set(src.map((q) => q.topicId).filter(Boolean));
+    return getTopicsForSubject(filterSubject).filter((t) => ids.has(t.id));
+  }, [list, filterSubject]);
 
   const filtered = useMemo(() => {
     let arr = list;
@@ -144,7 +160,7 @@ export default function ExamPickerFromBank({
     if (filterLevel) arr = arr.filter((q) => q.level === filterLevel);
     if (search.trim()) {
       const needle = norm(search);
-      arr = arr.filter((q) => norm(q.q).includes(needle) || norm(q.explain).includes(needle));
+      arr = arr.filter((q) => norm(q.q).includes(needle) || norm(q.passage).includes(needle) || norm(q.explain).includes(needle));
     }
     return arr;
   }, [list, filterSubject, filterGrade, filterTopic, filterLevel, search]);
@@ -298,7 +314,8 @@ export default function ExamPickerFromBank({
               {filtered.map((q) => {
                 const used = excluded.has(q.id);
                 const on = picked.has(q.id);
-                const topic = CHEM_TOPICS.find((t) => t.id === q.topicId);
+                const topicName = q.topicId ? getTopicName(q.topicId, q.subject) : '';
+                const effSub = q.subject || filterSubject;
                 return (
                   <div
                     key={q.id}
@@ -319,11 +336,18 @@ export default function ExamPickerFromBank({
                       {on && <IcoCheck size={14} />}
                     </span>
                     <div className="qb-item-body">
-                      <MathText as="p" className="qb-item-q">{q.q}</MathText>
-                      <BankQuestionChoices q={q} />
+                      <MathTextConfigContext.Provider value={{ disableChemFormat: Boolean(effSub) && !subjectUsesMath(effSub) }}>
+                        {q.passage && (
+                          <div style={{ fontSize: '.78rem', color: 'var(--mut)', marginBottom: '.25rem', whiteSpace: 'pre-line' }}>
+                            {q.passage.length > 220 ? q.passage.slice(0, 220) + '…' : q.passage}
+                          </div>
+                        )}
+                        <MathText as="p" className="qb-item-q">{q.q || (q.passage ? '(Câu hỏi theo đoạn văn)' : '')}</MathText>
+                        <BankQuestionChoices q={q} />
+                      </MathTextConfigContext.Provider>
                       <div className="qb-item-meta">
                         {used && <span className="qb-meta-pill acc">Đã có trong đề</span>}
-                        {topic && <span className="qb-meta-pill acc">{topic.name}</span>}
+                        {topicName && topicName !== q.topicId && <span className="qb-meta-pill acc">{topicName}</span>}
                         {q.level && <span className="qb-meta-pill">{q.level}</span>}
                         {q.usageCount > 0 && <span className="qb-meta-pill">Đã dùng {q.usageCount} lần</span>}
                         {q.tags?.slice(0, 3).map((t) => (

@@ -57,14 +57,14 @@ const SECTIONS = [
   },
   {
     id: 'keys',
-    title: 'Quản lý Key PRO (399k), HS VIP (199k), Voucher & Credit AI',
+    title: 'Quản lý Key PRO (999k/năm), HS VIP (299k/năm), Voucher & Credit AI',
     Icon: IconKey,
     open: true,
     body: (
       <ul style={{ paddingLeft: '1.2rem', lineHeight: 1.8, margin: 0 }}>
-        <li><b>4 loại mã phát hành:</b> Mã giảm giá/Voucher (<code>DISC-</code>), Key Giáo viên PRO 399k/tháng (<code>PRO-</code>), Key Học sinh VIP 199k/tháng (<code>VIP-</code>), và Thẻ nạp Credit AI (<code>CREDIT-</code>).</li>
+        <li><b>4 loại mã phát hành:</b> Mã giảm giá/Voucher (<code>DISC-</code>), Key Giáo viên PRO 999k/năm (<code>PRO-</code>), Key Học sinh VIP 299k/năm (<code>VIP-</code>), và Thẻ nạp Credit AI (<code>CREDIT-</code>).</li>
         <li><b>Tạo 1 mã hoặc hàng loạt:</b> vào <i>Key & Voucher</i> → chọn loại mã & thời hạn (7/30/90/180/365 ngày) → tạo hoặc tạo hàng loạt tối đa 100 mã → xuất CSV để phát hành.</li>
-        <li><b>Cấp trực tiếp không cần key:</b> vào <i>Thuê bao VIP & PRO</i> → bấm <i>Cấp gói trực tiếp</i> → chọn <b>Giáo viên PRO (399k)</b> hoặc <b>Học sinh VIP (199k)</b>, tìm theo tên/email/UID.</li>
+        <li><b>Cấp trực tiếp không cần key:</b> vào <i>Thuê bao VIP & PRO</i> → bấm <i>Cấp gói trực tiếp</i> → chọn <b>Giáo viên PRO (999k/năm)</b> hoặc <b>Học sinh VIP (299k/năm)</b>, tìm theo tên/email/UID.</li>
         <li><b>Phân biệt rõ GV PRO & HS VIP:</b> Admin có thể lọc riêng GV PRO và HS VIP, gia hạn giữ nguyên đúng gói, hoặc chuyển gói rõ ràng có xác nhận, tránh ghi đè nhầm quyền Giáo viên.</li>
         <li><b>Thu hồi / hết hạn:</b> Bấm <i>Thu hồi</i> để hủy quyền ngay trên cả Supabase và Firestore. Dashboard hiển thị cảnh báo thuê bao sắp hết trong ≤7 ngày để gia hạn 1 chạm.</li>
       </ul>
@@ -126,7 +126,7 @@ const SECTIONS = [
         <li><b>Danh sách hợp nhất:</b> tự động gộp tài khoản từ cả Supabase <code>profiles</code> và Firestore <code>users</code> để không sót người dùng đăng nhập Google/Firebase.</li>
         <li><b>Đổi vai trò đồng bộ 2 chiều:</b> khi đổi vai trò (Học sinh / Giáo viên / Quản trị), hệ thống đồng bộ đồng thời sang Supabase và Firestore <code>/users/&#123;uid&#125;</code>.</li>
         <li><b>Reset dùng thử Giáo viên Free:</b> mở chi tiết bất kỳ tài khoản nào trong mục <i>Người dùng</i> → bấm <i>Reset dùng thử GV</i> để khôi phục 10 lần nhập Word, 30 lần nhập thủ công và 5 phiếu OMR.</li>
-        <li><b>Hoạt động & Cài đặt:</b> xem nhật ký làm bài, kiểm tra bảng giá VIP/PRO (199k/399k), bật/tắt tính năng và sao lưu/khôi phục dữ liệu.</li>
+        <li><b>Hoạt động & Cài đặt:</b> xem nhật ký làm bài, kiểm tra bảng giá VIP/PRO (299k/999k), bật/tắt tính năng và sao lưu/khôi phục dữ liệu.</li>
       </ul>
     ),
   },

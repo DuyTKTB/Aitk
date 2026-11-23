@@ -53,7 +53,7 @@ export default function TeacherVipLock({
 }) {
   const handleUpgrade = onUpgrade || defaultUpgradeNav;
   const list = Array.isArray(highlights) && highlights.length ? highlights : TEACHER_VIP_HIGHLIGHTS.slice(0, 4);
-  const btnText = actionLabel || `Nâng cấp Giáo viên VIP — ${TEACHER_VIP_PRICE_TEXT}/tháng`;
+  const btnText = actionLabel || `Nâng cấp Giáo viên VIP — ${TEACHER_VIP_PRICE_TEXT}/năm`;
 
   if (compact) {
     return (
@@ -177,7 +177,7 @@ export default function TeacherVipLock({
                 color: 'var(--t-warn, #b45309)',
               }}
             >
-              GIÁO VIÊN VIP · {TEACHER_VIP_PRICE_TEXT}/THÁNG
+              GIÁO VIÊN VIP · {TEACHER_VIP_PRICE_TEXT}/NĂM
             </span>
             {quotaText ? (
               <span
@@ -237,7 +237,7 @@ export default function TeacherVipLock({
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div style={{ fontSize: '0.8rem', color: 'var(--t-ink-2, var(--t-ink-muted, #64748b))' }}>
-          Chỉ <strong style={{ color: 'var(--t-warn, #d97706)', fontSize: '0.96rem' }}>{TEACHER_VIP_PRICE_TEXT}</strong> / 1 tháng · Kích hoạt ngay lập tức
+          Chỉ <strong style={{ color: 'var(--t-warn, #d97706)', fontSize: '0.96rem' }}>{TEACHER_VIP_PRICE_TEXT}</strong> / 1 năm · Kích hoạt ngay lập tức
         </div>
         <button
           type="button"

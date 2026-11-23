@@ -20,7 +20,8 @@ import {
   rid,
 } from './examAiUtils.js';
 import { buildFileContext } from './fileReader.js';
-import { formatMathAndChemSymbols } from './chemFormulaFormatter.js';
+import { formatTextForSubject } from './chemFormulaFormatter.js';
+import { getSubject, getSubjectExamProfile, subjectUsesMath } from './subjects.js';
 
 export const BLOOM_MAPPING = {
   nb: { vn: 'Nhận biết', en: 'Remembering', desc: 'Nhớ khái niệm, định nghĩa, công thức' },
@@ -56,8 +57,10 @@ const PW = '(^|[^\\p{L}\\p{N}])';
 const re = (src, flags = 'iu') => new RegExp(src, flags);
 
 export const FORMAT_GDPT = 'Chuẩn GDPT 2018 (Trắc nghiệm + Đúng/Sai + Trả lời ngắn)';
+export const FORMAT_GDPT_2PART = 'Chuẩn GDPT 2018 (Trắc nghiệm + Đúng/Sai)';
 export const FORMAT_GDPT_ADV = 'Chuẩn GDPT 2018 · Phân hóa nâng cao';
 export const FORMAT_MCQ = 'Trắc nghiệm 4 lựa chọn';
+export const FORMAT_ESSAY = 'Đọc hiểu + Tự luận';
 
 export function parseExamIntent(text) {
   const empty = { count: null, duration: null, grade: null, invalidGrade: null, topic: '', format: '', preset: false, subject: null };
@@ -71,8 +74,24 @@ export function parseExamIntent(text) {
   let invalidGrade = null;
   let subject = null;
 
-  // 1. Nhận diện môn học rõ ràng (Hóa học, Sinh học, Vật lý, Toán học)
-  if (/(?:sinh học|sinh hoc|\bsinh\b)/i.test(original) || /(?:di truyền|gen\b|adn\b|arn\b|nhiễm sắc thể|nst\b|nguyên phân|giảm phân|quang hợp|hô hấp tế bào|tiến hóa|hệ sinh thái|đột biến gen|quần thể|menđen|mã di truyền|phiên mã|dịch mã)/i.test(original)) {
+  // 1. Nhận diện môn học rõ ràng (đủ 11+ môn THPT & KHTN)
+  if (/(?:khoa học tự nhiên|khoa hoc tu nhien|\bkhtn\b)/i.test(original)) {
+    subject = 'Khoa học tự nhiên';
+  } else if (/(?:tiếng anh|tieng anh|anh văn|anh van|môn anh|mon anh|\benglish\b|\bgrammar\b|\bvocabulary\b|\bcloze\b|reading comprehension|generation gap|a long and healthy life|cities of the future|urbanisation|green living)/i.test(original)) {
+    subject = 'Tiếng Anh';
+  } else if (/(?:ngữ văn|ngu van|văn học|van hoc|môn văn|mon van|biện pháp tu từ|phương thức biểu đạt|nghị luận xã hội|nghị luận văn học|đọc hiểu văn bản|\bthể thơ\b)/i.test(original)) {
+    subject = 'Ngữ văn';
+  } else if (/(?:gdkt&pl|gdkt\s*pl|kinh tế và pháp luật|kinh te va phap luat|kinh tế pháp luật|giáo dục công dân|\bgdcd\b|lạm phát|thất nghiệp|ngân sách nhà nước|hợp đồng lao động|quyền bình đẳng công dân)/i.test(original)) {
+    subject = 'GDKT&PL';
+  } else if (/(?:lịch sử|lich su|môn sử|mon su|cách mạng tháng tám|chiến dịch điện biên phủ|chiến tranh lạnh|kháng chiến chống|\basean\b|liên hợp quốc|công cuộc đổi mới)/i.test(original)) {
+    subject = 'Lịch sử';
+  } else if (/(?:địa lí|địa lý|dia li|dia ly|môn địa|mon dia|mật độ dân số|cán cân xuất nhập khẩu|tốc độ tăng trưởng|biên độ nhiệt|khí hậu nhiệt đới|đồng bằng sông|vùng kinh tế)/i.test(original)) {
+    subject = 'Địa lí';
+  } else if (/(?:tin học|tin hoc|môn tin|mon tin|lập trình|\bpython\b|\bc\+\+\b|\bsql\b|\bhtml\b|\bcss\b|cơ sở dữ liệu|thuật toán sắp xếp|mạng máy tính|trí tuệ nhân tạo)/i.test(original)) {
+    subject = 'Tin học';
+  } else if (/(?:công nghệ|cong nghe|bản vẽ kỹ thuật|động cơ đốt trong|mạch điện ba pha|vi điều khiển|linh kiện bán dẫn|trồng trọt|chăn nuôi|lâm nghiệp|thủy sản)/i.test(original)) {
+    subject = 'Công nghệ';
+  } else if (/(?:sinh học|sinh hoc|\bsinh\b)/i.test(original) || /(?:di truyền|gen\b|adn\b|arn\b|nhiễm sắc thể|nst\b|nguyên phân|giảm phân|quang hợp|hô hấp tế bào|tiến hóa|hệ sinh thái|đột biến gen|quần thể|menđen|mã di truyền|phiên mã|dịch mã)/i.test(original)) {
     subject = 'Sinh học';
   } else if (/(?:hóa học|hoa hoc|\bhóa\b|\bhoa\b)/i.test(original) || /(?:phản ứng|axit|acid|bazơ|base|dung dịch|este|ester|lipit|lipid|amino acid|cacbohiđrat|kim loại|phi kim|bảng tuần hoàn|nguyên tử|oxi hóa|khử|điện phân|hóa trị|halogen)/i.test(original)) {
     subject = 'Hóa học';
@@ -100,7 +119,7 @@ export function parseExamIntent(text) {
     else if (lowGrade(n)) { invalidGrade = n; str = str.replace(m[0], `${m[1]} `); }
   }
   if (!grade && !invalidGrade) {
-    m = str.match(re(`${PW}(?:hóa học|hoa hoc|hóa|hoa|sinh học|sinh hoc|sinh|vật lý|vật lí|lý|toán học|toán)\\s*(\\d{1,2})${NW}`));
+    m = str.match(re(`${PW}(?:hóa học|hoa hoc|hóa|hoa|sinh học|sinh hoc|sinh|vật lý|vật lí|lý|toán học|toán|tiếng anh|tieng anh|anh văn|anh|ngữ văn|văn|lịch sử|sử|địa lí|địa lý|địa|tin học|tin|công nghệ|gdkt&pl|gdcd)\\s*(\\d{1,2})${NW}`));
     if (m && okGrade(+m[2])) { grade = m[2]; str = str.replace(m[0], `${m[1]} `); }
   }
   if (!grade && !invalidGrade) {
@@ -110,7 +129,27 @@ export function parseExamIntent(text) {
 
   // Tự động nhận diện lớp từ chủ đề đặc thù trong chương trình GDPT 2018 nếu chưa có lớp
   if (!grade && !invalidGrade) {
-    if (subject === 'Sinh học') {
+    if (subject === 'Tiếng Anh') {
+      if (/(?:family life|humans and the environment|better community|inventions|gender equality|international organisations|new ways to learn|ecotourism)/i.test(original)) grade = '10';
+      else if (/(?:long and healthy life|generation gap|cities of the future|asean|global warming|preserving our heritage|becoming independent|social issues|ecosystem)/i.test(original)) grade = '11';
+      else if (/(?:life stories|multicultural world|green living|urbanisation|world of work|artificial intelligence|mass media|wildlife conservation|career paths|lifelong learning)/i.test(original)) grade = '12';
+    } else if (subject === 'Lịch sử') {
+      if (/(?:văn minh ai cập|văn minh ấn độ|văn minh trung hoa|văn minh văn lang|cách mạng công nghiệp)/i.test(original)) grade = '10';
+      else if (/(?:cách mạng tư sản|bảo vệ tổ quốc trước 1945|biển đông|cải cách hồ quý ly|cải cách minh mạng)/i.test(original)) grade = '11';
+      else if (/(?:chiến tranh lạnh|trật tự thế giới sau|asean|cách mạng tháng tám|điện biên phủ|kháng chiến chống pháp|kháng chiến chống mỹ|công cuộc đổi mới)/i.test(original)) grade = '12';
+    } else if (subject === 'Địa lí') {
+      if (/(?:thạch quyển|khí quyển|thủy quyển|sinh quyển|quy luật địa đới)/i.test(original)) grade = '10';
+      else if (/(?:liên minh châu âu|\beu\b|hoa kỳ|nhật bản|trung quốc|liên bang nga|đông nam á)/i.test(original)) grade = '11';
+      else if (/(?:địa lí tự nhiên việt nam|vùng kinh tế|đồng bằng sông hồng|đồng bằng sông cửu long|đô thị hóa việt nam|biển đảo việt nam)/i.test(original)) grade = '12';
+    } else if (subject === 'Tin học') {
+      if (/(?:biểu diễn dữ liệu|inkscape|đồ họa vector|python cơ bản)/i.test(original)) grade = '10';
+      else if (/(?:cơ sở dữ liệu|\bsql\b|hệ quản trị cơ sở dữ liệu|thuật toán sắp xếp)/i.test(original)) grade = '11';
+      else if (/(?:trí tuệ nhân tạo|\bhtml\b|\bcss\b|giao thức mạng|bảo mật mạng)/i.test(original)) grade = '12';
+    } else if (subject === 'GDKT&PL') {
+      if (/(?:ngân sách nhà nước|thuế|tín dụng|hiến pháp 2013)/i.test(original)) grade = '10';
+      else if (/(?:cạnh tranh|cung cầu|lạm phát|thất nghiệp|quyền bình đẳng)/i.test(original)) grade = '11';
+      else if (/(?:tăng trưởng kinh tế|hội nhập kinh tế quốc tế|bảo hiểm|an sinh xã hội|luật lao động|luật quốc tế)/i.test(original)) grade = '12';
+    } else if (subject === 'Sinh học') {
       if (/(?:tế bào|sinh học tế bào|vi sinh vật|virus|phân bào|nguyên phân|giảm phân)/i.test(original)) grade = '10';
       else if (/(?:sinh học cơ thể|tuần hoàn|hô hấp thực vật|tiêu hóa|bài tiết|miễn dịch|cảm ứng|hướng động|tập tính)/i.test(original)) grade = '11';
       else if (/(?:di truyền|tiến hóa|sinh thái|menđen|đột biến|adn|arn|quần thể|hệ sinh thái)/i.test(original)) grade = '12';
@@ -135,19 +174,35 @@ export function parseExamIntent(text) {
 
   const wantsGdpt = /gdpt|2018|2025|đúng sai|đúng\/sai|trả lời ngắn|chuẩn|thptqg|thpt quốc gia|tốt nghiệp|thi thử/i.test(original);
   const wantsAdv = /phân hóa|nâng cao|vận dụng cao|chuyên/i.test(original);
+  const subjProf = subject ? getSubjectExamProfile(subject) : null;
   let format = '';
-  if (wantsGdpt && wantsAdv) format = FORMAT_GDPT_ADV;
+  if (/tự luận|làm văn/i.test(original) && !/trắc nghiệm/i.test(original)) {
+    format = FORMAT_ESSAY;
+  } else if (subjProf?.examFamily === 'mcq_only' && !/đúng sai|đúng\/sai|trả lời ngắn/i.test(original)) {
+    format = FORMAT_MCQ;
+  } else if (subjProf?.examFamily === 'literature_essay' && !/trắc nghiệm|đúng sai/i.test(original)) {
+    format = FORMAT_ESSAY;
+  } else if (subjProf?.examFamily === 'social_2part' && wantsGdpt && !/trả lời ngắn/i.test(original)) {
+    format = FORMAT_GDPT_2PART;
+  } else if (wantsGdpt && wantsAdv) format = FORMAT_GDPT_ADV;
   else if (wantsGdpt) format = FORMAT_GDPT;
   else if (wantsAdv) format = 'Phân hóa nâng cao';
   else if (/trắc nghiệm|4 lựa chọn/i.test(original)) format = FORMAT_MCQ;
 
   let preset = false;
   if (/thptqg|thpt quốc gia|tốt nghiệp|thi thử/i.test(original) && !count && !duration) {
-    count = 28; duration = 50; preset = true;
+    if (subjProf?.standardCounts) {
+      count = subjProf.standardCounts.total;
+      duration = subjProf.standardCounts.duration;
+    } else {
+      count = 28;
+      duration = 50;
+    }
+    preset = true;
     if (!grade && !invalidGrade) grade = '12';
   }
 
-  const noise = '(?:tốt nghiệp|thpt quốc gia|quốc gia|thpt|đề kiểm tra|bài kiểm tra|đề thi thử|đề thi|đề ôn tập|đề ôn|đề|phiếu bài tập|kiểm tra|ra đề|tạo đề|soạn đề|tạo|soạn|giúp tôi|giúp|cho tôi|hãy|môn hóa|môn sinh|môn lý|môn toán|thi thử|thptqg|chuẩn bộ gd&đt|chuẩn|phân hóa sâu|phân hóa|nâng cao|gồm|có|về|chủ đề|bài|của|môn)';
+  const noise = '(?:tốt nghiệp|thpt quốc gia|quốc gia|thpt|đề kiểm tra|bài kiểm tra|đề thi thử|đề thi|đề ôn tập|đề ôn|đề|phiếu bài tập|kiểm tra|ra đề|tạo đề|soạn đề|tạo|soạn|giúp tôi|giúp|cho tôi|hãy|môn tiếng anh|tiếng anh|môn anh|môn ngữ văn|ngữ văn|môn văn|môn lịch sử|lịch sử|môn sử|môn địa lí|địa lí|địa lý|môn địa|môn tin học|tin học|môn tin|môn công nghệ|công nghệ|môn gdkt&pl|gdkt&pl|môn hóa|môn sinh|môn lý|môn toán|thi thử|thptqg|chuẩn bộ gd&đt|chuẩn|phân hóa sâu|phân hóa|nâng cao|gồm|có|về|chủ đề|bài|của|môn)';
   let topic = str
     .replace(re(`${PW}${noise}${NW}`, 'giu'), '$1 ')
     .replace(re(`${PW}${noise}${NW}`, 'giu'), '$1 ')
@@ -155,7 +210,7 @@ export function parseExamIntent(text) {
     .replace(/[,;:·|]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  if (topic.length < 2 || /^(hóa học|hóa|sinh học|sinh|vật lý|vật lí|lý|toán học|toán)$/i.test(topic)) topic = '';
+  if (topic.length < 2 || /^(hóa học|hóa|sinh học|sinh|vật lý|vật lí|lý|toán học|toán|tiếng anh|tieng anh|anh văn|english|ngữ văn|văn|lịch sử|sử|địa lí|địa lý|địa|tin học|tin|công nghệ|gdkt&pl|gdcd)$/i.test(topic)) topic = '';
   else topic = topic.charAt(0).toUpperCase() + topic.slice(1);
 
   return { count, duration, grade, invalidGrade, topic, format, preset, subject };
@@ -175,8 +230,16 @@ export function inferExamShape({ count = null, duration = null } = {}) {
   return { count: c, duration: d, inferred };
 }
 
-/** Định dạng gợi ý khi giáo viên không nói rõ: đề dài → cấu trúc 3 phần chuẩn thi; đề ngắn → trắc nghiệm. */
-export function suggestFormat(count) {
+/** Định dạng gợi ý khi giáo viên không nói rõ: tự động bám theo nhóm môn học GDPT 2025. */
+export function suggestFormat(count, subject = '') {
+  const s = String(subject || '').trim();
+  if (s) {
+    const prof = getSubjectExamProfile(s);
+    if (prof.examFamily === 'mcq_only') return FORMAT_MCQ;
+    if (prof.examFamily === 'literature_essay') return FORMAT_ESSAY;
+    if (prof.examFamily === 'social_2part') return Number(count) >= 16 ? FORMAT_GDPT_2PART : FORMAT_MCQ;
+    if (prof.examFamily === 'math_3part') return Number(count) >= 20 ? FORMAT_GDPT : FORMAT_MCQ;
+  }
   return Number(count) >= 24 ? FORMAT_GDPT : FORMAT_MCQ;
 }
 
@@ -341,24 +404,48 @@ function intentLabel(intent) {
 }
 
 export const THPT_GRADES = ['10', '11', '12'];
-export const isGdptFormat = (f = '') => /gdpt/i.test(String(f));
+export const isGdptFormat = (f = '') => /(?:gdpt|trắc nghiệm \+ đúng\/sai)/i.test(String(f));
+const isEssayFormat = (f = '') => /tự luận|làm văn/i.test(String(f));
 const isAdvancedFormat = (f = '') => /phân hóa|nâng cao|sâu/i.test(String(f));
 
 export const PART_TYPE = {
   multiple_choice: 'single_choice',
   true_false: 'true_false',
   short_answer: 'short_answer',
+  essay: 'essay',
 };
 const PART_LABEL = {
   multiple_choice: 'Trắc nghiệm nhiều lựa chọn',
   true_false: 'Trắc nghiệm đúng/sai',
   short_answer: 'Trả lời ngắn',
+  essay: 'Đọc hiểu & Tự luận',
 };
 /* Trọng số điểm: 1 câu Đúng/Sai (tối đa) = 4 lần 1 câu trắc nghiệm / trả lời ngắn (đề 18-4-6 → 0,25 / 1 / 0,25) */
-const PART_WEIGHT = { multiple_choice: 1, true_false: 4, short_answer: 1 };
+const PART_WEIGHT = { multiple_choice: 1, true_false: 4, short_answer: 1, essay: 4 };
 const ROMAN = ['I', 'II', 'III', 'IV'];
 
-export function gdptSplit(n) {
+export function gdptSplit(n, subject = '', format = '') {
+  const prof = subject ? getSubjectExamProfile(subject) : null;
+  if (isEssayFormat(format) || prof?.examFamily === 'literature_essay') {
+    return { p1: 0, p2: 0, p3: 0, essay: n };
+  }
+  if (prof?.examFamily === 'mcq_only') {
+    return { p1: n, p2: 0, p3: 0 };
+  }
+  if (format === FORMAT_GDPT_2PART || prof?.examFamily === 'social_2part') {
+    if (n === 28) return { p1: 24, p2: 4, p3: 0 };
+    const p2 = Math.max(1, Math.round(n / 7));
+    const p1 = Math.max(1, n - p2);
+    return { p1, p2, p3: 0 };
+  }
+  if (prof?.examFamily === 'math_3part') {
+    if (n === 22) return { p1: 12, p2: 4, p3: 6 };
+    if (n === 28) return { p1: 18, p2: 4, p3: 6 };
+    const p2 = Math.max(1, Math.round((n * 4) / 22));
+    const p3 = Math.max(1, Math.round((n * 6) / 22));
+    const p1 = Math.max(1, n - p2 - p3);
+    return { p1, p2, p3 };
+  }
   if (n === 28) return { p1: 18, p2: 4, p3: 6 };
   const p2 = Math.max(1, Math.round((n * 4) / 28));
   const p3 = Math.max(1, Math.round((n * 6) / 28));
@@ -389,31 +476,42 @@ function levelWeights(intent, advanced) {
 }
 
 function partWeights(partFormat, advanced) {
+  /* Bám tỉ lệ CV 7991/BGDĐT (~40% Biết - 30% Hiểu - 30% Vận dụng) cho đề chuẩn; tăng phân hóa nếu chọn nâng cao */
   if (partFormat === 'true_false') {
-    return advanced ? { nb: 0, th: 0, vd: 0.5, vdc: 0.5 } : { nb: 0, th: 0.25, vd: 0.5, vdc: 0.25 };
+    return advanced ? { nb: 0, th: 0.25, vd: 0.5, vdc: 0.25 } : { nb: 0.25, th: 0.25, vd: 0.25, vdc: 0.25 };
   }
   if (partFormat === 'short_answer') {
-    return advanced ? { nb: 0, th: 0, vd: 0.4, vdc: 0.6 } : { nb: 0, th: 0.15, vd: 0.5, vdc: 0.35 };
+    return advanced ? { nb: 0, th: 0.15, vd: 0.45, vdc: 0.4 } : { nb: 0.15, th: 0.3, vd: 0.35, vdc: 0.2 };
+  }
+  if (partFormat === 'essay') {
+    return advanced ? { nb: 0.15, th: 0.25, vd: 0.35, vdc: 0.25 } : { nb: 0.3, th: 0.35, vd: 0.25, vdc: 0.1 };
   }
   return advanced
     ? { nb: 0.2, th: 0.3, vd: 0.35, vdc: 0.15 }
-    : { nb: 0.4, th: 0.35, vd: 0.25, vdc: 0 };
+    : { nb: 0.45, th: 0.35, vd: 0.2, vdc: 0 };
 }
 
-export function buildSlots({ count = 10, format = '', intent = 'exam' } = {}) {
-  const n = Math.max(4, Math.min(60, Number(count) || 10));
+export function buildSlots({ count = 10, format = '', intent = 'exam', subject = '' } = {}) {
+  const n = Math.max(2, Math.min(60, Number(count) || 10));
+  const prof = subject ? getSubjectExamProfile(subject) : null;
   const advanced = isAdvancedFormat(format);
   const gdpt = isGdptFormat(format);
+  const essayMode = isEssayFormat(format) || prof?.examFamily === 'literature_essay';
   const parts = [];
-  if (gdpt) {
-    const s = gdptSplit(n);
-    parts.push({ format: 'multiple_choice', n: s.p1 }, { format: 'true_false', n: s.p2 }, { format: 'short_answer', n: s.p3 });
+  if (essayMode) {
+    parts.push({ format: 'essay', n });
+  } else if (gdpt) {
+    const s = gdptSplit(n, subject, format);
+    if (s.p1 > 0) parts.push({ format: 'multiple_choice', n: s.p1 });
+    if (s.p2 > 0) parts.push({ format: 'true_false', n: s.p2 });
+    if (s.p3 > 0) parts.push({ format: 'short_answer', n: s.p3 });
+    if (s.essay > 0) parts.push({ format: 'essay', n: s.essay });
   } else {
     parts.push({ format: 'multiple_choice', n });
   }
   const slots = [];
   parts.forEach((p, pi) => {
-    const w = gdpt ? partWeights(p.format, advanced) : levelWeights(intent, advanced);
+    const w = (gdpt || essayMode) ? partWeights(p.format, advanced) : levelWeights(intent, advanced);
     const d = distribute(p.n, w);
     LEVEL_KEYS.forEach((k) => {
       for (let i = 0; i < d[k]; i++) slots.push({ partIndex: pi, partFormat: p.format, levelKey: k });
@@ -422,17 +520,20 @@ export function buildSlots({ count = 10, format = '', intent = 'exam' } = {}) {
   return { slots, parts, n };
 }
 
-/** Tính lại điểm từng ô theo trọng số dạng câu, tổng luôn = 10. */
+/** Tính lại điểm từng ô theo trọng số dạng câu (hỗ trợ đúng tỉ lệ 1:4:2 của Toán 2025), tổng luôn = 10. */
 export function normalizePoints(matrix) {
+  const subjectWeights = matrix?.subject
+    ? (getSubjectExamProfile(matrix.subject).standardCounts?.weights || PART_WEIGHT)
+    : PART_WEIGHT;
   let units = 0;
   (matrix.parts || []).forEach((p) => {
-    const w = PART_WEIGHT[p.format] || 1;
+    const w = subjectWeights[p.format] || PART_WEIGHT[p.format] || 1;
     (p.topics || []).forEach((t) => LEVEL_KEYS.forEach((k) => { units += (Number(t[k]?.count) || 0) * w; }));
   });
   if (!units) return matrix;
   const unit = 10 / units;
   (matrix.parts || []).forEach((p) => {
-    const w = PART_WEIGHT[p.format] || 1;
+    const w = subjectWeights[p.format] || PART_WEIGHT[p.format] || 1;
     (p.topics || []).forEach((t) => LEVEL_KEYS.forEach((k) => {
       const c = Math.max(0, Math.round(Number(t[k]?.count) || 0));
       t[k] = { count: c, points: Math.round(c * w * unit * 100) / 100 };
@@ -501,12 +602,128 @@ const PLAN_SCHEMA = {
   required: ['topics'],
 };
 
+function getSubjectFlags(subject = '') {
+  const s = getSubject(subject);
+  const id = s.id;
+  const sLower = String(subject || '').toLowerCase();
+  const isBio = id === 'sinh';
+  const isPhysics = id === 'ly';
+  const isMath = id === 'toan';
+  const isEnglish = id === 'anh';
+  const isLit = id === 'van';
+  const isHistory = id === 'su';
+  const isGeo = id === 'dia';
+  const isCivics = id === 'gdcd';
+  const isIT = id === 'tin';
+  const isTech = id === 'congnghe';
+  const isKhtn = id === 'khtn';
+  const isChem = id === 'hoa' || sLower.includes('hóa') || sLower.includes('hoa') || id === 'generic';
+  const subjName = id !== 'generic' ? s.label : (String(subject || '').trim() || 'Môn học');
+  return { isBio, isPhysics, isMath, isEnglish, isLit, isHistory, isGeo, isCivics, isIT, isTech, isKhtn, isChem, subjName };
+}
+
 export function getGradeCurriculumGuideline(grade, subject = 'Hóa học') {
   const g = String(grade || '12');
-  const sLower = String(subject || '').toLowerCase();
-  const isBio = sLower.includes('sinh');
-  const isPhysics = sLower.includes('lý') || sLower.includes('lí') || sLower.includes('phys');
-  const isMath = sLower.includes('toán') || sLower.includes('math');
+  const { isBio, isPhysics, isMath, isEnglish, isLit, isHistory, isGeo, isCivics, isIT, isTech, isKhtn } = getSubjectFlags(subject);
+
+  if (isLit) {
+    return `PHẠM VI KIẾN THỨC CHUẨN NGỮ VĂN LỚP ${g} (GDPT 2018 & ĐỊNH DẠNG 2025):
+- Ngữ liệu đọc hiểu: thơ (thất ngôn, tự do, lục bát...), truyện ngắn, tiểu thuyết, kí/tùy bút/tản văn, văn bản nghị luận, văn bản thông tin; ngữ liệu mới nằm ngoài SGK càng tốt.
+- Kỹ năng: nhận biết thể loại, phương thức biểu đạt, biện pháp tu từ, thông điệp/nội dung chính; phân tích hiệu quả nghệ thuật, viết đoạn nghị luận xã hội (~200 chữ) và bài văn nghị luận văn học (~600 chữ).
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ NGỮ VĂN. Không trộn kiến thức Khoa học tự nhiên hay Toán học.`;
+  }
+
+  if (isHistory) {
+    if (g === '10') {
+      return `PHẠM VI KIẾN THỨC CHUẨN LỊCH SỬ LỚP 10 (GDPT 2018):
+- Lịch sử & Sử học; Vai trò của sử học; Một số nền văn minh thế giới cổ - trung đại (Ai Cập, Trung Hoa, Ấn Độ, Hy Lạp - La Mã, Phục hưng); Các cuộc cách mạng công nghiệp trong lịch sử nhân loại; Văn minh Đông Nam Á & Văn minh Việt Nam (Văn Lang - Âu Lạc, Chăm-pa, Phù Nam, Đại Việt).
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ LỊCH SỬ. Phần Đúng/Sai chuẩn 2025 thường gắn với một đoạn tư liệu lịch sử ngắn. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học hay KHTN.`;
+    }
+    if (g === '11') {
+      return `PHẠM VI KIẾN THỨC CHUẨN LỊCH SỬ LỚP 11 (GDPT 2018):
+- Cách mạng tư sản & sự phát triển của chủ nghĩa tư bản; Chủ nghĩa xã hội từ năm 1917 đến nay; Quá trình giành độc lập dân tộc của các quốc gia Đông Nam Á; Chiến tranh bảo vệ Tổ quốc và chiến tranh giải phóng dân tộc trong lịch sử Việt Nam trước 1945; Một số cuộc cải cách lớn (Hồ Quý Ly, Lê Thánh Tông, Minh Mạng); Lịch sử bảo vệ chủ quyền ở Biển Đông.
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ LỊCH SỬ. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học hay KHTN.`;
+    }
+    return `PHẠM VI KIẾN THỨC CHUẨN LỊCH SỬ LỚP 12 (GDPT 2018 & THI TỐT NGHIỆP THPT 2025):
+- Thế giới trong và sau Chiến tranh lạnh (Trật tự I-an-ta, Liên Hợp Quốc, trật tự thế giới đa cực); ASEAN và quá trình hội nhập khu vực.
+- Cách mạng tháng Tám năm 1945, Kháng chiến chống thực dân Pháp (1945–1954), Kháng chiến chống Mỹ cứu nước (1954–1975), Đấu tranh bảo vệ Tổ quốc từ sau 4/1975.
+- Công cuộc Đổi mới ở Việt Nam từ năm 1986 đến nay; Hoạt động đối ngoại của Việt Nam & Hồ Chí Minh trong lịch sử.
+- Định dạng chuẩn 2025: Phần I (24 câu trắc nghiệm) + Phần II (4 câu Đúng/Sai gắn với đoạn tư liệu lịch sử), KHÔNG có Phần III Trả lời ngắn.
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ LỊCH SỬ. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học hay KHTN!`;
+  }
+
+  if (isGeo) {
+    if (g === '10') {
+      return `PHẠM VI KIẾN THỨC CHUẨN ĐỊA LÍ LỚP 10 (GDPT 2018):
+- Sử dụng bản đồ; Trái Đất & Thạch quyển, Khí quyển, Thủy quyển, Sinh quyển; Địa lí dân cư, cơ cấu nền kinh tế, nông nghiệp - công nghiệp - dịch vụ và phát triển bền vững.
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ ĐỊA LÍ. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học hay Vật lý.`;
+    }
+    if (g === '11') {
+      return `PHẠM VI KIẾN THỨC CHUẨN ĐỊA LÍ LỚP 11 (GDPT 2018):
+- Toàn cầu hóa, khu vực hóa kinh tế; An ninh toàn cầu; Thực hành đọc bảng số liệu/biểu đồ về các khu vực và quốc gia trọng điểm (Mỹ Latinh, EU, Đông Nam Á, Tây Nam Á, Hoa Kỳ, Liên bang Nga, Nhật Bản, Trung Quốc).
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ ĐỊA LÍ. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học hay KHTN.`;
+    }
+    return `PHẠM VI KIẾN THỨC CHUẨN ĐỊA LÍ LỚP 12 (GDPT 2018 & THI TỐT NGHIỆP THPT 2025):
+- Địa lí tự nhiên Việt Nam: Vị trí địa lí, thiên nhiên nhiệt đới ẩm gió mùa, sự phân hóa đa dạng của tự nhiên, bảo vệ tài nguyên - môi trường.
+- Địa lí dân cư: Dân số, lao động và việc làm, đô thị hóa.
+- Địa lí các ngành kinh tế & chuyển dịch cơ cấu (Nông-lâm-ngư, Công nghiệp, Dịch vụ); Sự phát triển và phân bố kinh tế ở các vùng kinh tế (TDMNPB, ĐBSH, BTB, DHNTB, Tây Nguyên, Đông Nam Bộ, ĐBSCL) và kinh tế biển đảo.
+- Định dạng chuẩn 2025: 18 TN + 4 Đúng/Sai (kèm bảng số liệu/biểu đồ) + 6 Trả lời ngắn (tính mật độ dân số, tốc độ tăng trưởng, năng suất, tỉ trọng, biên độ nhiệt, cán cân xuất nhập khẩu — nêu rõ đơn vị và quy tắc làm tròn).
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ ĐỊA LÍ. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học hay Sinh học!`;
+  }
+
+  if (isCivics) {
+    return `PHẠM VI KIẾN THỨC CHUẨN GDKT&PL LỚP ${g} (GDPT 2018 & ĐỊNH DẠNG 2025):
+- Lớp 10: Hoạt động của nền kinh tế và các chủ thể kinh tế, thị trường, ngân sách nhà nước, thuế, tín dụng, lập kế hoạch tài chính cá nhân; Hệ thống chính trị và Hiến pháp nước CHXHCN Việt Nam.
+- Lớp 11: Cạnh tranh, cung - cầu, lạm phát, thất nghiệp, thị trường lao động, ý tưởng & đạo đức kinh doanh; Quyền bình đẳng của công dân và các quyền tự do cơ bản.
+- Lớp 12: Tăng trưởng & phát triển kinh tế, hội nhập kinh tế quốc tế, bảo hiểm & an sinh xã hội, trách nhiệm xã hội doanh nghiệp; Quyền và nghĩa vụ công dân trong kinh doanh, nộp thuế, sở hữu, hôn nhân gia đình, học tập; Một số vấn đề cơ bản của pháp luật quốc tế.
+- Định dạng chuẩn 2025: Phần I (24 câu trắc nghiệm, có câu hỏi chùm từ đoạn thông tin) + Phần II (4 câu Đúng/Sai gắn tình huống thực tế).
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ GDKT&PL. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học hay KHTN!`;
+  }
+
+  if (isIT) {
+    return `PHẠM VI KIẾN THỨC CHUẨN TIN HỌC LỚP ${g} (GDPT 2018 & ĐỊNH DẠNG 2025):
+- Lớp 10: Thông tin & xử lí thông tin, biểu diễn dữ liệu, mạng máy tính & an toàn không gian mạng, đồ họa vector, lập trình Python cơ bản (biến, rẽ nhánh, vòng lặp, danh sách, hàm).
+- Lớp 11: Hệ điều hành, phần mềm nguồn mở, cơ sở dữ liệu quan hệ & truy vấn SQL (SELECT, JOIN, khóa chính/ngoại), cấu trúc dữ liệu danh sách & thuật toán sắp xếp/tìm kiếm.
+- Lớp 12: Trí tuệ nhân tạo (AI) & ứng dụng, Mạng máy tính & Internet (giao thức TCP/IP, thiết bị mạng Switch/Router), Tạo trang web với HTML & CSS, Định hướng Khoa học máy tính / Tin học ứng dụng.
+- Định dạng chuẩn 2025: 24 câu Trắc nghiệm + 4 câu Đúng/Sai (đoạn mã Python/SQL/HTML đặt trong khối \`\`\`), KHÔNG có Phần III Trả lời ngắn.
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ TIN HỌC. Bảo toàn nguyên vẹn ký hiệu code (!=, <=, >=, ->, <h2>). TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học!`;
+  }
+
+  if (isTech) {
+    return `PHẠM VI KIẾN THỨC CHUẨN CÔNG NGHỆ LỚP ${g} (GDPT 2018 & ĐỊNH DẠNG 2025):
+- Lớp 10: Khái quát công nghệ, bản vẽ kỹ thuật & thiết kế kỹ thuật (Công nghiệp) HOẶC trồng trọt công nghệ cao, đất trồng, phân bón, sâu bệnh (Nông nghiệp).
+- Lớp 11: Vật liệu cơ khí, gia công cắt gọt, động cơ đốt trong & ô tô, tự động hóa cơ khí HOẶC giống, thức ăn, phòng trị bệnh vật nuôi (Chăn nuôi).
+- Lớp 12: Kỹ thuật điện (mạch điện xoay chiều ba pha, hệ thống điện quốc gia, an toàn điện), Kỹ thuật điện tử (linh kiện bán dẫn, mạch khuếch đại, cổng logic, vi điều khiển) HOẶC Lâm nghiệp & Thủy sản bền vững.
+- Định dạng chuẩn 2025: 24 Trắc nghiệm + 4 Đúng/Sai.
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ CÔNG NGHỆ. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học thuần túy!`;
+  }
+
+  if (isKhtn) {
+    return `PHẠM VI KIẾN THỨC CHUẨN KHOA HỌC TỰ NHIÊN (TÍCH HỢP VẬT LÝ - HÓA HỌC - SINH HỌC):
+- Phối hợp cân đối 3 phân môn: Chất & sự biến đổi chất (Hóa), Năng lượng & sự biến đổi (Vật lý), Vật sống & cơ thể sinh vật (Sinh học) theo chuẩn chương trình GDPT 2018.`;
+  }
+
+  if (isEnglish) {
+    if (g === '10') {
+      return `PHẠM VI KIẾN THỨC CHUẨN TIẾNG ANH LỚP 10 (GDPT 2018 - Global Success):
+- Chủ điểm từ vựng: Family Life, Humans and the Environment, Music, For a Better Community, Inventions, Gender Equality, Vietnam and International Organisations, New Ways to Learn, Protecting the Environment, Ecotourism.
+- Ngữ pháp trọng tâm: Present simple vs Present continuous, Future with will/be going to, Passive voice, Compound sentences, To-infinitives & bare infinitives, Gerunds vs infinitives, Present perfect, Relative clauses (defining & non-defining), Comparative & superlative, Conditionals (type 1 & 2), Reported speech.
+- Dạng bài chuẩn 2025: Trắc nghiệm 4 lựa chọn (ngữ pháp, từ vựng, đọc điền thông báo/tờ rơi, sắp xếp hội thoại/thư/đoạn văn a-b-c, đọc hiểu).
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ TIẾNG ANH. Câu hỏi và 4 phương án PHẢI bằng tiếng Anh chuẩn; phần 'explain' giải thích bằng tiếng Việt rõ ràng. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học, Vật lý, Sinh học hay Toán học!`;
+    }
+    if (g === '11') {
+      return `PHẠM VI KIẾN THỨC CHUẨN TIẾNG ANH LỚP 11 (GDPT 2018 - Global Success):
+- Chủ điểm từ vựng: A Long and Healthy Life, The Generation Gap, Cities of the Future, ASEAN and Vietnam, Global Warming, Preserving Our Heritage, Education Options for School-Leavers, Becoming Independent, Social Issues, The Ecosystem.
+- Ngữ pháp trọng tâm: Past simple vs Present perfect, Modal verbs (must, have to, should), Stative verbs & Linking verbs, Gerunds as subjects/objects, Present participle & Past participle clauses, To-infinitive clauses, Perfect gerunds & perfect participles, Cleft sentences (It is/was ... that ...), Linking words & connectors (moreover, however, in addition, therefore...).
+- Dạng bài chuẩn GDPT 2025: 100% Trắc nghiệm 4 lựa chọn (từ vựng/ngữ pháp, sắp xếp câu hội thoại/thư/đoạn văn a-b-c-d-e, đọc điền tờ rơi/thông báo & cloze test, đọc hiểu 8 câu).
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ TIẾNG ANH. Câu hỏi và 4 phương án PHẢI bằng tiếng Anh chuẩn; phần 'explain' giải thích bằng tiếng Việt rõ ràng. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học, Vật lý, Sinh học hay Toán học!`;
+    }
+    return `PHẠM VI KIẾN THỨC CHUẨN TIẾNG ANH LỚP 12 (GDPT 2018 & THI TỐT NGHIỆP THPT 2025 - Global Success):
+- Chủ điểm từ vựng: Life Stories We Admire, A Multicultural World, Green Living, Urbanisation, The World of Work, Artificial Intelligence, The World of Mass Media, Wildlife Conservation, Career Paths, Lifelong Learning.
+- Ngữ pháp trọng tâm: Past simple vs Past continuous, Articles (a/an/the/zero), Verbs with prepositions & Phrasal verbs, Relative clauses referring to a whole sentence (which), Simple/compound/complex sentences, Double comparatives (The more ... the more ...), Adverbial clauses of condition/comparison/manner/result, Active & passive causatives (have/get sth done), Reported speech (orders, requests, offers, advice).
+- Định dạng đề minh họa Bộ GD&ĐT 2025 (40 câu - 50 phút, 100% Trắc nghiệm 4 lựa chọn): đọc điền quảng cáo/tờ rơi (advertisement/leaflet cloze), sắp xếp hội thoại/lá thư/đoạn văn (arrangement a-b-c-d-e), đọc điền cấu trúc/mệnh đề, đọc hiểu 8 câu và 10 câu (inference, closest/opposite meaning, NOT mentioned, paragraph reference).
+CẢNH BÁO MÔN HỌC (ĐỀ NÀO RA ĐỀ ĐÓ): ĐÂY LÀ ĐỀ TIẾNG ANH. Câu hỏi và 4 phương án PHẢI bằng tiếng Anh chuẩn; phần 'explain' giải thích bằng tiếng Việt rõ ràng. TUYỆT ĐỐI KHÔNG ra câu hỏi Hóa học, Vật lý, Sinh học hay Toán học!`;
+  }
 
   if (isPhysics) {
     if (g === '10') {
@@ -643,7 +860,7 @@ export async function planMatrixWithAI({
   if (!THPT_GRADES.includes(g)) {
     throw new Error('Công cụ này chỉ hỗ trợ THPT (lớp 10, 11, 12).');
   }
-  const { slots, parts, n } = buildSlots({ count, format, intent });
+  const { slots, parts, n } = buildSlots({ count, format, intent, subject });
   const { textParts, imageParts, pdfParts } = buildFileContext(files || []);
   const cleanTopic = topic || 'Kiến thức trọng tâm';
 
@@ -659,9 +876,9 @@ ${getGradeCurriculumGuideline(g, subject)}
 
 Quy tắc:
 - Trả về đúng ${n} phần tử trong "topics", phần tử thứ i ứng với ô thứ i.
-- Mỗi tên ≤ 90 ký tự, cụ thể (ghi rõ công thức / định luật / loại phản ứng), KHÔNG chung chung kiểu "kiến thức trọng tâm".
-- Đúng mức độ: Nhận biết = nhớ khái niệm, tính chất, danh pháp; Thông hiểu = giải thích, so sánh, nhận ra hiện tượng; Vận dụng = tính toán 1–2 bước, áp dụng công thức; Vận dụng cao = tổng hợp, biện luận, nhiều bước, bài toán thực tiễn.
-- Phần đúng/sai: dạng bài là một tình huống/thí nghiệm có thể đặt 4 nhận định. Phần trả lời ngắn: dạng tính toán cho ra một số.
+        - Mọi tên ≤ 90 ký tự, cụ thể theo nội dung/kỹ năng/chuyên đề của môn ${subject} (KHÔNG ghi chung chung kiểu "kiến thức trọng tâm").
+- Đúng mức độ: Nhận biết = nhớ khái niệm, đặc điểm, thông tin; Thông hiểu = giải thích, so sánh, phân tích ngữ liệu/hiện tượng; Vận dụng = giải quyết bài tập/tình huống thực tiễn; Vận dụng cao = tổng hợp, biện luận, lập luận nâng cao.
+- Phần đúng/sai: một tình huống/thí nghiệm/tư liệu có 4 nhận định. Phần trả lời ngắn: bài toán/tính toán cho ra một số. Phần tự luận: câu hỏi đọc hiểu/nghị luận/trình bày chi tiết.
 - Bao phủ toàn bộ chủ đề, hạn chế trùng lặp; không ra ngoài chương trình lớp ${g}.
 ${classInsights ? '- Ưu tiên đào sâu các điểm yếu của lớp được cung cấp.' : ''}
 
@@ -735,7 +952,7 @@ Giáo viên cung cấp cho bạn một ma trận đề thi (dưới dạng văn 
 NHIỆM VỤ:
 1. Đọc hiểu toàn diện cấu trúc ma trận của thầy/cô:
    - Tiêu đề kỳ thi/bài kiểm tra
-   - Các phần thi: Trắc nghiệm 4 lựa chọn (multiple_choice), Trắc nghiệm đúng/sai (true_false), Trả lời ngắn (short_answer)
+   - Các phần thi: Trắc nghiệm 4 lựa chọn (multiple_choice), Trắc nghiệm đúng/sai (true_false), Trả lời ngắn (short_answer), Tự luận (essay)
    - Từng chủ đề/chương/dạng bài
    - Số câu hỏi cụ thể ở 4 mức độ nhận thức: Nhận biết (nb), Thông hiểu (th), Vận dụng (vd), Vận dụng cao (vdc)
 2. Tự động bóc tách và chuẩn hóa thành JSON để hệ thống tự động dựng ma trận chuẩn 100%.
@@ -765,7 +982,7 @@ NHIỆM VỤ:
 }
 
 Quy tắc quan trọng:
-- format trong parts chỉ nhận: "multiple_choice" (Trắc nghiệm nhiều lựa chọn), "true_false" (Trắc nghiệm Đúng/Sai), "short_answer" (Trả lời ngắn).
+- format trong parts chỉ nhận: "multiple_choice" (Trắc nghiệm nhiều lựa chọn), "true_false" (Trắc nghiệm Đúng/Sai), "short_answer" (Trả lời ngắn), "essay" (Tự luận).
 - Đếm chính xác số câu ở từng mức độ (nb, th, vd, vdc) theo đúng bảng ma trận của giáo viên.
 - Nếu tài liệu không ghi rõ mức độ của câu nào, hãy thông minh suy luận theo chuẩn Bloom GDPT 2018.
 Chỉ trả về DUY NHẤT mã JSON hợp lệ.`;
@@ -801,6 +1018,8 @@ Chỉ trả về DUY NHẤT mã JSON hợp lệ.`;
       format = 'true_false';
     } else if (rawFormat.includes('short') || rawFormat.includes('ngan')) {
       format = 'short_answer';
+    } else if (rawFormat.includes('essay') || rawFormat.includes('luan') || rawFormat.includes('viet')) {
+      format = 'essay';
     }
 
     const partTopics = [];
@@ -857,7 +1076,7 @@ Chỉ trả về DUY NHẤT mã JSON hợp lệ.`;
 
 /* Tương thích ngược: khung ma trận không cần AI */
 export function buildFallbackMatrix({ topic = 'Kiến thức trọng tâm', grade = '12', subject = 'Hóa học', count = 10, duration = 30, intent = 'exam', format = '' } = {}) {
-  const { slots, parts, n } = buildSlots({ count, format: format || suggestFormat(count), intent });
+  const { slots, parts, n } = buildSlots({ count, format: format || suggestFormat(count, subject), intent, subject });
   return buildMatrixFromSlots({
     slots,
     parts,
@@ -929,8 +1148,10 @@ export async function refineMatrixWithAI({ matrix, instruction, classInsights = 
   let targets = { ...curTargets };
   if (wanted && wanted !== curTotal && wanted >= 4 && wanted <= 60) {
     if (curTargets.true_false != null) {
-      const s = gdptSplit(wanted);
-      targets = { multiple_choice: s.p1, true_false: s.p2, short_answer: s.p3 };
+      const s = gdptSplit(wanted, matrix.subject);
+      targets = { multiple_choice: s.p1, true_false: s.p2, ...(s.p3 > 0 ? { short_answer: s.p3 } : {}) };
+    } else if (curTargets.essay != null) {
+      targets = { essay: wanted };
     } else {
       targets = { multiple_choice: wanted };
     }
@@ -940,7 +1161,7 @@ export async function refineMatrixWithAI({ matrix, instruction, classInsights = 
   const system = `Bạn chỉnh MA TRẬN đề thi THPT (lớp ${matrix.grade}) theo yêu cầu giáo viên.
 Giữ nguyên các phần (format) và cấu trúc JSON. Số câu mỗi phần mục tiêu: ${JSON.stringify(targets)} (hệ thống sẽ tự cân lại nếu lệch).
 Mỗi dòng topics là DẠNG BÀI cụ thể; chỉ có count (không cần points). Chỉ lớp 10–12.
-Chỉ trả JSON: {"title":"...","parts":[{"format":"multiple_choice|true_false|short_answer","topics":[{"name":"...","nb":{"count":0},"th":{"count":0},"vd":{"count":0},"vdc":{"count":0}}]}],"aiPedagogicalAdvice":"2–3 câu"}`;
+Chỉ trả JSON: {"title":"...","parts":[{"format":"multiple_choice|true_false|short_answer|essay","topics":[{"name":"...","nb":{"count":0},"th":{"count":0},"vd":{"count":0},"vdc":{"count":0}}]}],"aiPedagogicalAdvice":"2–3 câu"}`;
   const compact = (matrix.parts || []).map((p) => ({
     format: p.format,
     topics: (p.topics || []).map((t) => ({
@@ -974,7 +1195,7 @@ Chỉ trả JSON: {"title":"...","parts":[{"format":"multiple_choice|true_false|
 /* ============================================================
    SINH CÂU HỎI — song song, theo từng dạng, theo dõi đúng vị trí
    ============================================================ */
-const clean = (s) => formatMathAndChemSymbols(String(s ?? '').trim());
+const clean = (s, subject = 'Hóa học') => formatTextForSubject(String(s ?? '').trim(), subject);
 
 const listFromPayload = (p) => {
   if (!p) return [];
@@ -1004,6 +1225,8 @@ const GEN_SCHEMA = {
         type: 'object',
         properties: {
           q: { type: 'string' },
+          passage: { type: 'string' },
+          instruction: { type: 'string' },
           options: { type: 'array', items: { type: 'string' } },
           statements: {
             type: 'array',
@@ -1028,24 +1251,25 @@ const GEN_SCHEMA = {
 const CHEM_RULES = `HẰNG SỐ DÙNG THỐNG NHẤT: H=1; C=12; N=14; O=16; Na=23; Mg=24; Al=27; P=31; S=32; Cl=35,5; K=39; Ca=40; Fe=56; Cu=64; Zn=65; Br=80; Ag=108; Ba=137. Thể tích mol khí ở điều kiện chuẩn (25 °C, 1 bar) = 24,79 L/mol. Số Avogadro 6,022.10^23.`;
 
 function typeRules(type, subject = 'Hóa học') {
-  const isBio = String(subject || '').toLowerCase().includes('sinh');
+  const { isBio, isPhysics, isMath, isEnglish, isLit, isHistory, isGeo, isCivics, isIT, isTech } = getSubjectFlags(subject);
 
+  if (type === 'essay') {
+    return `DẠNG TỰ LUẬN / ĐỌC HIỂU MỞ: đề bài nêu rõ yêu cầu phân tích, lập luận hoặc ngữ liệu trong "q" (có thể kèm "passage" nếu là đọc hiểu); gợi ý chấm / biểu điểm nằm trong "answer" và "explain".
+- Không dùng "options"/"correct".`;
+  }
   if (type === 'true_false') {
     return `DẠNG ĐÚNG/SAI (thi tốt nghiệp THPT 2025): mỗi câu gồm 1 đoạn dẫn (tình huống/thí nghiệm/số liệu) trong "q" và ĐÚNG 4 nhận định trong "statements" (a, b, c, d) với "answer" true/false.
-- 4 nhận định phải độc lập, không suy ra lẫn nhau; xếp từ dễ → khó; nên có cả đúng lẫn sai (tránh cả 4 cùng đáp án).
+- 4 nhận định phải độc lập, không suy ra lẫn nhau; xếp tăng dần theo chuẩn Bộ GD&ĐT (a: Nhận biết → b: Thông hiểu → c: Vận dụng → d: Vận dụng/thực nghiệm); nên có cả đúng lẫn sai (thang điểm Đúng/Sai BGD: 1 ý = 0,1đ; 2 ý = 0,25đ; 3 ý = 0,5đ; 4 ý = 1,0đ).
 - Không đánh số a), b) trong "text".
 - "explain": BẮT BUỘC GIẢI THÍCH CHI TIẾT TỪNG Ý a), b), c), d) một cách tường minh và sâu sắc (Ví dụ: "a) Đúng: Vì... ; b) Sai: Vì theo định luật/lý thuyết... đúng phải là... ; c) Đúng: ... ; d) Sai: ...").
 - "work": Trình bày các bước lập luận, kiểm chứng hoặc tính toán cho từng ý.
 - Không dùng "options"/"correct".`;
   }
+  const BGD_SA_4CHAR_RULE = `- QUY TẮC BẮT BUỘC PHIẾU OMR BỘ GD&ĐT (QĐ 764/QĐ-BGDĐT): "answer" TỐI ĐA 4 KÝ TỰ (gồm chữ số 0–9, tối đa 1 dấu '-' ở đầu và 1 dấu ',' thập phân, ví dụ "12,5", "-3,5", "1420", "-4"; TUYỆT ĐỐI KHÔNG viết phân số 1/2, không kèm đơn vị hay kết quả dài từ 5 ký tự trở lên).`;
   if (type === 'short_answer') {
-    const sLower = String(subject || '').toLowerCase();
-    const isBio = sLower.includes('sinh');
-    const isPhysics = sLower.includes('lý') || sLower.includes('lí') || sLower.includes('phys');
-    const isMath = sLower.includes('toán') || sLower.includes('math');
-
     if (isBio) {
       return `DẠNG TRẢ LỜI NGẮN (thi tốt nghiệp THPT 2025 môn Sinh học): đáp án là MỘT SỐ (thập phân dùng dấu phẩy, vd "12,5" hoặc "4"), không kèm đơn vị trong "answer".
+${BGD_SA_4CHAR_RULE}
 - Đề bài phải nói rõ yêu cầu làm tròn (vd "làm tròn đến hàng phần mười") và đại lượng cần tính.
 - "explain": Nêu phương pháp giải, công thức di truyền/sinh học hoặc quy luật áp dụng, và kết luận đáp số.
 - "work": BẮT BUỘC TRÌNH BÀY ĐẦY ĐỦ CÁC BƯỚC TÍNH TOÁN CHI TIẾT:
@@ -1056,6 +1280,7 @@ function typeRules(type, subject = 'Hóa học') {
     }
     if (isPhysics) {
       return `DẠNG TRẢ LỜI NGẮN (thi tốt nghiệp THPT 2025 môn Vật lý): đáp án là MỘT SỐ (thập phân dùng dấu phẩy, vd "2,5" hoặc "40"), không kèm đơn vị trong "answer".
+${BGD_SA_4CHAR_RULE}
 - Đề bài phải ghi rõ đơn vị tính ở cuối câu hỏi và yêu cầu làm tròn (nếu có).
 - "explain": Nêu định luật/công thức Vật lý, hướng biến đổi đại lượng và đáp số.
 - "work": BẮT BUỘC TRÌNH BÀY ĐẦY ĐỦ CÁC BƯỚC GIẢI:
@@ -1066,11 +1291,19 @@ function typeRules(type, subject = 'Hóa học') {
     }
     if (isMath) {
       return `DẠNG TRẢ LỜI NGẮN (thi tốt nghiệp THPT 2025 môn Toán học): đáp án là MỘT SỐ (thập phân dùng dấu phẩy, vd "-3,5" hoặc "12"), viết đúng yêu cầu làm tròn.
+${BGD_SA_4CHAR_RULE}
 - "explain": Nêu hướng tiếp cận giải toán, công thức/định lí áp dụng và đáp số.
 - "work": BẮT BUỘC TRÌNH BÀY ĐẦY ĐỦ CÁC BƯỚC BIẾN ĐỔI TOÁN HỌC đến kết quả khớp 100% với "answer".
 - Không dùng "options"/"correct".`;
     }
-    return `DẠNG TRẢ LỜI NGẮN (thi tốt nghiệp THPT 2025 môn Hóa học): đáp án là MỘT SỐ (thập phân dùng dấu phẩy, vd "12,5" hoặc "4"), không kèm đơn vị trong "answer".
+    if (isGeo) {
+      return `DẠNG TRẢ LỜI NGẮN (thi tốt nghiệp THPT 2025 môn Địa lí): đáp án là MỘT SỐ (thập phân dùng dấu phẩy, vd "142"), đi kèm bảng số liệu cụ thể trong đề và yêu cầu làm tròn rõ ràng (hàng đơn vị / phần mười) cùng đơn vị tính.
+${BGD_SA_4CHAR_RULE}
+- "explain": Nêu công thức địa lí áp dụng (mật độ dân số = dân số / diện tích, tốc độ tăng trưởng, tỉ trọng %, biên độ nhiệt, năng suất...) và phép tính cụ thể dẫn tới đáp số.
+- Không dùng "options"/"correct".`;
+    }
+    return `DẠNG TRẮC NGHIỆM TRẢ LỜI NGẮN (thi tốt nghiệp THPT 2025): đáp án là MỘT SỐ (thập phân dùng dấu phẩy, vd "12,5" hoặc "4"), không kèm đơn vị trong "answer".
+${BGD_SA_4CHAR_RULE}
 - Đề bài phải nói rõ yêu cầu làm tròn (vd "làm tròn đến hàng phần mười") và đơn vị cần tính.
 - "explain": Nêu phương pháp giải, định luật bảo toàn áp dụng, và kết luận đáp số.
 - "work": BẮT BUỘC TRÌNH BÀY ĐẦY ĐỦ CÁC BƯỚC TÍNH TOÁN CHI TIẾT:
@@ -1080,6 +1313,20 @@ function typeRules(type, subject = 'Hóa học') {
   * Bước 4: Biểu thức tính toán cụ thể dẫn đến đáp số cuối cùng (khớp 100% với "answer").
 - Không dùng "options"/"correct".`;
   }
+  if (isEnglish) {
+    return `DẠNG TRẮC NGHIỆM 4 LỰA CHỌN TIẾNG ANH (chuẩn GDPT 2018 / THPT 2025): "options" có ĐÚNG 4 phương án tiếng Anh KHÁC NHAU (không ghi A./B. ở đầu), đúng 1 đáp án; "correct" là số nguyên 0–3.
+- Nội dung câu hỏi "q" (hoặc ngữ cảnh "passage" + chỗ trống ________) và 4 "options" phải hoàn toàn bằng tiếng Anh tự nhiên, chuẩn học thuật THPT (không dịch máy).
+- Đối với câu sắp xếp hội thoại/thư/đoạn văn: ghi các câu a., b., c. (d., e.) rõ ràng trong "q", còn 4 "options" là 4 tổ hợp thứ tự (vd "b - a - c").
+- Phương án nhiễu phải hợp lý về ngữ pháp/ngữ nghĩa học sinh hay nhầm (collocation, word form, thì động từ, liên từ, câu điều kiện).
+- "explain": Giải thích rõ bằng tiếng Việt (kèm trích dẫn cấu trúc/ngữ nghĩa tiếng Anh) vì sao phương án đúng chính xác và vì sao các phương án còn lại sai.`;
+  }
+  if (isLit || isHistory || isGeo || isCivics || isIT || isTech) {
+    return `DẠNG TRẮC NGHIỆM 4 LỰA CHỌN MÔN ${subject.toUpperCase()}: "options" có ĐÚNG 4 phương án KHÁC NHAU (không ghi A./B. ở đầu), đúng 1 đáp án; "correct" là số nguyên 0–3.
+${isIT ? '- Nếu có mã nguồn Python/C++/SQL/HTML, đặt gọn trong khối ``` và bảo toàn chính xác mọi toán tử.' : ''}
+${isHistory || isCivics || isLit ? '- Có thể gắn đoạn tư liệu/tình huống ngắn làm cơ sở hỏi; phương án nhiễu bám sát lỗi nhận thức thường gặp.' : ''}
+${isGeo ? '- Khi hỏi số liệu/vùng kinh tế/tự nhiên, số liệu và thuật ngữ phải nhất quán theo SGK.' : ''}
+- "explain": Giải thích rõ vì sao phương án đúng chính xác và vì sao các phương án còn lại sai.`;
+  }
   return `DẠNG TRẮC NGHIỆM 4 LỰA CHỌN: "options" có ĐÚNG 4 phương án KHÁC NHAU (không ghi A./B. ở đầu), đúng 1 đáp án; "correct" là số nguyên 0–3.
 - Phương án nhiễu là sai lầm thật của học sinh (nhầm công thức, quên đổi đơn vị, nhầm tỉ lệ).
 - "explain": BẮT BUỘC GIẢI THÍCH CHI TIẾT: Vì sao phương án đúng là ĐÚNG (dẫn chứng lý thuyết, phương trình/quy luật). Đồng thời giải thích vì sao từng phương án còn lại là SAI để học sinh hiểu cặn kẽ bản chất.
@@ -1088,12 +1335,7 @@ function typeRules(type, subject = 'Hóa học') {
 
 function buildSystem(type, subject = 'Hóa học', grade = '12') {
   const g = String(grade || '12');
-  const sLower = String(subject || '').toLowerCase();
-  const isBio = sLower.includes('sinh');
-  const isPhysics = sLower.includes('lý') || sLower.includes('lí') || sLower.includes('phys');
-  const isMath = sLower.includes('toán') || sLower.includes('math');
-  const isChem = sLower.includes('hóa') || (!isBio && !isPhysics && !isMath);
-  const subjName = isBio ? 'Sinh học' : isPhysics ? 'Vật lý' : isMath ? 'Toán học' : isChem ? 'Hóa học' : subject;
+  const { isBio, isPhysics, isMath, isEnglish, isLit, isHistory, isGeo, isCivics, isIT, isTech, isChem, subjName } = getSubjectFlags(subject);
 
   return `Bạn là giáo viên ${subjName} THPT giàu kinh nghiệm, ra đề lớp ${g} theo chương trình GDPT 2018 và định dạng đề thi tốt nghiệp THPT 2025.
 ${typeRules(type, subjName)}
@@ -1106,6 +1348,9 @@ ${isChem ? '   - CẤM các câu hỏi thuộc môn Sinh học (tế bào, ribos
 ${isBio ? '   - CẤM các câu hỏi thuộc môn Hóa học (cân bằng phương trình hóa học, tính số mol, pin điện hóa, halogen, phản ứng hữu cơ vô cơ...). Mọi câu hỏi PHẢI THUẦN TÚY SINH HỌC.' : ''}
 ${isPhysics ? '   - Sử dụng hằng số chuẩn Vật lý (g = 9,8 m/s² hoặc 10 m/s² theo đề, c = 3.10^8 m/s, R = 8,31 J/(mol.K), k = 1,38.10^-23 J/K); ghi rõ đơn vị đo.' : ''}
 ${isMath ? '   - Lời giải Toán học chặt chẽ, đúng điều kiện xác định, phân biệt rành mạch khoảng đồng biến/nghịch biến và ký hiệu xác suất chuẩn.' : ''}
+${isEnglish ? '   - Toàn bộ câu hỏi và 4 đáp án A/B/C/D PHẢI viết bằng tiếng Anh tự nhiên, chuẩn chương trình GDPT 2018 (Global Success / Bộ GD&ĐT 2025); giải thích chi tiết bằng tiếng Việt để học sinh dễ hiểu.' : ''}
+${isIT ? '   - Bảo toàn nguyên vẹn cú pháp Python/C++/SQL/HTML/CSS trong khối ```; kiểm tra kết quả chạy tay chính xác tuyệt đối.' : ''}
+${(isHistory || isGeo || isCivics || isLit || isTech) ? `   - Bám sát kiến thức chuẩn SGK GDPT 2018 môn ${subjName}; số liệu, sự kiện, quy trình và thuật ngữ pháp lý/kỹ thuật phải chuẩn xác 100%.` : ''}
 2. Trả JSON {"questions":[...]} đúng số phần tử yêu cầu; mỗi phần tử là MỘT câu riêng, không gộp.
 3. TUYỆT ĐỐI không chèn tiêu đề "PHẦN I/II/III" hay "Câu 1:" vào nội dung.
 4. Đúng 100% chương trình lớp ${g}, KHÔNG vi phạm phạm vi chương trình lớp khác.
@@ -1139,10 +1384,10 @@ function carry(sp) {
   return { points: sp.points, topic: sp.topic, level: sp.level, levelKey: sp.levelKey, part: sp.part };
 }
 
-function buildMC(raw, sp, { shuffle = true } = {}) {
+function buildMC(raw, sp, { shuffle = true, subject = 'Hóa học' } = {}) {
   if (!raw || typeof raw !== 'object') return null;
-  let qText = clean(raw.q || raw.question || raw.stem || raw.title);
-  if (!qText) return null;
+  let qText = clean(raw.q || raw.question || raw.stem || raw.title, subject);
+  if (!qText && !raw.passage) return null;
   qText = qText.replace(/(?:^|\n)\s*(?:PHẦN\s+[IVX]+|CÂU\s+HỎI\s+TRẮC\s*NGHIỆM|CÂU\s+\d+[:.]?)\s*/i, '').trim();
 
   // Thu thập options từ nhiều cấu trúc AI có thể trả về
@@ -1151,7 +1396,7 @@ function buildMC(raw, sp, { shuffle = true } = {}) {
     rawOpts = [rawOpts.A || rawOpts.a, rawOpts.B || rawOpts.b, rawOpts.C || rawOpts.c, rawOpts.D || rawOpts.d].filter(Boolean);
   }
   let options = (Array.isArray(rawOpts) ? rawOpts : [])
-    .map((o) => clean(o).replace(/^[A-Da-d][.)]\s+/, ''))
+    .map((o) => clean(o, subject).replace(/^[A-Da-d][.)]\s+/, ''))
     .filter(Boolean);
 
   // Nếu AI sinh thiếu option, bổ sung hợp lý để luôn chuẩn 4 lựa chọn A-B-C-D
@@ -1194,23 +1439,28 @@ function buildMC(raw, sp, { shuffle = true } = {}) {
     correct = 0;
   }
 
+  const passageVal = raw.passage ? clean(raw.passage, subject) : '';
+  const instrVal = raw.instruction ? clean(raw.instruction, subject) : '';
+
   let q = normalizeQuestion({
     ...raw,
     q: qText,
+    ...(passageVal ? { passage: passageVal } : {}),
+    ...(instrVal ? { instruction: instrVal } : {}),
     options,
     correct,
-    explain: clean(raw.explain || raw.explanation || raw.solution || `Đáp án đúng là ${'ABCD'[correct]}.`),
-    work: clean(raw.work || raw.calculation || ''),
+    explain: clean(raw.explain || raw.explanation || raw.solution || `Đáp án đúng là ${'ABCD'[correct]}.`, subject),
+    work: clean(raw.work || raw.calculation || '', subject),
     ...carry(sp),
   });
   if (shuffle) q = shuffleOptions(q);
   return { ...q, ...carry(sp), type: 'single_choice', id: q.id || rid() };
 }
 
-function buildTF(raw, sp) {
+function buildTF(raw, sp, subject = 'Hóa học') {
   if (!raw || typeof raw !== 'object') return null;
-  let qText = clean(raw.q || raw.question || raw.stem || raw.title);
-  if (!qText) return null;
+  let qText = clean(raw.q || raw.question || raw.stem || raw.title, subject);
+  if (!qText && !raw.passage) return null;
   qText = qText.replace(/(?:^|\n)\s*(?:PHẦN\s+[IVX]+|CÂU\s+HỎI\s+ĐÚNG\s*\/?[–-]?\s*SAI|CÂU\s+\d+[:.]?)\s*/i, '').trim();
 
   let rawSt = raw.statements || raw.items || raw.options || raw.subQuestions;
@@ -1222,25 +1472,25 @@ function buildTF(raw, sp) {
     .map((s, idx) => {
       if (typeof s === 'string') {
         const isTrue = /đúng|dung|true|t\b|1\b/i.test(s) && !/không đúng|sai|false/i.test(s);
-        const text = s.replace(/^[a-dA-D][.)]\s+/, '').replace(/\s*\((?:Đúng|Sai|True|False)\)\s*$/i, '').trim();
+        const text = clean(s, subject).replace(/^[a-dA-D][.)]\s+/, '').replace(/\s*\((?:Đúng|Sai|True|False)\)\s*$/i, '').trim();
         return { text, answer: isTrue };
       }
-      const text = clean(s?.text || s?.content || s?.statement).replace(/^[a-dA-D][.)]\s+/, '');
+      const text = clean(s?.text || s?.content || s?.statement, subject).replace(/^[a-dA-D][.)]\s+/, '');
       let ans = toBool(s?.answer ?? s?.isCorrect ?? s?.correct ?? s?.value);
       if (ans === null) ans = idx % 2 === 0;
       return { text, answer: ans };
     })
     .filter((s) => s.text);
 
-  // Bộ GD&ĐT 2025: Phần II bắt buộc ĐỦ 4 ý nhận định a, b, c, d
+  // Bộ GD&ĐT 2025: Phần II bắt buộc ĐỦ 4 ý nhận định a, b, c, d (trung tính theo môn học)
   const fallbackSts = [
-    { text: 'Phản ứng hoặc quá trình diễn ra hoàn toàn ở điều kiện tiêu chuẩn với hiệu suất 100%.', answer: false },
-    { text: 'Hiện tượng quan sát được hoàn toàn phù hợp với bản chất hóa học / vật lý của các chất tham gia.', answer: true },
-    { text: 'Các sản phẩm tạo thành đều bền vững trong môi trường thực hiện thí nghiệm.', answer: true },
-    { text: 'Có thể thay thế hoàn toàn các chất tham gia bằng chất bất kỳ cùng nhóm mà kết quả không thay đổi.', answer: false },
+    { text: `Nội dung trọng tâm của tình huống/ngữ liệu phản ánh đúng bản chất kiến thức môn ${subject}.`, answer: true },
+    { text: `Có thể khái quát mọi trường hợp ngoại lệ về cùng một quy luật đơn nhất bất biến.`, answer: false },
+    { text: `Việc phân tích đúng ngữ cảnh/dữ kiện giúp loại trừ chính xác các nhận định suy diễn thiếu căn cứ.`, answer: true },
+    { text: `Kết luận của bài toán hoặc tình huống hoàn toàn không phụ thuộc vào các điều kiện đã cho.`, answer: false },
   ];
   while (st.length < 4) {
-    const candidate = fallbackSts[st.length] || { text: `Ý nhận định số ${st.length + 1} kiểm tra kiến thức chuyên đề.`, answer: st.length % 2 === 0 };
+    const candidate = fallbackSts[st.length] || { text: `Ý nhận định số ${st.length + 1} kiểm tra kiến thức chuyên đề ${subject}.`, answer: st.length % 2 === 0 };
     st.push(candidate);
   }
   st = st.slice(0, 4);
@@ -1249,19 +1499,21 @@ function buildTF(raw, sp) {
     id: rid(),
     type: 'true_false',
     q: qText,
+    ...(raw.passage ? { passage: clean(raw.passage, subject) } : {}),
+    ...(raw.instruction ? { instruction: clean(raw.instruction, subject) } : {}),
     statements: st,
-    explain: clean(raw.explain || raw.explanation || raw.solution || 'Xem chi tiết đúng/sai theo từng nhận định a, b, c, d.'),
+    explain: clean(raw.explain || raw.explanation || raw.solution || 'Xem chi tiết đúng/sai theo từng nhận định a, b, c, d.', subject),
     ...carry(sp),
   };
 }
 
-function buildSA(raw, sp) {
+function buildSA(raw, sp, subject = 'Hóa học') {
   if (!raw || typeof raw !== 'object') return null;
-  let qText = clean(raw.q || raw.question || raw.stem || raw.title);
-  if (!qText) return null;
+  let qText = clean(raw.q || raw.question || raw.stem || raw.title, subject);
+  if (!qText && !raw.passage) return null;
   qText = qText.replace(/(?:^|\n)\s*(?:PHẦN\s+[IVX]+|CÂU\s+TRẢ\s+LỜI\s+NGẮN|CÂU\s+\d+[:.]?)\s*/i, '').trim();
 
-  let rawAns = clean(raw.answer ?? raw.correct ?? raw.result ?? raw.value ?? '');
+  let rawAns = clean(raw.answer ?? raw.correct ?? raw.result ?? raw.value ?? '', subject);
   // Tách số thực tế, loại bỏ đơn vị kèm theo nếu có (VD "24,79 lít" -> "24,79")
   const numMatch = rawAns.match(/[-+]?[0-9]+(?:[,.][0-9]+)?/);
   let finalAns = numMatch ? numMatch[0] : rawAns.slice(0, 30);
@@ -1273,54 +1525,90 @@ function buildSA(raw, sp) {
     id: rid(),
     type: 'short_answer',
     q: qText,
+    ...(raw.passage ? { passage: clean(raw.passage, subject) } : {}),
+    ...(raw.instruction ? { instruction: clean(raw.instruction, subject) } : {}),
     answer: vi,
     accepted: [...new Set([vi, en, finalAns])],
-    explain: clean(raw.explain || raw.explanation || raw.solution || `Đáp án: ${vi}`),
-    work: clean(raw.work || raw.calculation || ''),
+    explain: clean(raw.explain || raw.explanation || raw.solution || `Đáp án: ${vi}`, subject),
+    work: clean(raw.work || raw.calculation || '', subject),
     ...carry(sp),
   };
 }
 
-function buildByType(raw, sp, opts) {
+function buildEssay(raw, sp, subject = 'Ngữ văn') {
   if (!raw || typeof raw !== 'object') return null;
-  if (sp.type === 'true_false') return buildTF(raw, sp);
-  if (sp.type === 'short_answer') return buildSA(raw, sp);
-  return buildMC(raw, sp, opts);
+  let qText = clean(raw.q || raw.question || raw.stem || raw.title, subject);
+  if (!qText && !raw.passage) return null;
+  qText = qText.replace(/(?:^|\n)\s*(?:PHẦN\s+[IVX]+|CÂU\s+TỰ\s+LUẬN|CÂU\s+\d+[:.]?)\s*/i, '').trim();
+  return {
+    id: rid(),
+    type: 'essay',
+    q: qText,
+    options: [],
+    correct: -1,
+    ...(raw.passage ? { passage: clean(raw.passage, subject) } : {}),
+    ...(raw.instruction ? { instruction: clean(raw.instruction, subject) } : {}),
+    answer: clean(raw.answer ?? raw.rubric ?? raw.correct ?? '', subject),
+    explain: clean(raw.explain || raw.explanation || raw.solution || '', subject),
+    work: clean(raw.work || '', subject),
+    ...carry(sp),
+  };
+}
+
+function buildByType(raw, sp, { subject = 'Hóa học', ...opts } = {}) {
+  if (!raw || typeof raw !== 'object') return null;
+  if (sp.type === 'true_false') return buildTF(raw, sp, subject);
+  if (sp.type === 'short_answer') return buildSA(raw, sp, subject);
+  if (sp.type === 'essay') return buildEssay(raw, sp, subject);
+  return buildMC(raw, sp, { ...opts, subject });
 }
 
 // dupKey an toàn, tránh loại nhầm câu hỏi có đoạn dẫn đầu giống nhau
 const dupKey = (q) => {
   if (!q) return '';
-  const text = clean(q.q || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ');
+  const text = String(q.q || '').trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ');
   let sig = text.slice(0, 120);
   if (text.length > 120) sig += '_' + text.slice(-50);
   if (Array.isArray(q.options) && q.options.length) {
-    sig += '_' + q.options.map((o) => clean(o).toLowerCase().slice(0, 15)).join('|');
+    sig += '_' + q.options.map((o) => String(o || '').trim().toLowerCase().slice(0, 15)).join('|');
   } else if (Array.isArray(q.statements) && q.statements.length) {
-    sig += '_' + q.statements.map((s) => clean(s.text).toLowerCase().slice(0, 15)).join('|');
+    sig += '_' + q.statements.map((s) => String(s.text || '').trim().toLowerCase().slice(0, 15)).join('|');
   }
   return sig;
 };
 
-// Hàm sinh câu hỏi chuẩn dự phòng để bảo đảm 100% không bao giờ thiếu câu, đúng chuẩn khối lớp
-function synthesizeStandardQuestion(sp, idx = 0, grade = '12') {
+// Hàm sinh câu hỏi chuẩn dự phòng theo đúng môn học để bảo đảm 100% không bao giờ lẫn sang Hóa học
+function synthesizeStandardQuestion(sp, idx = 0, grade = '12', subject = 'Hóa học') {
   const g = String(grade || sp.grade || '12');
-  const defaultTopic = g === '10' ? 'Cấu tạo nguyên tử & Phản ứng oxi hóa - khử' : g === '11' ? 'Cân bằng hóa học & Dung dịch' : 'Ester - Lipid & Hợp chất hữu cơ';
-  const topic = sp.topic || defaultTopic;
+  const { subjName, isEnglish } = getSubjectFlags(subject);
+  const topic = sp.topic || `Kiến thức trọng tâm môn ${subjName} lớp ${g}`;
   const level = sp.level || 'Thông hiểu';
+
+  if (sp.type === 'essay') {
+    return {
+      id: rid(),
+      type: 'essay',
+      q: `Trình bày và phân tích yêu cầu trọng tâm về chuyên đề "${topic}" (Môn ${subjName}, Lớp ${g} — Mức độ ${level}):`,
+      options: [],
+      correct: -1,
+      answer: `Đảm bảo trình bày rõ luận điểm, dẫn chứng xác thực và bố cục mạch lạc theo chuẩn chương trình ${subjName} lớp ${g}.`,
+      explain: `Hướng dẫn chấm: Học sinh nêu đúng khái niệm, dẫn chứng và liên hệ thực tế phù hợp chuyên đề ${topic}.`,
+      ...carry(sp),
+    };
+  }
 
   if (sp.type === 'true_false') {
     return {
       id: rid(),
       type: 'true_false',
-      q: `Cho các phát biểu sau đây liên quan đến chuyên đề "${topic}" (Lớp ${g} — Mức độ ${level}):`,
+      q: `Cho các phát biểu sau đây liên quan đến chuyên đề "${topic}" (Môn ${subjName} · Lớp ${g} — Mức độ ${level}):`,
       statements: [
-        { text: `Khái niệm và đặc điểm cốt lõi của "${topic}" được áp dụng rộng rãi trong chương trình giáo dục phổ thông lớp ${g}.`, answer: true },
-        { text: `Tất cả các biến đổi liên quan đến "${topic}" đều diễn ra theo một chiều duy nhất và không bao giờ phụ thuộc vào nhiệt độ hay nồng độ.`, answer: false },
-        { text: `Khi thay đổi các điều kiện nhiệt độ hoặc nồng độ, trạng thái cân bằng hoặc sản phẩm của "${topic}" có sự chuyển dịch tương ứng theo nguyên lí khoa học.`, answer: true },
-        { text: `Quá trình thực nghiệm đối với "${topic}" không cần tuân theo bất kỳ định luật bảo toàn khối lượng hay bảo toàn electron nào.`, answer: false },
+        { text: `Nội dung trọng tâm của "${topic}" được quy định rõ trong chương trình GDPT môn ${subjName} lớp ${g}.`, answer: true },
+        { text: `Mọi tình huống thuộc chuyên đề "${topic}" đều chỉ tồn tại một trường hợp duy nhất và không có ngoại lệ.`, answer: false },
+        { text: `Khi phân tích đầy đủ dữ kiện của "${topic}", có thể rút ra kết luận chính xác theo phương pháp khoa học.`, answer: true },
+        { text: `Các dữ kiện trong chuyên đề "${topic}" hoàn toàn tách rời khỏi bối cảnh và điều kiện thực tiễn.`, answer: false },
       ],
-      explain: `Phân tích toàn diện 4 nhận định của chuyên đề ${topic} (Lớp ${g}):\na) Đúng: Khái niệm được quy chuẩn trong SGK.\nb) Sai: Mọi phản ứng hóa học đều chịu ảnh hưởng của các yếu tố nhiệt độ, nồng độ, áp suất.\nc) Đúng: Phù hợp với nguyên lí chuyển dịch cân bằng và động học hóa học.\nd) Sai: Mọi quá trình hóa học đều tuân theo các định luật bảo toàn bất biến.`,
+      explain: `Phân tích 4 nhận định của chuyên đề ${topic} (Môn ${subjName}, Lớp ${g}): a) Đúng, b) Sai, c) Đúng, d) Sai.`,
       ...carry(sp),
     };
   }
@@ -1329,29 +1617,47 @@ function synthesizeStandardQuestion(sp, idx = 0, grade = '12') {
     return {
       id: rid(),
       type: 'short_answer',
-      q: `Trong bài toán liên quan đến chuyên đề "${topic}" (Lớp ${g} — Mức độ ${level}), tính giá trị đại lượng cần tìm theo đơn vị quy ước (làm tròn đến hàng phần mười):`,
+      q: `Trong bài toán thống kê / tính toán liên quan đến chuyên đề "${topic}" (${subjName} · Lớp ${g} — Mức độ ${level}), tính giá trị đại lượng cần tìm (làm tròn đến hàng phần mười):`,
       answer: '12,5',
       accepted: ['12,5', '12.5'],
-      explain: `Áp dụng định luật bảo toàn và công thức tính toán tương ứng của ${topic} lớp ${g}, ta xác định được kết quả là 12,5.`,
-      work: 'Bước 1: Tính số mol các chất tham gia: n = 0,5 mol.\nBước 2: Viết phương trình phản ứng / sơ đồ bảo toàn electron.\nBước 3: m = n * M = 0,5 * 25 = 12,5 gam.',
+      explain: `Áp dụng công thức và phương pháp tính toán của chuyên đề ${topic} (${subjName} lớp ${g}), kết quả thu được là 12,5.`,
+      work: 'Xác định công thức tương ứng, thay số liệu đúng đơn vị chuẩn → 12,5.',
       ...carry(sp),
     };
   }
 
-  // Mặc định: single_choice
+  if (isEnglish) {
+    return {
+      id: rid(),
+      type: 'single_choice',
+      q: `Choose the best option that matches the core concept of "${topic}" (Grade ${g}):`,
+      options: [
+        'It aligns directly with the standard Grade ' + g + ' English curriculum context.',
+        'It contradicts standard grammatical and contextual usage.',
+        'None of the grammatical structures can be applied in communication.',
+        'It can only be interpreted outside any communicative situation.',
+      ],
+      correct: 0,
+      explain: `Phương án A phù hợp với ngữ cảnh và cấu trúc chuẩn Tiếng Anh lớp ${g} cho chủ đề ${topic}.`,
+      work: '',
+      ...carry(sp),
+    };
+  }
+
+  // Mặc định: single_choice đúng môn
   return {
     id: rid(),
     type: 'single_choice',
-    q: `Khẳng định nào sau đây là ĐÚNG khi nói về chuyên đề "${topic}" trong chương trình lớp ${g} (Mức độ ${level})?`,
+    q: `Khẳng định nào sau đây là ĐÚNG khi nói về chuyên đề "${topic}" trong chương trình ${subjName} lớp ${g} (Mức độ ${level})?`,
     options: [
-      `Bản chất và quy luật đặc trưng của "${topic}" phù hợp với lý thuyết chuẩn chương trình GDPT lớp ${g}.`,
-      `Chuyên đề "${topic}" hoàn toàn không thể tham gia bất kỳ phản ứng hoặc biến đổi nào trong thực tế.`,
-      `Mọi quá trình liên quan đến "${topic}" đều thu nhiệt hoàn toàn và không sinh nhiệt lượng.`,
-      `Không thể xác định hoặc định lượng được các đại lượng hay tính chất của "${topic}".`,
+      `Bản chất và quy luật đặc trưng của "${topic}" phù hợp với kiến thức chuẩn SGK ${subjName} lớp ${g}.`,
+      `Chuyên đề "${topic}" hoàn toàn không có mối liên hệ nào với thực tiễn đời sống hay các nội dung cùng chương.`,
+      `Mọi nhận định liên quan đến "${topic}" đều không cần căn cứ dữ kiện hoặc điều kiện cụ thể.`,
+      `Không thể phân tích hay đánh giá được các đặc trưng cơ bản của "${topic}".`,
     ],
     correct: 0,
-    explain: `Phương án A phản ánh chính xác nội dung cơ bản của ${topic} trong chương trình lớp ${g}. Các phương án B, C, D là các khẳng định sai lệch hoàn toàn về mặt khoa học.`,
-    work: 'Tra cứu nội dung kiến thức trọng tâm trong sách giáo khoa lớp ' + g + '.',
+    explain: `Phương án A phản ánh chính xác nội dung cơ bản của ${topic} trong chương trình ${subjName} lớp ${g}.`,
+    work: `Tra cứu nội dung kiến thức trọng tâm môn ${subjName} lớp ${g}.`,
     ...carry(sp),
   };
 }
@@ -1443,7 +1749,7 @@ export async function generateQuestionsFromApprovedMatrix({
       list.forEach((item, j) => {
         const gi = idxs[j];
         if (results[gi]) return;
-        const q = buildByType(item, specs[gi]);
+        const q = buildByType(item, specs[gi], { subject });
         if (!q) return;
         const key = dupKey(q);
         if (key && seen.has(key)) return;
@@ -1490,7 +1796,7 @@ export async function generateQuestionsFromApprovedMatrix({
         console.warn(`[matrix] Thử lại đơn lẻ câu ${gi + 1} không thành công:`, err?.message);
       }
       if (!results[gi]) {
-        results[gi] = synthesizeStandardQuestion(specs[gi], gi, grade);
+        results[gi] = synthesizeStandardQuestion(specs[gi], gi, grade, subject);
         emit();
       }
     }
@@ -1499,13 +1805,32 @@ export async function generateQuestionsFromApprovedMatrix({
   // Bảo đảm 100% không bao giờ để trống bất kỳ vị trí nào
   for (let i = 0; i < specs.length; i++) {
     if (!results[i]) {
-      results[i] = synthesizeStandardQuestion(specs[i], i, grade);
+      results[i] = synthesizeStandardQuestion(specs[i], i, grade, subject);
     }
   }
   emit();
 
   const out = results.filter(Boolean);
   if (!out.length) throw firstErr || new Error('AI không sinh được câu hỏi. Thử mô tả chủ đề rõ hơn hoặc thử lại.');
+  // Gắn cùng groupId nếu AI sinh nhiều câu liền kề dùng chung 1 đoạn văn (Tiếng Anh đọc hiểu / Ngữ văn)
+  let autoPg = 0;
+  let lastPassage = '';
+  let lastPgId = '';
+  out.forEach((item) => {
+    const p = String(item?.passage || '').trim();
+    if (!p) {
+      lastPassage = '';
+      lastPgId = '';
+      return;
+    }
+    if (p !== lastPassage) {
+      autoPg += 1;
+      lastPassage = p;
+      lastPgId = item.groupId || item.pg || `pg_ai_${autoPg}`;
+    }
+    if (!item.groupId) item.groupId = lastPgId;
+    if (item.lockGroupQuestionOrder === undefined) item.lockGroupQuestionOrder = true;
+  });
   return out;
 }
 
@@ -1532,6 +1857,7 @@ const VERIFY_SCHEMA = {
 };
 
 function verifyPayload(q, i) {
+  if (q.type === 'essay') return null;
   if (q.type === 'true_false') {
     return { i, type: 'true_false', q: q.q, statements: (q.statements || []).map((s) => s.text) };
   }
@@ -1539,8 +1865,8 @@ function verifyPayload(q, i) {
   return { i, type: 'single_choice', q: q.q, options: q.options };
 }
 
-function parseVerifyAnswer(q, ans) {
-  const s = clean(ans);
+function parseVerifyAnswer(q, ans, subject = 'Hóa học') {
+  const s = clean(ans, subject);
   if (q.type === 'true_false') {
     const arr = s.split(/[\s,;/|]+/).filter(Boolean).map(toBool);
     return arr.length >= 4 && arr.slice(0, 4).every((x) => x !== null) ? arr.slice(0, 4) : null;
@@ -1562,8 +1888,9 @@ function isMatch(q, got) {
 }
 
 export async function verifyQuestionsWithAI({ questions = [], subject = 'Hóa học', grade = '12', onProgress, signal, skipCredit = false } = {}) {
+  const { isChem } = getSubjectFlags(subject);
   const system = `Bạn là giáo viên ${subject} THPT giải đề độc lập. Với mỗi câu hãy TỰ GIẢI từng bước rồi đưa đáp án.
-${CHEM_RULES}
+${isChem ? CHEM_RULES : ''}
 Trả JSON {"results":[{"i":số thứ tự,"work":"giải ngắn ≤ 200 ký tự","answer":"..."}]}.
 - single_choice: answer là một chữ A, B, C hoặc D (theo thứ tự options).
 - true_false: answer là 4 giá trị Đ hoặc S theo thứ tự các nhận định, cách nhau bằng dấu cách (vd "Đ S S Đ").
@@ -1575,10 +1902,16 @@ Chỉ trả đúng JSON, mỗi câu một phần tử.`;
   for (let i = 0; i < idxs.length; i += 4) batches.push(idxs.slice(i, i + 4));
   let done = 0;
   await pool(batches.map((b) => async () => {
+    const payloadItems = b.map((gi) => verifyPayload(questions[gi], gi)).filter(Boolean);
+    if (!payloadItems.length) {
+      done += b.length;
+      onProgress?.(Math.min(done, questions.length), questions.length);
+      return;
+    }
     try {
       const raw = await callModel({
         system,
-        parts: [{ text: `Lớp ${grade}. Giải các câu sau:\n${JSON.stringify(b.map((gi) => verifyPayload(questions[gi], gi)))}` }],
+        parts: [{ text: `Lớp ${grade}. Giải các câu sau:\n${JSON.stringify(payloadItems)}` }],
         temperature: 0.1,
         signal,
         schema: VERIFY_SCHEMA,
@@ -1589,7 +1922,7 @@ Chỉ trả đúng JSON, mỗi câu một phần tử.`;
         const gi = Number(r?.i);
         const q = questions[gi];
         if (!q || !b.includes(gi)) return;
-        const got = parseVerifyAnswer(q, r.answer);
+        const got = parseVerifyAnswer(q, r.answer, subject);
         const ok = isMatch(q, got);
         out[gi] = {
           ...q,
@@ -1597,7 +1930,7 @@ Chỉ trả đúng JSON, mỗi câu một phần tử.`;
             ? { status: 'unchecked' }
             : ok
               ? { status: 'ok' }
-              : { status: 'mismatch', suggest: got, note: clean(r.work).slice(0, 220) },
+              : { status: 'mismatch', suggest: got, note: clean(r.work, subject).slice(0, 220) },
         };
       });
     } catch (e) {

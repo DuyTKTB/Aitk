@@ -5,8 +5,8 @@ import { useAuth } from '../../hooks/useAuth.jsx';
 import { adminResetTeacherTrialQuota } from '../../lib/proKeyApi.js';
 import {
   FREE_TEACHER_LIMITS,
-  STUDENT_VIP_MONTHLY_PRICE,
-  TEACHER_VIP_MONTHLY_PRICE,
+  STUDENT_VIP_ANNUAL_PRICE,
+  TEACHER_VIP_ANNUAL_PRICE,
   formatVnd,
 } from '../../lib/entitlements.js';
 import AdminShell, { Topbar } from './AdminShell.jsx';
@@ -490,14 +490,14 @@ export default function SettingsPage() {
         </header>
         <div className="ad-kpi-strip" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', marginBottom: '1rem' }}>
           <div className="vt-card ad-mini-kpi">
-            <span>🎓 Học sinh VIP / tháng</span>
-            <b style={{ color: '#7c3aed' }}>{formatVnd(STUDENT_VIP_MONTHLY_PRICE)}</b>
-            <small>399k/3th · 699k/6th · 999k/năm</small>
+            <span>🎓 Học sinh VIP / năm</span>
+            <b style={{ color: '#7c3aed' }}>{formatVnd(STUDENT_VIP_ANNUAL_PRICE)}</b>
+            <small>Trọn 1 năm (365 ngày) · ≈24.900đ/tháng</small>
           </div>
           <div className="vt-card ad-mini-kpi">
-            <span>👨‍🏫 Giáo viên PRO / tháng</span>
-            <b style={{ color: '#d97706' }}>{formatVnd(TEACHER_VIP_MONTHLY_PRICE)}</b>
-            <small>1.990k/6th · 3.590k/năm</small>
+            <span>👨‍🏫 Giáo viên PRO / năm</span>
+            <b style={{ color: '#d97706' }}>{formatVnd(TEACHER_VIP_ANNUAL_PRICE)}</b>
+            <small>Trọn 1 năm (365 ngày) · ≈83.250đ/tháng</small>
           </div>
           <div className="vt-card ad-mini-kpi">
             <span>📄 Nhập đề Word Free</span>

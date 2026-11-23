@@ -17,6 +17,65 @@ export const DEFAULT_SCORING = { p1: 0.25, p2: [0, 0.1, 0.25, 0.5, 1], p3: 0.25 
 export const DEFAULT_COUNTS = { p1: 18, p2: 4, p3: 6 };
 export const MAX_COUNTS = { p1: 40, p2: 8, p3: 6 };
 
+/* Bộ mẫu cấu trúc & thang điểm chính thức theo Chương trình GDPT 2018 / Kỳ thi THPT 2025+ */
+export const MOET_EXAM_PRESETS = [
+  {
+    id: 'khtn_2025',
+    label: 'Lý / Hóa / Sinh / Địa / KHTN',
+    shortLabel: 'KHTN · 18·4·6',
+    badge: 'Chuẩn BGD 2025+',
+    counts: { p1: 18, p2: 4, p3: 6 },
+    scoring: { p1: 0.25, p2: [0, 0.1, 0.25, 0.5, 1], p3: 0.25 },
+    note: '18 P.I (4,5đ) + 4 P.II (4đ) + 6 P.III (1,5đ) = 10,0đ',
+  },
+  {
+    id: 'toan_2025',
+    label: 'Toán học THPT',
+    shortLabel: 'Toán · 12·4·6',
+    badge: 'Chuẩn BGD 2025+',
+    counts: { p1: 12, p2: 4, p3: 6 },
+    scoring: { p1: 0.25, p2: [0, 0.1, 0.25, 0.5, 1], p3: 0.5 },
+    note: '12 P.I (3,0đ) + 4 P.II (4đ) + 6 P.III (3,0đ) = 10,0đ',
+  },
+  {
+    id: 'lichsu_2025',
+    label: 'Sử / GDKT&PL / Tin / Công nghệ',
+    shortLabel: '24·4·0 (BGD)',
+    badge: 'Chuẩn BGD 2025+',
+    counts: { p1: 24, p2: 4, p3: 0 },
+    scoring: { p1: 0.25, p2: [0, 0.1, 0.25, 0.5, 1], p3: 0.25 },
+    note: '24 P.I (6,0đ) + 4 P.II (4,0đ) = 10,0đ',
+  },
+  {
+    id: 'ngoaingu_2025',
+    label: 'Ngoại ngữ (40 câu)',
+    shortLabel: 'Anh · 40·0·0',
+    badge: 'Chuẩn BGD 2025+',
+    counts: { p1: 40, p2: 0, p3: 0 },
+    scoring: { p1: 0.25, p2: [0, 0.1, 0.25, 0.5, 1], p3: 0.25 },
+    note: '40 câu P.I × 0,25đ = 10,0đ',
+  },
+  {
+    id: 'full_moet',
+    label: 'Phiếu Đầy đủ BGD',
+    shortLabel: 'Full · 40·8·6',
+    badge: 'Mẫu A4 Đầy đủ',
+    counts: { p1: 40, p2: 8, p3: 6 },
+    scoring: { p1: 0.25, p2: [0, 0.1, 0.25, 0.5, 1], p3: 0.25 },
+    note: 'Toàn bộ khung 40 P.I · 8 P.II · 6 P.III (quy đổi thang 10)',
+  },
+];
+
+export function matchMoetPreset(counts, scoring) {
+  if (!counts) return null;
+  return MOET_EXAM_PRESETS.find((p) => (
+    p.counts.p1 === Number(counts.p1)
+    && p.counts.p2 === Number(counts.p2)
+    && p.counts.p3 === Number(counts.p3)
+    && (!scoring || (Math.abs((scoring.p1 ?? 0.25) - p.scoring.p1) < 1e-6 && Math.abs((scoring.p3 ?? 0.25) - p.scoring.p3) < 1e-6))
+  )) || null;
+}
+
 const stripMarks = (s) => String(s ?? '').normalize('NFC');
 
 /* ---------- Phân tích đáp án nhập tay ---------- */
@@ -147,9 +206,10 @@ export function checkKey(key, counts) {
   return miss;
 }
 
-/** Phân loại 1 câu hỏi vào Phần I (1), Phần II (2) hoặc Phần III (3) theo chuẩn GDPT 2025. */
+/** Phân loại 1 câu hỏi vào Phần I (1), Phần II (2), Phần III (3) hoặc Tự luận (4). */
 export function classifyExamQuestionPart(q) {
   if (!q || typeof q !== 'object') return 1;
+  if (q.type === 'essay' || q.part === 4) return 4;
   if (q.type === 'true_false' || q.part === 2 || (Array.isArray(q.statements) && q.statements.length > 0)) return 2;
   if (q.type === 'short_answer' || q.part === 3 || (q.answer !== undefined && q.answer !== '' && !(q.options?.length))) return 3;
   return 1;
@@ -402,4 +462,313 @@ export function keyP3FromExam(exam, n = MAX_COUNTS.p3) {
     out.push(vals);
   }
   return out;
+}
+
+/* ============================================================
+   TIỆN ÍCH TNMAKER-STYLE: QUÉT ĐÁP ÁN MẪU, DÁN MA TRẬN EXCEL,
+   SINH SBD TỰ ĐỘNG & IN BẢNG ĐIỂM LỚP A4
+   ============================================================ */
+
+/** Chuyển kết quả đọc 1 phiếu tô chuẩn của giáo viên (readSheet) thành bộ đáp án cấu hình. */
+export function answerKeyFromSheetRead(read = {}, counts = DEFAULT_COUNTS) {
+  const n1 = Math.max(0, Math.min(MAX_COUNTS.p1, Number(counts?.p1 ?? DEFAULT_COUNTS.p1)));
+  const n2 = Math.max(0, Math.min(MAX_COUNTS.p2, Number(counts?.p2 ?? DEFAULT_COUNTS.p2)));
+  const n3 = Math.max(0, Math.min(MAX_COUNTS.p3, Number(counts?.p3 ?? DEFAULT_COUNTS.p3)));
+
+  const p1 = Array.from({ length: MAX_COUNTS.p1 }, (_, i) => {
+    if (i >= n1) return '';
+    const v = String(read?.p1?.[i] || '').toUpperCase();
+    return 'ABCD'.includes(v) ? v : '';
+  });
+
+  const p2 = Array.from({ length: MAX_COUNTS.p2 }, (_, i) => {
+    if (i >= n2) return ['', '', '', ''];
+    const row = read?.p2?.[i] || [];
+    return [0, 1, 2, 3].map((k) => {
+      const ch = String(row[k] || '').toUpperCase();
+      return ch === 'D' || ch === 'Đ' || ch === 'S' ? (ch === 'Đ' ? 'D' : ch) : '';
+    });
+  });
+
+  const p3 = Array.from({ length: MAX_COUNTS.p3 }, (_, i) => {
+    if (i >= n3) return [];
+    const val = String(read?.p3?.[i] || '').replace(/\?/g, '').trim();
+    return val ? [val] : [];
+  });
+
+  const rawCode = String(read?.code || '').replace(/\D/g, '');
+  const code = /^\d{3}$/.test(rawCode) ? rawCode : '';
+
+  return {
+    code,
+    key: { p1, p2, p3 },
+    texts: {
+      p1: keyToTextP1(p1.slice(0, n1)),
+      p2: keyToTextP2(p2.slice(0, n2)),
+      p3: keyToTextP3(p3.slice(0, n3)),
+    },
+    filledCount: {
+      p1: p1.filter(Boolean).length,
+      p2: p2.filter((q) => q.some(Boolean)).length,
+      p3: p3.filter((q) => q.length > 0).length,
+    },
+  };
+}
+
+/**
+ * Phân tích bảng đáp án dán từ Excel / McMix / TNMix / SmartTest cho nhiều mã đề cùng lúc.
+ * Hỗ trợ dạng bảng cột tab ("Câu\t101\t102\t103\t104") hoặc từng khối ("Mã 101: ABCD...").
+ */
+export function parseBulkMatrixKeys(rawText, counts = MAX_COUNTS) {
+  const clean = stripMarks(rawText);
+  const lines = clean.split(/\r?\n/).map((l) => l.trimEnd()).filter((l) => l.trim());
+  const byCode = {};
+  if (!lines.length) return { byCode, codes: [], parsedCount: 0 };
+
+  const ensureCode = (c) => {
+    if (!byCode[c]) {
+      byCode[c] = {
+        p1: new Array(MAX_COUNTS.p1).fill(''),
+        p2: Array.from({ length: MAX_COUNTS.p2 }, () => ['', '', '', '']),
+        p3: Array.from({ length: MAX_COUNTS.p3 }, () => []),
+      };
+    }
+    return byCode[c];
+  };
+
+  // Thử nhận diện dòng tiêu đề dạng bảng chứa nhiều Mã đề 3 chữ số (VD: Câu | 101 | 102 | 103 | 104)
+  let headerIdx = -1;
+  let colCodeMap = []; // [{ colIdx, code }]
+  for (let i = 0; i < Math.min(lines.length, 6); i++) {
+    const cells = lines[i].split(/[\t;|]+|\s{2,}/).map((x) => x.trim());
+    const found = [];
+    cells.forEach((cell, colIdx) => {
+      const m = cell.match(/^(?:mã\s*(?:đề)?\s*)?(\d{3})$/i);
+      if (m) found.push({ colIdx, code: m[1] });
+    });
+    if (found.length >= 1 && cells.length >= 2) {
+      headerIdx = i;
+      colCodeMap = found;
+      break;
+    }
+  }
+
+  if (headerIdx >= 0 && colCodeMap.length >= 1) {
+    colCodeMap.forEach(({ code }) => ensureCode(code));
+    let activePart = 1;
+    let p1Row = 0;
+    let p2Row = 0;
+    let p3Row = 0;
+
+    for (let i = headerIdx + 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (/^phần\s*i\b|^p\.?\s*1\b|^trắc\s*nghiệm/i.test(line)) { activePart = 1; continue; }
+      if (/^phần\s*ii\b|^p\.?\s*2\b|^đúng\s*[\/-]?\s*sai/i.test(line)) { activePart = 2; continue; }
+      if (/^phần\s*iii\b|^p\.?\s*3\b|^trả\s*lời\s*ngắn/i.test(line)) { activePart = 3; continue; }
+
+      const cells = line.split(/[\t;|]+|\s{2,}/).map((x) => x.trim());
+      if (cells.length < 2) continue;
+
+      const label = cells[0].toLowerCase();
+      const qNumMatch = label.match(/(\d{1,2})/);
+      const qSubMatch = label.match(/(\d{1,2})\s*[.)\-:]?\s*([abcd])$/i);
+      const colVals = colCodeMap.map(({ colIdx }) => cells[colIdx] || '');
+
+      // Tự động suy đoán phần nếu người dùng không dán dòng tiêu đề "Phần I / II / III"
+      const sample = colVals.find(Boolean) || '';
+      if (qSubMatch && /^[đdstf*]/i.test(sample)) {
+        const q = Number(qSubMatch[1]) - 1;
+        const subIdx = 'abcd'.indexOf(qSubMatch[2].toLowerCase());
+        if (q >= 0 && q < MAX_COUNTS.p2 && subIdx >= 0) {
+          colCodeMap.forEach(({ code }, idx) => {
+            const ch = normTFChar(colVals[idx]);
+            if (ch) byCode[code].p2[q][subIdx] = ch;
+          });
+          activePart = 2;
+        }
+        continue;
+      }
+
+      const looksLikeP2Word = /^[đdstf*]{4}$/i.test(sample.replace(/\s+/g, ''));
+      const looksLikeP1Char = /^[abcd*]$/i.test(sample);
+      const looksLikeP3Num = /^-?\d+(?:[.,]\d+)?(?:\|.*)?$/.test(sample) && !looksLikeP2Word;
+
+      let part = activePart;
+      if (looksLikeP2Word) part = 2;
+      else if (looksLikeP3Num && (!looksLikeP1Char || activePart === 3)) part = 3;
+      else if (looksLikeP1Char && activePart === 1) part = 1;
+
+      if (part === 1) {
+        const idxQ = qNumMatch ? Number(qNumMatch[1]) - 1 : p1Row;
+        if (idxQ >= 0 && idxQ < Math.min(MAX_COUNTS.p1, counts?.p1 ?? MAX_COUNTS.p1)) {
+          colCodeMap.forEach(({ code }, idx) => {
+            const ch = String(colVals[idx] || '').trim().toUpperCase();
+            if ('ABCD*'.includes(ch) && ch) byCode[code].p1[idxQ] = ch;
+          });
+          p1Row = idxQ + 1;
+        }
+      } else if (part === 2) {
+        const idxQ = qNumMatch && Number(qNumMatch[1]) <= MAX_COUNTS.p2 ? Number(qNumMatch[1]) - 1 : p2Row;
+        if (idxQ >= 0 && idxQ < MAX_COUNTS.p2) {
+          colCodeMap.forEach(({ code }, idx) => {
+            const parsed = parseKeyP2(colVals[idx], 1)[0];
+            if (parsed) byCode[code].p2[idxQ] = parsed;
+          });
+          p2Row = idxQ + 1;
+        }
+      } else if (part === 3) {
+        const idxQ = qNumMatch && Number(qNumMatch[1]) <= MAX_COUNTS.p3 ? Number(qNumMatch[1]) - 1 : p3Row;
+        if (idxQ >= 0 && idxQ < MAX_COUNTS.p3) {
+          colCodeMap.forEach(({ code }, idx) => {
+            const alts = String(colVals[idx] || '').split('|').map((x) => x.trim()).filter(Boolean);
+            if (alts.length) byCode[code].p3[idxQ] = alts;
+          });
+          p3Row = idxQ + 1;
+        }
+      }
+    }
+  } else {
+    // Dự phòng định dạng dòng "101: ABCDABCD..." hoặc "Mã 101\tABCD..."
+    lines.forEach((line) => {
+      const m = line.match(/^(?:mã\s*(?:đề)?\s*)?(\d{3})\s*[:=\-\t]+\s*(.+)$/i);
+      if (!m) return;
+      const code = m[1];
+      const entry = ensureCode(code);
+      const chunks = m[2].split(/\s*[;|]\s*/);
+      entry.p1 = parseKeyP1(chunks[0] || '', MAX_COUNTS.p1);
+      if (chunks[1]) {
+        const p2Raw = chunks[1].split(/[,/\s]+/).filter(Boolean).join('\n');
+        entry.p2 = parseKeyP2(p2Raw, MAX_COUNTS.p2);
+      }
+      if (chunks[2]) {
+        const p3Raw = chunks[2].split(/\s+/).filter(Boolean).join('\n');
+        entry.p3 = parseKeyP3(p3Raw, MAX_COUNTS.p3);
+      }
+    });
+  }
+
+  const codes = Object.keys(byCode).sort();
+  return { byCode, codes, parsedCount: codes.length };
+}
+
+/** Sinh nhanh danh sách SBD 6 chữ số (000001…) từ danh sách thành viên lớp học. */
+export function autoGenerateSbdRoster(members = []) {
+  const list = Array.isArray(members) ? members.filter((m) => m && (m.name || m.displayName || m.fullName)) : [];
+  const sorted = [...list].sort((a, b) =>
+    String(a.name || a.displayName || a.fullName || '').localeCompare(String(b.name || b.displayName || b.fullName || ''), 'vi')
+  );
+  const used = new Set();
+  const map = {};
+  const lines = [];
+
+  sorted.forEach((m, i) => {
+    const name = String(m.name || m.displayName || m.fullName || `Học sinh ${i + 1}`).trim();
+    const codeDigits = String(m.code || m.studentCode || '').replace(/\D/g, '');
+    let sbd = codeDigits && codeDigits.length <= 6 ? codeDigits.padStart(6, '0') : '';
+    if (!sbd || used.has(sbd)) {
+      let seq = i + 1;
+      do {
+        sbd = String(seq).padStart(6, '0');
+        seq += 1;
+      } while (used.has(sbd));
+    }
+    used.add(sbd);
+    map[sbd] = { id: m.id || m.uid || null, name };
+    lines.push(`${sbd}\t${name}`);
+  });
+
+  return { map, text: lines.join('\n'), count: lines.length };
+}
+
+function escapeHtmlBasic(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Tạo tài liệu HTML in / lưu PDF Bảng tổng hợp kết quả chấm phiếu OMR chuẩn A4. */
+export function buildScoreReportPrintHtml({ paper = {}, results = [], classInfo = null } = {}) {
+  const valid = results.filter((r) => r.status !== 'error' && r.grade);
+  const analytics = computePaperAnalytics(valid, paper.counts);
+  const rowsHtml = [...valid]
+    .sort((a, b) => String(a.sbd || '').localeCompare(String(b.sbd || '')))
+    .map((r, idx) => `
+      <tr>
+        <td style="text-align:center;">${idx + 1}</td>
+        <td class="mono">${escapeHtmlBasic(r.sbd || '—')}</td>
+        <td>${escapeHtmlBasic(r.studentName || '—')}</td>
+        <td class="mono" style="text-align:center;">${escapeHtmlBasic(r.code || '—')}</td>
+        <td style="text-align:right;">${r.grade?.parts?.p1 ?? 0}</td>
+        <td style="text-align:right;">${r.grade?.parts?.p2 ?? 0}</td>
+        <td style="text-align:right;">${r.grade?.parts?.p3 ?? 0}</td>
+        <td style="text-align:right;font-weight:700;">${r.grade?.total ?? 0}</td>
+        <td style="text-align:right;font-weight:800;color:#0369a1;">${r.grade?.score10 ?? 0}</td>
+      </tr>
+    `)
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bảng điểm OMR — ${escapeHtmlBasic(paper.title || 'ELEC Science AI')}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; margin: 0; font-size: 12px; }
+    .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0284c7; padding-bottom: 8px; margin-bottom: 12px; }
+    .head h1 { margin: 0 0 4px; font-size: 17px; text-transform: uppercase; color: #0f172a; }
+    .head p { margin: 0; color: #475569; font-size: 12px; }
+    .brand { text-align: right; font-size: 11px; color: #0284c7; font-weight: 700; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+    .stat { padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; }
+    .stat span { display: block; font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700; }
+    .stat b { font-size: 15px; color: #0f172a; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11.5px; }
+    th { background: #e0f2fe; color: #0c4a6e; text-align: left; font-weight: 700; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    .mono { font-family: ui-monospace, monospace; font-weight: 700; }
+    .foot { margin-top: 14px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="head">
+    <div>
+      <h1>BẢNG TỔNG HỢP ĐIỂM CHẤM PHIẾU OMR</h1>
+      <p><b>Bài thi:</b> ${escapeHtmlBasic(paper.title || '—')} · <b>Lớp:</b> ${escapeHtmlBasic(classInfo?.name || 'Tự do')} · <b>Ngày in:</b> ${new Date().toLocaleDateString('vi-VN')}</p>
+    </div>
+    <div class="brand">ELEC Science AI<br/>elecai.id.vn</div>
+  </div>
+  ${analytics ? `
+    <div class="stats">
+      <div class="stat"><span>Số bài chấm</span><b>${analytics.count} bài</b></div>
+      <div class="stat"><span>Điểm trung bình</span><b>${analytics.avg} / 10</b></div>
+      <div class="stat"><span>Tỷ lệ đạt (≥ 5,0)</span><b>${analytics.passRate}%</b></div>
+      <div class="stat"><span>Cao / Thấp nhất</span><b>${analytics.max} / ${analytics.min}</b></div>
+    </div>
+  ` : ''}
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:center;width:36px;">STT</th>
+        <th>SBD</th>
+        <th>Họ và tên thí sinh</th>
+        <th style="text-align:center;">Mã đề</th>
+        <th style="text-align:right;">Phần I</th>
+        <th style="text-align:right;">Phần II</th>
+        <th style="text-align:right;">Phần III</th>
+        <th style="text-align:right;">Tổng</th>
+        <th style="text-align:right;">Thang 10</th>
+      </tr>
+    </thead>
+    <tbody>${rowsHtml || '<tr><td colspan="9" style="text-align:center;">Chưa có dữ liệu điểm</td></tr>'}</tbody>
+  </table>
+  <div class="foot">
+    <span>Xuất tự động từ Hệ thống Khảo thí OMR ELEC Science AI</span>
+    <span>Chữ ký giáo viên / Người chấm: ..........................................</span>
+  </div>
+</body>
+</html>`;
 }

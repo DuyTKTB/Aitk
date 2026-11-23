@@ -71,6 +71,9 @@ const CROSS_LETTER_PATTERNS = [
   /\b[a-d]\s*(,|và|&)\s*[a-d]\s+(đều\s+)?(đúng|sai)\b/i,
   /\b[a-d]\s*,\s*[a-d]\s*(,|và|&)?\s*[a-d]\s+(đều\s+)?(đúng|sai)\b/i,
   /\bcả\s+(hai|2|ba|3)\s+(đáp\s+án|phương\s+án)\s+[a-d]/i,
+  /\b(?:both|either|neither)\s+(?:options?\s+)?[a-d]\s*(?:,|and|nor|or|&)\s*[a-d](?:\s+(?:are|is|only|both)\b|\s*$|[.,;)])/i,
+  /\b(?:options?|choices?|answers?)\s+[A-D]\s*(?:,|and|or|&)\s*[A-D]\b/,
+  /\b[A-D]\s*(?:,|and|&)\s*[A-D]\s+(?:are\s+)?(?:both\s+)?(?:correct|true|incorrect|false|wrong)\b/i,
 ];
 
 const POSITIONAL_ABOVE_PATTERNS = [
@@ -80,6 +83,10 @@ const POSITIONAL_ABOVE_PATTERNS = [
   /cả\s+(hai|2|ba|3)\s+(đáp\s+án|phương\s+án|ý)\s+trên/i,
   /không\s+có\s+(đáp\s+án|phương\s+án|ý)\s+nào\s+(trên|đúng)/i,
   /các\s+(đáp\s+án|phương\s+án)\s+trên\s+đều\s+(đúng|sai)/i,
+  /\ball\s+(?:of\s+)?(?:the\s+)?(?:above|options?|answers?|statements?|choices?)\b/i,
+  /\ball\s+(?:are|of\s+them\s+are)\s+(?:correct|true|wrong|incorrect)\b/i,
+  /\bnone\s+of\s+(?:the\s+)?(?:above|these|options?|answers?|choices?)\b/i,
+  /\bboth\s+(?:of\s+)?(?:the\s+)?above\b/i,
 ];
 
 export function hasPositionalOption(options = []) {
@@ -152,7 +159,13 @@ function buildChunks(items, keepLinkedGroups) {
   const groupMap = new Map();
 
   items.forEach((item) => {
-    const gKey = item.q?.groupId || item.q?.passageId || item.q?.contextId || item.q?.readingId || null;
+    const gKey =
+      item.q?.groupId ||
+      item.q?.pg ||
+      item.q?.passageId ||
+      item.q?.contextId ||
+      item.q?.readingId ||
+      (item.q?.passage ? `p:${String(item.q.passage).trim().slice(0, 120)}` : null);
     if (gKey) {
       if (groupMap.has(gKey)) {
         groupMap.get(gKey).push(item);
@@ -270,6 +283,7 @@ export function generateShuffledVersions(questions = [], count = 4, options = {}
       const p1 = indexedQuestions.filter(({ q }) => (q.type || 'single_choice') === 'single_choice');
       const p2 = indexedQuestions.filter(({ q }) => q.type === 'true_false');
       const p3 = indexedQuestions.filter(({ q }) => q.type === 'short_answer');
+      const p4 = indexedQuestions.filter(({ q }) => q.type === 'essay');
 
       const s1 = shufflePartItems(p1, {
         shouldShuffle: effShufflePart1,
@@ -296,7 +310,7 @@ export function generateShuffledVersions(questions = [], count = 4, options = {}
         prng,
       });
 
-      orderedWithOrig = [...s1, ...s2, ...s3];
+      orderedWithOrig = [...s1, ...s2, ...s3, ...p4];
     } else {
       orderedWithOrig = shufflePartItems(indexedQuestions, {
         shouldShuffle: effShufflePart1 && shuffleQuestions,
@@ -312,9 +326,14 @@ export function generateShuffledVersions(questions = [], count = 4, options = {}
       const isLockedPos = lockedSet.has(origIdx);
       const qPrng = mulberry32(seed + (origIdx + 1) * 313);
 
-      // Phần III: Trả lời ngắn
-      if (q.type === 'short_answer') {
-        const base = { ...q, originalIndex: origIdx + 1, _origQuestion: q };
+      // Phần III & Tự luận: Trả lời ngắn / Tự luận (không đảo phương án A-D)
+      if (q.type === 'short_answer' || q.type === 'essay') {
+        const base = {
+          ...q,
+          ...(q.type === 'essay' ? { options: [], correct: -1 } : {}),
+          originalIndex: origIdx + 1,
+          _origQuestion: q,
+        };
         if (isLockedPos) base.isPositionLocked = true;
         return base;
       }
@@ -500,6 +519,9 @@ export function findCollisions(versions = []) {
         if (q.type === 'true_false') {
           const stSig = (q.statements || []).map((s) => `${s.text}:${s.answer ? 1 : 0}`).join('|');
           return `${q.originalIndex}:TF:${stSig}`;
+        }
+        if (q.type === 'essay') {
+          return `${q.originalIndex}:ESSAY:${String(q.q || '').slice(0, 40)}`;
         }
         return `${q.originalIndex}:${q.correct ?? ''}:${(q.options || []).join('|')}`;
       })

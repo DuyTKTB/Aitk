@@ -141,7 +141,7 @@ export default function TeacherProPanel() {
       <div className="tpp-hero">
         <div className="tpp-hero-ico"><IcoCrown size={44} /></div>
         <div>
-          <span className="tpp-label">GIÁO VIÊN VIP · 399.000Đ / THÁNG</span>
+          <span className="tpp-label">GIÁO VIÊN VIP · 999.000Đ / NĂM</span>
           <h2 className="tpp-title">Soạn đề, chấm bài, giám sát thi — để hệ thống lo</h2>
           <p className="tpp-sub">
             Mở khóa toàn bộ đặc quyền Giáo viên VIP: tạo không giới hạn lớp học &amp; sĩ số,
@@ -195,7 +195,7 @@ export default function TeacherProPanel() {
         <b>Chưa có key? Nhắn Admin là có</b>
         <p>
           1. Nhắn Admin qua Facebook, nói bạn dạy môn gì và cần hạn bao lâu.<br />
-          2. Nhận key dạng <b>PRO-XXXX-XXXX</b> (1 tháng / 6 tháng / 1 năm).<br />
+          2. Nhận key dạng <b>PRO-XXXX-XXXX</b> (gói 1 năm).<br />
           3. Dán key vào ô phía trên → bấm <b>Kích hoạt</b> → dùng ngay, không cần chờ duyệt.
         </p>
         <a

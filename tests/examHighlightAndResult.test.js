@@ -23,6 +23,22 @@ describe('HighlightableMathText — tokenizeForHighlight', () => {
     expect(mathTokens[0].value).toContain('\\ce{Fe + 2HCl -> FeCl2 + H2}');
   });
 
+  it('giữ nguyên khối code Tin học và giá tiền $15..$25 trong Tiếng Anh không bị biến thành KaTeX', () => {
+    const codeText = 'Xem đoạn lệnh:\n```python\nprice = "$10"\nif x > 0:\n    print(x)\n```\nvà biểu thức `a + b` cùng công thức $x^2 + 1$.';
+    const tokens = tokenizeForHighlight(codeText);
+    const codeTokens = tokens.filter((t) => t.type === 'code').map((t) => t.value);
+    const mathTokens = tokens.filter((t) => t.type === 'math').map((t) => t.value);
+
+    expect(codeTokens.some((c) => c.includes('print(x)'))).toBe(true);
+    expect(codeTokens).toContain('`a + b`');
+    expect(mathTokens).toEqual(['$x^2 + 1$']);
+    expect(tokens.map((t) => t.value).join('')).toBe(codeText);
+
+    const priceTokens = tokenizeForHighlight('The ticket costs between $15 and $25 per person.');
+    expect(priceTokens.some((t) => t.type === 'math')).toBe(false);
+    expect(priceTokens.map((t) => t.value).join('')).toBe('The ticket costs between $15 and $25 per person.');
+  });
+
   it('trả mảng rỗng an toàn khi chuỗi trống hoặc null', () => {
     expect(tokenizeForHighlight('')).toEqual([]);
     expect(tokenizeForHighlight(null)).toEqual([]);

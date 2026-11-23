@@ -764,10 +764,30 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
     const m = broadcastText.trim();
     if (!m) return;
     const targets = stats.active;
-    await Promise.all(targets.map((s) => warnStudent({ sessionId, studentId: s.id, message: m })));
-    setBroadcastOpen(false);
-    setBroadcastText('');
-    say(`Đã nhắc ${targets.length} học sinh`);
+    if (!targets.length) {
+      say('Hiện chưa có thí sinh nào đang làm bài để gửi thông báo.');
+      setBroadcastOpen(false);
+      return;
+    }
+    setActioning(true);
+    try {
+      const results = await Promise.allSettled(
+        targets.map((s) => warnStudent({ sessionId, studentId: s.id, message: m }))
+      );
+      const okCount = results.filter((r) => r.status === 'fulfilled').length;
+      const failCount = results.length - okCount;
+      setBroadcastOpen(false);
+      setBroadcastText('');
+      if (failCount > 0) {
+        say(`Đã gửi nhắc tới ${okCount}/${results.length} thí sinh (${failCount} gửi thất bại).`);
+      } else {
+        say(`Đã nhắc ${okCount} học sinh`);
+      }
+    } catch (e) {
+      say('Không gửi được thông báo phòng thi: ' + (e?.message || e));
+    } finally {
+      setActioning(false);
+    }
   };
 
   /* Điểm minh bạch toàn phòng & chẩn đoán AI thời gian thực */

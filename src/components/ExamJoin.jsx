@@ -40,7 +40,8 @@ import useMotionGuard, { requestMotionPermission } from '../hooks/useMotionGuard
 import { serverNow } from '../lib/serverClock.js';
 import ExamResult from './ExamResult.jsx';
 import ViolationOverlay, { unlockAlertAudio } from './ViolationOverlay.jsx';
-import MathText from './MathText.jsx';
+import MathText, { MathTextConfigContext } from './MathText.jsx';
+import { subjectUsesMath } from '../lib/subjects.js';
 import RetryRequestModal from './RetryRequestModal.jsx';
 
 // [1.1] Import theo hướng dẫn
@@ -216,6 +217,7 @@ const Q_TYPE_LABEL = {
   single_choice: 'Trắc nghiệm 4 lựa chọn',
   true_false: 'Đúng / Sai (4 ý)',
   short_answer: 'Trả lời ngắn',
+  essay: 'Tự luận / Mở',
 };
 
 const QuestionCard = memo(function QuestionCard({
@@ -303,7 +305,7 @@ const QuestionCard = memo(function QuestionCard({
       {(q.passage || q.instruction) && <PassageBox instruction={q.instruction} passage={q.passage} />}
 
       <HighlightableMathText
-        text={q.q}
+        text={q.q || (q.passage ? '(Điền vào chỗ trống / trả lời theo ngữ liệu trên)' : '')}
         className="ep-q-text"
         active={highlightActive}
         highlightedMap={highlightedMap}
@@ -2686,51 +2688,53 @@ export default function ExamJoin({ token, onExit }) {
 
         <div className={'ep-body' + (cameraEnabled ? '' : ' no-cam')}>
           <div className="ep-main-col">
-            <main
-              className={'ep-main' + (mode === 'paper' ? ' paper' : '')}
-              ref={mainRef}
-              onTouchStart={onTouchStart}
-              onTouchEnd={onTouchEnd}
-            >
-              {mode === 'paper' ? (
-                <ExamPaperView
-                  layout={layout}
-                  questions={exam.questions}
-                  answers={answers}
-                  flags={flags}
-                  paused={paused}
-                  onPick={pickAnswer}
-                  onFlag={toggleFlag}
-                  onVisible={setCurrentQ}
-                  onSubmit={() => setConfirmOpen(true)}
-                  onZoom={handleZoomImage}
-                  rootRef={mainRef}
-                />
-              ) : (
-                <>
-                  <QuestionCard
-                    q={q}
-                    qi={qi}
-                    num={currentQ + 1}
-                    total={exam.questions.length}
-                    picked={answers[qi]}
-                    flagged={!!flags[qi]}
+            <MathTextConfigContext.Provider value={{ disableChemFormat: Boolean(exam?.subject) && !subjectUsesMath(exam?.subject) }}>
+              <main
+                className={'ep-main' + (mode === 'paper' ? ' paper' : '')}
+                ref={mainRef}
+                onTouchStart={onTouchStart}
+                onTouchEnd={onTouchEnd}
+              >
+                {mode === 'paper' ? (
+                  <ExamPaperView
+                    layout={layout}
+                    questions={exam.questions}
+                    answers={answers}
+                    flags={flags}
                     paused={paused}
-                    eliminatedMap={eliminated[qi]}
-                    highlightActive={highlightMode}
-                    highlightedMap={highlights[qi]}
                     onPick={pickAnswer}
                     onFlag={toggleFlag}
-                    onToggleEliminate={toggleEliminate}
-                    onToggleHighlightMode={toggleHighlightMode}
-                    onToggleHighlightWord={toggleHighlightWord}
-                    onClearHighlights={clearHighlights}
+                    onVisible={setCurrentQ}
+                    onSubmit={() => setConfirmOpen(true)}
                     onZoom={handleZoomImage}
+                    rootRef={mainRef}
                   />
-                  <p className="ep-swipe-hint">Vuốt trái / phải để chuyển câu</p>
-                </>
-              )}
-            </main>
+                ) : (
+                  <>
+                    <QuestionCard
+                      q={q}
+                      qi={qi}
+                      num={currentQ + 1}
+                      total={exam.questions.length}
+                      picked={answers[qi]}
+                      flagged={!!flags[qi]}
+                      paused={paused}
+                      eliminatedMap={eliminated[qi]}
+                      highlightActive={highlightMode}
+                      highlightedMap={highlights[qi]}
+                      onPick={pickAnswer}
+                      onFlag={toggleFlag}
+                      onToggleEliminate={toggleEliminate}
+                      onToggleHighlightMode={toggleHighlightMode}
+                      onToggleHighlightWord={toggleHighlightWord}
+                      onClearHighlights={clearHighlights}
+                      onZoom={handleZoomImage}
+                    />
+                    <p className="ep-swipe-hint">Vuốt trái / phải để chuyển câu</p>
+                  </>
+                )}
+              </main>
+            </MathTextConfigContext.Provider>
 
             {mode !== 'paper' && (
               <div className="ep-nav-dock">

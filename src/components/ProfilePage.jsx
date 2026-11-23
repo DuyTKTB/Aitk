@@ -1235,7 +1235,7 @@ export default function ProfilePage({ credits: propCredits }) {
                     style={isTeacherAccount ? { background: 'rgba(148, 163, 184, 0.14)', color: 'inherit', boxShadow: 'none' } : undefined}
                     onClick={() => selectTab('vip')}
                   >
-                    {isTeacher ? 'Gia hạn / Nâng cấp Giáo viên VIP' : isTeacherAccount ? 'Nâng cấp Giáo viên VIP (399k/tháng)' : 'Nâng cấp gói'} <span>→</span>
+                    {isTeacher ? 'Gia hạn / Nâng cấp Giáo viên VIP' : isTeacherAccount ? 'Nâng cấp Giáo viên VIP (999k/năm)' : 'Nâng cấp gói (299k/năm)'} <span>→</span>
                   </button>
                 </div>
               </div>

@@ -110,11 +110,8 @@ export async function createExamSession({
     ...data,
   };
 
-  // Ghi vào Firestore: setDoc lưu vào IndexedDB cache ngay lập tức (<5ms).
-  // Đồng bộ ngầm lên đám mây mà không chặn phản hồi thời gian thực của UI.
-  setDoc(newDocRef, data).catch((err) => {
-    console.warn('[createExamSession] setDoc cảnh báo:', err?.message);
-  });
+  // Chờ ghi Firestore hoàn tất để đảm bảo học sinh thấy phòng thi ngay và bắt được lỗi nếu mất quyền/mạng
+  await setDoc(newDocRef, data);
 
   return sessionData;
 }

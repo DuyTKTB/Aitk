@@ -22,6 +22,7 @@ import {
   getSubmissionsByExam,
   deleteExam,
   createExam,
+  hydrateExamAnswerKey,
 } from '../../lib/classroom.js';
 import { createExamSession, getSessionByExam } from '../../lib/examSession.js';
 import { Modal } from '../DashShell.jsx';
@@ -264,7 +265,8 @@ export default function LinkedClassesPanel({
             getClassById(l.classId),
             getExamsByClass(l.classId),
           ]);
-          const mine = (exs || []).filter((e) => e.teacherId === user.uid);
+          const rawMine = (exs || []).filter((e) => e.teacherId === user.uid);
+          const mine = await Promise.all(rawMine.map((e) => hydrateExamAnswerKey(e)));
           return { ...l, cls, mine, classError: '' };
         } catch (e) {
           return {
@@ -318,7 +320,7 @@ export default function LinkedClassesPanel({
     if (!confirmRemoveCtx) return;
     const { item, exam } = confirmRemoveCtx;
     setConfirmRemoveCtx(null);
-    const snapshot = { ...exam };
+    const snapshot = await hydrateExamAnswerKey(exam).catch(() => ({ ...exam }));
     setBusy(exam.id);
     try {
       await deleteExam(exam.id);
@@ -332,7 +334,7 @@ export default function LinkedClassesPanel({
         undoLabel: 'Hoàn tác',
         onUndo: async () => {
           try {
-            const { id: _id, ...rest } = snapshot;
+            const { id: _id, token: _token, ...rest } = snapshot;
             await createExam(rest);
             await load();
             onSay?.(`Đã khôi phục đề “${snapshot.title || 'Đề'}”`, 'success');

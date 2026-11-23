@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import React from 'react';
 import { MarkdownLike } from '../src/components/ChatMarkdown.jsx';
-import { formatMathAndChemSymbols } from '../src/lib/chemFormulaFormatter.js';
+import { formatMathAndChemSymbols, formatTextForSubject } from '../src/lib/chemFormulaFormatter.js';
 import { normalizeMathString, hasMath } from '../src/components/MathText.jsx';
 
 describe('ChatMarkdown — ChatGPT-Style Markdown Normalization & Rendering', () => {
@@ -108,5 +108,17 @@ describe('MathText — Chuẩn hóa Delimiter LaTeX & mhchem', () => {
     const normalized = normalizeMathString(input);
     expect(normalized).toContain('$\\ce{2H2 + O2 -> 2H2O}$');
     expect(hasMath(normalized)).toBe(true);
+  });
+
+  it('bảo toàn mã nguồn Tin học (Python/C++/HTML), nhóm G7/G20, trình độ B2 và giá tiền ở các môn ngoài KHTN', () => {
+    const codeText = 'Kiểm tra hàm `if x != 0 and y <= 10:` và thẻ `<h2>`.';
+    expect(formatMathAndChemSymbols(codeText)).toBe(codeText);
+
+    const englishCurrency = 'The ticket costs $15 and lunch costs $20.';
+    expect(hasMath(englishCurrency)).toBe(false);
+
+    expect(formatTextForSubject('Trình độ B2, phím F1, G7, G20, x != 0', 'Tin học')).toBe('Trình độ B2, phím F1, G7, G20, x != 0');
+    expect(formatTextForSubject('Hiệp định G7 và B2 English', 'Lịch sử')).toBe('Hiệp định G7 và B2 English');
+    expect(formatTextForSubject('Phản ứng H2SO4 -> SO2', 'Hóa học')).toBe('Phản ứng H₂SO₄ → SO₂');
   });
 });

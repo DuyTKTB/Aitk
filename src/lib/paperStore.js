@@ -96,9 +96,10 @@ export async function listPaperResults(examId) {
    Chưa có SBD → dùng id sẵn có hoặc tự sinh. Xóa id cũ nếu SBD thay đổi. */
 export async function savePaperResults(examId, items) {
   try {
-    for (let i = 0; i < items.length; i += 400) {
+    // Mỗi item đổi SBD tốn 2 write ops (delete + set) → giới hạn 200 item/batch (tối đa 400 ops <= 500 của Firestore)
+    for (let i = 0; i < items.length; i += 200) {
       const b = writeBatch(db);
-      items.slice(i, i + 400).forEach((r) => {
+      items.slice(i, i + 200).forEach((r) => {
         const rid = /^\d{3,8}$/.test(r.sbd || '')
           ? `sbd_${r.sbd}`
           : (r.id || doc(collection(db, 'paperExams', examId, 'results')).id);

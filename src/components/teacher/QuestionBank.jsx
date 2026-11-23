@@ -27,7 +27,8 @@ import {
   incrementManualEntryTrialUsed,
 } from '../../lib/entitlements.js';
 import TeacherVipLock from './TeacherVipLock.jsx';
-import MathText from '../MathText.jsx';
+import MathText, { MathTextConfigContext } from '../MathText.jsx';
+import { subjectUsesMath } from '../../lib/subjects.js';
 import QuestionBankForm from './QuestionBankForm.jsx';
 import ExamImporter from './ExamImporter.jsx';
 import { exportStyledWorkbook } from '../../lib/excelExport.js';
@@ -46,6 +47,7 @@ import {
   getTopicsForSubject,
   getTopicName,
   ALL_SUBJECTS_LIST,
+  resolveTopicsSubjectKey,
 } from '../../data/topicsBySubject.js';
 import '../../styles/question-bank.css';
 
@@ -60,6 +62,15 @@ export function AiQuestionChoicesPreview({ item, wrapClass, itemClass = '', corr
             <b>{'abcd'[i]}.</b> <MathText>{st?.text || ''}</MathText> <span>({st?.answer ? 'Đúng' : 'Sai'})</span>
           </RowTag>
         ))}
+      </div>
+    );
+  }
+  if (item.type === 'essay') {
+    return (
+      <div className={wrapClass}>
+        <RowTag className={[itemClass, correctClass].filter(Boolean).join(' ')}>
+          <b>Tự luận:</b> <MathText>{String(item.answer || 'Mở / chấm tay')}</MathText>
+        </RowTag>
       </div>
     );
   }
@@ -695,7 +706,7 @@ export default function QuestionBank({
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         if (bankLimitReached) {
-          promptVipBank(`Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để lưu không giới hạn.`);
+          promptVipBank(`Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để lưu không giới hạn.`);
           return;
         }
         setEditing(null);
@@ -801,7 +812,7 @@ export default function QuestionBank({
     let badAnswerCount = 0;
 
     list.forEach((q) => {
-      const subj = q.subject || 'Chưa phân môn';
+      const subj = resolveTopicsSubjectKey(q.subject) || q.subject || 'Chưa phân môn';
       const gr = q.grade || 0;
       const tp = q.topicId || '';
       const lv = normalizeLevel(q.level);
@@ -845,7 +856,10 @@ export default function QuestionBank({
   /* Lọc và sắp xếp danh sách câu hỏi */
   const filtered = useMemo(() => {
     let arr = list;
-    if (filterSubject) arr = arr.filter((q) => (q.subject || 'Chưa phân môn') === filterSubject);
+    if (filterSubject) {
+      const targetSubj = resolveTopicsSubjectKey(filterSubject) || filterSubject;
+      arr = arr.filter((q) => (resolveTopicsSubjectKey(q.subject) || q.subject || 'Chưa phân môn') === targetSubj);
+    }
     if (filterGrade) arr = arr.filter((q) => Number(q.grade || 0) === Number(filterGrade));
     if (filterTopic) arr = arr.filter((q) => q.topicId === filterTopic);
     if (filterLevel) arr = arr.filter((q) => normalizeLevel(q.level) === filterLevel);
@@ -915,7 +929,11 @@ export default function QuestionBank({
       answer: String(activeQuestion.answer ?? activeQuestion.accepted?.[0] ?? ''),
       accepted: Array.isArray(activeQuestion.accepted) ? [...activeQuestion.accepted] : [],
       explain: activeQuestion.explain || '',
-      subject: activeQuestion.subject || 'Hóa học',
+      subject: resolveTopicsSubjectKey(activeQuestion.subject) || activeQuestion.subject || 'Hóa học',
+      passage: activeQuestion.passage || '',
+      instruction: activeQuestion.instruction || '',
+      passageId: activeQuestion.passageId ?? null,
+      groupId: activeQuestion.groupId || '',
       grade: Number(activeQuestion.grade) || 0,
       topicId: activeQuestion.topicId || '',
       level: normalizeLevel(activeQuestion.level),
@@ -992,7 +1010,7 @@ export default function QuestionBank({
      THÊM / SỬA / XÓA KÈM HỘP XÁC NHẬN & HOÀN TÁC (UNDO 6S)
      ============================================================ */
   const bankLimitReached = !vipUnlocked && list.length >= FREE_TEACHER_LIMITS.maxBankQuestions;
-  const promptVipBank = useCallback((msg = `Tính năng AI & Nhập/Xuất hàng loạt thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`) => {
+  const promptVipBank = useCallback((msg = `Tính năng AI & Nhập/Xuất hàng loạt thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`) => {
     say(msg);
     onRequestUpgrade?.(msg);
   }, [onRequestUpgrade]);
@@ -1002,8 +1020,8 @@ export default function QuestionBank({
       const remManual = getManualEntryTrialRemaining(user?.uid, false);
       promptVipBank(
         remManual <= 0
-          ? `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/${FREE_TEACHER_LIMITS.maxManualEntries} lượt nhập thủ công miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để thêm không giới hạn.`
-          : `Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để lưu không giới hạn.`
+          ? `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/${FREE_TEACHER_LIMITS.maxManualEntries} lượt nhập thủ công miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để thêm không giới hạn.`
+          : `Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để lưu không giới hạn.`
       );
       return;
     }
@@ -1396,7 +1414,7 @@ export default function QuestionBank({
      ============================================================ */
   const handleSaveQuickEdit = async () => {
     if (!activeQuestion || !quickDraft) return;
-    if (!quickDraft.q.trim()) {
+    if (!quickDraft.q.trim() && !String(quickDraft.passage || '').trim()) {
       say('Nội dung câu hỏi không được để trống');
       return;
     }
@@ -1414,6 +1432,10 @@ export default function QuestionBank({
       level: quickDraft.level,
       points: Number(quickDraft.points) || 1,
       tags: mergedTags,
+      ...(quickDraft.passage ? { passage: quickDraft.passage } : {}),
+      ...(quickDraft.instruction ? { instruction: quickDraft.instruction } : {}),
+      ...(quickDraft.passageId != null ? { passageId: quickDraft.passageId } : {}),
+      ...(quickDraft.groupId ? { groupId: quickDraft.groupId } : {}),
     };
 
     if (qType === 'true_false') {
@@ -1436,6 +1458,10 @@ export default function QuestionBank({
       }
       patch.answer = rawAns;
       patch.accepted = [...new Set([rawAns, rawAns.replace(/,/g, '.'), ...(quickDraft.accepted || []).filter(Boolean)])];
+      patch.options = [];
+      patch.correct = -1;
+    } else if (qType === 'essay') {
+      patch.answer = String(quickDraft.answer || '').trim();
       patch.options = [];
       patch.correct = -1;
     } else {
@@ -1468,7 +1494,7 @@ export default function QuestionBank({
 
   const callBankAI = async ({ prompt, system, cost = CREDIT_TARIFF.TUTOR_CONTEXT, actionType = 'ai_text', reason = 'AI Ngân hàng câu hỏi', validate = null }) => {
     if (!vipUnlocked) {
-      const msg = `Công cụ AI trong Ngân hàng câu hỏi dành riêng cho Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+      const msg = `Công cụ AI trong Ngân hàng câu hỏi dành riêng cho Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`;
       onRequestUpgrade?.(msg);
       throw new Error(msg);
     }
@@ -1925,7 +1951,7 @@ Trả về DUY NHẤT JSON:
      ============================================================ */
   const handleExportCsv = async () => {
     if (!vipUnlocked) {
-      promptVipBank(`Xuất Ngân hàng câu hỏi ra Excel thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      promptVipBank(`Xuất Ngân hàng câu hỏi ra Excel thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`);
       return;
     }
     if (!filtered.length) return;
@@ -1997,7 +2023,7 @@ Trả về DUY NHẤT JSON:
 
   const handleExportWord = async () => {
     if (!vipUnlocked) {
-      promptVipBank(`Xuất đề Word (.docx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      promptVipBank(`Xuất đề Word (.docx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`);
       return;
     }
     if (filtered.length === 0) return;
@@ -2020,7 +2046,7 @@ Trả về DUY NHẤT JSON:
 
   const handleExportPdf = async () => {
     if (!vipUnlocked) {
-      promptVipBank(`Xuất bản in PDF thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      promptVipBank(`Xuất bản in PDF thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`);
       return;
     }
     if (filtered.length === 0) return;
@@ -2047,7 +2073,7 @@ Trả về DUY NHẤT JSON:
     if (!vipUnlocked) {
       const remainingCap = Math.max(0, FREE_TEACHER_LIMITS.maxBankQuestions - list.length);
       if (remainingCap <= 0) {
-        promptVipBank(`Ngân hàng miễn phí đã đạt giới hạn ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để lưu không giới hạn.`);
+        promptVipBank(`Ngân hàng miễn phí đã đạt giới hạn ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để lưu không giới hạn.`);
         return;
       }
       const trimmed = (qs || []).slice(0, remainingCap);
@@ -2110,7 +2136,7 @@ Trả về DUY NHẤT JSON:
 
   const handleSaveQuickImportRows = async () => {
     if (!vipUnlocked) {
-      promptVipBank(`Nhập nhanh CSV / Excel thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      promptVipBank(`Nhập nhanh CSV / Excel thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`);
       return;
     }
     const validSelected = quickImportRows.filter((r) => r.selected && r.status !== 'error');
@@ -2139,7 +2165,7 @@ Trả về DUY NHẤT JSON:
   /* Mở trình tạo câu hỏi AI khi bấm "Sinh đề bằng AI" */
   const handleTriggerAiStudio = () => {
     if (!vipUnlocked) {
-      promptVipBank(`AI sinh câu hỏi theo ma trận thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      promptVipBank(`AI sinh câu hỏi theo ma trận thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`);
       return;
     }
     if (typeof onOpenAiStudio === 'function') {
@@ -2223,7 +2249,7 @@ Trả về DUY NHẤT JSON:
           <button
             type="button"
             className="vt-btn sm"
-            onClick={() => (vipUnlocked ? setShowQuickImport(true) : promptVipBank(`Nhập nhanh CSV / Excel thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`))}
+            onClick={() => (vipUnlocked ? setShowQuickImport(true) : promptVipBank(`Nhập nhanh CSV / Excel thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`))}
             title="Nhập nhanh từ bảng Excel, CSV hoặc văn bản có kiểm tra lỗi từng dòng"
           >
             <IcoUpload size={15} /> Nhập CSV / Excel {!vipUnlocked ? '(VIP)' : ''}
@@ -2234,7 +2260,7 @@ Trả về DUY NHẤT JSON:
             className="vt-btn sm"
             onClick={() => {
               if (!vipUnlocked && wordTrialLeft <= 0) {
-                promptVipBank(`Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxWordImports}/10 lượt nhập file Word miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhập không giới hạn.`);
+                promptVipBank(`Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxWordImports}/10 lượt nhập file Word miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để nhập không giới hạn.`);
                 return;
               }
               setShowImporter(true);
@@ -2269,8 +2295,8 @@ Trả về DUY NHẤT JSON:
               if (bankLimitReached || (!vipUnlocked && manualTrialLeft <= 0)) {
                 promptVipBank(
                   manualTrialLeft <= 0
-                    ? `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/30 lượt nhập thủ công miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để thêm không giới hạn.`
-                    : `Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để lưu không giới hạn.`
+                    ? `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/30 lượt nhập thủ công miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để thêm không giới hạn.`
+                    : `Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để lưu không giới hạn.`
                 );
                 return;
               }
@@ -2927,7 +2953,7 @@ Trả về DUY NHẤT JSON:
                           promptVipBank(
                             manualTrialLeft <= 0
                               ? `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/30 lượt nhập thủ công miễn phí.`
-                              : `Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để lưu không giới hạn.`
+                              : `Ngân hàng miễn phí hỗ trợ tối đa ${FREE_TEACHER_LIMITS.maxBankQuestions} câu hỏi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để lưu không giới hạn.`
                           );
                           return;
                         }
@@ -3022,17 +3048,23 @@ Trả về DUY NHẤT JSON:
                         </div>
 
                         {/* Nội dung câu hỏi */}
-                        <MathText as="p" className="qb-item-q">{q.q}</MathText>
+                        <MathTextConfigContext.Provider value={{ disableChemFormat: Boolean(q.subject || filterSubject) && !subjectUsesMath(q.subject || filterSubject) }}>
+                          {q.passage && (
+                            <div style={{ fontSize: '.78rem', color: 'var(--mut)', marginBottom: '.25rem', whiteSpace: 'pre-line' }}>
+                              {q.passage.length > 200 ? q.passage.slice(0, 200) + '…' : q.passage}
+                            </div>
+                          )}
+                          <MathText as="p" className="qb-item-q">{q.q || (q.passage ? '(Câu hỏi theo đoạn văn)' : '')}</MathText>
 
-                        {/* Các phương án rút gọn */}
-                        <div className="qb-item-opts">
-                          {(q.options || []).map((opt, i) => (
-                            <span key={i} className={'qb-item-opt' + (i === q.correct ? ' correct' : '')}>
-                              <b>{String.fromCharCode(65 + i)}.</b>
-                              <MathText>{opt}</MathText>
-                            </span>
-                          ))}
-                        </div>
+                          {/* Các phương án rút gọn (MCQ / Đúng-Sai / Trả lời ngắn / Tự luận) */}
+                          <AiQuestionChoicesPreview
+                            item={{ ...q, type: qType }}
+                            wrapClass="qb-item-opts"
+                            itemClass="qb-item-opt"
+                            correctClass="correct"
+                            inline
+                          />
+                        </MathTextConfigContext.Provider>
 
                         {/* Chân thẻ: Thống kê + Cảnh báo chất lượng */}
                         <div className="qb-item-meta">
@@ -3233,24 +3265,43 @@ Trả về DUY NHẤT JSON:
                       <span className="qb-meta-pill">{activeQuestion.points || 1} điểm</span>
                     </div>
 
-                    <div className="qb-preview-stem">
-                      <MathText as="div">{activeQuestion.q}</MathText>
-                    </div>
+                    <MathTextConfigContext.Provider value={{ disableChemFormat: Boolean(activeQuestion.subject || filterSubject) && !subjectUsesMath(activeQuestion.subject || filterSubject) }}>
+                      {activeQuestion.passage && (
+                        <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--bg-soft, rgba(148,163,184,0.1))', fontSize: '.85rem', whiteSpace: 'pre-wrap' }}>
+                          {activeQuestion.instruction && <div style={{ fontStyle: 'italic', marginBottom: 4, color: 'var(--mut)' }}>{activeQuestion.instruction}</div>}
+                          <MathText as="div">{activeQuestion.passage}</MathText>
+                        </div>
+                      )}
+                      <div className="qb-preview-stem">
+                        <MathText as="div">{activeQuestion.q}</MathText>
+                      </div>
 
-                    <div className="qb-preview-options">
-                      {(activeQuestion.options || []).map((opt, idx) => {
-                        const isCorr = idx === activeQuestion.correct;
-                        return (
-                          <div key={idx} className={'qb-preview-opt' + (isCorr ? ' correct' : '')}>
-                            <span className="qb-preview-opt-key">{String.fromCharCode(65 + idx)}</span>
+                      {activeQuestion.type === 'essay' ? (
+                        <div className="qb-preview-options">
+                          <div className="qb-preview-opt correct">
+                            <span className="qb-preview-opt-key">TL</span>
                             <div className="qb-preview-opt-text">
-                              <MathText>{opt}</MathText>
+                              <MathText>{activeQuestion.answer || 'Tự luận / Đọc hiểu mở'}</MathText>
                             </div>
-                            {isCorr && <span className="qb-preview-correct-tag">Đáp án đúng</span>}
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      ) : (
+                        <div className="qb-preview-options">
+                          {(activeQuestion.options || []).map((opt, idx) => {
+                            const isCorr = idx === activeQuestion.correct;
+                            return (
+                              <div key={idx} className={'qb-preview-opt' + (isCorr ? ' correct' : '')}>
+                                <span className="qb-preview-opt-key">{String.fromCharCode(65 + idx)}</span>
+                                <div className="qb-preview-opt-text">
+                                  <MathText>{opt}</MathText>
+                                </div>
+                                {isCorr && <span className="qb-preview-correct-tag">Đáp án đúng</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </MathTextConfigContext.Provider>
 
                     <div className="qb-preview-explain">
                       <h5>Lời giải & Hướng dẫn chấm</h5>
@@ -3425,6 +3476,16 @@ Trả về DUY NHẤT JSON:
                           type="text"
                           value={quickDraft.answer || ''}
                           placeholder="Nhập đáp án chuẩn..."
+                          onChange={(e) => setQuickDraft((d) => ({ ...d, answer: e.target.value }))}
+                        />
+                      </label>
+                    ) : quickDraft.type === 'essay' ? (
+                      <label className="qb-field">
+                        <span>Gợi ý chấm / Đáp án mẫu tự luận</span>
+                        <textarea
+                          rows={2}
+                          value={quickDraft.answer || ''}
+                          placeholder="Nhập hướng dẫn chấm hoặc ý chính..."
                           onChange={(e) => setQuickDraft((d) => ({ ...d, answer: e.target.value }))}
                         />
                       </label>

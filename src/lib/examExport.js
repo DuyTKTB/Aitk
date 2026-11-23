@@ -24,8 +24,20 @@ const saveAs = fileSaver?.saveAs || fileSaver;
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { formatMathAndChemSymbols } from './chemFormulaFormatter.js';
+import { subjectUsesMath, getSubjectExamProfile } from './subjects.js';
 
 const fmt = (s) => formatMathAndChemSymbols(String(s ?? ''));
+const isNonScienceSubject = (subj) => Boolean(String(subj || '').trim()) && !subjectUsesMath(subj);
+
+function textRunsWithBreaks(str, extraOpts = {}) {
+  const lines = String(str ?? '').split(/\r?\n/);
+  return lines.map((line, i) => new TextRun({
+    text: line,
+    size: 24,
+    ...extraOpts,
+    ...(i > 0 ? { break: 1 } : {}),
+  }));
+}
 
 /* ============================================================
    HELPER: Tạo filename an toàn & chuyển DataURL sang Uint8Array
@@ -76,7 +88,24 @@ export async function buildExamDocBlob({
   const schoolYear = headerInfo?.schoolYear || '2025 - 2026';
   const dur = headerInfo?.duration || duration || 45;
 
+  const skipChemFmt = isNonScienceSubject(subj);
+  const fmtLocal = (s) => (skipChemFmt ? String(s ?? '') : fmt(s));
+  const isPureEssay = Array.isArray(questions) && questions.length > 0 && questions.every((q) => (q?.type || 'single_choice') === 'essay');
+
   const children = [];
+
+  const appendPassageIfChanged = (prevQ, q) => {
+    if (!q?.instruction && !q?.passage) return;
+    const sameGroup = q.groupId && prevQ?.groupId ? q.groupId === prevQ.groupId : false;
+    const sameText = prevQ && prevQ.passage === q.passage && prevQ.instruction === q.instruction;
+    if (sameGroup || sameText) return;
+    if (q.instruction) {
+      children.push(new Paragraph({ children: textRunsWithBreaks(fmtLocal(q.instruction), { italics: true, bold: true }) }));
+    }
+    if (q.passage) {
+      children.push(new Paragraph({ children: textRunsWithBreaks(fmtLocal(q.passage)) }));
+    }
+  };
 
   const noBorder = {
     top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
@@ -111,10 +140,14 @@ export async function buildExamDocBlob({
                   alignment: AlignmentType.CENTER,
                   children: [new TextRun({ text: schoolName.toUpperCase(), bold: true, size: 20 })],
                 }),
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: '(Đề thi có hướng dẫn giải chi tiết)', italics: true, size: 18 })],
-                }),
+                ...(includeAnswers
+                  ? [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [new TextRun({ text: '(Đề thi có hướng dẫn giải chi tiết)', italics: true, size: 18 })],
+                      }),
+                    ]
+                  : []),
               ],
             }),
             new TableCell({
@@ -137,10 +170,14 @@ export async function buildExamDocBlob({
                   alignment: AlignmentType.CENTER,
                   children: [new TextRun({ text: `Thời gian làm bài: ${dur} phút (không kể thời gian phát đề)`, italics: true, size: 18 })],
                 }),
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: `MÃ ĐỀ THI: ${code}`, bold: true, size: 22 })],
-                }),
+                ...(!isPureEssay
+                  ? [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        children: [new TextRun({ text: `MÃ ĐỀ THI: ${code}`, bold: true, size: 22 })],
+                      }),
+                    ]
+                  : []),
               ],
             }),
           ],
@@ -163,6 +200,7 @@ export async function buildExamDocBlob({
   const part1 = questions.filter((q) => (q.type || 'single_choice') === 'single_choice');
   const part2 = questions.filter((q) => q.type === 'true_false');
   const part3 = questions.filter((q) => q.type === 'short_answer');
+  const part4 = questions.filter((q) => q.type === 'essay');
 
   const appendQuestionImage = (q) => {
     const imgBytes = dataUrlToUint8Array(q.image);
@@ -206,11 +244,13 @@ export async function buildExamDocBlob({
     );
 
     part1.forEach((q, idx) => {
+      appendPassageIfChanged(idx > 0 ? part1[idx - 1] : null, q);
+      const stemText = q.q ? fmtLocal(q.q) : (q.passage ? '(Điền vào chỗ trống tương ứng trong đoạn văn trên)' : '');
       children.push(
         new Paragraph({
           children: [
             new TextRun({ text: `Câu ${idx + 1}: `, bold: true, size: 24 }),
-            new TextRun({ text: fmt(q.q || ''), size: 24 }),
+            ...textRunsWithBreaks(stemText),
           ],
         }),
       );
@@ -223,7 +263,7 @@ export async function buildExamDocBlob({
               indent: { left: 480 },
               children: [
                 new TextRun({ text: `${letter}. `, bold: true, size: 24 }),
-                new TextRun({ text: fmt(opt || ''), size: 24 }),
+                ...textRunsWithBreaks(fmtLocal(opt || '')),
               ],
             }),
           );
@@ -258,11 +298,12 @@ export async function buildExamDocBlob({
     );
 
     part2.forEach((q, idx) => {
+      appendPassageIfChanged(idx > 0 ? part2[idx - 1] : null, q);
       children.push(
         new Paragraph({
           children: [
             new TextRun({ text: `Câu ${idx + 1}: `, bold: true, size: 24 }),
-            new TextRun({ text: fmt(q.q || ''), size: 24 }),
+            ...textRunsWithBreaks(fmtLocal(q.q || '')),
           ],
         }),
       );
@@ -275,7 +316,7 @@ export async function buildExamDocBlob({
               indent: { left: 480 },
               children: [
                 new TextRun({ text: `${letter}) `, bold: true, size: 24 }),
-                new TextRun({ text: fmt(st.text || ''), size: 24 }),
+                ...textRunsWithBreaks(fmtLocal(st.text || '')),
               ],
             }),
           );
@@ -310,11 +351,12 @@ export async function buildExamDocBlob({
     );
 
     part3.forEach((q, idx) => {
+      appendPassageIfChanged(idx > 0 ? part3[idx - 1] : null, q);
       children.push(
         new Paragraph({
           children: [
             new TextRun({ text: `Câu ${idx + 1}: `, bold: true, size: 24 }),
-            new TextRun({ text: fmt(q.q || ''), size: 24 }),
+            ...textRunsWithBreaks(fmtLocal(q.q || '')),
           ],
         }),
       );
@@ -327,6 +369,38 @@ export async function buildExamDocBlob({
           ],
         }),
       );
+      children.push(new Paragraph({ text: '' }));
+    });
+  }
+
+  // --- PHẦN TỰ LUẬN ---
+  if (part4.length > 0) {
+    const partLabel = part1.length === 0 && part2.length === 0 && part3.length === 0 ? 'PHẦN ĐỌC HIỂU VÀ TỰ LUẬN' : 'PHẦN TỰ LUẬN';
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: `${partLabel} (${part4.length} câu).`,
+            bold: true,
+            size: 24,
+          }),
+        ],
+      }),
+      new Paragraph({ text: '' }),
+    );
+
+    part4.forEach((q, idx) => {
+      appendPassageIfChanged(idx > 0 ? part4[idx - 1] : null, q);
+      const ptsSuffix = q.points ? ` (${q.points} điểm)` : '';
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: `Câu ${idx + 1}${ptsSuffix}: `, bold: true, size: 24 }),
+            ...textRunsWithBreaks(fmtLocal(q.q || '')),
+          ],
+        }),
+      );
+      appendQuestionImage(q);
       children.push(new Paragraph({ text: '' }));
     });
   }
@@ -497,13 +571,20 @@ export async function buildExamDocBlob({
     );
 
     questions.forEach((q, idx) => {
-      const typeLabel = q.type === 'true_false' ? 'Đúng/Sai' : q.type === 'short_answer' ? 'Trả lời ngắn' : 'Trắc nghiệm 4 lựa chọn';
+      const typeLabel = q.type === 'true_false'
+        ? 'Đúng/Sai'
+        : q.type === 'short_answer'
+          ? 'Trả lời ngắn'
+          : q.type === 'essay'
+            ? 'Tự luận'
+            : 'Trắc nghiệm 4 lựa chọn';
       const levelLabel = q.level || 'Thông hiểu';
+      const previewStem = q.q || (q.passage ? '(Điền vào chỗ trống theo đoạn văn)' : '');
       children.push(
         new Paragraph({
           children: [
             new TextRun({ text: `Câu ${idx + 1} (${typeLabel} — ${levelLabel}${q.points ? ` — ${q.points}đ` : ''}): `, bold: true, size: 22, color: '0f172a' }),
-            new TextRun({ text: fmt(String(q.q || '').slice(0, 160) + (String(q.q || '').length > 160 ? '...' : '')), italics: true, size: 20, color: '475569' }),
+            new TextRun({ text: fmtLocal(String(previewStem).slice(0, 160) + (String(previewStem).length > 160 ? '...' : '')), italics: true, size: 20, color: '475569' }),
           ],
         }),
       );
@@ -512,7 +593,7 @@ export async function buildExamDocBlob({
       if (q.type === 'single_choice' || !q.type) {
         const hasValidCorrect = Number.isInteger(q.correct) && q.correct >= 0 && q.correct < 26;
         const correctLetter = hasValidCorrect ? String.fromCharCode(65 + q.correct) : 'Chưa gán';
-        const correctOptText = hasValidCorrect && q.options?.[q.correct] ? `: ${fmt(q.options[q.correct])}` : '';
+        const correctOptText = hasValidCorrect && q.options?.[q.correct] ? `: ${fmtLocal(q.options[q.correct])}` : '';
         children.push(
           new Paragraph({
             indent: { left: 240 },
@@ -539,7 +620,17 @@ export async function buildExamDocBlob({
             indent: { left: 240 },
             children: [
               new TextRun({ text: '• Đáp số: ', bold: true, size: 22, color: '047857' }),
-              new TextRun({ text: fmt(q.answer ?? '—'), bold: true, size: 22, color: '047857' }),
+              new TextRun({ text: fmtLocal(q.answer ?? '—'), bold: true, size: 22, color: '047857' }),
+            ],
+          }),
+        );
+      } else if (q.type === 'essay' && q.answer) {
+        children.push(
+          new Paragraph({
+            indent: { left: 240 },
+            children: [
+              new TextRun({ text: '• Gợi ý trả lời: ', bold: true, size: 22, color: '047857' }),
+              ...textRunsWithBreaks(fmtLocal(q.answer), { size: 22, color: '047857' }),
             ],
           }),
         );
@@ -552,7 +643,7 @@ export async function buildExamDocBlob({
             indent: { left: 240 },
             children: [
               new TextRun({ text: '• Lời giải chi tiết: ', bold: true, size: 22 }),
-              new TextRun({ text: fmt(q.explain), size: 22 }),
+              ...textRunsWithBreaks(fmtLocal(q.explain), { size: 22 }),
             ],
           }),
         );
@@ -565,7 +656,7 @@ export async function buildExamDocBlob({
             indent: { left: 240 },
             children: [
               new TextRun({ text: '• Bản giải / Các bước tính toán: ', bold: true, size: 20, color: '0369a1' }),
-              new TextRun({ text: fmt(q.work), size: 20, color: '334155' }),
+              ...textRunsWithBreaks(fmtLocal(q.work), { size: 20, color: '334155' }),
             ],
           }),
         );
@@ -781,11 +872,12 @@ export async function exportToPDF({
 /* ============================================================
    3. EXPORT ZIP (nhiều file gộp)
    ============================================================ */
-function computeExportMatrixStats(questions = [], subject = 'Hóa học') {
+export function computeExportMatrixStats(questions = [], subject = 'Hóa học') {
   const list = Array.isArray(questions) ? questions : [];
   let p1 = 0;
   let p2 = 0;
   let p3 = 0;
+  let p4 = 0;
   let nb = 0;
   let th = 0;
   let vd = 0;
@@ -801,6 +893,7 @@ function computeExportMatrixStats(questions = [], subject = 'Hóa học') {
     );
     if (type === 'true_false') p2 += 1;
     else if (type === 'short_answer') p3 += 1;
+    else if (type === 'essay') p4 += 1;
     else p1 += 1;
 
     const lvl = String(q?.level || 'TH').trim().toUpperCase();
@@ -811,15 +904,22 @@ function computeExportMatrixStats(questions = [], subject = 'Hóa học') {
   }
 
   const total = list.length || 1;
-  const part3Unit = /to[aá]n/i.test(String(subject || '')) ? 0.5 : 0.25;
+  const subjProfile = getSubjectExamProfile(subject);
+  const part1Unit = subjProfile?.pointPerQuestion?.single_choice || 0.25;
+  const part2Unit = subjProfile?.pointPerQuestion?.true_false || 1.0;
+  const part3Unit = subjProfile?.pointPerQuestion?.short_answer || 0.25;
   const explicitPointsSum = list.reduce((acc, q) => acc + (Number(q?.points) > 0 ? Number(q.points) : 0), 0);
-  const gdptScore = p1 * 0.25 + p2 * 1.0 + p3 * part3Unit;
-  const totalScore = gdptScore > 0 ? gdptScore : explicitPointsSum;
+  const p4Score = list.filter((q) => q?.type === 'essay').reduce((acc, q) => acc + (Number(q?.points) > 0 ? Number(q.points) : 1), 0);
+  const gdptScore = p1 * part1Unit + p2 * part2Unit + p3 * part3Unit + p4Score;
+  const totalScore = explicitPointsSum > 0 && p4 > 0 ? explicitPointsSum : (gdptScore > 0 ? gdptScore : explicitPointsSum);
 
   return {
     p1,
     p2,
     p3,
+    p4,
+    p4Score,
+    part1Unit,
     part3Unit,
     totalScore,
     nb,
@@ -895,15 +995,13 @@ export async function exportBundleZip({
     ...computeExportMatrixStats(sourceQuestions, subject),
     ...(matrixStats && typeof matrixStats === 'object' ? matrixStats : {}),
   };
-  const part3Unit = resolvedMatrix.part3Unit ?? (/to[aá]n/i.test(String(subject || '')) ? 0.5 : 0.25);
+  const part1Unit = resolvedMatrix.part1Unit ?? 0.25;
+  const part3Unit = resolvedMatrix.part3Unit ?? (getSubjectExamProfile(subject)?.pointPerQuestion?.short_answer || 0.25);
 
   const matrixContent = `
 # KHUNG MA TRẬN ĐỀ THI ĐỊNH KỲ
 - Môn: ${subject} - Khối: ${grade}
-- Phần I (Trắc nghiệm 4 lựa chọn): ${resolvedMatrix.p1} câu (${(resolvedMatrix.p1 * 0.25).toFixed(2)} điểm)
-- Phần II (Đúng/Sai 4 ý): ${resolvedMatrix.p2} câu (${(resolvedMatrix.p2 * 1.0).toFixed(2)} điểm)
-- Phần III (Trả lời ngắn): ${resolvedMatrix.p3} câu (${(resolvedMatrix.p3 * part3Unit).toFixed(2)} điểm)
-- Tổng điểm: ${Number(resolvedMatrix.totalScore ?? 0).toFixed(2)} điểm
+${resolvedMatrix.p1 > 0 ? `- Phần I (Trắc nghiệm 4 lựa chọn): ${resolvedMatrix.p1} câu (${(resolvedMatrix.p1 * part1Unit).toFixed(2)} điểm)\n` : ''}${resolvedMatrix.p2 > 0 ? `- Phần II (Đúng/Sai 4 ý): ${resolvedMatrix.p2} câu (${(resolvedMatrix.p2 * 1.0).toFixed(2)} điểm)\n` : ''}${resolvedMatrix.p3 > 0 ? `- Phần III (Trả lời ngắn): ${resolvedMatrix.p3} câu (${(resolvedMatrix.p3 * part3Unit).toFixed(2)} điểm)\n` : ''}${(resolvedMatrix.p4 || 0) > 0 ? `- Phần Tự luận / Đọc hiểu mở: ${resolvedMatrix.p4} câu (${Number(resolvedMatrix.p4Score || 0).toFixed(2)} điểm)\n` : ''}- Tổng điểm: ${Number(resolvedMatrix.totalScore ?? 0).toFixed(2)} điểm
 
 ### Phân bố mức độ Bloom:
 - Nhận biết: ${resolvedMatrix.nb} câu (${resolvedMatrix.nbPct}%)
@@ -912,7 +1010,10 @@ export async function exportBundleZip({
 - Vận dụng cao: ${resolvedMatrix.vdc} câu (${resolvedMatrix.vdcPct}%)
 
 # BẢN ĐẶC TẢ CHI TIẾT CÂU HỎI
-${sourceQuestions.map((q, idx) => `Câu ${idx + 1} [${(q.level || 'TH').toUpperCase()}]: ${q.q ? q.q.slice(0, 90) : ''}...`).join('\n')}
+${sourceQuestions.map((q, idx) => {
+  const preview = (q.q || q.passage || '(Điền vào chỗ trống theo ngữ liệu)').slice(0, 90);
+  return `Câu ${idx + 1} [${(q.level || 'TH').toUpperCase()}]: ${preview}...`;
+}).join('\n')}
   `.trim();
 
   try {

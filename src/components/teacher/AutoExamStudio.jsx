@@ -11,7 +11,8 @@
        logo AIMark động, resizer, AI actions.
    ============================================================ */
 import React, { useState, useRef, useEffect, useMemo, Fragment } from 'react';
-import MathText from '../MathText.jsx';
+import MathText, { MathTextConfigContext } from '../MathText.jsx';
+import { getSubject, getSubjectExamProfile, subjectUsesMath } from '../../lib/subjects.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { createExam, defaultProctor } from '../../lib/classroom.js';
 import { runWithCredit, refundCredit, calcExamGenCreditCost, CREDIT_TARIFF } from '../../lib/creditService.js';
@@ -36,8 +37,10 @@ import {
   askTeacherCopilotWithAI,
   THPT_GRADES,
   FORMAT_GDPT,
+  FORMAT_GDPT_2PART,
   FORMAT_GDPT_ADV,
   FORMAT_MCQ,
+  FORMAT_ESSAY,
 } from '../../lib/matrixAiService.js';
 import { addQuestion, addQuestionsBatch } from '../../lib/questionBank.js';
 import { PRESET_SAMPLE_EXAMS } from '../../lib/sampleExamsData.js';
@@ -157,7 +160,38 @@ const IcoArrowUp = (p) => (
 );
 
 /* ============ THPT SUBJECTS ============ */
-export const THPT_SUBJECTS = ['Hóa học', 'Sinh học', 'Vật lý', 'Toán học'];
+export const THPT_SUBJECTS = [
+  'Toán học',
+  'Vật lý',
+  'Hóa học',
+  'Sinh học',
+  'Tiếng Anh',
+  'Ngữ văn',
+  'Lịch sử',
+  'Địa lí',
+  'GDKT&PL',
+  'Tin học',
+  'Công nghệ',
+];
+
+function normalizeStudioSubject(raw) {
+  if (!raw) return 'Hóa học';
+  const id = getSubject(raw).id;
+  const map = {
+    toan: 'Toán học',
+    ly: 'Vật lý',
+    hoa: 'Hóa học',
+    sinh: 'Sinh học',
+    anh: 'Tiếng Anh',
+    van: 'Ngữ văn',
+    su: 'Lịch sử',
+    dia: 'Địa lí',
+    gdcd: 'GDKT&PL',
+    tin: 'Tin học',
+    congnghe: 'Công nghệ',
+  };
+  return map[id] || String(raw).trim() || 'Hóa học';
+}
 
 /* ============ QUICK PROMPTS CAPSULES BY SUBJECT ============ */
 const SUBJECT_QUICK_CHIPS = {
@@ -293,6 +327,167 @@ const SUBJECT_QUICK_CHIPS = {
       prompt: 'Đề thi thử THPTQG chuẩn 2025 môn Toán 12',
     },
   ],
+  'Tiếng Anh': [
+    {
+      title: 'Dựng theo ma trận riêng của tôi',
+      sub: 'Tải file Word/Excel/Ảnh hoặc dán ma trận của thầy/cô',
+      prompt: 'Phân tích và dựng đề theo ma trận riêng của tôi',
+      isCustomMatrix: true,
+    },
+    {
+      title: 'Kiểm tra 15 phút: The Generation Gap & Modals',
+      sub: 'Lớp 11 · 10 câu ngữ pháp & từ vựng · 15 phút',
+      prompt: 'Kiểm tra 15 phút Tiếng Anh lớp 11: The Generation Gap và Modal verbs, 10 câu',
+    },
+    {
+      title: 'Đề giữa kỳ 1 Tiếng Anh 11 chuẩn GDPT 2025',
+      sub: 'Lớp 11 · 40 câu trắc nghiệm đọc điền & sắp xếp · 50 phút',
+      prompt: 'Đề kiểm tra giữa kỳ 1 Tiếng Anh lớp 11 chuẩn GDPT 2025, 40 câu trắc nghiệm 50 phút',
+    },
+    {
+      title: 'Đề ôn tập Tiếng Anh 10: Family Life & Environment',
+      sub: 'Lớp 10 · 20 câu củng cố ngữ pháp · 30 phút',
+      prompt: 'Đề 20 câu 30 phút Tiếng Anh lớp 10: Family Life, Passive Voice và Present tenses',
+    },
+    {
+      title: 'Đề ôn tập Tiếng Anh 12: Green Living & Phrasal Verbs',
+      sub: 'Lớp 12 · 20 câu trắc nghiệm · 30 phút',
+      prompt: 'Đề 20 câu 30 phút Tiếng Anh lớp 12: Green Living và Phrasal verbs',
+    },
+    {
+      title: 'Đề thi thử THPTQG 2025: Tiếng Anh 40 câu',
+      sub: 'Lớp 12 · 40 câu chuẩn Bộ GD&ĐT 2025 · 50 phút',
+      prompt: 'Đề thi thử THPTQG 2025 Tiếng Anh lớp 12, 40 câu 50 phút',
+    },
+  ],
+  'Ngữ văn': [
+    {
+      title: 'Dựng theo ma trận riêng của tôi',
+      sub: 'Tải file Word/Excel/Ảnh hoặc dán ma trận của thầy/cô',
+      prompt: 'Phân tích và dựng đề theo ma trận riêng của tôi',
+      isCustomMatrix: true,
+    },
+    {
+      title: 'Đề đọc hiểu thơ & nghị luận xã hội',
+      sub: 'Lớp 11 · 6 câu Đọc hiểu + Tự luận · 90 phút',
+      prompt: 'Đề kiểm tra Ngữ văn lớp 11 Đọc hiểu thơ và Làm văn nghị luận xã hội, 6 câu tự luận 90 phút',
+    },
+    {
+      title: 'Kiểm tra đọc hiểu văn bản thông tin',
+      sub: 'Lớp 10 · 10 câu trắc nghiệm đọc hiểu · 25 phút',
+      prompt: 'Kiểm tra Ngữ văn lớp 10 Đọc hiểu văn bản thông tin, 10 câu trắc nghiệm',
+    },
+    {
+      title: 'Đề thi thử THPTQG 2025: Ngữ văn Đọc hiểu & Viết',
+      sub: 'Lớp 12 · 6 câu Đọc hiểu + Viết · 120 phút',
+      prompt: 'Đề thi thử THPTQG 2025 Ngữ văn lớp 12, đọc hiểu ngữ liệu mới và làm văn tự luận 120 phút',
+    },
+  ],
+  'Lịch sử': [
+    {
+      title: 'Dựng theo ma trận riêng của tôi',
+      sub: 'Tải file Word/Excel/Ảnh hoặc dán ma trận của thầy/cô',
+      prompt: 'Phân tích và dựng đề theo ma trận riêng của tôi',
+      isCustomMatrix: true,
+    },
+    {
+      title: 'Kiểm tra 15 phút: Việt Nam 1945–1954',
+      sub: 'Lớp 12 · 10 câu trắc nghiệm · 15 phút',
+      prompt: 'Kiểm tra 15 phút Lịch sử lớp 12: Cách mạng tháng Tám 1945 và kháng chiến chống Pháp, 10 câu',
+    },
+    {
+      title: 'Đề 45 phút: Chủ nghĩa xã hội & ĐNÁ',
+      sub: 'Lớp 11 · 20 câu (Trắc nghiệm + Đúng/Sai) · 45 phút',
+      prompt: 'Đề 45 phút Lịch sử lớp 11: Quá trình giành độc lập của các nước Đông Nam Á, 20 câu',
+    },
+    {
+      title: 'Đề thi thử THPTQG 2025: Lịch sử 28 câu (24+4)',
+      sub: 'Lớp 12 · 24 TN + 4 Đúng/Sai tư liệu · 50 phút',
+      prompt: 'Đề thi thử THPTQG 2025 Lịch sử lớp 12, 28 câu 50 phút',
+    },
+  ],
+  'Địa lí': [
+    {
+      title: 'Dựng theo ma trận riêng của tôi',
+      sub: 'Tải file Word/Excel/Ảnh hoặc dán ma trận của thầy/cô',
+      prompt: 'Phân tích và dựng đề theo ma trận riêng của tôi',
+      isCustomMatrix: true,
+    },
+    {
+      title: 'Kiểm tra 15 phút: Thiên nhiên nhiệt đới ẩm gió mùa',
+      sub: 'Lớp 12 · 10 câu trắc nghiệm · 15 phút',
+      prompt: 'Kiểm tra 15 phút Địa lí lớp 12: Thiên nhiên nhiệt đới ẩm gió mùa, 10 câu',
+    },
+    {
+      title: 'Đề 45 phút: Khu vực EU & Hoa Kỳ',
+      sub: 'Lớp 11 · 20 câu + bảng số liệu · 45 phút',
+      prompt: 'Đề 45 phút Địa lí lớp 11: Liên minh châu Âu và Hoa Kỳ, 20 câu',
+    },
+    {
+      title: 'Đề thi thử THPTQG 2025: Địa lí 28 câu (18+4+6)',
+      sub: 'Lớp 12 · 18 TN + 4 Đ/S + 6 TLN · 50 phút',
+      prompt: 'Đề thi thử THPTQG 2025 Địa lí lớp 12, 28 câu 50 phút',
+    },
+  ],
+  'GDKT&PL': [
+    {
+      title: 'Dựng theo ma trận riêng của tôi',
+      sub: 'Tải file Word/Excel/Ảnh hoặc dán ma trận của thầy/cô',
+      prompt: 'Phân tích và dựng đề theo ma trận riêng của tôi',
+      isCustomMatrix: true,
+    },
+    {
+      title: 'Kiểm tra 15 phút: Cung cầu & Lạm phát',
+      sub: 'Lớp 11 · 10 câu tình huống · 15 phút',
+      prompt: 'Kiểm tra 15 phút GDKT&PL lớp 11: Cung cầu, lạm phát và thất nghiệp, 10 câu',
+    },
+    {
+      title: 'Đề thi thử THPTQG 2025: GDKT&PL 28 câu (24+4)',
+      sub: 'Lớp 12 · 24 TN + 4 Đúng/Sai tình huống · 50 phút',
+      prompt: 'Đề thi thử THPTQG 2025 GDKT&PL lớp 12, 28 câu 50 phút',
+    },
+  ],
+  'Tin học': [
+    {
+      title: 'Dựng theo ma trận riêng của tôi',
+      sub: 'Tải file Word/Excel/Ảnh hoặc dán ma trận của thầy/cô',
+      prompt: 'Phân tích và dựng đề theo ma trận riêng của tôi',
+      isCustomMatrix: true,
+    },
+    {
+      title: 'Kiểm tra 15 phút: Lập trình Python cơ bản',
+      sub: 'Lớp 10 · 10 câu đọc code · 15 phút',
+      prompt: 'Kiểm tra 15 phút Tin học lớp 10: Câu lệnh lặp và hàm trong Python, 10 câu',
+    },
+    {
+      title: 'Đề 45 phút: Cơ sở dữ liệu & SQL',
+      sub: 'Lớp 11 · 20 câu SQL + thuật toán · 45 phút',
+      prompt: 'Đề 45 phút Tin học lớp 11: Cơ sở dữ liệu quan hệ và truy vấn SQL, 20 câu',
+    },
+    {
+      title: 'Đề thi thử THPTQG 2025: Tin học 28 câu (24+4)',
+      sub: 'Lớp 12 · 24 TN + 4 Đ/S (AI, Mạng, HTML/CSS) · 50 phút',
+      prompt: 'Đề thi thử THPTQG 2025 Tin học lớp 12, 28 câu 50 phút',
+    },
+  ],
+  'Công nghệ': [
+    {
+      title: 'Dựng theo ma trận riêng của tôi',
+      sub: 'Tải file Word/Excel/Ảnh hoặc dán ma trận của thầy/cô',
+      prompt: 'Phân tích và dựng đề theo ma trận riêng của tôi',
+      isCustomMatrix: true,
+    },
+    {
+      title: 'Kiểm tra 15 phút: Bản vẽ & Thiết kế kỹ thuật',
+      sub: 'Lớp 10 · 10 câu trắc nghiệm · 15 phút',
+      prompt: 'Kiểm tra 15 phút Công nghệ lớp 10: Bản vẽ kỹ thuật và quy trình thiết kế, 10 câu',
+    },
+    {
+      title: 'Đề thi thử THPTQG 2025: Công nghệ 28 câu (24+4)',
+      sub: 'Lớp 12 · 24 TN + 4 Đ/S (Điện - Điện tử / Nông-Lâm-Ngư) · 50 phút',
+      prompt: 'Đề thi thử THPTQG 2025 Công nghệ lớp 12, 28 câu 50 phút',
+    },
+  ],
 };
 
 /* Regex phát hiện lệnh sửa ma trận */
@@ -315,14 +510,7 @@ export default function AutoExamStudio({
   const [selectedClassId, setSelectedClassId] = useState(initialClass?.id || classes[0]?.id || '');
   const [selectedSubject, setSelectedSubject] = useState(() => {
     const s = initialClass?.subject || classes[0]?.subject;
-    if (s) {
-      if (/sinh/i.test(s)) return 'Sinh học';
-      if (/hóa|hoa/i.test(s)) return 'Hóa học';
-      if (/lý|vật/i.test(s)) return 'Vật lý';
-      if (/toán|toan/i.test(s)) return 'Toán học';
-      return s;
-    }
-    return 'Hóa học';
+    return s ? normalizeStudioSubject(s) : 'Hóa học';
   });
   const [topic, setTopic] = useState('');
   const [inputMessage, setInputMessage] = useState('');
@@ -346,11 +534,9 @@ export default function AutoExamStudio({
   useEffect(() => {
     const c = classes.find((cls) => cls.id === selectedClassId) || initialClass;
     if (c?.subject) {
-      if (/sinh/i.test(c.subject)) setSelectedSubject('Sinh học');
-      else if (/hóa|hoa/i.test(c.subject)) setSelectedSubject('Hóa học');
-      else if (/lý|vật/i.test(c.subject)) setSelectedSubject('Vật lý');
-      else if (/toán|toan/i.test(c.subject)) setSelectedSubject('Toán học');
-      else setSelectedSubject(c.subject);
+      const nextSubj = normalizeStudioSubject(c.subject);
+      setSelectedSubject(nextSubj);
+      setSelectedFormat(suggestFormat(getSubjectExamProfile(nextSubj).standardCounts?.total || 28, nextSubj));
     }
     const gStr = c?.grade ? String(c.grade) : '';
     if (THPT_GRADES.includes(gStr)) {
@@ -1073,13 +1259,14 @@ export default function AutoExamStudio({
         { role: 'summary', text: `AI tự đề xuất: ${shape.count} câu · ${shape.duration} phút (có thể chỉnh sau)` },
       ]);
     }
+    const effectiveFormat = format || suggestFormat(shape.count, curSubj);
     handlePlanMatrix({
       targetTopic: t,
       grade,
       count: shape.count,
       duration: shape.duration,
       subject: curSubj,
-      ...(format ? { format } : {}),
+      ...(effectiveFormat ? { format: effectiveFormat } : {}),
     });
   };
 
@@ -1097,7 +1284,7 @@ export default function AutoExamStudio({
     setChatMessages((prev) => [
       ...prev,
       { role: 'summary', text: `Đề gồm: ${cnt} câu · Thời lượng: ${dur} phút` },
-      { role: 'ai', text: `Thầy/cô muốn cấu trúc đề theo định dạng nào? (Gợi ý cho ${cnt} câu: ${suggestFormat(cnt).startsWith('Chuẩn') ? 'chuẩn thi 3 phần' : 'trắc nghiệm'})` },
+      { role: 'ai', text: `Thầy/cô muốn cấu trúc đề theo định dạng nào? (Gợi ý cho ${cnt} câu môn ${selectedSubject}: ${suggestFormat(cnt, selectedSubject)})` },
     ]);
     setStep(3);
   };
@@ -1183,7 +1370,7 @@ export default function AutoExamStudio({
           text: planned.aiPedagogicalAdvice ||
             `Đã lập ma trận ${count} câu / ${duration} phút cho chủ đề "${cleanTopic}". Thầy/cô có thể tinh chỉnh hoặc bấm xác nhận để sinh đề.`,
         },
-        { role: 'chips', items: ['Tăng 2 câu vận dụng', 'Giảm 2 câu nhận biết', 'Thêm câu tính toán'] },
+        { role: 'chips', items: ['Tăng 2 câu vận dụng', 'Giảm 2 câu nhận biết', getSubjectExamProfile(subject).math ? 'Thêm câu tính toán' : 'Thêm câu thực tiễn'] },
       ]);
     } catch (e) {
       if (e?.name === 'AbortError') return;
@@ -1653,7 +1840,9 @@ export default function AutoExamStudio({
 
     const intent = parseExamIntent(text);
     if (intent.subject) {
-      setSelectedSubject(intent.subject);
+      const nextSubj = normalizeStudioSubject(intent.subject);
+      setSelectedSubject(nextSubj);
+      setSelectedFormat(intent.format || suggestFormat(intent.count || 28, nextSubj));
     }
     const targetSubj = intent.subject || selectedSubject;
 
@@ -1848,13 +2037,13 @@ export default function AutoExamStudio({
     }
   };
 
-  const isSupportedBankType = (q) => ['single_choice', 'true_false', 'short_answer'].includes(q?.type || 'single_choice');
+  const isSupportedBankType = (q) => ['single_choice', 'true_false', 'short_answer', 'essay'].includes(q?.type || 'single_choice');
 
   const handleSaveQuestionToBank = async (idx) => {
     if (!user?.uid || !questions[idx] || savingBankIdx !== null) return;
     const q = questions[idx];
     if (!isSupportedBankType(q)) {
-      showToast('Ngân hàng hiện chỉ lưu câu Trắc nghiệm, Đúng/Sai và Trả lời ngắn.', 'info');
+      showToast('Ngân hàng hiện chỉ lưu câu Trắc nghiệm, Đúng/Sai, Trả lời ngắn và Tự luận.', 'info');
       return;
     }
     setSavingBankIdx(idx);
@@ -2155,23 +2344,52 @@ export default function AutoExamStudio({
                   className="aes-preset-btn"
                   onClick={() => {
                     setStudioMode('exam');
-                    handlePlanMatrix({ grade: selectedGrade, count: 20, duration: 45, format: FORMAT_GDPT, subject: selectedSubject });
+                    handlePlanMatrix({
+                      grade: selectedGrade,
+                      count: 20,
+                      duration: 45,
+                      format: suggestFormat(20, selectedSubject),
+                      subject: selectedSubject,
+                    });
                   }}
-                  title="Sinh nhanh đề 45 phút 3 phần chuẩn 2025 (20 câu)"
+                  title={`Sinh nhanh đề 45 phút môn ${selectedSubject} (20 câu)`}
                 >
                   45p · 20 câu
                 </button>
-                <button
-                  type="button"
-                  className="aes-preset-btn"
-                  onClick={() => {
-                    setStudioMode('exam');
-                    handlePlanMatrix({ grade: selectedGrade, count: 28, duration: 50, format: FORMAT_GDPT_ADV, subject: selectedSubject });
-                  }}
-                  title="Sinh đề thi thử THPTQG 2025 chuẩn 28 câu (18+4+6)"
-                >
-                  THPTQG 2025 · 28 câu
-                </button>
+                {(() => {
+                  const sp = getSubjectExamProfile(selectedSubject);
+                  const std = sp.standardCounts || { total: 28, duration: 50 };
+                  const fmtStd = suggestFormat(std.total, selectedSubject);
+                  const pillLabel =
+                    sp.id === 'toan'
+                      ? 'THPTQG 2025 · 22 câu'
+                      : sp.id === 'anh'
+                        ? 'THPTQG 2025 · 40 câu'
+                        : sp.id === 'van'
+                          ? 'THPTQG 2025 · Ngữ văn'
+                          : sp.examFamily === 'social_2part'
+                            ? 'THPTQG 2025 · 28 câu (24+4)'
+                            : 'THPTQG 2025 · 28 câu';
+                  return (
+                    <button
+                      type="button"
+                      className="aes-preset-btn"
+                      onClick={() => {
+                        setStudioMode('exam');
+                        handlePlanMatrix({
+                          grade: selectedGrade,
+                          count: std.total,
+                          duration: std.duration,
+                          format: fmtStd,
+                          subject: selectedSubject,
+                        });
+                      }}
+                      title={`Sinh đề thi thử THPTQG 2025 chuẩn môn ${selectedSubject} (${std.total} câu · ${std.duration} phút)`}
+                    >
+                      {pillLabel}
+                    </button>
+                  );
+                })()}
               </div>
             </div>
 
@@ -2185,6 +2403,8 @@ export default function AutoExamStudio({
                     type="button"
                     onClick={() => {
                       setSelectedSubject(s);
+                      const p = getSubjectExamProfile(s);
+                      setSelectedFormat(suggestFormat(p.standardCounts?.total || 28, s));
                       sound.ding();
                     }}
                     style={{
@@ -2518,8 +2738,9 @@ export default function AutoExamStudio({
      RENDER: MÀN HÌNH CHIA 2 PANEL VỚI RESIZER
      ============================================================ */
   return (
-    <div
-      ref={splitContainerRef}
+    <MathTextConfigContext.Provider value={{ disableChemFormat: !subjectUsesMath(selectedSubject) }}>
+      <div
+        ref={splitContainerRef}
       className={`aes-studio-split ${isDraggingSplit ? 'is-resizing' : ''}`}
       style={{
         '--aes-split': `${(splitRatio * 100).toFixed(2)}% 8px minmax(0, 1fr)`,
@@ -2721,14 +2942,46 @@ export default function AutoExamStudio({
                 <span className="aes-step">3/3</span>
               </div>
               <div className="aes-interview-opts">
-                <button
-                  type="button"
-                  className="aes-opt-btn"
-                  onClick={() => { setSelectedFormat(FORMAT_GDPT); handlePlanMatrix({ format: FORMAT_GDPT, subject: selectedSubject }); }}
-                >
-                  <span>Chuẩn thi THPT 2025 (Trắc nghiệm + Đúng/Sai + Trả lời ngắn)</span>
-                  <span className="aes-opt-arrow">&rsaquo;</span>
-                </button>
+                {(() => {
+                  const sp = getSubjectExamProfile(selectedSubject);
+                  if (sp.examFamily === 'social_2part') {
+                    return (
+                      <button
+                        type="button"
+                        className="aes-opt-btn"
+                        onClick={() => { setSelectedFormat(FORMAT_GDPT_2PART); handlePlanMatrix({ format: FORMAT_GDPT_2PART, subject: selectedSubject }); }}
+                      >
+                        <span>Chuẩn thi THPT 2025 ({sp.label}: 24 Trắc nghiệm + 4 Đúng/Sai)</span>
+                        <span className="aes-opt-arrow">&rsaquo;</span>
+                      </button>
+                    );
+                  }
+                  if (sp.examFamily === 'literature_essay') {
+                    return (
+                      <button
+                        type="button"
+                        className="aes-opt-btn"
+                        onClick={() => { setSelectedFormat(FORMAT_ESSAY); handlePlanMatrix({ format: FORMAT_ESSAY, subject: selectedSubject }); }}
+                      >
+                        <span>Chuẩn Ngữ văn 2025 (Đọc hiểu + Làm văn Tự luận)</span>
+                        <span className="aes-opt-arrow">&rsaquo;</span>
+                      </button>
+                    );
+                  }
+                  if (sp.examFamily !== 'mcq_only') {
+                    return (
+                      <button
+                        type="button"
+                        className="aes-opt-btn"
+                        onClick={() => { setSelectedFormat(FORMAT_GDPT); handlePlanMatrix({ format: FORMAT_GDPT, subject: selectedSubject }); }}
+                      >
+                        <span>Chuẩn thi THPT 2025 (Trắc nghiệm + Đúng/Sai + Trả lời ngắn)</span>
+                        <span className="aes-opt-arrow">&rsaquo;</span>
+                      </button>
+                    );
+                  }
+                  return null;
+                })()}
                 <button
                   type="button"
                   className="aes-opt-btn"
@@ -2737,14 +2990,16 @@ export default function AutoExamStudio({
                   <span>100% Trắc nghiệm 4 lựa chọn</span>
                   <span className="aes-opt-arrow">&rsaquo;</span>
                 </button>
-                <button
-                  type="button"
-                  className="aes-opt-btn"
-                  onClick={() => { setSelectedFormat(FORMAT_GDPT_ADV); handlePlanMatrix({ format: FORMAT_GDPT_ADV, subject: selectedSubject }); }}
-                >
-                  <span>Chuẩn 2025 · Phân hóa nâng cao (nhiều VD/VDC)</span>
-                  <span className="aes-opt-arrow">&rsaquo;</span>
-                </button>
+                {getSubjectExamProfile(selectedSubject).hasTrueFalse && (
+                  <button
+                    type="button"
+                    className="aes-opt-btn"
+                    onClick={() => { setSelectedFormat(FORMAT_GDPT_ADV); handlePlanMatrix({ format: FORMAT_GDPT_ADV, subject: selectedSubject }); }}
+                  >
+                    <span>Chuẩn 2025 · Phân hóa nâng cao (nhiều VD/VDC)</span>
+                    <span className="aes-opt-arrow">&rsaquo;</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -3215,6 +3470,7 @@ export default function AutoExamStudio({
                 </button>
               </div>
 
+              <MathTextConfigContext.Provider value={{ disableChemFormat: Boolean(selectedSubject) && !subjectUsesMath(selectedSubject) }}>
               {questions.map((q, idx) => {
                 const lvMeta = LEVEL_INFO[normLevel(q.level)] || LEVEL_INFO.nb;
                 const ped = pedagogyInsights[idx];
@@ -3238,8 +3494,10 @@ export default function AutoExamStudio({
                           />
                           {lvMeta.label}
                         </span>
-                        {(q.type === 'true_false' || q.type === 'short_answer') && (
-                          <span className="aes-badge">{q.type === 'true_false' ? 'Đúng/Sai' : 'Trả lời ngắn'}</span>
+                        {(q.type === 'true_false' || q.type === 'short_answer' || q.type === 'essay') && (
+                          <span className="aes-badge">
+                            {q.type === 'true_false' ? 'Đúng/Sai' : q.type === 'short_answer' ? 'Trả lời ngắn' : 'Tự luận'}
+                          </span>
                         )}
                         {q.verify?.status === 'ok' && (
                           <span className="aes-badge" style={{ background: 'rgba(34, 197, 94, 0.12)', color: '#16a34a' }} title="AI giải độc lập cho cùng đáp án">
@@ -3316,8 +3574,18 @@ export default function AutoExamStudio({
                             />
                           </label>
                         )}
+                        {editForm.type === 'essay' && (
+                          <label>
+                            <small style={{ fontWeight: 600, color: 'var(--mut)' }}>Gợi ý chấm / Đáp án mẫu tự luận:</small>
+                            <textarea
+                              rows={2}
+                              value={editForm.answer || ''}
+                              onChange={(e) => setEditForm({ ...editForm, answer: e.target.value })}
+                            />
+                          </label>
+                        )}
                         <div className="aes-q-edit-opts">
-                          {(editForm.type === 'true_false' || editForm.type === 'short_answer' ? [] : (editForm.options || [])).map((opt, oIdx) => (
+                          {(editForm.type === 'true_false' || editForm.type === 'short_answer' || editForm.type === 'essay' ? [] : (editForm.options || [])).map((opt, oIdx) => (
                             <div key={oIdx} className="aes-q-edit-opt-item">
                               <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <input
@@ -3367,6 +3635,11 @@ export default function AutoExamStudio({
                       </div>
                     ) : (
                       <>
+                        {q.passage && (
+                          <div style={{ marginBottom: 8, padding: '8px 10px', borderRadius: 8, background: 'rgba(14,165,233,0.06)', borderLeft: '3px solid #0284c7', fontSize: '0.88rem', whiteSpace: 'pre-wrap' }}>
+                            <MathText text={q.passage} />
+                          </div>
+                        )}
                         <div className="aes-q-text">
                           <MathText text={q.q} />
                         </div>
@@ -3398,8 +3671,16 @@ export default function AutoExamStudio({
                             </div>
                           </div>
                         )}
+                        {q.type === 'essay' && q.answer && (
+                          <div className="aes-q-opts">
+                            <div className="aes-q-opt correct">
+                              <strong>Gợi ý chấm:</strong>
+                              <MathText text={q.answer} />
+                            </div>
+                          </div>
+                        )}
                         <div className="aes-q-opts">
-                          {(q.type === 'true_false' || q.type === 'short_answer' ? [] : (q.options || [])).map((opt, oIdx) => {
+                          {(q.type === 'true_false' || q.type === 'short_answer' || q.type === 'essay' ? [] : (q.options || [])).map((opt, oIdx) => {
                             const isCorrect = q.correct === oIdx;
                             return (
                               <div
@@ -3533,6 +3814,7 @@ export default function AutoExamStudio({
                   </article>
                 );
               })}
+              </MathTextConfigContext.Provider>
             </div>
           )}
 
@@ -4123,6 +4405,7 @@ export default function AutoExamStudio({
           <span>{toast.message}</span>
         </div>
       )}
-    </div>
+      </div>
+    </MathTextConfigContext.Provider>
   );
 }

@@ -233,7 +233,7 @@ export default function UserManager() {
   const handleGrantVip = async (u, days = 30) => {
     setSavingId(u.id);
     try {
-      await adminGrantVipDirect({ userId: u.id, durationDays: days, note: 'Cấp Học sinh VIP (199k) từ Quản lý Người dùng' });
+      await adminGrantVipDirect({ userId: u.id, durationDays: days, note: 'Cấp Học sinh VIP (299k/năm) từ Quản lý Người dùng' });
       await loadProMap();
       say(`Đã cấp Học sinh VIP +${days} ngày cho ${u.display_name || u.id}`);
     } catch (e) {
@@ -563,7 +563,7 @@ export default function UserManager() {
                               className="vt-btn sm"
                               disabled={savingId === u.id}
                               onClick={() => handleQuickGrantPro(u, 30)}
-                              title="Cấp hoặc gia hạn 30 ngày Giáo viên PRO (399k/tháng)"
+                              title="Cấp hoặc gia hạn 30 ngày Giáo viên PRO (999k/năm)"
                             >
                               <IconCrown size={12} /> {activePro && !isVip ? '+30d' : 'GV PRO'}
                             </button>
@@ -587,7 +587,7 @@ export default function UserManager() {
                               style={{ color: '#7c3aed', borderColor: 'rgba(124, 58, 237, 0.4)' }}
                               disabled={savingId === u.id}
                               onClick={() => handleGrantVip(u, 30)}
-                              title="Cấp 30 ngày Học sinh VIP (199k/tháng)"
+                              title="Cấp 30 ngày Học sinh VIP (299k/năm)"
                             >
                               <IconSparkle size={12} /> HS VIP
                             </button>
@@ -738,7 +738,7 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
               🚫 Hủy PRO (Về Thường)
             </button>
           ) : (
-            <button type="button" className="vt-btn" onClick={() => onGrantPro(30)} title="Cấp 30 ngày Giáo viên PRO (399k)">
+            <button type="button" className="vt-btn" onClick={() => onGrantPro(30)} title="Cấp 30 ngày Giáo viên PRO (999k/năm)">
               <IconCrown size={13} /> Cấp GV PRO 30d
             </button>
           )}
@@ -754,7 +754,7 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
               className="vt-btn"
               style={{ color: '#7c3aed', borderColor: 'rgba(124, 58, 237, 0.4)' }}
               onClick={() => onGrantVip(30)}
-              title="Cấp 30 ngày Học sinh VIP (199k)"
+              title="Cấp 30 ngày Học sinh VIP (299k/năm)"
             >
               <IconSparkle size={13} /> Cấp HS VIP 30d
             </button>
@@ -773,9 +773,9 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
           <small>Gói bản quyền</small>
           <b style={{ color: activePro ? (isVip ? '#7c3aed' : '#16a34a') : undefined }}>
             {activePro && isVip
-              ? `HS VIP 199k (${daysLeft(pro.expiry)} ngày)`
+              ? `HS VIP 299k (${daysLeft(pro.expiry)} ngày)`
               : activePro
-                ? `GV PRO 399k (${daysLeft(pro.expiry)} ngày)`
+                ? `GV PRO 999k (${daysLeft(pro.expiry)} ngày)`
                 : 'Gói Thường'}
           </b>
         </div>

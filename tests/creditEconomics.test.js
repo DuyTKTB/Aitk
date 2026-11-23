@@ -4,9 +4,12 @@ import {
   CREDIT_TARIFF,
   CREDIT_TARIFF_LIST,
   DB_ALLOWED_SPEND_TYPES,
+  MIN_CREDIT_TOPUP_VND,
   calcChatCreditCost,
   calcExamGenCreditCost,
+  createPaymentOrder,
   formatCredits,
+  resolveCreditOrderAmount,
   resolveDbCreditType,
   spendCredit,
 } from '../src/lib/creditService.js';
@@ -15,14 +18,51 @@ import { calcExamCreditCost } from '../src/lib/examAiUtils.js';
 import { STREAK_MILESTONES, getStreakMascot } from '../src/components/StreakModal.jsx';
 
 describe('ELEC AI Credit Economy (Chuẩn 1 VNĐ = 1 Credit)', () => {
-  it('đồng bộ tuyệt đối thang nạp 1 VNĐ = 1 Credit với các gói PRO/PREMIUM', () => {
+  it('đồng bộ tuyệt đối thang nạp 1 VNĐ = 1 Credit và cho phép nạp từ 10.000đ trở lên', () => {
+    expect(MIN_CREDIT_TOPUP_VND).toBe(10000);
+    const pro1 = CREDIT_PACKAGES.find((p) => p.amount === 10000);
     const pro2 = CREDIT_PACKAGES.find((p) => p.amount === 30000);
     const pro3 = CREDIT_PACKAGES.find((p) => p.amount === 60000);
     const premium = CREDIT_PACKAGES.find((p) => p.amount === 100000);
+    expect(pro1?.total).toBe(10000);
     expect(pro2?.total).toBe(30000);
     expect(pro3?.total).toBe(60000);
     expect(premium?.total).toBe(100000);
     expect(CREDIT_TARIFF.SIGNUP_BONUS).toBe(1000);
+
+    // Chặn dưới 10k, cho phép mọi mức từ 10k trở lên
+    expect(resolveCreditOrderAmount(0).ok).toBe(false);
+    expect(resolveCreditOrderAmount(9999).ok).toBe(false);
+    expect(resolveCreditOrderAmount('abc').ok).toBe(false);
+    expect(resolveCreditOrderAmount(10000)).toMatchObject({ ok: true, amount: 10000, total: 10000 });
+    expect(resolveCreditOrderAmount(15000)).toMatchObject({ ok: true, amount: 15000, total: 15000 });
+    expect(resolveCreditOrderAmount(250000)).toMatchObject({ ok: true, amount: 250000, total: 250000 });
+    expect(resolveCreditOrderAmount(200000)).toMatchObject({ ok: true, amount: 200000, total: 220000 });
+  });
+
+  it('createPaymentOrder chấp nhận đơn nạp từ 10.000đ trở lên (gồm số tiền tùy chọn) và từ chối dưới 10.000đ', async () => {
+    await expect(createPaymentOrder('u-topup', 5000)).rejects.toThrow(/10\.000/);
+
+    const insertSpy = vi.fn((row) => ({
+      select: () => ({
+        single: async () => ({ data: { id: 'ord-1', ...row }, error: null }),
+      }),
+    }));
+    const fromSpy = vi.spyOn(supabase, 'from').mockReturnValue({ insert: insertSpy });
+
+    try {
+      const res10k = await createPaymentOrder('u-topup', 10000);
+      expect(res10k.amount).toBe(10000);
+      expect(res10k.credits).toBe(10000);
+      expect(res10k.qrUrl).toContain('amount=10000');
+
+      const resCustom = await createPaymentOrder('u-topup', 15000);
+      expect(resCustom.amount).toBe(15000);
+      expect(resCustom.credits).toBe(15000);
+      expect(resCustom.qrUrl).toContain('amount=15000');
+    } finally {
+      fromSpy.mockRestore();
+    }
   });
 
   it('tính chính xác chi phí Chat nhanh, DeepThink, Ảnh OCR & Tài liệu', () => {

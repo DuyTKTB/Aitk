@@ -77,4 +77,40 @@ describe('examTemplates — Bộ khung đề thi chuẩn GDPT 2025', () => {
     expect(keys['102'].p2).toEqual(['FTFT']);
     expect(keys['102'].p3).toEqual(['8.4']);
   });
+
+  it('bộ khung Ngữ văn (literature_essay) đạt chuẩn 7 câu QĐ 764/QĐ-BGDĐT (4đ Đọc hiểu + 6đ Viết) và buildPaperKeysFromVersions bỏ qua essay', () => {
+    expect(STANDARD_TEMPLATES.literature_essay.counts.essay).toBe(7);
+    const litQuestions = generateTemplateQuestions('literature_essay', 'Ngữ văn', '12');
+    expect(litQuestions).toHaveLength(7);
+    expect(litQuestions.every((q) => q.type === 'essay' && q.part === 4)).toBe(true);
+    expect(litQuestions.map((q) => q.points)).toEqual([0.5, 0.5, 1, 1, 1, 2, 4]);
+    const totalPts = litQuestions.reduce((acc, q) => acc + q.points, 0);
+    expect(totalPts).toBe(10);
+
+    const keys = buildPaperKeysFromVersions([
+      {
+        code: '101',
+        questions: [
+          { part: 1, type: 'single_choice', correct: 1 },
+          { part: 4, type: 'essay', answer: 'Bài viết' },
+          { type: 'essay', answer: 'Không có part field' },
+        ],
+      },
+    ]);
+    expect(keys['101'].p1).toEqual(['B']);
+    expect(keys['101'].p2).toEqual([]);
+    expect(keys['101'].p3).toEqual([]);
+  });
+
+  it('sinh câu hỏi Địa lí & Vật lý Phần III đúng bộ môn (không rò rỉ ngữ liệu este Hóa học)', () => {
+    const geoQs = generateTemplateQuestions('natural_28', 'Địa lí', '12');
+    const geoP3 = geoQs.filter((q) => q.part === 3);
+    expect(geoP3).toHaveLength(6);
+    expect(geoP3.every((q) => !/este|NaOH|muối khan/i.test(q.question))).toBe(true);
+
+    const phyQs = generateTemplateQuestions('natural_28', 'Vật lý', '12');
+    const phyP3 = phyQs.filter((q) => q.part === 3);
+    expect(phyP3).toHaveLength(6);
+    expect(phyP3.every((q) => !/este|NaOH|muối khan/i.test(q.question))).toBe(true);
+  });
 });

@@ -9,6 +9,7 @@ import { generateShuffledVersions, answerKeyRows } from '../../lib/examShuffle.j
 import { parseExamDocxFile } from '../../lib/examDocxParser.js';
 import { fileToCompressedDataUrl } from '../../lib/imageUtils.js';
 import { detectExamSubjectAndGrade, SUPPORTED_SUBJECTS } from '../../lib/subjectClassifier.js';
+import { getSubjectExamProfile } from '../../lib/subjects.js';
 import { askAI } from '../../lib/ai.js';
 import { runWithCredit, CREDIT_TARIFF } from '../../lib/creditService.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
@@ -321,7 +322,7 @@ export default function WordDocxEditor({
   const [schoolName, setSchoolName] = useState(initialExam?.headerInfo?.schoolName || 'TRƯỜNG THPT CHUYÊN');
   const [examName, setExamName] = useState(initialExam?.title || 'ĐỀ KIỂM TRA ĐÁNH GIÁ ĐỊNH KÌ');
   const [subject, setSubject] = useState(() => {
-    if (initialExam?.subject && initialExam.subject !== 'Vật lí') return initialExam.subject;
+    if (initialExam?.subject) return initialExam.subject;
     const detected = detectExamSubjectAndGrade({
       fileName: initialExam?.title || '',
       text: initialExam?.title || '',
@@ -343,21 +344,27 @@ export default function WordDocxEditor({
   const [schoolYear, setSchoolYear] = useState('2025 - 2026');
 
   const normalizeEditorQuestions = (rawList = []) =>
-    (rawList || []).map((q, idx) => ({
-      ...q,
-      id: q.id || `q_${idx + 1}`,
-      part: q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : 1),
-      type: q.type || (q.part === 2 ? 'true_false' : q.part === 3 ? 'short_answer' : 'single_choice'),
-      options: Array.isArray(q.options) && q.options.length >= 2 ? q.options : ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D'],
-      statements: Array.isArray(q.statements) && q.statements.length === 4 ? q.statements : [
-        { text: 'Nhận định a...', answer: true },
-        { text: 'Nhận định b...', answer: false },
-        { text: 'Nhận định c...', answer: true },
-        { text: 'Nhận định d...', answer: false },
-      ],
-      answer: q.answer !== undefined ? String(q.answer) : '',
-      correct: q.correct !== undefined ? Number(q.correct) : 0,
-    }));
+    (rawList || []).map((q, idx) => {
+      const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : q.type === 'essay' ? 4 : 1);
+      const type = q.type || (part === 2 ? 'true_false' : part === 3 ? 'short_answer' : part === 4 ? 'essay' : 'single_choice');
+      return {
+        ...q,
+        id: q.id || `q_${idx + 1}`,
+        part,
+        type,
+        options: type === 'essay'
+          ? []
+          : (Array.isArray(q.options) && q.options.length >= 2 ? q.options : ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D']),
+        statements: Array.isArray(q.statements) && q.statements.length === 4 ? q.statements : [
+          { text: 'Nhận định a...', answer: true },
+          { text: 'Nhận định b...', answer: false },
+          { text: 'Nhận định c...', answer: true },
+          { text: 'Nhận định d...', answer: false },
+        ],
+        answer: q.answer !== undefined ? String(q.answer) : '',
+        correct: q.correct !== undefined ? Number(q.correct) : (type === 'single_choice' ? 0 : -1),
+      };
+    });
 
   // Danh sách câu hỏi
   const [questions, setQuestions] = useState(() => normalizeEditorQuestions(initialExam?.questions));
@@ -385,16 +392,22 @@ export default function WordDocxEditor({
     let p1 = 0;
     let p2 = 0;
     let p3 = 0;
+    let p4 = 0;
+    let p4Score = 0;
     let nb = 0;
     let th = 0;
     let vd = 0;
     let vdc = 0;
 
     questions.forEach((q) => {
-      const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : 1);
+      const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : q.type === 'essay' ? 4 : 1);
       if (part === 1) p1++;
       else if (part === 2) p2++;
       else if (part === 3) p3++;
+      else if (part === 4) {
+        p4++;
+        p4Score += Number(q.points) > 0 ? Number(q.points) : 1;
+      }
 
       const lvl = (q.level || 'th').toLowerCase();
       if (lvl === 'nb') nb++;
@@ -405,21 +418,30 @@ export default function WordDocxEditor({
     });
 
     const total = questions.length;
-    const isMathSub = /toán/i.test(String(subject || ''));
-    const p1Score = p1 * 0.25;
+    const profile = getSubjectExamProfile(subject);
+    const p1Unit = profile?.pointPerQuestion?.single_choice > 0 ? profile.pointPerQuestion.single_choice : 0.25;
+    const p3Unit = profile?.pointPerQuestion?.short_answer > 0 ? profile.pointPerQuestion.short_answer : 0.25;
+    const p1Score = p1 * p1Unit;
     const p2Score = p2 * 1.0;
-    const p3Score = p3 * (isMathSub ? 0.5 : 0.25);
-    const totalScore = p1Score + p2Score + p3Score;
+    const p3Score = p3 * p3Unit;
+    const totalScore = Math.round((p1Score + p2Score + p3Score + p4Score) * 100) / 100;
 
     return {
-      p1, p2, p3, total,
+      p1, p2, p3, p4, p4Score, total,
       nb, th, vd, vdc,
       nbPct: total > 0 ? Math.round((nb / total) * 100) : 0,
       thPct: total > 0 ? Math.round((th / total) * 100) : 0,
       vdPct: total > 0 ? Math.round((vd / total) * 100) : 0,
       vdcPct: total > 0 ? Math.round((vdc / total) * 100) : 0,
       totalScore,
-      part3Unit: isMathSub ? 0.5 : 0.25,
+      part1Unit: p1Unit,
+      part3Unit: p3Unit,
+      expP1: profile?.standardCounts?.p1 ?? 18,
+      expP2: profile?.standardCounts?.p2 ?? 4,
+      expP3: profile?.standardCounts?.p3 ?? 6,
+      expEssay: profile?.standardCounts?.essay ?? 0,
+      examFamily: profile?.examFamily || 'science_3part',
+      subjectLabel: profile?.label || subject,
     };
   }, [questions, subject]);
 
@@ -553,7 +575,7 @@ export default function WordDocxEditor({
         text: initialExam.title || '',
         questions: normalized,
       });
-      if (detected?.subject && (!initialExam.subject || initialExam.subject === 'Vật lí')) {
+      if (detected?.subject && !initialExam.subject) {
         setSubject(detected.subject);
       } else if (initialExam.subject) {
         setSubject(initialExam.subject);
@@ -971,11 +993,12 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
         p2: matrixStats.p2,
         p3: matrixStats.p3,
       };
+      const omrProfile = getSubjectExamProfile(subject);
       const isMathSubject = /toán/i.test(String(subject || ''));
       const scoring = {
-        p1: 0.25,
+        p1: omrProfile?.pointPerQuestion?.single_choice || 0.25,
         p2: [0, 0.1, 0.25, 0.5, 1.0],
-        p3: isMathSubject ? 0.5 : 0.25,
+        p3: omrProfile?.pointPerQuestion?.short_answer || (isMathSubject ? 0.5 : 0.25),
       };
 
       const targetClass = (classes || []).find(
@@ -1100,22 +1123,23 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
   // Thêm câu hỏi mới
   const addQuestion = (part = 1) => {
     const newId = `q_new_${Date.now()}`;
+    const type = part === 2 ? 'true_false' : part === 3 ? 'short_answer' : part === 4 ? 'essay' : 'single_choice';
     const newQ = {
       id: newId,
       part,
-      type: part === 2 ? 'true_false' : part === 3 ? 'short_answer' : 'single_choice',
+      type,
       q: 'Nội dung câu hỏi mới...',
-      options: ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D'],
+      options: part === 4 ? [] : ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D'],
       statements: [
         { text: 'a) Nhận định a...', answer: true },
         { text: 'b) Nhận định b...', answer: false },
         { text: 'c) Nhận định c...', answer: true },
         { text: 'd) Nhận định d...', answer: false },
       ],
-      answer: '0',
-      correct: 0,
+      answer: part === 3 ? '0' : '',
+      correct: part === 1 ? 0 : -1,
       explain: '',
-      points: part === 2 ? 1.0 : part === 3 ? 0.25 : 0.25,
+      points: part === 2 || part === 4 ? 1.0 : (part === 3 && /toán/i.test(String(subject || '')) ? 0.5 : 0.25),
     };
     commitQuestions((prev) => [...prev, newQ]);
     setSelectedQId(newId);
@@ -1270,6 +1294,19 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
   const part1Questions = useMemo(() => questions.filter((q) => q.part === 1 || q.type === 'single_choice' || (!q.part && !q.type)), [questions]);
   const part2Questions = useMemo(() => questions.filter((q) => q.part === 2 || q.type === 'true_false'), [questions]);
   const part3Questions = useMemo(() => questions.filter((q) => q.part === 3 || q.type === 'short_answer'), [questions]);
+  const part4Questions = useMemo(() => questions.filter((q) => q.part === 4 || q.type === 'essay'), [questions]);
+
+  const renderDocxPassageBanner = (q, prevQ) => {
+    const showInst = q.instruction && q.instruction !== prevQ?.instruction;
+    const showPass = q.passage && q.passage !== prevQ?.passage;
+    if (!showInst && !showPass) return null;
+    return (
+      <div style={{ margin: '6px 0 8px', padding: '8px 10px', background: '#f8fafc', borderLeft: '3px solid #2563eb', borderRadius: 4, fontSize: '12.5px', lineHeight: 1.5 }}>
+        {showInst && <div style={{ fontStyle: 'italic', color: '#1e40af', marginBottom: showPass ? 4 : 0 }}>{q.instruction}</div>}
+        {showPass && <div style={{ whiteSpace: 'pre-wrap' }}>{q.passage}</div>}
+      </div>
+    );
+  };
 
   if (!open) return null;
 
@@ -1825,6 +1862,9 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                   <button type="button" className="wde-tool-btn" onClick={() => addQuestion(3)}>
                     <IcoPlus size={12} /> Thêm câu Phần III (Trả lời ngắn)
                   </button>
+                  <button type="button" className="wde-tool-btn" onClick={() => addQuestion(4)}>
+                    <IcoPlus size={12} /> Thêm câu Tự luận
+                  </button>
                 </div>
                 <span className="wde-ribbon-group-title">Thêm câu hỏi GDPT 2025</span>
               </div>
@@ -2145,6 +2185,8 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                         </button>
                       </div>
 
+                      {renderDocxPassageBanner(q, part1Questions[idx - 1])}
+
                       <div className="wde-stem-row">
                         <span className="wde-q-num-label">Câu {idx + 1}.</span>
                         <select
@@ -2376,6 +2418,8 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                         </button>
                       </div>
 
+                      {renderDocxPassageBanner(q, part3Questions[idx - 1])}
+
                       <div className="wde-stem-row">
                         <span className="wde-q-num-label">Câu {idx + 1}.</span>
                         <select
@@ -2433,6 +2477,68 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                           />
                         </div>
                       )}
+                    </div>
+                  );
+                })}
+              </section>
+            )}
+
+            {/* ============================================================
+                PHẦN IV: TỰ LUẬN / ĐỌC HIỂU MỞ
+                ============================================================ */}
+            {part4Questions.length > 0 && (
+              <section className="wde-part-section">
+                <div className="wde-part-heading">
+                  PHẦN IV. Câu hỏi Tự luận / Viết.
+                </div>
+                <div className="wde-part-subguide">
+                  Thí sinh trình bày lời giải chi tiết từ câu 1 đến câu {part4Questions.length}.
+                </div>
+
+                {part4Questions.map((q, idx) => {
+                  const isSelected = selectedQId === q.id;
+                  return (
+                    <div
+                      key={q.id}
+                      className={`wde-question-box ${isSelected ? 'is-selected' : ''}`}
+                      onClick={() => setSelectedQId(q.id)}
+                    >
+                      <div className="wde-q-floating-bar">
+                        <button
+                          type="button"
+                          className="wde-q-action-mini danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteQuestion(q.id);
+                          }}
+                          title="Xóa câu này"
+                        >
+                          <IcoTrash size={11} />
+                        </button>
+                      </div>
+
+                      {renderDocxPassageBanner(q, part4Questions[idx - 1])}
+
+                      <div className="wde-stem-row">
+                        <span className="wde-q-num-label">Câu {idx + 1} ({q.points || 1}đ).</span>
+                        <textarea
+                          className="wde-q-stem-textarea"
+                          value={q.q || ''}
+                          rows={2}
+                          onChange={(e) => updateQuestion(q.id, 'q', e.target.value)}
+                          placeholder="Nội dung câu hỏi tự luận..."
+                        />
+                      </div>
+
+                      <div style={{ marginTop: 6 }}>
+                        <textarea
+                          className="wde-q-explain-input"
+                          value={q.answer || ''}
+                          rows={2}
+                          placeholder="Gợi ý chấm / Đáp án tham khảo..."
+                          onChange={(e) => updateQuestion(q.id, 'answer', e.target.value)}
+                        />
+                      </div>
                     </div>
                   );
                 })}
@@ -2785,47 +2891,110 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
               </div>
 
               <div className="wde-matrix-body" style={{ padding: '20px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: 16 }}>
-                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#166534', fontWeight: 600 }}>Phần I (Nhiều Lựa Chọn)</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#15803d' }}>{matrixStats.p1} / 18 câu</div>
-                    <div style={{ fontSize: '11px', color: '#4b5563' }}>{(matrixStats.p1 * 0.25).toFixed(2)} / 4.50 điểm</div>
-                  </div>
-                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#1e40af', fontWeight: 600 }}>Phần II (Đúng/Sai)</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#1d4ed8' }}>{matrixStats.p2} / 4 câu</div>
-                    <div style={{ fontSize: '11px', color: '#4b5563' }}>{(matrixStats.p2 * 1.0).toFixed(2)} / 4.00 điểm</div>
-                  </div>
-                  <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: '#6b21a8', fontWeight: 600 }}>Phần III (Trả Lời Ngắn)</div>
-                    <div style={{ fontSize: '18px', fontWeight: 700, color: '#7e22ce' }}>{matrixStats.p3} / 6 câu</div>
-                    <div style={{ fontSize: '11px', color: '#4b5563' }}>{(matrixStats.p3 * (matrixStats.part3Unit ?? 0.25)).toFixed(2)} / {(6 * (matrixStats.part3Unit ?? 0.25)).toFixed(2)} điểm</div>
-                  </div>
-                </div>
+                {(() => {
+                  const isPureLit = matrixStats.examFamily === 'literature_essay' || (matrixStats.p4 > 0 && matrixStats.p1 === 0 && matrixStats.p2 === 0 && matrixStats.p3 === 0);
+                  const showP2 = matrixStats.expP2 > 0 || matrixStats.p2 > 0;
+                  const showP3 = matrixStats.expP3 > 0 || matrixStats.p3 > 0;
+                  const showP4 = matrixStats.p4 > 0 || matrixStats.expEssay > 0;
+                  const cardCount = isPureLit ? 1 : 1 + (showP2 ? 1 : 0) + (showP3 ? 1 : 0) + (showP4 ? 1 : 0);
+                  const p1Unit = matrixStats.part1Unit ?? 0.25;
+                  const p3Unit = matrixStats.part3Unit ?? 0.25;
+                  return (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(4, Math.max(1, cardCount))}, 1fr)`, gap: '10px', marginBottom: 16 }}>
+                        {!isPureLit && (
+                          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                            <div style={{ fontSize: '11px', color: '#166534', fontWeight: 600 }}>Phần I (Nhiều Lựa Chọn)</div>
+                            <div style={{ fontSize: '18px', fontWeight: 700, color: '#15803d' }}>
+                              {matrixStats.p1}{matrixStats.expP1 > 0 ? ` / ${matrixStats.expP1}` : ''} câu
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#4b5563' }}>
+                              {(matrixStats.p1 * p1Unit).toFixed(2)}{matrixStats.expP1 > 0 ? ` / ${(matrixStats.expP1 * p1Unit).toFixed(2)}` : ''} điểm
+                            </div>
+                          </div>
+                        )}
+                        {showP2 && !isPureLit && (
+                          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                            <div style={{ fontSize: '11px', color: '#1e40af', fontWeight: 600 }}>Phần II (Đúng/Sai)</div>
+                            <div style={{ fontSize: '18px', fontWeight: 700, color: '#1d4ed8' }}>
+                              {matrixStats.p2}{matrixStats.expP2 > 0 ? ` / ${matrixStats.expP2}` : ''} câu
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#4b5563' }}>
+                              {(matrixStats.p2 * 1.0).toFixed(2)}{matrixStats.expP2 > 0 ? ` / ${(matrixStats.expP2 * 1.0).toFixed(2)}` : ''} điểm
+                            </div>
+                          </div>
+                        )}
+                        {showP3 && !isPureLit && (
+                          <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                            <div style={{ fontSize: '11px', color: '#6b21a8', fontWeight: 600 }}>Phần III (Trả Lời Ngắn)</div>
+                            <div style={{ fontSize: '18px', fontWeight: 700, color: '#7e22ce' }}>
+                              {matrixStats.p3}{matrixStats.expP3 > 0 ? ` / ${matrixStats.expP3}` : ''} câu
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#4b5563' }}>
+                              {(matrixStats.p3 * p3Unit).toFixed(2)}{matrixStats.expP3 > 0 ? ` / ${(matrixStats.expP3 * p3Unit).toFixed(2)}` : ''} điểm
+                            </div>
+                          </div>
+                        )}
+                        {showP4 && (
+                          <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '8px', padding: '10px', textAlign: 'center' }}>
+                            <div style={{ fontSize: '11px', color: '#9a3412', fontWeight: 600 }}>{isPureLit ? 'Đề Tự luận (Đọc hiểu + Viết)' : 'Phần Tự luận'}</div>
+                            <div style={{ fontSize: '18px', fontWeight: 700, color: '#c2410c' }}>
+                              {matrixStats.p4} câu
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#4b5563' }}>
+                              {Number(matrixStats.p4Score || 0).toFixed(2)} điểm
+                            </div>
+                          </div>
+                        )}
+                      </div>
 
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', marginBottom: 14 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>Tổng điểm đề thi:</span>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: matrixStats.totalScore === 10 ? '#15803d' : '#b45309' }}>
-                      {matrixStats.totalScore.toFixed(2)} / 10.00 điểm {matrixStats.totalScore === 10 ? '(Chuẩn tuyệt đối)' : '(Chưa tròn 10 điểm)'}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>
-                    Phân bố Bloom: Nhận biết: {matrixStats.nbPct}% • Thông hiểu: {matrixStats.thPct}% • Vận dụng: {matrixStats.vdPct}% • Vận dụng cao: {matrixStats.vdcPct}%
-                  </div>
-                </div>
+                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', marginBottom: 14 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>Tổng điểm đề thi ({matrixStats.subjectLabel}):</span>
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: Math.abs(matrixStats.totalScore - 10) < 0.01 ? '#15803d' : '#b45309' }}>
+                            {matrixStats.totalScore.toFixed(2)} / 10.00 điểm {Math.abs(matrixStats.totalScore - 10) < 0.01 ? '(Chuẩn tuyệt đối)' : '(Chưa tròn 10 điểm)'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>
+                          Phân bố Bloom: Nhận biết: {matrixStats.nbPct}% • Thông hiểu: {matrixStats.thPct}% • Vận dụng: {matrixStats.vdPct}% • Vận dụng cao: {matrixStats.vdcPct}%
+                        </div>
+                      </div>
 
-                <div style={{ border: '1px solid #fee2e2', background: '#fff5f5', borderRadius: '8px', padding: '12px' }}>
-                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#b91c1c', marginBottom: 4 }}>
-                    Đánh giá chất lượng đề từ ELEC AI:
-                  </div>
-                  <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#7f1d1d' }}>
-                    {matrixStats.p1 !== 18 && <li>Phần I nên đủ 18 câu theo quy chuẩn đề tốt nghiệp THPT mới.</li>}
-                    {matrixStats.p2 !== 4 && <li>Phần II nên đủ 4 câu (mỗi câu 4 ý a, b, c, d).</li>}
-                    {matrixStats.p3 !== 6 && <li>Phần III nên đủ 6 câu trả lời ngắn dạng số hoặc thuật ngữ.</li>}
-                    {matrixStats.totalScore === 10 && <li>Đề thi đạt chuẩn 10.00 điểm phân hóa toàn diện.</li>}
-                  </ul>
-                </div>
+                      <div style={{ border: '1px solid #fee2e2', background: '#fff5f5', borderRadius: '8px', padding: '12px' }}>
+                        <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#b91c1c', marginBottom: 4 }}>
+                          Đánh giá chất lượng đề chuẩn Bộ GD&amp;ĐT (QĐ 764 / CV 7991) cho môn {matrixStats.subjectLabel}:
+                        </div>
+                        <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#7f1d1d' }}>
+                          {isPureLit ? (
+                            <>
+                              {matrixStats.p4 < 5 && <li>Đề Ngữ văn QĐ 764/QĐ-BGDĐT thường gồm Phần I Đọc hiểu (4–5 câu: 4,0đ) và Phần II Viết (2 câu: đoạn ~200 chữ 2,0đ + bài ~600 chữ 4,0đ).</li>}
+                              {(matrixStats.p1 > 0 || matrixStats.p2 > 0 || matrixStats.p3 > 0) && <li>Môn Ngữ văn thi tốt nghiệp THPT áp dụng 100% hình thức Tự luận.</li>}
+                            </>
+                          ) : (
+                            <>
+                              {matrixStats.expP1 > 0 && matrixStats.p1 !== matrixStats.expP1 && matrixStats.p4 === 0 && (
+                                <li>Phần I môn {matrixStats.subjectLabel} chuẩn THPT 2025 gồm {matrixStats.expP1} câu ({p1Unit}đ/câu).</li>
+                              )}
+                              {matrixStats.expP2 > 0 && matrixStats.p2 !== matrixStats.expP2 && matrixStats.p4 === 0 && (
+                                <li>Phần II chuẩn THPT 2025 gồm {matrixStats.expP2} câu Đúng/Sai (mỗi câu 4 ý a, b, c, d — 1,00đ).</li>
+                              )}
+                              {matrixStats.expP3 > 0 && matrixStats.p3 !== matrixStats.expP3 && matrixStats.p4 === 0 && (
+                                <li>Phần III môn {matrixStats.subjectLabel} chuẩn THPT 2025 gồm {matrixStats.expP3} câu Trả lời ngắn ({p3Unit}đ/câu, đáp án số tối đa 4 ký tự).</li>
+                              )}
+                              {matrixStats.expP3 === 0 && matrixStats.p3 > 0 && (
+                                <li>Môn {matrixStats.subjectLabel} theo QĐ 764/QĐ-BGDĐT không có Phần III Trả lời ngắn (chỉ dùng nếu đề kiểm tra định kì riêng).</li>
+                              )}
+                              {matrixStats.p4 > 0 && (
+                                <li>Đề kết hợp Trắc nghiệm + Tự luận (theo CV 7991/BGDĐT-GDTrH kiểm tra định kì 70% TN – 30% TL).</li>
+                              )}
+                            </>
+                          )}
+                          {Math.abs(matrixStats.totalScore - 10) < 0.01 && <li>Đề thi đạt chuẩn 10.00 điểm phân hóa toàn diện.</li>}
+                        </ul>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="wde-matrix-footer">
@@ -3318,27 +3487,42 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td style={{ textAlign: 'left', fontWeight: 600 }}>Phần I: Trắc nghiệm 4 lựa chọn</td>
-                      <td>{matrixStats.p1}</td>
-                      <td>0.25 đ</td>
-                      <td>{(matrixStats.p1 * 0.25).toFixed(2)} đ</td>
-                      <td>{matrixStats.total > 0 ? Math.round((matrixStats.p1 / matrixStats.total) * 100) : 0}%</td>
-                    </tr>
-                    <tr>
-                      <td style={{ textAlign: 'left', fontWeight: 600 }}>Phần II: Đúng / Sai (4 ý a-b-c-d)</td>
-                      <td>{matrixStats.p2}</td>
-                      <td>1.00 đ</td>
-                      <td>{(matrixStats.p2 * 1.0).toFixed(2)} đ</td>
-                      <td>{matrixStats.total > 0 ? Math.round((matrixStats.p2 / matrixStats.total) * 100) : 0}%</td>
-                    </tr>
-                    <tr>
-                      <td style={{ textAlign: 'left', fontWeight: 600 }}>Phần III: Trả lời ngắn</td>
-                      <td>{matrixStats.p3}</td>
-                      <td>{(/toán/i.test(String(subject || '')) ? 0.5 : 0.25).toFixed(2)} đ</td>
-                      <td>{(matrixStats.p3 * (/toán/i.test(String(subject || '')) ? 0.5 : 0.25)).toFixed(2)} đ</td>
-                      <td>{matrixStats.total > 0 ? Math.round((matrixStats.p3 / matrixStats.total) * 100) : 0}%</td>
-                    </tr>
+                    {matrixStats.p1 > 0 && (
+                      <tr>
+                        <td style={{ textAlign: 'left', fontWeight: 600 }}>Phần I: Trắc nghiệm 4 lựa chọn</td>
+                        <td>{matrixStats.p1}</td>
+                        <td>{(matrixStats.part1Unit ?? 0.25).toFixed(2)} đ</td>
+                        <td>{(matrixStats.p1 * (matrixStats.part1Unit ?? 0.25)).toFixed(2)} đ</td>
+                        <td>{matrixStats.total > 0 ? Math.round((matrixStats.p1 / matrixStats.total) * 100) : 0}%</td>
+                      </tr>
+                    )}
+                    {matrixStats.p2 > 0 && (
+                      <tr>
+                        <td style={{ textAlign: 'left', fontWeight: 600 }}>Phần II: Đúng / Sai (4 ý a-b-c-d)</td>
+                        <td>{matrixStats.p2}</td>
+                        <td>1.00 đ</td>
+                        <td>{(matrixStats.p2 * 1.0).toFixed(2)} đ</td>
+                        <td>{matrixStats.total > 0 ? Math.round((matrixStats.p2 / matrixStats.total) * 100) : 0}%</td>
+                      </tr>
+                    )}
+                    {matrixStats.p3 > 0 && (
+                      <tr>
+                        <td style={{ textAlign: 'left', fontWeight: 600 }}>Phần III: Trả lời ngắn</td>
+                        <td>{matrixStats.p3}</td>
+                        <td>{(matrixStats.part3Unit ?? 0.25).toFixed(2)} đ</td>
+                        <td>{(matrixStats.p3 * (matrixStats.part3Unit ?? 0.25)).toFixed(2)} đ</td>
+                        <td>{matrixStats.total > 0 ? Math.round((matrixStats.p3 / matrixStats.total) * 100) : 0}%</td>
+                      </tr>
+                    )}
+                    {matrixStats.p4 > 0 && (
+                      <tr>
+                        <td style={{ textAlign: 'left', fontWeight: 600 }}>Phần Tự luận / Đọc hiểu mở</td>
+                        <td>{matrixStats.p4}</td>
+                        <td>Theo câu</td>
+                        <td>{Number(matrixStats.p4Score || 0).toFixed(2)} đ</td>
+                        <td>{matrixStats.total > 0 ? Math.round((matrixStats.p4 / matrixStats.total) * 100) : 0}%</td>
+                      </tr>
+                    )}
                     <tr style={{ background: 'var(--t-surface-2, #f8fafc)', fontWeight: 700 }}>
                       <td style={{ textAlign: 'left' }}>TỔNG CỘNG</td>
                       <td>{matrixStats.total} câu</td>
@@ -3411,10 +3595,7 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                     const content = `
 # KHUNG MA TRẬN ĐỀ THI
 ## Môn: ${subject} - Khối: ${grade}
-- Phần I (Trắc nghiệm 4 lựa chọn): ${matrixStats.p1} câu (${(matrixStats.p1 * 0.25).toFixed(2)} điểm)
-- Phần II (Đúng/Sai): ${matrixStats.p2} câu (${(matrixStats.p2 * 1.0).toFixed(2)} điểm)
-- Phần III (Trả lời ngắn): ${matrixStats.p3} câu (${(matrixStats.p3 * (matrixStats.part3Unit ?? 0.25)).toFixed(2)} điểm)
-- Tổng điểm: ${matrixStats.totalScore.toFixed(2)} điểm
+${matrixStats.p1 > 0 ? `- Phần I (Trắc nghiệm 4 lựa chọn): ${matrixStats.p1} câu (${(matrixStats.p1 * (matrixStats.part1Unit ?? 0.25)).toFixed(2)} điểm)\n` : ''}${matrixStats.p2 > 0 ? `- Phần II (Đúng/Sai): ${matrixStats.p2} câu (${(matrixStats.p2 * 1.0).toFixed(2)} điểm)\n` : ''}${matrixStats.p3 > 0 ? `- Phần III (Trả lời ngắn): ${matrixStats.p3} câu (${(matrixStats.p3 * (matrixStats.part3Unit ?? 0.25)).toFixed(2)} điểm)\n` : ''}${matrixStats.p4 > 0 ? `- Phần Tự luận / Đọc hiểu mở: ${matrixStats.p4} câu (${Number(matrixStats.p4Score || 0).toFixed(2)} điểm)\n` : ''}- Tổng điểm: ${matrixStats.totalScore.toFixed(2)} điểm
 
 ### Phân bố mức độ nhận thức Bloom:
 - Nhận biết: ${matrixStats.nb} câu (${matrixStats.nbPct}%)

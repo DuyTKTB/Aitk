@@ -132,7 +132,7 @@ export default function DigitalOmrSheet({
                     cursor: 'pointer',
                   }}
                 >
-                  {q.type === 'true_false' ? 'Đ/S' : 'Điền số'} · {isAnswered(q, currentAnswer) ? 'Đã làm' : 'Chưa làm'}
+                  {q.type === 'true_false' ? 'Đ/S' : q.type === 'essay' ? 'Tự luận' : 'Điền số'} · {isAnswered(q, currentAnswer) ? 'Đã làm' : 'Chưa làm'}
                 </button>
               )}
             </div>

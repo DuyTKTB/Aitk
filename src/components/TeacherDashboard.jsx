@@ -53,6 +53,8 @@ import {
   listenRetryRequestsByTeacher,
   getClassAllowances,
   defaultProctor,
+  gradeSubmissionEssays,
+  hydrateExamAnswerKey,
 } from '../lib/classroom.js';
 import {
   createExamSession,
@@ -577,12 +579,16 @@ function normalizeExamForPreview(exam) {
     level: q.level || '',
     topic: q.topic || '',
     type: q.type || 'single_choice',
+    ...(q.passage ? { passage: q.passage } : {}),
+    ...(q.instruction ? { instruction: q.instruction } : {}),
+    ...(q.passageId != null ? { passageId: q.passageId } : {}),
+    ...((q.groupId || q.pg) ? { groupId: q.groupId || q.pg } : {}),
   }));
   return {
     ...exam,
     title: exam.title || 'Đề kiểm tra',
     duration: exam.duration || 45,
-    subject: exam.subject || 'Hóa học',
+    subject: exam.subject || detectExamSubject(exam) || '',
     grade: exam.grade || exam.classGrade || '12',
     questions,
   };
@@ -594,15 +600,17 @@ async function exportExamCsv(exam, subs) {
   const qStats = (exam.questions || []).map((q, qIdx) => {
     let ok = 0;
     let total = 0;
+    const isEssay = (q.type || 'single_choice') === 'essay';
     sorted.forEach((s) => {
       const d = s.detail?.[qIdx];
       if (!d) return;
+      if (isEssay && !d.manualGraded && !d.isCorrect && !(Number(d.earned) > 0)) return;
       total += 1;
       if (d.isCorrect) ok += 1;
     });
     return {
       stt: qIdx + 1,
-      question: String(q.q || '').slice(0, 140),
+      question: String(q.q || q.passage || '').slice(0, 140),
       topic: q.topic || 'Chưa phân loại',
       correctRate: total ? Math.round((ok / total) * 100) / 100 : null,
       answeredCount: total,
@@ -1068,7 +1076,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const guardTeacherVip = useCallback((reason = '') => {
     if (isTeacherVip) return true;
-    const msg = reason || `Tính năng này dành riêng cho Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+    const msg = reason || `Tính năng này dành riêng cho Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`;
     say(msg, 'error');
     openTeacherUpgrade(msg);
     return false;
@@ -1076,7 +1084,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const openCreateClassGuarded = useCallback(() => {
     if (!isTeacherVip && classes.length >= FREE_TEACHER_LIMITS.maxClasses) {
-      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxClasses} lớp học. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để tạo không giới hạn lớp học.`);
+      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxClasses} lớp học. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để tạo không giới hạn lớp học.`);
       return;
     }
     setShowCreateClass(true);
@@ -1084,7 +1092,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const toggleAiChatGuarded = useCallback(() => {
     if (!isTeacherVip) {
-      guardTeacherVip(`Trợ lý AI Copilot Giáo viên thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      guardTeacherVip(`Trợ lý AI Copilot Giáo viên thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`);
       return;
     }
     setAiChatOpen((v) => !v);
@@ -1594,7 +1602,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   const handleCreateClass = async () => {
     if (!newClassName.trim()) return;
     if (!isTeacherVip && classes.length >= FREE_TEACHER_LIMITS.maxClasses) {
-      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxClasses} lớp học. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để tạo không giới hạn.`);
+      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxClasses} lớp học. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để tạo không giới hạn.`);
       return;
     }
     try {
@@ -1623,7 +1631,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   const handleCopyExamToClass = async () => {
     if (!copyExamTarget || !copyTargetClassId) return;
     if (!isTeacherVip && exams.length >= FREE_TEACHER_LIMITS.maxExams) {
-      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhân bản & giao không giới hạn.`);
+      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để nhân bản & giao không giới hạn.`);
       return;
     }
     const targetCls = [...classes, ...linkedClasses].find((c) => c.id === copyTargetClassId);
@@ -1682,7 +1690,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const persistAssignedShuffledExam = async (assignPayload) => {
     if (!isTeacherVip && exams.length >= FREE_TEACHER_LIMITS.maxExams) {
-      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để giao & trộn đề không giới hạn.`);
+      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để giao & trộn đề không giới hạn.`);
       throw new Error(`Đã đạt giới hạn ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra của gói Giáo viên Free.`);
     }
     try {
@@ -1723,7 +1731,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   const handleStartSession = useCallback(async (exam) => {
-    if (!guardTeacherVip(`Mở phòng thi Giám sát trực tiếp (LIVE Proctor) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) {
+    if (!guardTeacherVip(`Mở phòng thi Giám sát trực tiếp (LIVE Proctor) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) {
       return;
     }
     setStartingId(exam.id);
@@ -1797,7 +1805,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       okLabel: 'Xóa đề',
       danger: true,
       onOk: async () => {
-        const snapshot = { ...exam };
+        const snapshot = await hydrateExamAnswerKey(exam).catch(() => ({ ...exam }));
         try {
           await deleteExamFs(exam.id);
           setExams((prev) => prev.filter((e) => e.id !== exam.id));
@@ -1809,6 +1817,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                 const { id: _id, token: _token, ...rest } = snapshot;
                 const recreated = await createExam({
                   ...rest,
+                  isDraft: Boolean(snapshot.isDraft || !snapshot.classId),
                   teacherId: user.uid,
                   teacherName: user.displayName || user.email,
                 });
@@ -1829,27 +1838,29 @@ export default function TeacherDashboard({ onExit } = {}) {
   /* Nhân bản đề thi (Mục D4) */
   const handleDuplicateExam = useCallback(async (exam) => {
     if (!isTeacherVip && exams.length >= FREE_TEACHER_LIMITS.maxExams) {
-      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhân bản không giới hạn.`);
+      guardTeacherVip(`Tài khoản Giáo viên Free tạo tối đa ${FREE_TEACHER_LIMITS.maxExams} đề kiểm tra. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để nhân bản không giới hạn.`);
       return;
     }
     try {
-      const copyTitle = `${exam.title || 'Đề kiểm tra'} (Bản sao)`;
+      const hydrated = await hydrateExamAnswerKey(exam).catch(() => exam);
+      const copyTitle = `${hydrated.title || 'Đề kiểm tra'} (Bản sao)`;
       const duplicated = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
-        classId: exam.classId,
+        classId: hydrated.classId || '',
+        isDraft: Boolean(hydrated.isDraft || !hydrated.classId),
         title: copyTitle,
-        description: exam.description || '',
-        duration: exam.duration || 45,
-        questions: exam.questions || [],
-        showAnswerAfter: exam.showAnswerAfter ?? true,
-        allowRetry: exam.allowRetry ?? false,
-        shuffle: exam.shuffle ?? true,
-        proctor: exam.proctor,
-        subject: exam.subject,
-        grade: exam.grade,
-        gradeType: exam.gradeType || '',
-        source: exam.source || 'duplicate',
+        description: hydrated.description || '',
+        duration: hydrated.duration || 45,
+        questions: hydrated.questions || [],
+        showAnswerAfter: hydrated.showAnswerAfter ?? true,
+        allowRetry: hydrated.allowRetry ?? false,
+        shuffle: hydrated.shuffle ?? true,
+        proctor: hydrated.proctor,
+        subject: hydrated.subject,
+        grade: hydrated.grade,
+        gradeType: hydrated.gradeType || '',
+        source: hydrated.source || 'duplicate',
       });
       setExams((prev) => [duplicated, ...prev]);
       say(`Đã nhân bản đề “${copyTitle}”`, 'success', {
@@ -1920,7 +1931,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   /* Xuất danh sách học sinh của 1 lớp ra Excel (.xlsx) */
   const exportClassRosterCsv = useCallback(async (cls) => {
-    if (!guardTeacherVip(`Xuất danh sách học sinh Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+    if (!guardTeacherVip(`Xuất danh sách học sinh Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
     const members = cls?.members || [];
     const pending = cls?.pendingMembers || [];
     if (!members.length && !pending.length) {
@@ -2300,7 +2311,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   }, [exams]);
 
   const exportAllCsv = async () => {
-    if (!guardTeacherVip(`Xuất bảng điểm tổng hợp Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+    if (!guardTeacherVip(`Xuất bảng điểm tổng hợp Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
     if (subsInRange.length === 0) { say('Chưa có bài nộp để xuất', 'error'); return; }
     const examById = Object.fromEntries(exams.map((e) => [e.id, e]));
     await exportStyledWorkbook({
@@ -2344,7 +2355,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   };
 
   const exportClassCsv = useCallback(async (cls, clsExams, subsMap) => {
-    if (!guardTeacherVip(`Xuất bảng điểm lớp Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+    if (!guardTeacherVip(`Xuất bảng điểm lớp Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
     if (!cls || !clsExams?.length) { say('Chưa có dữ liệu để xuất', 'error'); return; }
     const members = cls.members || [];
     const safe = (cls.name || 'lop').replace(/[^\p{L}\p{N}]+/gu, '-');
@@ -2839,7 +2850,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         : `Free · ${classes.length}/${FREE_TEACHER_LIMITS.maxClasses} lớp · Word ${getWordImportTrialRemaining(user?.uid, false)}/10 · Thủ công ${getManualEntryTrialRemaining(user?.uid, false)}/30`}
       quickAction={isTeacherVip
         ? { label: 'Tạo đề AI', mobileLabel: 'Tạo đề', onClick: openNewExam }
-        : { label: `Nâng cấp VIP (${TEACHER_VIP_PRICE_TEXT})`, mobileLabel: 'VIP 399k', isUpgrade: true, onClick: () => openTeacherUpgrade() }}
+        : { label: `Nâng cấp VIP (${TEACHER_VIP_PRICE_TEXT})`, mobileLabel: 'VIP 999k', isUpgrade: true, onClick: () => openTeacherUpgrade() }}
       onOpenProfile={() => goSection('profile')}
       extraNav={(
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -3785,7 +3796,6 @@ export default function TeacherDashboard({ onExit } = {}) {
             exams={exams}
             submissionsMap={submissionsMap}
             loading={loading}
-            onRetry={refresh}
             onCreateRemedialExam={(preset) => openNewExam(preset)}
           />
         ) : (
@@ -4171,7 +4181,7 @@ export default function TeacherDashboard({ onExit } = {}) {
               submissions={subs}
               onStart={handleStartSession}
               onViewLive={(sid) => {
-                if (!guardTeacherVip(`Giám sát phòng thi trực tiếp (LIVE Proctor) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+                if (!guardTeacherVip(`Giám sát phòng thi trực tiếp (LIVE Proctor) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
                 setViewingSessionId(sid);
               }}
               onDetail={(e) => setDetailExamModal(e)}
@@ -5216,7 +5226,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     type="button"
                     className="vt-btn primary"
                     onClick={() => {
-                      if (!guardTeacherVip(`Giám sát phòng LIVE thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+                      if (!guardTeacherVip(`Giám sát phòng LIVE thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
                       setDetailExamModal(null);
                       setViewingSessionId(liveSession.id);
                     }}
@@ -5314,7 +5324,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     type="button"
                     className="vt-edm-tool-btn"
                     onClick={() => {
-                      if (!guardTeacherVip(`Mô phỏng thi, Trộn nhiều mã đề & Xuất in A4 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+                      if (!guardTeacherVip(`Mô phỏng thi, Trộn nhiều mã đề & Xuất in A4 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
                       setDetailExamModal(null);
                       setPreviewExam(ex);
                     }}
@@ -5326,7 +5336,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     type="button"
                     className="vt-edm-tool-btn"
                     onClick={() => {
-                      if (!guardTeacherVip(`Trình soạn thảo Word Office 365 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+                      if (!guardTeacherVip(`Trình soạn thảo Word Office 365 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
                       setDetailExamModal(null);
                       setWordEditorExam(ex);
                       setWordEditorOpen(true);
@@ -5392,7 +5402,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     type="button"
                     className="vt-edm-tool-btn"
                     onClick={() => {
-                      if (!guardTeacherVip(`Xuất bảng điểm Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+                      if (!guardTeacherVip(`Xuất bảng điểm Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
                       if (subs.length) exportExamCsv(ex, subs);
                       else say('Chưa có bài nộp để xuất Excel', 'error');
                     }}
@@ -5544,7 +5554,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   value={newClassSubject}
                   onChange={(e) => setNewClassSubject(e.target.value)}
                 >
-                  {['Hóa học', 'Toán', 'Vật lý', 'Sinh học', 'Tiếng Anh', 'Ngữ văn', 'Lịch sử', 'Địa lý', 'Tin học', 'GDKT & PL'].map((m) => (
+                  {['Hóa học', 'Toán', 'Vật lý', 'Sinh học', 'Tiếng Anh', 'Ngữ văn', 'Lịch sử', 'Địa lí', 'Tin học', 'Công nghệ', 'GDKT&PL', 'Khoa học tự nhiên'].map((m) => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>
@@ -5793,7 +5803,7 @@ export default function TeacherDashboard({ onExit } = {}) {
             exam={selectedExam}
             subs={submissionsMap[selectedExam.id] || []}
             onExport={(freshSubs) => {
-              if (!guardTeacherVip(`Xuất Excel kết quả đề thi thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+              if (!guardTeacherVip(`Xuất Excel kết quả đề thi thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
               exportExamCsv(selectedExam, freshSubs || submissionsMap[selectedExam.id] || []);
             }}
           />
@@ -6056,7 +6066,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       {/* ============================================================
           MODAL NHẬP ĐỀ THI TỪ FILE WORD / PDF (EXAM IMPORTER V4.0)
           ============================================================ */}
-      {importerModalOpen && (isTeacherVip || getWordImportTrialRemaining(user?.uid, false) > 0) && (
+      {importerModalOpen && (
         <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang tải trình nhập đề...</p></div>}>
           <ExamImporter
             open={importerModalOpen}
@@ -6120,7 +6130,7 @@ export default function TeacherDashboard({ onExit } = {}) {
             open={wordEditorOpen}
             onClose={() => setWordEditorOpen(false)}
             initialExam={wordEditorExam || null}
-            initialClassId={selectedClass?.id || classes[0]?.id || ''}
+            initialClassId={selectedClass?.id || classes[0]?.id || linkedClasses[0]?.id || ''}
             classes={linkedClasses.length ? [...classes, ...linkedClasses] : classes}
             onSaveToClass={async (newExam) => {
               try {
@@ -6226,7 +6236,7 @@ export default function TeacherDashboard({ onExit } = {}) {
         }}
         onOpenImporter={() => {
           if (!isTeacherVip && getWordImportTrialRemaining(user?.uid, false) <= 0) {
-            guardTeacherVip(`Bạn đã dùng hết 10/10 lượt dùng thử nhập file Word. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhập không giới hạn.`);
+            guardTeacherVip(`Bạn đã dùng hết 10/10 lượt dùng thử nhập file Word. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để nhập không giới hạn.`);
             return;
           }
           setImporterModalOpen(true);
@@ -6253,7 +6263,7 @@ export default function TeacherDashboard({ onExit } = {}) {
             }
             return createdCls;
           } catch (e) {
-            say('Lỗi tạo lớp: ' + (e.message || e), 'err');
+            say('Lỗi tạo lớp: ' + (e.message || e), 'error');
             return null;
           }
         }}
@@ -6261,14 +6271,14 @@ export default function TeacherDashboard({ onExit } = {}) {
         onSay={say}
         isOpen={isTeacherVip && aiChatOpen}
         onToggleOpen={(next) => {
-          if (next && !guardTeacherVip(`Trợ lý AI Copilot Giáo viên thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`)) return;
+          if (next && !guardTeacherVip(`Trợ lý AI Copilot Giáo viên thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
           setAiChatOpen(Boolean(next));
         }}
       />
 
       {vipModalOpen && (
         <Modal
-          title={vipPaymentPkg ? 'Thanh toán Giáo viên VIP' : 'Nâng cấp Giáo viên VIP (399.000đ/tháng)'}
+          title={vipPaymentPkg ? 'Thanh toán Giáo viên VIP' : `Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm)`}
           size="lg"
           onClose={() => { setVipModalOpen(false); setVipPaymentPkg(null); }}
         >
@@ -6294,6 +6304,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                 lockedRole="teacher"
                 isModal={false}
                 onUpgrade={(pkg) => setVipPaymentPkg({ ...pkg, lockedRole: 'teacher' })}
+                onOpenCreditTopUp={() => {
+                  setVipModalOpen(false);
+                  setVipPaymentPkg(null);
+                  window.dispatchEvent(new CustomEvent('elec-open-credit-topup'));
+                }}
               />
             ) : (
               <div>
@@ -6405,6 +6420,30 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
   const [subs, setSubs] = useState(initialSubs || []);
   const [loading, setLoading] = useState(!initialSubs || initialSubs.length === 0);
   const [inspectSub, setInspectSub] = useState(null);
+  const [essayDraftScores, setEssayDraftScores] = useState({});
+  const [essayNote, setEssayNote] = useState('');
+  const [savingEssay, setSavingEssay] = useState(false);
+  const [essayMsg, setEssayMsg] = useState('');
+
+  useEffect(() => {
+    if (!inspectSub) {
+      setEssayDraftScores({});
+      setEssayNote('');
+      setEssayMsg('');
+      return;
+    }
+    const nextDraft = {};
+    (exam?.questions || []).forEach((q, idx) => {
+      if ((q?.type || 'single_choice') !== 'essay') return;
+      const d = inspectSub.detail?.[idx];
+      if (d && (d.manualGraded || typeof d.earned === 'number')) {
+        nextDraft[idx] = String(d.earned ?? 0);
+      }
+    });
+    setEssayDraftScores(nextDraft);
+    setEssayNote(inspectSub.teacherNote || '');
+    setEssayMsg('');
+  }, [inspectSub?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!exam?.id) return;
@@ -6456,20 +6495,27 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
   const maxBin = Math.max(...bins, 1);
 
   const perQ = (exam.questions || []).map((qq, i) => {
-    const rated = subs.filter((s) => s.detail?.[i]);
-    if (!rated.length) return { i, text: qq.q, type: qq.type || 'single_choice', rate: null };
+    const qType = qq.type || 'single_choice';
+    const rated = subs.filter((s) => {
+      const d = s.detail?.[i];
+      if (!d) return false;
+      if (qType === 'essay') return Boolean(d.manualGraded || d.isCorrect || Number(d.earned) > 0);
+      return true;
+    });
+    const labelText = qq.q || (qq.passage ? qq.passage.slice(0, 90) : `Câu ${i + 1}`);
+    if (!rated.length) return { i, text: labelText, type: qType, rate: null };
     const maxPts = Number(qq.points) > 0 ? Number(qq.points) : 1;
     let totalRatio = 0;
     rated.forEach((s) => {
       const d = s.detail[i] || {};
-      if ((qq.type || 'single_choice') === 'true_false') {
+      if (qType === 'true_false' || qType === 'essay') {
         const earned = typeof d.earned === 'number' ? d.earned : (d.isCorrect ? maxPts : 0);
         totalRatio += Math.min(1, Math.max(0, earned / maxPts));
       } else {
         totalRatio += d.isCorrect ? 1 : 0;
       }
     });
-    return { i, text: qq.q, type: qq.type || 'single_choice', rate: Math.round((totalRatio / rated.length) * 100) };
+    return { i, text: labelText, type: qType, rate: Math.round((totalRatio / rated.length) * 100) };
   }).filter((x) => x.rate != null);
   const hardest = [...perQ].sort((a, b) => a.rate - b.rate).slice(0, 5);
 
@@ -6478,6 +6524,35 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
   if (inspectSub) {
     const questions = exam.questions || [];
     const detail = inspectSub.detail || [];
+    const hasEssayQ = questions.some((q) => (q?.type || 'single_choice') === 'essay');
+    const handleSaveEssayGrades = async () => {
+      if (savingEssay) return;
+      const numericScores = {};
+      for (const [k, v] of Object.entries(essayDraftScores)) {
+        const idx = Number(k);
+        if (v === '' || v == null) continue;
+        const n = Number(String(v).replace(',', '.'));
+        if (!Number.isFinite(n) || n < 0) continue;
+        numericScores[idx] = n;
+      }
+      setSavingEssay(true);
+      setEssayMsg('');
+      try {
+        const updated = await gradeSubmissionEssays({
+          submission: inspectSub,
+          exam,
+          essayScores: numericScores,
+          teacherNote: essayNote,
+        });
+        setInspectSub((prev) => (prev ? { ...prev, ...updated } : prev));
+        setSubs((prev) => prev.map((s) => (s.id === inspectSub.id ? { ...s, ...updated } : s)));
+        setEssayMsg('Đã lưu điểm tự luận thành công.');
+      } catch (e) {
+        setEssayMsg(e?.message || 'Lỗi lưu điểm tự luận.');
+      } finally {
+        setSavingEssay(false);
+      }
+    };
     return (
       <div className="vt-stats">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', paddingBottom: '0.6rem', borderBottom: '1px solid var(--soft)' }}>
@@ -6500,31 +6575,65 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
             const d = detail[idx] || {};
             const isOk = !!d.isCorrect;
             const type = q.type || 'single_choice';
+            const isPendingEssay = type === 'essay' && !d.manualGraded && !isOk;
             return (
               <div
                 key={idx}
                 style={{
                   padding: '0.75rem 0.9rem',
                   borderRadius: 12,
-                  border: `1px solid ${isOk ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`,
-                  background: isOk ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)',
+                  border: `1px solid ${isPendingEssay ? 'rgba(217,119,6,0.35)' : isOk ? 'rgba(16,185,129,0.35)' : 'rgba(239,68,68,0.35)'}`,
+                  background: isPendingEssay ? 'rgba(217,119,6,0.06)' : isOk ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.35rem', fontSize: '0.78rem', fontWeight: 700 }}>
                   <span>
-                    Câu {idx + 1} ({type === 'true_false' ? 'Đúng/Sai 4 ý' : type === 'short_answer' ? 'Trả lời ngắn' : 'Trắc nghiệm'})
+                    Câu {idx + 1} ({type === 'true_false' ? 'Đúng/Sai 4 ý' : type === 'short_answer' ? 'Trả lời ngắn' : type === 'essay' ? 'Tự luận' : 'Trắc nghiệm'})
                   </span>
-                  <span className="t-grade-status-pill" style={{ color: isOk ? '#10b981' : '#ef4444' }}>
-                    {isOk ? <IcoCheckSvg size={14} /> : <IcoCrossSvg size={14} />}
+                  <span className="t-grade-status-pill" style={{ color: isPendingEssay ? '#d97706' : isOk ? '#10b981' : '#ef4444' }}>
+                    {isOk ? <IcoCheckSvg size={14} /> : isPendingEssay ? null : <IcoCrossSvg size={14} />}
                     <span>
-                      {isOk ? 'Chính xác' : 'Sai / Chưa trọn vẹn'} ({d.earned ?? (isOk ? (q.points || 1) : 0)}/{q.points || 1} đ)
+                      {isPendingEssay ? 'Chờ chấm tay' : isOk ? 'Chính xác' : 'Sai / Chưa trọn vẹn'} ({d.earned ?? (isOk ? (q.points || 1) : 0)}/{q.points || 1} đ)
                     </span>
                   </span>
                 </div>
+                {(q.instruction || q.passage) && (
+                  <div style={{ margin: '0 0 0.45rem', padding: '0.45rem 0.6rem', borderRadius: 8, background: 'rgba(148,163,184,0.1)', fontSize: '0.78rem', whiteSpace: 'pre-wrap' }}>
+                    {q.instruction && <div style={{ fontStyle: 'italic', marginBottom: q.passage ? '0.25rem' : 0, color: 'var(--mut)' }}>{q.instruction}</div>}
+                    {q.passage}
+                  </div>
+                )}
                 <p style={{ margin: '0 0 0.45rem', fontSize: '0.86rem', fontWeight: 600 }}>{q.q}</p>
+                {type === 'essay' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--mut)' }}>
+                    <div style={{ padding: '0.45rem 0.6rem', borderRadius: 8, background: 'rgba(15,23,42,0.06)', whiteSpace: 'pre-wrap' }}>
+                      <b>HS trả lời:</b> {String(d.picked || '').trim() || 'Bỏ trống'}
+                    </div>
+                    {q.answer && (
+                      <div style={{ color: '#047857', whiteSpace: 'pre-wrap' }}>
+                        <b>Gợi ý chấm:</b> {q.answer}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <label htmlFor={`essay-score-${idx}`} style={{ fontWeight: 700, color: 'var(--ink)' }}>Chấm điểm câu {idx + 1}:</label>
+                      <input
+                        id={`essay-score-${idx}`}
+                        type="number"
+                        min={0}
+                        max={Number(q.points) > 0 ? Number(q.points) : 10}
+                        step={0.25}
+                        value={essayDraftScores[idx] ?? ''}
+                        placeholder={String(d.earned ?? 0)}
+                        onChange={(e) => setEssayDraftScores((prev) => ({ ...prev, [idx]: e.target.value }))}
+                        style={{ width: 84, padding: '0.25rem 0.45rem', borderRadius: 8, border: '1px solid var(--soft)', background: 'var(--panel)', color: 'var(--ink)' }}
+                      />
+                      <span>/ {q.points || 1} đ</span>
+                    </div>
+                  </div>
+                )}
                 {type === 'single_choice' && (
                   <div style={{ fontSize: '0.8rem', color: 'var(--mut)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    <span>HS chọn: <b style={{ color: isOk ? '#10b981' : '#ef4444' }}>{d.picked != null ? `${String.fromCharCode(65 + Number(d.picked))}. ${q.options?.[d.picked] || ''}` : 'Bỏ trống'}</b></span>
+                    <span>HS chọn: <b style={{ color: isOk ? '#10b981' : '#ef4444' }}>{d.picked != null && d.picked >= 0 ? `${String.fromCharCode(65 + Number(d.picked))}. ${q.options?.[d.picked] || ''}` : 'Bỏ trống'}</b></span>
                     <span>Đáp án đúng: <b style={{ color: '#10b981' }}>{String.fromCharCode(65 + Number(q.correct || 0))}. {q.options?.[q.correct || 0] || ''}</b></span>
                   </div>
                 )}
@@ -6555,6 +6664,21 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
             );
           })}
         </div>
+        {hasEssayQ && (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--soft)' }}>
+            <input
+              type="text"
+              value={essayNote}
+              onChange={(e) => setEssayNote(e.target.value)}
+              placeholder="Nhận xét bài làm tự luận (tùy chọn)..."
+              style={{ flex: 1, minWidth: 180, padding: '0.4rem 0.65rem', borderRadius: 8, border: '1px solid var(--soft)', background: 'var(--panel)', color: 'var(--ink)' }}
+            />
+            <button type="button" className="vt-btn sm primary" onClick={handleSaveEssayGrades} disabled={savingEssay}>
+              {savingEssay ? 'Đang lưu...' : 'Lưu điểm tự luận'}
+            </button>
+            {essayMsg && <small style={{ color: essayMsg.includes('Lỗi') ? '#ef4444' : '#10b981', fontWeight: 600 }}>{essayMsg}</small>}
+          </div>
+        )}
       </div>
     );
   }

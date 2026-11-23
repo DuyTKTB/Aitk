@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
+  TEACHER_VIP_ANNUAL_PRICE,
+  STUDENT_VIP_ANNUAL_PRICE,
   TEACHER_VIP_MONTHLY_PRICE,
   STUDENT_VIP_MONTHLY_PRICE,
   FREE_TEACHER_LIMITS,
@@ -33,16 +35,19 @@ describe('Student vs Teacher Free/VIP Entitlements & Pricing', () => {
     }
   });
 
-  it('sets Teacher VIP to 399.000đ/month, Student VIP around 199.000đ/month, and separates roles strictly', () => {
-    expect(TEACHER_VIP_MONTHLY_PRICE).toBe(399000);
-    expect(STUDENT_VIP_MONTHLY_PRICE).toBe(199000);
-    expect(SUBSCRIPTION_CATALOG['gv-1m'].amount).toBe(399000);
-    expect(SUBSCRIPTION_CATALOG['hs-1m'].amount).toBe(199000);
-    expect(SUBSCRIPTION_CATALOG['hs-3m'].amount).toBe(399000);
-    expect(SUBSCRIPTION_CATALOG['hs-6m'].amount).toBe(699000);
-    expect(SUBSCRIPTION_CATALOG['hs-12m'].amount).toBe(999000);
-    expect(findPackageById('gv-khoi-dau')?.amount).toBe(399000);
-    expect(findPackageById('hs-hoc-ba')?.amount).toBe(199000);
+  it('sets Teacher VIP to 999.000đ/year, Student VIP to 299.000đ/year, and separates roles strictly', () => {
+    expect(TEACHER_VIP_ANNUAL_PRICE).toBe(999000);
+    expect(STUDENT_VIP_ANNUAL_PRICE).toBe(299000);
+    expect(TEACHER_VIP_MONTHLY_PRICE).toBe(999000);
+    expect(STUDENT_VIP_MONTHLY_PRICE).toBe(299000);
+    expect(SUBSCRIPTION_CATALOG['gv-12m'].amount).toBe(999000);
+    expect(SUBSCRIPTION_CATALOG['gv-12m'].months).toBe(12);
+    expect(SUBSCRIPTION_CATALOG['hs-12m'].amount).toBe(299000);
+    expect(SUBSCRIPTION_CATALOG['hs-12m'].months).toBe(12);
+    expect(findPackageById('gv-khoi-dau')?.amount).toBe(999000);
+    expect(findPackageById('gv-1m')?.amount).toBe(999000);
+    expect(findPackageById('hs-hoc-ba')?.amount).toBe(299000);
+    expect(findPackageById('hs-1m')?.amount).toBe(299000);
 
     const teacherPkgs = getPackagesForRole('teacher');
     const studentPkgs = getPackagesForRole('student');
@@ -52,9 +57,9 @@ describe('Student vs Teacher Free/VIP Entitlements & Pricing', () => {
     expect(studentPkgs.every((p) => p.role === 'student')).toBe(true);
 
     // Cross-role purchase guard
-    expect(isPackageAllowedForRole('teacher', SUBSCRIPTION_CATALOG['hs-1m'])).toBe(false);
-    expect(isPackageAllowedForRole('student', SUBSCRIPTION_CATALOG['gv-1m'])).toBe(false);
-    expect(isPackageAllowedForRole('teacher', SUBSCRIPTION_CATALOG['gv-1m'])).toBe(true);
+    expect(isPackageAllowedForRole('teacher', SUBSCRIPTION_CATALOG['hs-12m'])).toBe(false);
+    expect(isPackageAllowedForRole('student', SUBSCRIPTION_CATALOG['gv-12m'])).toBe(false);
+    expect(isPackageAllowedForRole('teacher', SUBSCRIPTION_CATALOG['gv-12m'])).toBe(true);
     expect(isPackageAllowedForRole('student', SUBSCRIPTION_CATALOG['hs-12m'])).toBe(true);
   });
 

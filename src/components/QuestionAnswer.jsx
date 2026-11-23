@@ -53,7 +53,7 @@ export const QuestionImage = memo(function QuestionImage({ q, onZoom }) {
 /** Câu trắc nghiệm A/B/C/D (giữ nguyên giao diện cũ) */
 export const isChoiceType = (q) => {
   const t = qType(q);
-  return t !== 'true_false' && t !== 'short_answer';
+  return t !== 'true_false' && t !== 'short_answer' && t !== 'essay';
 };
 
 const TrueFalse = memo(function TrueFalse({ q, qi, picked, paused, onPick }) {
@@ -113,9 +113,38 @@ const ShortAnswer = memo(function ShortAnswer({ qi, picked, paused, onPick }) {
   );
 });
 
+const EssayAnswer = memo(function EssayAnswer({ qi, picked, paused, onPick }) {
+  return (
+    <div className="ep-sa" style={{ width: '100%' }}>
+      <label className="ep-sa-label" htmlFor={`essay-${qi}`}>Bài làm tự luận của em</label>
+      <textarea
+        id={`essay-${qi}`}
+        rows={6}
+        disabled={paused}
+        value={typeof picked === 'string' ? picked : ''}
+        placeholder="Nhập câu trả lời / đoạn văn / bài làm tự luận của em..."
+        onChange={(e) => onPick(qi, e.target.value)}
+        style={{
+          width: '100%',
+          minHeight: 130,
+          padding: '10px 12px',
+          borderRadius: 10,
+          border: '1.5px solid rgba(148,163,184,0.45)',
+          fontFamily: 'inherit',
+          fontSize: '0.96rem',
+          lineHeight: 1.6,
+          resize: 'vertical',
+        }}
+      />
+      <small>Bài làm tự luận sẽ được lưu nguyên văn để giáo viên chấm hoặc đối chiếu hướng dẫn chấm.</small>
+    </div>
+  );
+});
+
 export default function QuestionAnswer({ q, qi, picked, paused, onPick }) {
   const t = qType(q);
   if (t === 'true_false') return <TrueFalse q={q} qi={qi} picked={picked} paused={paused} onPick={onPick} />;
   if (t === 'short_answer') return <ShortAnswer qi={qi} picked={picked} paused={paused} onPick={onPick} />;
+  if (t === 'essay') return <EssayAnswer qi={qi} picked={picked} paused={paused} onPick={onPick} />;
   return null;
 }

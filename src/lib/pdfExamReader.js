@@ -487,7 +487,7 @@ function assembleRowLine(rowItems, medianH) {
   const zeros = '0'.repeat(cleanT.length);
   const looksLikeMultiCell =
     hasColumnGap &&
-    (/(?:^|\s)\(?[A-Da-d]\)?[.)]\s*\S/.test(cleanT) || /\d+\s+[A-Da-d]\b/.test(cleanT));
+    (/(?:^|\s)\(?[A-Da-d]\)?[.):]\s*\S/.test(cleanT) || /\d+\s+[A-Da-d]\b/.test(cleanT));
 
   return {
     t: cleanT,

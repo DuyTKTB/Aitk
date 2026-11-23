@@ -26,11 +26,13 @@ import {
 } from '../../lib/omrQuality.js';
 import {
   DEFAULT_SCORING, DEFAULT_COUNTS, MAX_COUNTS,
+  MOET_EXAM_PRESETS, matchMoetPreset,
   parseKeyP1, parseKeyP2, parseKeyP3, keyToTextP1, keyToTextP2, keyToTextP3,
   keyToStored, keyFromStored, keyP1FromExam, keyP2FromExam, keyP3FromExam,
   classifyExamQuestionPart, gradeSheet, maxScore, checkKey,
   parseRoster, answersToRead, resultsToRows, round2,
-  computePaperAnalytics,
+  computePaperAnalytics, answerKeyFromSheetRead, parseBulkMatrixKeys,
+  autoGenerateSbdRoster, buildScoreReportPrintHtml,
 } from '../../lib/paperGrade.js';
 import {
   listPaperExams, createPaperExam, updatePaperExam, deletePaperExam,
@@ -39,7 +41,10 @@ import {
 import sound from '../../lib/gameSound.js';
 import { exportStyledWorkbook } from '../../lib/excelExport.js';
 import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
-import { printOmrSheetA4 } from '../../lib/omrSheetGenerator.js';
+import OmrPrintStudioModal from './OmrPrintStudioModal.jsx';
+import OmrCameraModal from './OmrCameraModal.jsx';
+import SheetAnswerOverlay from './SheetAnswerOverlay.jsx';
+import { dispatchPrintDocument } from '../../lib/omrSheetGenerator.js';
 import EssayRubricGrader from './EssayRubricGrader.jsx';
 import TeacherPedagogyWorkbench from './TeacherPedagogyWorkbench.jsx';
 import '../../styles/paper-grading.css';
@@ -89,6 +94,7 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
   const [paperSearch, setPaperSearch] = useState('');
   const [paperClassFilter, setPaperClassFilter] = useState('all');
   const [confirmDeletePaper, setConfirmDeletePaper] = useState(null);
+  const [printStudio, setPrintStudio] = useState({ open: false, paper: null });
   const toastTimer = useRef(null);
 
   const papersGradedFloor = useMemo(
@@ -193,14 +199,25 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
     });
   }, [papers, paperSearch, paperClassFilter]);
 
-  const handlePrintSheet = () => {
+  const handlePrintSheet = (targetPaper = null) => {
     sound.pop?.();
-    printOmrSheetA4({ title: 'PHIẾU TRẢ LỜI TRẮC NGHIỆM' });
-    say('Đã mở cửa sổ in mẫu phiếu A4 chuẩn Bộ GD&ĐT 2025');
+    setPrintStudio({ open: true, paper: targetPaper || null });
   };
 
   return (
     <div className="pg">
+      <OmrPrintStudioModal
+        open={printStudio.open}
+        paper={printStudio.paper}
+        onClose={() => setPrintStudio({ open: false, paper: null })}
+        onPrinted={({ count, method }) => {
+          say(
+            method === 'download'
+              ? `Đã tải file A4 vector (${count} trang) chuẩn Bộ GD&ĐT!`
+              : `Đã mở lệnh in ${count} trang phiếu OMR A4 chuẩn Bộ GD&ĐT!`
+          );
+        }}
+      />
       {/* Toast thông báo góc màn hình kèm nút Hoàn tác */}
       {toast && (
         <div
@@ -259,10 +276,13 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
       {/* 1. VIEW DANH SÁCH BÀI CHẤM */}
       {view === 'list' && (
         <>
-          <header className="pg-head">
+          <header className="pg-head pg-head-hero">
             <div>
-              <h2><IcoScan size={22} /> Chấm Phiếu Trắc Nghiệm (OMR)</h2>
-              <p>Chấm tự động phiếu trả lời A4 bằng Camera thời gian thực hoặc file ảnh, tính điểm & chẩn đoán phổ điểm lớp học.</p>
+              <h2>
+                <IcoScan size={22} /> Chấm Phiếu Trắc Nghiệm (OMR)
+                <span className="pg-moet-pill">Chuẩn Bộ GD&amp;ĐT 2025+</span>
+              </h2>
+              <p>In &amp; chấm tự động phiếu A4 3 phần (ELEC Science AI) bằng Camera trực tiếp hoặc ảnh chụp, xuất Excel &amp; phân tích phổ điểm.</p>
             </div>
             <div className="pg-head-actions">
               <button
@@ -284,8 +304,8 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
               <button
                 type="button"
                 className="vt-btn sm"
-                onClick={handlePrintSheet}
-                title="Tải / In mẫu phiếu A4 chuẩn Bộ GD&ĐT 2025"
+                onClick={() => handlePrintSheet(null)}
+                title="Mở Studio Thiết kế & In mẫu phiếu A4 chuẩn Bộ GD&ĐT 2025"
               >
                 <IcoPrint size={14} /> Mẫu phiếu A4
               </button>
@@ -387,6 +407,14 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
                       <button
                         type="button"
                         className="vt-btn sm"
+                        onClick={() => handlePrintSheet(p)}
+                        title="In phiếu trả lời A4 theo cấu trúc & mã đề của bài chấm này"
+                      >
+                        <IcoPrint size={13} /> In phiếu
+                      </button>
+                      <button
+                        type="button"
+                        className="vt-btn sm"
                         onClick={() => { setCurrent(p); setView('analytics'); }}
                         title="Xem phổ điểm & ELEC AI Chẩn đoán"
                       >
@@ -455,13 +483,13 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
           onEditSetup={() => setView('setup')}
           onOpenAnalytics={() => {
             if (!vipUnlocked) {
-              say(`Phổ điểm & Chẩn đoán AI thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`, 'error');
+              say(`Phổ điểm & Chẩn đoán AI thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`, 'error');
               setView('analytics');
               return;
             }
             setView('analytics');
           }}
-          onPrintSheet={handlePrintSheet}
+          onPrintSheet={() => handlePrintSheet(current)}
           onPaperChange={(patch) => setCurrent((c) => ({ ...c, ...patch }))}
           say={say}
           vipUnlocked={vipUnlocked}
@@ -521,6 +549,11 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
   });
   const [active, setActive] = useState(codes[0] || '101');
   const [newCode, setNewCode] = useState('');
+  const [keyEntryMode, setKeyEntryMode] = useState('text'); // 'text' | 'grid'
+  const [showMatrixPaste, setShowMatrixPaste] = useState(false);
+  const [matrixText, setMatrixText] = useState('');
+  const [keyScanOpen, setKeyScanOpen] = useState(false);
+  const keyFileRef = useRef(null);
   const [rosterText, setRosterText] = useState(() =>
     Object.entries(initial?.sbdMap || {}).map(([sbd, s]) => `${sbd}\t${s.name}`).join('\n')
   );
@@ -530,6 +563,66 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
   const cur = texts[active] || { p1: '', p2: '', p3: '' };
   const setCur = (patch) => setTexts((t) => ({ ...t, [active]: { ...(t[active] || { p1: '', p2: '', p3: '' }), ...patch } }));
   const setCount = (k, v) => setCounts((c) => ({ ...c, [k]: Math.max(0, Math.min(MAX_COUNTS[k], Number(v) || 0)) }));
+
+  const applyScannedKeyResult = (res) => {
+    const targetCode = res?.code && /^\d{3}$/.test(res.code) ? res.code : active;
+    if (!codes.includes(targetCode)) {
+      setCodes((a) => [...a, targetCode].sort());
+    }
+    setTexts((t) => ({ ...t, [targetCode]: res.texts }));
+    setActive(targetCode);
+    setKeyScanOpen(false);
+    say?.(
+      `Đã nạp đáp án Mã ${targetCode} từ phiếu tô chuẩn: P.I (${res.filledCount.p1}c), P.II (${res.filledCount.p2}c), P.III (${res.filledCount.p3}c)`
+    );
+  };
+
+  const handleUploadKeySheet = async (file) => {
+    if (!file) return;
+    try {
+      const imgData = await fileToImageData(file);
+      const read = readSheet(imgData);
+      if (!read.ok) {
+        say?.(read.error || 'Chưa nhận diện được 4 góc phiếu đáp án mẫu.', 'error');
+        return;
+      }
+      const keyRes = answerKeyFromSheetRead(read, counts);
+      applyScannedKeyResult(keyRes);
+    } catch (e) {
+      say?.(e?.message || 'Không đọc được ảnh phiếu đáp án.', 'error');
+    } finally {
+      if (keyFileRef.current) keyFileRef.current.value = '';
+    }
+  };
+
+  const handleImportMatrix = () => {
+    const res = parseBulkMatrixKeys(matrixText, counts);
+    if (!res.parsedCount) {
+      say?.('Không tìm thấy mã đề hợp lệ (VD bảng Excel có hàng tiêu đề Câu | 101 | 102 | 103 | 104).', 'error');
+      return;
+    }
+    setCodes((prev) => [...new Set([...prev, ...res.codes])].sort());
+    setTexts((prev) => {
+      const next = { ...prev };
+      res.codes.forEach((c) => {
+        const k = res.byCode[c];
+        next[c] = { p1: keyToTextP1(k.p1), p2: keyToTextP2(k.p2), p3: keyToTextP3(k.p3) };
+      });
+      return next;
+    });
+    setActive(res.codes[0]);
+    setMatrixText('');
+    setShowMatrixPaste(false);
+    say?.(`Đã nhập nhanh đáp án cho ${res.parsedCount} mã đề: ${res.codes.join(', ')}`);
+  };
+
+  const add4CodesBatch = () => {
+    const base = codes.includes('101') && codes.includes('104') ? ['201', '202', '203', '204'] : ['101', '102', '103', '104'];
+    const merged = [...new Set([...codes, ...base])].sort();
+    setCodes(merged);
+    if (!codes.includes(base[0])) setActive(base[0]);
+    say?.(`Đã chuẩn bị các tab mã đề: ${merged.join(', ')}`);
+  };
 
   const parsed = useMemo(() => ({
     p1: parseKeyP1(cur.p1, MAX_COUNTS.p1),
@@ -654,7 +747,36 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
       </section>
 
       <section className="pg-block">
-        <h3>2. Cấu trúc số câu & Thang điểm (Chuẩn THPT 2025)</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h3>2. Cấu trúc số câu &amp; Thang điểm (Chuẩn Bộ GD&amp;ĐT 2025+)</h3>
+          <span className={'pg-tag ' + (Math.abs(max - 10) < 0.01 ? 'ok' : 'warn')}>
+            {Math.abs(max - 10) < 0.01
+              ? '✓ Chuẩn thang 10,0đ BGD'
+              : `Tổng ${fmt(max)}đ (tự quy đổi thang 10)`}
+          </span>
+        </div>
+
+        <div className="pg-moet-presets" role="group" aria-label="Mẫu cấu trúc Bộ GD&ĐT 2025">
+          <span className="pg-moet-presets-lbl">Mẫu chuẩn nhanh:</span>
+          {MOET_EXAM_PRESETS.map((preset) => {
+            const activePreset = matchMoetPreset(counts, scoring)?.id === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                className={'pg-preset-chip' + (activePreset ? ' on' : '')}
+                onClick={() => {
+                  setCounts({ ...preset.counts });
+                  setScoring({ ...preset.scoring });
+                  say?.(`Đã áp dụng mẫu ${preset.label}: ${preset.note}`);
+                }}
+                title={preset.note}
+              >
+                <b>{preset.shortLabel}</b>
+              </button>
+            );
+          })}
+        </div>
         <div className="pg-grid">
           <label className="pg-field">
             <span>Số câu Phần I (≤ {MAX_COUNTS.p1})</span>
@@ -723,19 +845,67 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
 
       <section className="pg-block">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3>3. Quản lý Mã Đề & Đáp Án</h3>
-          {exams.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--mut)' }}>Lấy từ đề online:</span>
+          <h3>3. Quản lý Mã Đề &amp; Đáp Án</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem' }}>
+            <input
+              ref={keyFileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => handleUploadKeySheet(e.target.files?.[0])}
+            />
+            <button
+              type="button"
+              className="vt-btn sm"
+              onClick={() => setKeyScanOpen(true)}
+              title="Đưa phiếu đáp án đã tô sẵn qua Camera để tự động điền toàn bộ đáp án (giống TNMaker)"
+            >
+              <IcoCamera size={13} /> Quét Phiếu Đáp Án
+            </button>
+            <button
+              type="button"
+              className="vt-btn sm"
+              onClick={() => keyFileRef.current?.click()}
+              title="Tải ảnh chụp tờ phiếu tô sẵn đáp án chuẩn"
+            >
+              <IcoScan size={13} /> Ảnh Đáp Án
+            </button>
+            <button
+              type="button"
+              className={'vt-btn sm' + (showMatrixPaste ? ' primary' : '')}
+              onClick={() => setShowMatrixPaste((v) => !v)}
+              title="Dán bảng đáp án nhiều mã đề từ Excel / McMix / TNMix"
+            >
+              Dán Bảng Excel
+            </button>
+            {exams.length > 0 && (
               <select onChange={(e) => e.target.value && importFromExam(e.target.value)} defaultValue="">
-                <option value="" disabled>-- Chọn đề có sẵn --</option>
+                <option value="" disabled>Lấy từ đề online…</option>
                 {exams.filter((x) => (x.questions || []).length).map((ex) => (
                   <option key={ex.id} value={ex.id}>{ex.title} ({ex.questions.length} câu)</option>
                 ))}
               </select>
-            </div>
-          )}
+            )}
+          </div>
         </div>
+
+        {showMatrixPaste && (
+          <div className="pg-matrix-drawer">
+            <p className="pg-note">
+              Dán trực tiếp bảng đáp án copy từ Excel / McMix / TNMix (dòng đầu chứa các mã đề 3 chữ số, VD: <code>Câu | 101 | 102 | 103 | 104</code>):
+            </p>
+            <textarea
+              rows={5}
+              value={matrixText}
+              onChange={(e) => setMatrixText(e.target.value)}
+              placeholder={'Câu\t101\t102\t103\t104\n1\tA\tC\tB\tD\n2\tB\tD\tA\tC'}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.45rem' }}>
+              <button type="button" className="vt-btn sm" onClick={() => setShowMatrixPaste(false)}>Đóng</button>
+              <button type="button" className="vt-btn sm primary" onClick={handleImportMatrix}>Nhập Tất Cả Mã Đề</button>
+            </div>
+          </div>
+        )}
 
         <div className="pg-codes" role="tablist">
           {codes.map((c) => (
@@ -755,49 +925,166 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
               value={newCode}
               onChange={(e) => setNewCode(e.target.value.replace(/\D/g, '').slice(0, 3))}
               placeholder="Mã mới"
-              onKeyDown={(e) => e.key === 'Enter' && addCode()}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCode())}
               inputMode="numeric"
             />
             <button type="button" className="vt-btn sm" onClick={addCode} disabled={!newCode}>
               <IcoPlus size={12} />
             </button>
           </span>
+          <button
+            type="button"
+            className="vt-btn sm"
+            onClick={add4CodesBatch}
+            title="Thêm nhanh 4 mã đề chuẩn (101–104 hoặc 201–204)"
+          >
+            + 4 Mã Đề
+          </button>
+
+          <div className="pg-mode-switch" style={{ marginLeft: 'auto' }}>
+            <button
+              type="button"
+              className={'pg-chip' + (keyEntryMode === 'text' ? ' on' : '')}
+              onClick={() => setKeyEntryMode('text')}
+            >
+              Nhập chuỗi
+            </button>
+            <button
+              type="button"
+              className={'pg-chip' + (keyEntryMode === 'grid' ? ' on' : '')}
+              onClick={() => setKeyEntryMode('grid')}
+            >
+              Bảng bấm ô
+            </button>
+          </div>
         </div>
 
-        <div className="pg-key">
-          <label className="pg-field">
-            <span>Phần I — {counts.p1} câu (VD: ABCDABCD… hoặc 1A 2B 3C…; <code>*</code> = cho điểm tất cả)</span>
-            <textarea
-              rows={4}
-              value={cur.p1}
-              onChange={(e) => setCur({ p1: e.target.value })}
-              spellCheck={false}
-              placeholder="ABCDABCDAB…"
-            />
-          </label>
+        {keyEntryMode === 'grid' ? (
+          <div className="pg-touch-keygrid">
+            {counts.p1 > 0 && (
+              <div>
+                <h4 style={{ margin: '0 0 0.45rem' }}>Phần I ({counts.p1} câu — chạm để chọn)</h4>
+                <div className="pg-touch-p1">
+                  {Array.from({ length: counts.p1 }, (_, i) => {
+                    const val = parsed.p1[i] || '';
+                    return (
+                      <div key={i} className="pg-touch-row">
+                        <b>{i + 1}</b>
+                        {['A', 'B', 'C', 'D'].map((opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            className={'pg-touch-opt' + (val === opt ? ' on' : '')}
+                            onClick={() => {
+                              const next = [...parsed.p1];
+                              next[i] = val === opt ? '' : opt;
+                              setCur({ p1: keyToTextP1(next) });
+                            }}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-          <label className="pg-field">
-            <span>Phần II — {counts.p2} câu, mỗi câu 1 dòng 4 ý a-d (VD: ĐSĐS hoặc DSDS)</span>
-            <textarea
-              rows={4}
-              value={cur.p2}
-              onChange={(e) => setCur({ p2: e.target.value })}
-              spellCheck={false}
-              placeholder={'ĐSĐS\nSSĐĐ'}
-            />
-          </label>
+            {counts.p2 > 0 && (
+              <div>
+                <h4 style={{ margin: '0.6rem 0 0.45rem' }}>Phần II ({counts.p2} câu Đúng / Sai)</h4>
+                <div className="pg-p2grid">
+                  {Array.from({ length: counts.p2 }, (_, q) => (
+                    <div key={q} className="pg-p2cell">
+                      <b>Câu {q + 1}</b>
+                      {[0, 1, 2, 3].map((yi) => {
+                        const val = parsed.p2[q]?.[yi] || '';
+                        return (
+                          <div key={yi} className="pg-touch-p2item">
+                            <span>{'abcd'[yi]}</span>
+                            {[['D', 'Đ'], ['S', 'S']].map(([codeCh, lbl]) => (
+                              <button
+                                key={codeCh}
+                                type="button"
+                                className={'pg-touch-opt sm' + (val === codeCh ? ' on' : '')}
+                                onClick={() => {
+                                  const next = parsed.p2.map((r) => [...r]);
+                                  if (!next[q]) next[q] = ['', '', '', ''];
+                                  next[q][yi] = val === codeCh ? '' : codeCh;
+                                  setCur({ p2: keyToTextP2(next) });
+                                }}
+                              >
+                                {lbl}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-          <label className="pg-field">
-            <span>Phần III — {counts.p3} câu, mỗi câu 1 dòng (chấp nhận số âm, dấu phẩy hoặc chấm: 0,5|0.5)</span>
-            <textarea
-              rows={4}
-              value={cur.p3}
-              onChange={(e) => setCur({ p3: e.target.value })}
-              spellCheck={false}
-              placeholder={'0,5\n12,2|12.2'}
-            />
-          </label>
-        </div>
+            {counts.p3 > 0 && (
+              <div>
+                <h4 style={{ margin: '0.6rem 0 0.45rem' }}>Phần III ({counts.p3} câu trả lời ngắn)</h4>
+                <div className="pg-p3grid">
+                  {Array.from({ length: counts.p3 }, (_, q) => (
+                    <label key={q} className="pg-field">
+                      <span>Câu {q + 1}</span>
+                      <input
+                        value={(parsed.p3[q] || []).join('|')}
+                        placeholder="VD: -1,5"
+                        onChange={(e) => {
+                          const next = parsed.p3.map((arr) => [...arr]);
+                          next[q] = e.target.value.split('|').map((x) => x.trim()).filter(Boolean);
+                          setCur({ p3: keyToTextP3(next) });
+                        }}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="pg-key">
+            <label className="pg-field">
+              <span>Phần I — {counts.p1} câu (VD: ABCDABCD… hoặc 1A 2B 3C…; <code>*</code> = cho điểm tất cả)</span>
+              <textarea
+                rows={4}
+                value={cur.p1}
+                onChange={(e) => setCur({ p1: e.target.value })}
+                spellCheck={false}
+                placeholder="ABCDABCDAB…"
+              />
+            </label>
+
+            <label className="pg-field">
+              <span>Phần II — {counts.p2} câu, mỗi câu 1 dòng 4 ý a-d (VD: ĐSĐS hoặc DSDS)</span>
+              <textarea
+                rows={4}
+                value={cur.p2}
+                onChange={(e) => setCur({ p2: e.target.value })}
+                spellCheck={false}
+                placeholder={'ĐSĐS\nSSĐĐ'}
+              />
+            </label>
+
+            <label className="pg-field">
+              <span>Phần III — {counts.p3} câu, mỗi câu 1 dòng (chấp nhận số âm, dấu phẩy hoặc chấm: 0,5|0.5)</span>
+              <textarea
+                rows={4}
+                value={cur.p3}
+                onChange={(e) => setCur({ p3: e.target.value })}
+                spellCheck={false}
+                placeholder={'0,5\n12,2|12.2'}
+              />
+            </label>
+          </div>
+        )}
 
         {missing.length > 0 && (
           <p className="pg-warn">
@@ -806,8 +1093,36 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
         )}
       </section>
 
+      <OmrCameraModal
+        open={keyScanOpen}
+        mode="key"
+        onClose={() => setKeyScanOpen(false)}
+        paper={{ title: title || 'Quét phiếu đáp án chuẩn' }}
+        codeList={codes}
+        counts={counts}
+        scoring={scoring}
+        vipUnlocked
+        omrRemaining={Infinity}
+        onKeyCaptured={applyScannedKeyResult}
+      />
+
       <section className="pg-block">
-        <h3>4. Danh sách SBD & Họ tên học sinh (Tùy chọn)</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h3>4. Danh sách SBD &amp; Họ tên học sinh (Tùy chọn)</h3>
+          {cls?.members?.length > 0 && (
+            <button
+              type="button"
+              className="vt-btn sm"
+              onClick={() => {
+                const gen = autoGenerateSbdRoster(cls.members);
+                setRosterText(gen.text);
+                say?.(`Đã tự động cấp SBD cho ${gen.count} học sinh lớp ${cls.name}!`);
+              }}
+            >
+              Tự đánh SBD cả lớp ({cls.members.length} HS)
+            </button>
+          )}
+        </div>
         <p className="pg-note">
           Dán trực tiếp từ Excel: mỗi dòng dạng <code>SBD [Tab] Họ và tên</code>. Hệ thống sẽ tự động ghép tên khi nhận dạng phiếu.
         </p>
@@ -847,17 +1162,14 @@ function PaperGrade({
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState('all'); // all | review | nomatch
+  const [gradeSearch, setGradeSearch] = useState('');
+  const [gradeSort, setGradeSort] = useState('sbd'); // sbd | score_desc | score_asc
   const fileRef = useRef(null);
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
   // Live Camera Scanner State
   const [cameraOpen, setCameraOpen] = useState(false);
-  const [cameraLoading, setCameraLoading] = useState(false);
-  const [cameraFeedback, setCameraFeedback] = useState(null);
-  const videoRef = useRef(null);
-  const streamRef = useRef(null);
-  const canvasRef = useRef(null);
 
   const keys = useMemo(() => {
     const out = {};
@@ -928,18 +1240,8 @@ function PaperGrade({
     itemsRef.current.forEach((it) => it.url && URL.revokeObjectURL(it.url));
   }, []);
 
-  /* FIX: Cleanup camera stream khi unmount */
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-    };
-  }, []);
-
   const triggerOmrVipUpgrade = useCallback((customMsg) => {
-    const msg = customMsg || `Bạn đã dùng hết ${maxOmrTrial} phiếu chấm OMR thử nghiệm miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để chấm không giới hạn!`;
+    const msg = customMsg || `Bạn đã dùng hết ${maxOmrTrial} phiếu chấm OMR thử nghiệm miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để chấm không giới hạn!`;
     say(msg, 'error');
     onRequestUpgrade?.(msg);
   }, [maxOmrTrial, onRequestUpgrade, say]);
@@ -1012,130 +1314,32 @@ function PaperGrade({
   };
 
   /* ============ CAMERA LIVE SCANNER ============ */
-  const startCamera = async () => {
+  const startCamera = () => {
     if (!vipUnlocked && omrRemaining <= 0) {
       triggerOmrVipUpgrade();
       return;
     }
+    sound.ding?.();
     setCameraOpen(true);
-    setCameraLoading(true);
-    setCameraFeedback(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play?.().catch(() => {});
-      }
-      setCameraLoading(false);
-      sound.ding();
-    } catch (err) {
-      say('Không thể mở camera: ' + err.message, 'error');
-      setCameraOpen(false);
-      setCameraLoading(false);
-    }
   };
 
-  useEffect(() => {
-    if (!cameraOpen || cameraLoading) return;
-    const video = videoRef.current;
-    const stream = streamRef.current;
-    if (video && stream && video.srcObject !== stream) {
-      video.srcObject = stream;
-      video.play?.().catch(() => {});
-    }
-  }, [cameraOpen, cameraLoading]);
-
-  /* FIX: stopCamera reset feedback + dọn stream */
   const stopCamera = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
     setCameraOpen(false);
-    setCameraFeedback(null);
   }, []);
 
-  const captureAndScan = async () => {
-    if (!vipUnlocked && omrRemaining <= 0) {
-      stopCamera();
-      triggerOmrVipUpgrade();
-      return;
+  const handleCameraScanned = useCallback(({ item, codeKnown }) => {
+    setItems((cur) => [...cur, item]);
+    if (codeKnown) sound.cheer?.();
+    else sound.wrong?.();
+
+    if (!vipUnlocked) {
+      const leftAfter = Math.max(0, omrRemaining - 1);
+      onOmrUsed?.(1);
+      if (leftAfter === 0) {
+        setTimeout(() => setCameraOpen(false), 950);
+      }
     }
-    const video = videoRef.current;
-    if (!video) return;
-
-    try {
-      const canvas = canvasRef.current || document.createElement('canvas');
-      canvas.width = video.videoWidth || 1920;
-      canvas.height = video.videoHeight || 1080;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const camQ = measureImageQuality(imgData);
-      const read = readSheet(imgData);
-
-      if (!read.ok) {
-        sound.wrong?.();
-        setCameraFeedback({ ok: false, msg: read.error || 'Chưa nhận diện được 4 góc A4. Hãy căn phiếu ngay ngắn!' });
-        return;
-      }
-
-      // Tạo canvas nhỏ để lưu preview ảnh
-      const thumbUrl = canvas.toDataURL('image/jpeg', 0.85);
-      let code = read.code;
-      if (!keys[code] && codeList.length === 1) code = codeList[0];
-      const codeKnown = !!keys[code];
-
-      const item = {
-        id: nextId(),
-        fileName: `camera_${read.sbd || Date.now()}.jpg`,
-        url: thumbUrl,
-        status: 'done',
-        sbd: read.sbd,
-        code,
-        readCode: read.code,
-        read: { p1: read.p1, p2: read.p2, p3: read.p3 },
-        issues: [...(read.issues || []), ...camQ.issues],
-        quality: { ...(read.quality || {}), image: camQ, warn: read.quality?.warn || !camQ.ok },
-        needsReview: !codeKnown || (read.issues && read.issues.length > 0)
-          || !read.sbd || read.sbd.includes('?') || !camQ.ok,
-      };
-
-      /* Giữ cả phiếu trùng SBD, chỉ đánh dấu — xem chú thích ở luồng chấm ảnh hàng loạt */
-      setItems((cur) => [...cur, item]);
-      if (!vipUnlocked) {
-        const leftAfter = Math.max(0, omrRemaining - 1);
-        onOmrUsed?.(1);
-        if (leftAfter === 0) {
-          setTimeout(() => { stopCamera(); }, 950);
-        }
-      }
-
-      const key = codeKnown ? keys[code] : null;
-      const grade = key ? gradeSheet(read, key, counts, scoring) : null;
-
-      if (codeKnown) {
-        sound.cheer?.();
-        setCameraFeedback({
-          ok: true,
-          msg: `Đã quét · SBD: ${read.sbd || '---'} · Mã đề: ${code || '---'} · Điểm: ${fmt(grade?.score10)}/10`,
-        });
-      } else {
-        sound.wrong?.();
-        setCameraFeedback({
-          ok: false,
-          msg: `Đã chụp · SBD: ${read.sbd || '---'} · Mã đề "${read.code || '---'}" chưa có đáp án trong kỳ thi, cần kiểm tra lại!`,
-        });
-      }
-    } catch (e) {
-      sound.wrong?.();
-      setCameraFeedback({ ok: false, msg: 'Lỗi: ' + e.message });
-    }
-  };
+  }, [vipUnlocked, omrRemaining, onOmrUsed]);
 
   /* FIX: updateItem đánh dấu studentManual khi sửa thông tin HS */
   const updateItem = useCallback((id, patch) => {
@@ -1185,10 +1389,36 @@ function PaperGrade({
   };
 
   const visible = graded.filter((it) => {
-    if (filter === 'review') return it.needsReview;
-    if (filter === 'nomatch') return !it.studentName;
-    return true;
+    if (filter === 'review' && !it.needsReview) return false;
+    if (filter === 'nomatch' && it.studentName) return false;
+    const q = gradeSearch.trim().toLowerCase();
+    if (!q) return true;
+    return String(it.sbd || '').toLowerCase().includes(q)
+      || String(it.studentName || '').toLowerCase().includes(q)
+      || String(it.code || '').toLowerCase().includes(q);
   });
+
+  const shownRows = useMemo(() => {
+    const arr = visible.slice();
+    if (gradeSort === 'score_desc') {
+      arr.sort((a, b) => (b.grade?.score10 ?? -1) - (a.grade?.score10 ?? -1));
+    } else if (gradeSort === 'score_asc') {
+      arr.sort((a, b) => (a.grade?.score10 ?? 99) - (b.grade?.score10 ?? 99));
+    } else {
+      arr.sort((a, b) => String(a.sbd || '').localeCompare(String(b.sbd || '')));
+    }
+    return arr;
+  }, [visible, gradeSort]);
+
+  const handlePrintReport = () => {
+    if (!okRows.length) return;
+    try {
+      dispatchPrintDocument(buildScoreReportPrintHtml({ paper, results: graded, classInfo }));
+      say('Đã mở cửa sổ In / Lưu PDF Bảng Điểm A4!');
+    } catch (e) {
+      say(e?.message || 'Không mở được bản in bảng điểm.', 'error');
+    }
+  };
 
   const okRows = graded.filter((it) => it.status === 'done' && it.grade);
   const stats = useMemo(() => {
@@ -1243,7 +1473,7 @@ function PaperGrade({
 
   const handleExport = async () => {
     if (!vipUnlocked) {
-      triggerOmrVipUpgrade(`Xuất bảng điểm chấm phiếu OMR ra Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`);
+      triggerOmrVipUpgrade(`Xuất bảng điểm chấm phiếu OMR ra Excel (.xlsx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`);
       return;
     }
     if (!okRows.length) return;
@@ -1398,8 +1628,29 @@ function PaperGrade({
                   {l}
                 </button>
               ))}
+              <input
+                type="search"
+                className="pg-mini-input"
+                value={gradeSearch}
+                onChange={(e) => setGradeSearch(e.target.value)}
+                placeholder="Tìm SBD, họ tên, mã…"
+                aria-label="Tìm học sinh theo SBD, họ tên hoặc mã đề"
+              />
+              <select
+                className="pg-mini-input"
+                value={gradeSort}
+                onChange={(e) => setGradeSort(e.target.value)}
+                aria-label="Sắp xếp bảng điểm"
+              >
+                <option value="sbd">Xếp theo SBD</option>
+                <option value="score_desc">Điểm cao → thấp</option>
+                <option value="score_asc">Điểm thấp → cao</option>
+              </select>
             </div>
             <div className="pg-head-actions">
+              <button type="button" className="vt-btn sm" onClick={handlePrintReport} disabled={!okRows.length}>
+                <IcoPrint size={13} /> In / PDF Bảng điểm
+              </button>
               <button type="button" className="vt-btn sm" onClick={handleExport} disabled={!okRows.length}>
                 <IcoDownload size={13} /> Xuất Excel (.xlsx)
               </button>
@@ -1432,7 +1683,7 @@ function PaperGrade({
                 </tr>
               </thead>
               <tbody>
-                {visible.slice().sort((a, b) => String(a.sbd).localeCompare(String(b.sbd))).map((it) => (
+                {shownRows.map((it) => (
                   <tr key={it.id} className={it.needsReview ? 'review' : ''}>
                     {it.status === 'error' ? (
                       <>
@@ -1499,82 +1750,49 @@ function PaperGrade({
         </>
       )}
 
-      {/* MODAL SHEET EDITOR: ĐỐI CHIẾU ẢNH THẬT & SỬA TAY */}
-      {editing && (
-        <SheetEditor
-          item={editing}
-          codes={codeList}
-          members={members}
-          counts={counts}
-          onChange={(patch) => updateItem(editing.id, patch)}
-          onApprove={() => updateItem(editing.id, { needsReview: false, edited: true })}
-          onClose={() => setEditId(null)}
-        />
-      )}
+      {/* MODAL SHEET EDITOR: ĐỐI CHIẾU ẢNH THẬT + LỚP PHỦ XANH/ĐỎ KIỂU TNMAKER */}
+      {editing && (() => {
+        const navPool = shownRows.filter((r) => r.status !== 'error');
+        const curIdx = navPool.findIndex((r) => r.id === editing.id);
+        return (
+          <SheetEditor
+            item={editing}
+            codes={codeList}
+            members={members}
+            counts={counts}
+            navInfo={curIdx >= 0 ? { index: curIdx, total: navPool.length } : null}
+            onNavigate={(delta) => {
+              if (curIdx < 0 || !navPool.length) return;
+              const nextIdx = (curIdx + delta + navPool.length) % navPool.length;
+              setEditId(navPool[nextIdx].id);
+            }}
+            onChange={(patch) => updateItem(editing.id, patch)}
+            onApprove={() => updateItem(editing.id, { needsReview: false, edited: true })}
+            onClose={() => setEditId(null)}
+          />
+        );
+      })()}
 
-      {/* MODAL LIVE CAMERA SCANNER */}
-      {cameraOpen && (
-        <div
-          className="pg-cam-modal animate-pop"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Camera chấm phiếu A4"
-        >
-          <header className="pg-cam-head">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <IcoCamera size={22} color="#38bdf8" />
-              <strong>Camera Chấm Phiếu A4 Thời Gian Thực</strong>
-            </div>
-            <button type="button" className="vt-btn sm" onClick={stopCamera} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              Đóng Camera <IcoX size={13} />
-            </button>
-          </header>
-
-          <div className="pg-cam-body">
-            {cameraLoading && (
-              <div style={{ position: 'absolute', color: '#fff', zIndex: 20 }}>
-                Đang khởi động camera...
-              </div>
-            )}
-            <video ref={videoRef} className="pg-cam-video" playsInline autoPlay muted />
-
-            {/* Khung ngắm A4 Finder */}
-            <div className="pg-cam-viewfinder">
-              <div className="pg-cam-corner tl" />
-              <div className="pg-cam-corner tr" />
-              <div className="pg-cam-corner bl" />
-              <div className="pg-cam-corner br" />
-              <div className="pg-cam-scanline" />
-            </div>
-
-            {/* Nút chụp ngay trên Camera */}
-            <div className="pg-cam-hud">
-              <button
-                type="button"
-                className="vt-btn primary"
-                style={{ padding: '0.8rem 2rem', fontSize: '1rem', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-                onClick={captureAndScan}
-              >
-                <IcoCamera size={18} /> Chụp & Nhận Diện Phiếu Này
-              </button>
-            </div>
-          </div>
-
-          {cameraFeedback && (
-            <div style={{
-              margin: '0.75rem auto 0',
-              padding: '0.75rem 1.5rem',
-              borderRadius: 14,
-              background: cameraFeedback.ok ? '#10b981' : '#ef4444',
-              color: '#ffffff',
-              fontWeight: 700,
-              textAlign: 'center',
-            }}>
-              {cameraFeedback.msg}
-            </div>
-          )}
-        </div>
-      )}
+      {/* MODAL CAMERA CHẤM PHIẾU A4 THEO ĐỀ */}
+      <OmrCameraModal
+        open={cameraOpen}
+        onClose={stopCamera}
+        paper={paper}
+        keys={keys}
+        codeList={codeList}
+        counts={counts}
+        scoring={scoring}
+        vipUnlocked={vipUnlocked}
+        omrRemaining={omrRemaining}
+        scannedCount={items.length}
+        onScanned={handleCameraScanned}
+        onRemoveItem={removeItem}
+        onEditItem={(id) => setEditId(id)}
+        onQuotaExhausted={() => {
+          stopCamera();
+          triggerOmrVipUpgrade();
+        }}
+      />
     </div>
   );
 }
@@ -1582,10 +1800,11 @@ function PaperGrade({
 /* ============================================================
    SUB-COMPONENT: TRÌNH SỬA PHIẾU CHI TIẾT (SHEET EDITOR)
    ============================================================ */
-function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClose }) {
+function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate = null, onChange, onApprove, onClose }) {
   const [imgZoom, setImgZoom] = useState(1);
   const [imgRotate, setImgRotate] = useState(0);
   const [onlySuspicious, setOnlySuspicious] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(true);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -1651,8 +1870,18 @@ function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClos
             <div className="pg-ed-img" style={{ position: 'relative', overflow: 'auto' }}>
               <div style={{
                 position: 'sticky', top: 6, zIndex: 3, display: 'flex', gap: '0.35rem',
-                justifyContent: 'flex-end', marginBottom: '0.4rem',
+                justifyContent: 'flex-end', marginBottom: '0.4rem', flexWrap: 'wrap',
               }}>
+                {item.quality?.cornersNorm && item.grade && (
+                  <button
+                    type="button"
+                    className={'vt-btn sm' + (showOverlay ? ' primary' : '')}
+                    onClick={() => setShowOverlay((v) => !v)}
+                    title="Hiện / ẩn vòng tròn xanh-đỏ đối chiếu đáp án trên ảnh phiếu"
+                  >
+                    {showOverlay ? 'Đang phủ Đúng/Sai' : 'Hiện Đúng/Sai'}
+                  </button>
+                )}
                 <button
                   type="button"
                   className="vt-btn sm"
@@ -1671,16 +1900,29 @@ function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClos
                 </button>
               </div>
               <div style={{ overflow: 'auto', textAlign: 'center' }}>
-                <img
-                  src={item.url}
-                  alt={`Ảnh phiếu ${item.fileName}`}
+                <div
                   style={{
-                    transform: ` scale(${imgZoom}) rotate(${imgRotate}deg)`,
+                    position: 'relative',
+                    display: 'inline-block',
+                    transform: `scale(${imgZoom}) rotate(${imgRotate}deg)`,
                     transformOrigin: 'top center',
                     transition: 'transform 0.18s ease',
                     maxWidth: '100%',
                   }}
-                />
+                >
+                  <img
+                    src={item.url}
+                    alt={`Ảnh phiếu ${item.fileName}`}
+                    style={{ display: 'block', width: '100%', height: 'auto' }}
+                  />
+                  {showOverlay && item.quality?.cornersNorm && item.grade && (
+                    <SheetAnswerOverlay
+                      grade={item.grade}
+                      cornersNorm={item.quality.cornersNorm}
+                      counts={counts}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1752,8 +1994,14 @@ function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClos
                   {Array.from({ length: counts.p1 }, (_, q) => {
                     const sus = issueAt((x) => x.part === 'p1' && x.q === q + 1);
                     if (onlySuspicious && !sus) return null;
+                    const detail = item.grade?.detail?.p1?.[q];
+                    const tone = sus ? 'sus' : detail?.ok === true ? 'ok' : detail?.ok === false ? 'bad' : '';
                     return (
-                      <label key={q} className={'pg-p1cell' + (sus ? ' sus' : '')}>
+                      <label
+                        key={q}
+                        className={'pg-p1cell' + (tone ? ` ${tone}` : '')}
+                        title={detail?.key ? `Đáp án chuẩn: ${detail.key}` : undefined}
+                      >
                         <span>{q + 1}</span>
                         <select value={read.p1?.[q] || ''} onChange={(e) => setP1(q, e.target.value)}>
                           <option value="">—</option>
@@ -1828,15 +2076,26 @@ function SheetEditor({ item, codes, members, counts, onChange, onApprove, onClos
           </div>
         </div>
 
-        <footer className="pg-foot">
-          {item.needsReview && (
-            <button type="button" className="vt-btn" onClick={onApprove}>
-              <IcoCheck size={14} /> Xác nhận không còn nghi ngờ
+        <footer className="pg-foot" style={{ justifyContent: 'space-between' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            {navInfo && navInfo.total > 1 && onNavigate && (
+              <>
+                <button type="button" className="vt-btn sm" onClick={() => onNavigate(-1)}>← Trước</button>
+                <span className="pg-note" style={{ fontWeight: 700 }}>{navInfo.index + 1} / {navInfo.total}</span>
+                <button type="button" className="vt-btn sm" onClick={() => onNavigate(1)}>Sau →</button>
+              </>
+            )}
+          </div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+            {item.needsReview && (
+              <button type="button" className="vt-btn" onClick={onApprove}>
+                <IcoCheck size={14} /> Xác nhận không còn nghi ngờ
+              </button>
+            )}
+            <button type="button" className="vt-btn primary" onClick={onClose}>
+              Xong &amp; Đóng
             </button>
-          )}
-          <button type="button" className="vt-btn primary" onClick={onClose}>
-            Xong & Đóng
-          </button>
+          </div>
         </footer>
       </div>
     </div>

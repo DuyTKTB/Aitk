@@ -57,6 +57,10 @@
   grid-template-columns: repeat(3, 1fr);
 }
 
+.apl-pay-options.is-single {
+  grid-template-columns: 1fr;
+}
+
 @media (max-width: 540px) {
   .apl-pay-options,
   .apl-pay-options.is-student,

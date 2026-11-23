@@ -293,7 +293,7 @@ export default function Dashboard({ onNavigate }) {
           Icon={IconCrown}
           label="Thuê bao VIP / PRO"
           value={keyStats?.proActive ?? 0}
-          sub={`${keyStats?.teacherProActive ?? 0} GV (399k) · ${keyStats?.studentVipActive ?? 0} HS (199k)`}
+          sub={`${keyStats?.teacherProActive ?? 0} GV (999k/năm) · ${keyStats?.studentVipActive ?? 0} HS (299k/năm)`}
           onClick={() => onNavigate('pro-users')}
           danger={keyStats?.soon?.length > 0}
         />

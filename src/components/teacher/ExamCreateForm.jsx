@@ -91,7 +91,7 @@ const round2 = (n) => Math.round(n * 100) / 100;
 
 const normType = (q) => {
   const t = q?.type;
-  if (t === 'true_false' || t === 'short_answer') return t;
+  if (t === 'true_false' || t === 'short_answer' || t === 'essay') return t;
   return 'single_choice';
 };
 
@@ -119,6 +119,20 @@ const emptyQuestion = (type = 'single_choice') => {
       answer: '',
       accepted: [],
       points: 0.25,
+      explain: '',
+      warns: [],
+      topic: '',
+      level: '',
+    };
+  }
+  if (type === 'essay') {
+    return {
+      type: 'essay',
+      q: '',
+      options: [],
+      correct: -1,
+      answer: '',
+      points: 1,
       explain: '',
       warns: [],
       topic: '',
@@ -153,6 +167,8 @@ const toFormQuestion = (q) => {
     ...(q.passage ? { passage: q.passage } : {}),
     ...(q.instruction ? { instruction: q.instruction } : {}),
     ...(q.passageId != null ? { passageId: q.passageId } : {}),
+    ...((q.groupId || q.pg) ? { groupId: q.groupId || q.pg } : {}),
+    ...(q.lockGroupQuestionOrder ? { lockGroupQuestionOrder: true } : {}),
   };
 
   if (type === 'true_false') {
@@ -171,14 +187,14 @@ const toFormQuestion = (q) => {
     };
   }
 
-  if (type === 'short_answer') {
+  if (type === 'short_answer' || type === 'essay') {
     const ans = String(q.answer ?? (typeof q.correct === 'string' ? q.correct : '')).trim();
     return {
       ...base,
       options: [],
       correct: -1,
       answer: ans,
-      accepted: Array.isArray(q.accepted) ? q.accepted : [],
+      accepted: type === 'short_answer' && Array.isArray(q.accepted) ? q.accepted : [],
     };
   }
 
@@ -385,7 +401,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
   useEffect(() => {
     onDirty?.(
       !!title.trim() ||
-      questions.some((q) => q.q.trim() || (q.options || []).some((o) => o.trim()) || String(q.answer || '').trim())
+      questions.some((q) => q.q.trim() || String(q.passage || '').trim() || (q.options || []).some((o) => o.trim()) || String(q.answer || '').trim())
     );
   }, [title, questions]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -406,7 +422,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
   );
 
   const typeCounts = useMemo(() => {
-    const c = { single_choice: 0, true_false: 0, short_answer: 0 };
+    const c = { single_choice: 0, true_false: 0, short_answer: 0, essay: 0 };
     questions.forEach((q) => { c[normType(q)] += 1; });
     return c;
   }, [questions]);
@@ -532,9 +548,13 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
 
   /* Chia điểm nhanh chuẩn THPT 2025 hoặc Chia đều tổng 10 điểm */
   const applyThpt2025Points = () => {
+    const curSubj = initial?.subject || classInfo?.subject || classes.find((c) => c.id === classId)?.subject || '';
+    const isMath = /to[aá]n/i.test(curSubj);
     setQuestions((qs) => qs.map((q) => {
       const t = normType(q);
       if (t === 'true_false') return { ...q, points: 1 };
+      if (t === 'essay') return { ...q, points: Number(q.points) >= 0.5 ? Number(q.points) : 1 };
+      if (t === 'short_answer') return { ...q, points: isMath ? 0.5 : 0.25 };
       return { ...q, points: 0.25 };
     }));
   };
@@ -549,7 +569,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
   };
 
   const promptVipProctor = () => {
-    if (typeof onRequestUpgrade === 'function') onRequestUpgrade('Giám sát Camera AI & Chế độ Siêu chặt thuộc gói Giáo viên VIP (399.000đ/tháng).');
+    if (typeof onRequestUpgrade === 'function') onRequestUpgrade('Giám sát Camera AI & Chế độ Siêu chặt thuộc gói Giáo viên VIP (999.000đ/năm).');
     else if (typeof window !== 'undefined') window.location.hash = 'profile?tab=vip';
   };
   const VIP_PROCTOR_KEYS = new Set(['camera', 'audioMonitor', 'requireAiModel', 'singleDeviceLock', 'blockMultiScreen', 'lockdown']);
@@ -601,7 +621,9 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     if (!questions.length) return 'Đề thi cần ít nhất 1 câu hỏi.';
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
-      if (!String(q.q || '').trim()) return `Câu ${i + 1}: chưa có nội dung câu hỏi.`;
+      if (!String(q.q || '').trim() && !String(q.passage || '').trim() && !q.image) {
+        return `Câu ${i + 1}: chưa có nội dung câu hỏi.`;
+      }
       const t = normType(q);
       if (t === 'true_false') {
         const st = q.statements || [];
@@ -611,6 +633,9 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
       }
       if (t === 'short_answer') {
         if (!String(q.answer ?? '').trim()) return `Câu ${i + 1} (Trả lời ngắn): chưa nhập đáp án đúng.`;
+        continue;
+      }
+      if (t === 'essay') {
         continue;
       }
       const filled = (q.options || []).filter((o) => String(o).trim()).length;
@@ -639,6 +664,8 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
         ...(q.passage ? { passage: q.passage } : {}),
         ...(q.instruction ? { instruction: q.instruction } : {}),
         ...(q.passageId != null ? { passageId: q.passageId } : {}),
+        ...((q.groupId || q.pg) ? { groupId: q.groupId || q.pg } : {}),
+        ...(q.lockGroupQuestionOrder ? { lockGroupQuestionOrder: true } : {}),
       };
 
       if (t === 'true_false') {
@@ -661,6 +688,15 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
           correct: -1,
           answer: vi,
           accepted: [...new Set([vi, vi.replace(',', '.'), ...(q.accepted || [])])].filter(Boolean),
+        };
+      }
+
+      if (t === 'essay') {
+        return {
+          ...base,
+          options: [],
+          correct: -1,
+          ...(String(q.answer ?? '').trim() ? { answer: String(q.answer).trim() } : {}),
         };
       }
 
@@ -993,7 +1029,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
               Danh sách câu hỏi ({questions.length} câu · Tổng {totalPoints} điểm)
             </h3>
             <small style={{ color: 'var(--mut)', fontSize: '0.76rem' }}>
-              Phần I (Trắc nghiệm): {typeCounts.single_choice} · Phần II (Đúng/Sai): {typeCounts.true_false} · Phần III (Trả lời ngắn): {typeCounts.short_answer}
+              Phần I (Trắc nghiệm): {typeCounts.single_choice} · Phần II (Đúng/Sai): {typeCounts.true_false} · Phần III (Trả lời ngắn): {typeCounts.short_answer}{typeCounts.essay > 0 ? ` · Tự luận: ${typeCounts.essay}` : ''}
             </small>
           </div>
 
@@ -1104,6 +1140,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
                     <option value="single_choice">Phần I · Trắc nghiệm 4 lựa chọn</option>
                     <option value="true_false">Phần II · Đúng / Sai (4 ý a, b, c, d)</option>
                     <option value="short_answer">Phần III · Trả lời ngắn (Điền đáp số)</option>
+                    <option value="essay">Tự luận / Đọc hiểu mở</option>
                   </select>
 
                   {q.topic && (
@@ -1164,10 +1201,33 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
                   </div>
                 </div>
 
+                {(q.instruction || q.passage) && (
+                  <div
+                    style={{
+                      marginBottom: '.65rem',
+                      padding: '.6rem .75rem',
+                      borderRadius: 8,
+                      background: 'rgba(14,165,233,.06)',
+                      border: '1px solid rgba(14,165,233,.22)',
+                      fontSize: '.86rem',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {q.instruction && (
+                      <div style={{ fontStyle: 'italic', marginBottom: q.passage ? '.35rem' : 0, color: '#0369a1' }}>
+                        {q.instruction}
+                      </div>
+                    )}
+                    {q.passage && (
+                      <div style={{ lineHeight: 1.55 }}>{q.passage}</div>
+                    )}
+                  </div>
+                )}
+
                 <label className="cep-field" style={{ marginBottom: '.6rem' }}>
                   <span>Nội dung câu hỏi (hỗ trợ công thức LaTeX $...$)</span>
                   <textarea
-                    placeholder="Nhập đề bài hoặc bấm thanh công thức phía trên..."
+                    placeholder={q.passage ? 'Câu hỏi điền khuyết (có thể để trống nếu chỉ chọn đáp án cho chỗ trống trong đoạn văn)...' : 'Nhập đề bài hoặc bấm thanh công thức phía trên...'}
                     value={q.q}
                     onFocus={(e) => {
                       activeInputRef.current = e.target;
@@ -1321,6 +1381,25 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
                   </div>
                 )}
 
+                {/* DẠNG 4: TỰ LUẬN */}
+                {qType === 'essay' && (
+                  <div style={{ marginBottom: '.65rem' }}>
+                    <label className="cep-field">
+                      <span>Gợi ý trả lời / Hướng dẫn chấm (tùy chọn)</span>
+                      <textarea
+                        rows={2}
+                        placeholder="Nhập ý chính hoặc biểu điểm hướng dẫn chấm..."
+                        value={q.answer ?? ''}
+                        onFocus={(e) => {
+                          activeInputRef.current = e.target;
+                          activeTargetRef.current = { qi, field: 'answer', subIdx: -1 };
+                        }}
+                        onChange={(e) => updateQ(qi, { answer: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                )}
+
                 <div className="cep-row" style={{ alignItems: 'flex-start' }}>
                   <label className="cep-field" style={{ flex: 1 }}>
                     <span>Lời giải chi tiết (tùy chọn — hiện sau khi học sinh nộp bài)</span>
@@ -1362,6 +1441,9 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
           </button>
           <button type="button" className="cep-add-btn" onClick={() => addQuestion('short_answer')}>
             <IcoPlus size={14} /> + Câu Trả lời ngắn (Phần III)
+          </button>
+          <button type="button" className="cep-add-btn" onClick={() => addQuestion('essay')}>
+            <IcoPlus size={14} /> + Câu Tự luận
           </button>
           <button type="button" className="cep-add-btn" onClick={() => setShowBankPicker(true)}>
             <IcoLibrary size={14} /> + Chọn từ Ngân hàng câu hỏi

@@ -213,10 +213,19 @@ export default function CreateExamPage({
             level: q.level || '',
             levelKey: q.levelKey,
             warns: q.warns || [],
+            ...(q.image ? { image: q.image } : {}),
+            ...(Array.isArray(q.images) && q.images.length ? { images: q.images } : {}),
+            ...(q.optionImages ? { optionImages: q.optionImages } : {}),
+            ...(q.passage ? { passage: q.passage } : {}),
+            ...(q.instruction ? { instruction: q.instruction } : {}),
+            ...(q.passageId != null ? { passageId: q.passageId } : {}),
+            ...((q.groupId || q.pg) ? { groupId: q.groupId || q.pg } : {}),
+            ...(q.lockGroupQuestionOrder ? { lockGroupQuestionOrder: true } : {}),
           };
-          /* Giữ đủ dữ liệu cho câu Đúng/Sai và Trả lời ngắn (trước đây bị cắt mất) */
+          /* Giữ đủ dữ liệu cho câu Đúng/Sai, Trả lời ngắn và Tự luận (không làm mất passage/image/answer) */
           if (type === 'true_false') return { ...base, statements: q.statements || [] };
           if (type === 'short_answer') return { ...base, answer: q.answer ?? '', accepted: q.accepted || [] };
+          if (type === 'essay') return { ...base, options: [], correct: -1, answer: q.answer ?? '' };
           return {
             ...base,
             options: q.options || [],
@@ -251,7 +260,7 @@ export default function CreateExamPage({
   const handleSave = async (data) => {
     const isFileSource = data?.source === 'file-import';
     if (!vipUnlocked && !isFileSource && getManualEntryTrialRemaining(user?.uid, false) <= 0) {
-      const msg = `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/${FREE_TEACHER_LIMITS.maxManualEntries} lượt tạo/nhập thủ công miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để sử dụng không giới hạn.`;
+      const msg = `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries}/${FREE_TEACHER_LIMITS.maxManualEntries} lượt tạo/nhập thủ công miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để sử dụng không giới hạn.`;
       toast.error(msg);
       onRequestUpgrade?.(msg);
       throw new Error(msg);
@@ -440,7 +449,7 @@ export default function CreateExamPage({
           <TeacherVipLock
             title={`Đã dùng hết ${FREE_TEACHER_LIMITS.maxManualEntries} lượt tạo/nhập thủ công của gói Giáo viên Free`}
             quotaText={`Đã dùng ${manualTrialUsed}/${FREE_TEACHER_LIMITS.maxManualEntries} lượt thủ công · ${existingExamCount}/${FREE_TEACHER_LIMITS.maxExams} đề`}
-            description={`Tài khoản Giáo viên miễn phí hỗ trợ dùng thử tối đa ${FREE_TEACHER_LIMITS.maxManualEntries} lần nhập thủ công. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để tạo và giao không giới hạn đề kiểm tra.`}
+            description={`Tài khoản Giáo viên miễn phí hỗ trợ dùng thử tối đa ${FREE_TEACHER_LIMITS.maxManualEntries} lần nhập thủ công. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để tạo và giao không giới hạn đề kiểm tra.`}
             onUpgrade={onRequestUpgrade}
           />
         ) : (
@@ -496,7 +505,7 @@ export default function CreateExamPage({
           <TeacherVipLock
             title={`Đã hết ${FREE_TEACHER_LIMITS.maxWordImports}/${FREE_TEACHER_LIMITS.maxWordImports} lượt dùng thử nhập file Word miễn phí`}
             quotaText={`Đã dùng ${wordTrialUsed}/${FREE_TEACHER_LIMITS.maxWordImports} lượt nhập Word`}
-            description={`Tài khoản Giáo viên miễn phí được dùng thử ${FREE_TEACHER_LIMITS.maxWordImports} lần nhập trực tiếp file Word (.docx). Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhập Word, tách đề PDF/Ảnh và Quét AI không giới hạn.`}
+            description={`Tài khoản Giáo viên miễn phí được dùng thử ${FREE_TEACHER_LIMITS.maxWordImports} lần nhập trực tiếp file Word (.docx). Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để nhập Word, tách đề PDF/Ảnh và Quét AI không giới hạn.`}
             onUpgrade={onRequestUpgrade}
           />
         )}

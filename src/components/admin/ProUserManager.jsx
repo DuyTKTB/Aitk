@@ -1,5 +1,5 @@
 /* ============================================================
-   ProUserManager.jsx — Quản lý Thuê bao VIP & PRO (GV PRO 399k / HS VIP 199k)
+   ProUserManager.jsx — Quản lý Thuê bao VIP & PRO (GV PRO 999k/năm / HS VIP 299k/năm)
    ============================================================ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -90,7 +90,7 @@ export default function ProUserManager() {
       return {
         ...r,
         isStudentVip,
-        planLabel: isStudentVip ? 'Học sinh VIP (199k)' : 'Giáo viên PRO (399k)',
+        planLabel: isStudentVip ? 'Học sinh VIP (299k/năm)' : 'Giáo viên PRO (999k/năm)',
         name: p.display_name || (p.email ? p.email.split('@')[0] : null) || 'Chưa đặt tên',
         email: p.email || r.user_id?.slice(0, 14) || '—',
         avatar: p.avatar_url || null,
@@ -210,7 +210,7 @@ export default function ProUserManager() {
   const handleSwitchPackage = (row) => {
     const toTeacher = row.isStudentVip;
     setConfirm({
-      title: toTeacher ? 'Chuyển sang Giáo viên PRO (399k)?' : 'Chuyển sang Học sinh VIP (199k)?',
+      title: toTeacher ? 'Chuyển sang Giáo viên PRO (999k/năm)?' : 'Chuyển sang Học sinh VIP (299k/năm)?',
       body: toTeacher
         ? `Chuyển "${row.name}" từ Học sinh VIP sang Giáo viên PRO (+30 ngày, mở toàn bộ tính năng giảng dạy & vai trò Giáo viên)?`
         : `Chuyển "${row.name}" từ Giáo viên PRO sang Học sinh VIP (+30 ngày)? Lưu ý: tài khoản sẽ KHÔNG còn quyền Giáo viên PRO.`,
@@ -274,7 +274,7 @@ export default function ProUserManager() {
     >
       <Topbar
         title="Thuê bao VIP & Giáo viên PRO"
-        subtitle={`${stats.activeTeacher} GV PRO (399k) · ${stats.activeStudent} HS VIP (199k) · ${stats.soon} sắp hết hạn`}
+        subtitle={`${stats.activeTeacher} GV PRO (999k/năm) · ${stats.activeStudent} HS VIP (299k/năm) · ${stats.soon} sắp hết hạn`}
         tabs={tabs}
         active={tab}
         onTab={setTab}
@@ -286,12 +286,12 @@ export default function ProUserManager() {
       {/* ===== COMPACT KPI STRIP ===== */}
       <div className="ad-kpi-strip ad-kpi-strip--4">
         <div className="vt-card ad-mini-kpi">
-          <span>👨‍🏫 Giáo viên PRO (399k)</span>
+          <span>👨‍🏫 Giáo viên PRO (999k/năm)</span>
           <b style={{ color: '#16a34a' }}>{stats.activeTeacher}</b>
           <small>Đang hoạt động toàn quyền dạy học</small>
         </div>
         <div className="vt-card ad-mini-kpi">
-          <span>🎓 Học sinh VIP (199k)</span>
+          <span>🎓 Học sinh VIP (299k/năm)</span>
           <b style={{ color: '#7c3aed' }}>{stats.activeStudent}</b>
           <small>Mở khóa kho đề & AI Gia sư</small>
         </div>
@@ -315,8 +315,8 @@ export default function ProUserManager() {
         <div className="vt-pills" style={{ margin: 0 }}>
           {[
             { id: 'all',     label: `Tất cả gói (${rows.length})` },
-            { id: 'teacher', label: `👨‍🏫 Giáo viên PRO · 399k (${enriched.filter((r) => !r.isStudentVip).length})` },
-            { id: 'student', label: `🎓 Học sinh VIP · 199k (${enriched.filter((r) => r.isStudentVip).length})` },
+            { id: 'teacher', label: `👨‍🏫 Giáo viên PRO · 999k (${enriched.filter((r) => !r.isStudentVip).length})` },
+            { id: 'student', label: `🎓 Học sinh VIP · 299k (${enriched.filter((r) => r.isStudentVip).length})` },
           ].map((f) => (
             <button
               key={f.id}
@@ -415,7 +415,7 @@ export default function ProUserManager() {
                         }}
                       >
                         {r.isStudentVip ? <IconSparkle size={11} /> : <IconCrown size={11} />}
-                        {r.isStudentVip ? 'HS VIP · 199k' : 'GV PRO · 399k'}
+                        {r.isStudentVip ? 'HS VIP · 299k' : 'GV PRO · 999k'}
                       </span>
                     </td>
                     <td>
@@ -452,7 +452,7 @@ export default function ProUserManager() {
                             borderColor: r.isStudentVip ? 'rgba(217, 119, 6, 0.4)' : 'rgba(124, 58, 237, 0.4)',
                           }}
                           onClick={() => handleSwitchPackage(r)}
-                          title={r.isStudentVip ? 'Chuyển sang Giáo viên PRO (399k)' : 'Chuyển sang Học sinh VIP (199k)'}
+                          title={r.isStudentVip ? 'Chuyển sang Giáo viên PRO (999k/năm)' : 'Chuyển sang Học sinh VIP (299k/năm)'}
                         >
                           {r.isStudentVip ? '→ GV PRO' : '→ HS VIP'}
                         </button>
@@ -550,14 +550,14 @@ export default function ProUserManager() {
 }
 
 /* ============================================================
-   MODAL CẤP GÓI TRỰC TIẾP (Giáo viên PRO 399k / Học sinh VIP 199k)
+   MODAL CẤP GÓI TRỰC TIẾP (Giáo viên PRO 999k/năm / Học sinh VIP 299k/năm)
    ============================================================ */
 function GrantProDirectModal({ onClose, onDone }) {
   const [planKind, setPlanKind] = useState('teacher'); // teacher | student
   const [query, setQuery] = useState('');
   const [candidates, setCandidates] = useState([]);
   const [pickedUser, setPickedUser] = useState(null);
-  const [days, setDays] = useState(30);
+  const [days, setDays] = useState(365);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -607,10 +607,10 @@ function GrantProDirectModal({ onClose, onDone }) {
     try {
       const label = autoPicked?.display_name || autoPicked?.email || uid;
       if (planKind === 'student') {
-        await adminGrantVipDirect({ userId: uid, durationDays: days, note: note || 'Cấp Học sinh VIP (199k) từ Admin' });
+        await adminGrantVipDirect({ userId: uid, durationDays: days, note: note || 'Cấp Học sinh VIP (299k/năm) từ Admin' });
         onDone(`Đã cấp Học sinh VIP +${days} ngày cho ${label}`);
       } else {
-        await adminGrantProDirect({ userId: uid, durationDays: days, note: note || 'Cấp Giáo viên PRO (399k) từ Admin' });
+        await adminGrantProDirect({ userId: uid, durationDays: days, note: note || 'Cấp Giáo viên PRO (999k/năm) từ Admin' });
         onDone(`Đã cấp Giáo viên PRO +${days} ngày cho ${label}`);
       }
     } catch (e) {
@@ -649,7 +649,7 @@ function GrantProDirectModal({ onClose, onDone }) {
             className={'vt-btn sm' + (planKind === 'teacher' ? ' primary' : '')}
             onClick={() => setPlanKind('teacher')}
           >
-            👨‍🏫 Giáo viên PRO (399k)
+            👨‍🏫 Giáo viên PRO (999k/năm)
           </button>
           <button
             type="button"
@@ -657,7 +657,7 @@ function GrantProDirectModal({ onClose, onDone }) {
             style={planKind === 'student' ? { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', border: 0 } : undefined}
             onClick={() => setPlanKind('student')}
           >
-            🎓 Học sinh VIP (199k)
+            🎓 Học sinh VIP (299k/năm)
           </button>
         </div>
       </div>
@@ -727,7 +727,7 @@ function GrantProDirectModal({ onClose, onDone }) {
           type="text"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder={planKind === 'student' ? 'VD: Thanh toán 199k tháng 11' : 'VD: Cấp Giáo viên PRO 399k'}
+          placeholder={planKind === 'student' ? 'VD: Thanh toán 299k 1 năm' : 'VD: Cấp Giáo viên PRO 999k/năm'}
         />
       </label>
 

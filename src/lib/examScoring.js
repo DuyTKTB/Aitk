@@ -38,6 +38,20 @@ export function scoreQuestion(q, ans) {
     });
     return { earned: ok ? max : 0, max, isCorrect: ok, partial: false, picked: ans ?? '', correct: q.answer ?? (q.accepted || [])[0] ?? '' };
   }
+  if (type === 'essay') {
+    const textAns = typeof ans === 'string' ? ans : '';
+    const hasWritten = textAns.trim().length > 0;
+    return {
+      earned: 0,
+      max,
+      isCorrect: false,
+      partial: false,
+      needsManualGrading: true,
+      picked: textAns,
+      correct: q.answer || q.explain || '',
+      answered: hasWritten,
+    };
+  }
   const picked = typeof ans === 'number' ? ans : -1;
   const ok = picked === q.correct;
   return { earned: ok ? max : 0, max, isCorrect: ok, partial: false, picked, correct: Number.isInteger(q.correct) ? q.correct : -1 };
@@ -51,7 +65,16 @@ export function scoreExam(questions = [], answers = {}) {
     const r = scoreQuestion(q, answers[i]);
     if (r.isCorrect) correctCount += 1;
     score += r.earned;
-    return { index: i, type: qType(q), picked: r.picked, correct: r.correct, isCorrect: r.isCorrect, earned: r.earned, partial: r.partial };
+    return {
+      index: i,
+      type: qType(q),
+      picked: r.picked,
+      correct: r.correct,
+      isCorrect: r.isCorrect,
+      earned: r.earned,
+      partial: r.partial,
+      ...(r.needsManualGrading ? { needsManualGrading: true } : {}),
+    };
   });
   return { detail, correctCount, score: Math.round(score * 100) / 100 };
 }
@@ -63,7 +86,7 @@ export function isAnswered(q, v) {
     if (!v || typeof v !== 'object') return false;
     return [0, 1, 2, 3].some((k) => typeof v[k] === 'boolean');
   }
-  if (t === 'short_answer') return typeof v === 'string' && v.trim() !== '';
+  if (t === 'short_answer' || t === 'essay') return typeof v === 'string' && v.trim() !== '';
   return typeof v === 'number' && v >= 0;
 }
 
@@ -80,7 +103,7 @@ export function packAnswers(questions = [], answers = {}) {
       if (v && typeof v === 'object') [0, 1, 2, 3].forEach((k) => { if (typeof v[k] === 'boolean') o[k] = v[k]; });
       return o;
     }
-    if (t === 'short_answer') return typeof v === 'string' ? v.trim() : '';
+    if (t === 'short_answer' || t === 'essay') return typeof v === 'string' ? v.trim() : '';
     return typeof v === 'number' ? v : -1;
   });
 }

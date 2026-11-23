@@ -27,6 +27,7 @@ export const QUESTION_TYPES = {
   SINGLE_CHOICE: 'single_choice',
   TRUE_FALSE:    'true_false',
   SHORT_ANSWER:  'short_answer',
+  ESSAY:         'essay',
 };
 export const VERIFY_PREFIX = 'AI giải lại';
 export const DUP_PREFIX = 'Gần giống';
@@ -128,6 +129,10 @@ const QUESTION_SCHEMA = {
         properties: {
           type: { type: 'string' },
           q: { type: 'string' },
+          passage: { type: 'string' },
+          instruction: { type: 'string' },
+          groupId: { type: 'string' },
+          lockGroupQuestionOrder: { type: 'boolean' },
           options: { type: 'array', items: { type: 'string' } },
           correct: { type: 'number' },
           statements: {
@@ -638,6 +643,7 @@ function normalizeType(v) {
   const t = String(v || '').toLowerCase().trim();
   if (t === 'true_false' || t === 'tf' || t === 'true-false' || t === 'dung_sai') return QUESTION_TYPES.TRUE_FALSE;
   if (t === 'short_answer' || t === 'sa' || t === 'short-answer' || t === 'tra_loi_ngan') return QUESTION_TYPES.SHORT_ANSWER;
+  if (t === 'essay' || t === 'tu_luan' || t === 'tuluan' || t === 'tu-luan') return QUESTION_TYPES.ESSAY;
   return QUESTION_TYPES.SINGLE_CHOICE;
 }
 
@@ -651,11 +657,21 @@ export function normalizeQuestion(raw, { optionsCount = 4, wantExplain = true, t
   const type = forceType || normalizeType(r.type);
   const rawQ = String(r.q ?? r.question ?? r.content ?? '').trim();
   const q = fixLatex(sanitizeQuestionText(rawQ));
+  const passage = String(r.passage || '').trim();
+  const instruction = String(r.instruction || '').trim();
+  const groupId = String(r.groupId || r.pg || '').trim();
+  const lockGroupQuestionOrder = Boolean(r.lockGroupQuestionOrder);
+  const contextMeta = {
+    ...(passage ? { passage } : {}),
+    ...(instruction ? { instruction } : {}),
+    ...(groupId ? { groupId } : {}),
+    ...(lockGroupQuestionOrder ? { lockGroupQuestionOrder: true } : {}),
+  };
   const explain = wantExplain ? fixLatex(String(r.explain ?? r.explanation ?? '').trim()) : '';
   const topic = String(r.topic || '').trim().slice(0, 80);
   const level = normalizeLevel(r.level);
 
-  if (!q) warns.push('Thiếu nội dung câu hỏi');
+  if (!q && !passage) warns.push('Thiếu nội dung câu hỏi');
   if (wantExplain && !explain) warns.push('Chưa có lời giải');
   if (typeof r.flag === 'string' && r.flag.trim()) warns.push(`AI lưu ý: ${r.flag.trim()}`);
 
@@ -673,6 +689,7 @@ export function normalizeQuestion(raw, { optionsCount = 4, wantExplain = true, t
     if (statements.some((s) => !s.text)) warns.push('Có ý để trống');
     if ([q, explain, ...statements.map((s) => s.text)].some(oddDollar)) warns.push('Công thức ($) chưa đóng đủ');
     return {
+      ...contextMeta,
       id: rid(), type, q, statements,
       points: Number(r.points) > 0 ? Number(r.points) : 1,
       explain, topic, level, warns,
@@ -687,7 +704,21 @@ export function normalizeQuestion(raw, { optionsCount = 4, wantExplain = true, t
     if (!accepted.length) warns.push('Chưa có đáp án chấp nhận');
     if ([q, explain, ...accepted].some(oddDollar)) warns.push('Công thức ($) chưa đóng đủ');
     return {
+      ...contextMeta,
       id: rid(), type, q, accepted,
+      points: Number(r.points) > 0 ? Number(r.points) : 1,
+      explain, topic, level, warns,
+    };
+  }
+
+  /* essay */
+  if (type === QUESTION_TYPES.ESSAY) {
+    const answer = String(r.answer ?? r.rubric ?? '').trim();
+    if ([q, explain, answer].some(oddDollar)) warns.push('Công thức ($) chưa đóng đủ');
+    return {
+      ...contextMeta,
+      id: rid(), type, q, options: [], correct: -1,
+      ...(answer ? { answer } : {}),
       points: Number(r.points) > 0 ? Number(r.points) : 1,
       explain, topic, level, warns,
     };
@@ -720,6 +751,7 @@ export function normalizeQuestion(raw, { optionsCount = 4, wantExplain = true, t
   if ([q, explain, ...opts].some(oddDollar)) warns.push('Công thức ($) chưa đóng đủ');
 
   return {
+    ...contextMeta,
     id: rid(), type: QUESTION_TYPES.SINGLE_CHOICE, q, options: opts, correct,
     points: Number(r.points) > 0 ? Number(r.points) : 1,
     explain, topic, level, warns,

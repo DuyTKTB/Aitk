@@ -104,10 +104,10 @@ describe('Admin VIP/PRO & Firestore/Supabase Sync', () => {
     if (typeof localStorage !== 'undefined') localStorage.clear();
   });
 
-  it('isStudentVipRecord distinguishes Student VIP (199k) from Teacher PRO (399k)', () => {
-    expect(isStudentVipRecord({ key_code: 'VIP-1111-2222', note: '[STUDENT_VIP:30] HS VIP' })).toBe(true);
+  it('isStudentVipRecord distinguishes Student VIP (299k/year) from Teacher PRO (999k/year)', () => {
+    expect(isStudentVipRecord({ key_code: 'VIP-1111-2222', note: '[STUDENT_VIP:365] HS VIP' })).toBe(true);
     expect(isStudentVipRecord({ key_code: 'DIRECT-9999', note: '[STUDENT_VIP:365]' })).toBe(true);
-    expect(isStudentVipRecord({ key_code: 'PRO-AAAA-BBBB', note: 'Giáo viên PRO 399k' })).toBe(false);
+    expect(isStudentVipRecord({ key_code: 'PRO-AAAA-BBBB', note: 'Giáo viên PRO 999k' })).toBe(false);
     expect(isStudentVipRecord({ key_code: 'DIRECT-1234', note: 'Cấp GV tổ Hóa' })).toBe(false);
     expect(isStudentVipRecord(null)).toBe(false);
   });

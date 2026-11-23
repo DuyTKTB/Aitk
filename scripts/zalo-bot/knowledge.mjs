@@ -30,16 +30,12 @@ export const BANK_INFO = {
 
 export const PRICING_CATALOG = {
   teacher: [
-    { id: 'gv-1m', label: '1 tháng', price: '399.000đ', note: 'Tặng 100 Credit AI' },
-    { id: 'gv-6m', label: '6 tháng', price: '1.990.000đ', note: 'Tiết kiệm 17%, tặng 350 Credit AI' },
-    { id: 'gv-12m', label: '12 tháng', price: '3.590.000đ', note: 'Tiết kiệm 25%, tặng 800 Credit AI' },
+    { id: 'gv-12m', label: '1 năm', price: '999.000đ', note: 'Trọn năm học, tặng 800 Credit AI' },
   ],
   student: [
-    { id: 'hs-1m', label: '1 tháng', price: '199.000đ', note: 'Tặng 60 Credit AI' },
-    { id: 'hs-3m', label: '3 tháng', price: '399.000đ', note: 'Tiết kiệm 33%, tặng 150 Credit AI' },
-    { id: 'hs-6m', label: '6 tháng', price: '699.000đ', note: 'Tiết kiệm 41%, tặng 320 Credit AI' },
-    { id: 'hs-12m', label: '12 tháng', price: '999.000đ', note: 'Tiết kiệm 58%, tặng 700 Credit AI' },
+    { id: 'hs-12m', label: '1 năm', price: '299.000đ', note: 'Trọn năm học, tặng 700 Credit AI' },
   ],
+  creditTopUpMinVnd: 10000,
 };
 
 export const DEFAULT_WELCOME_TEMPLATE = [
@@ -186,13 +182,11 @@ export const DEFAULT_FAQ_RULES = [
     ],
     reply: [
       '👑 BẢNG GIÁ CHÍNH THỨC ELEC AI:',
-      '• Gói Giáo Viên VIP (PRO):',
-      '  - 1 tháng: 399.000đ (Tặng 100 Credit AI)',
-      '  - 6 tháng: 1.990.000đ (Tiết kiệm 17%, tặng 350 Credit AI)',
-      '  - 12 tháng: 3.590.000đ (Tiết kiệm 25%, tặng 800 Credit AI)',
+      '• Gói Giáo Viên VIP (PRO): 999.000đ / 1 năm (Tặng 800 Credit AI)',
       '  ✅ Quyền lợi GV VIP: Không giới hạn lớp/sĩ số, không giới hạn trộn đề Word & tạo đề thủ công, mở khóa AI Tạo Đề theo ma trận, tách đề PDF/Ảnh OCR, chấm OMR A4 không giới hạn, giám sát thi LIVE Proctor.',
-      '• Gói Học Sinh VIP:',
-      '  - 1 tháng: 199.000đ | 3 tháng: 399.000đ | 6 tháng: 699.000đ | 12 tháng: 999.000đ.',
+      '• Gói Học Sinh VIP: 299.000đ / 1 năm (Tặng 700 Credit AI)',
+      '  ✅ Mở khóa 100% kho đề PRO/VIP, 99 tim/ngày & Gia sư AI chẩn đoán lỗ hổng.',
+      '• Nạp ELEC AI Credit: từ 10.000đ trở lên (1đ = 1 Credit).',
       'Gõ !stk để xem thông tin chuyển khoản nhanh ạ.',
     ].join('\n'),
   },
@@ -386,12 +380,8 @@ function buildSystemPrompt() {
     '   - Chấm phiếu trắc nghiệm OMR A4 bằng camera/ảnh chụp và xuất bảng điểm Excel.',
     '   - Quản lý lớp học, giám sát phòng thi trực tuyến (LIVE Proctor), ngân hàng câu hỏi KHTN/Toán.',
     '   - Bản Free Giáo viên: tối đa 1 lớp / 40 HS, 30 đề, 10 lần nhập Word, 30 lần tạo thủ công, 5 tờ chấm OMR thử.',
-    '5. Bảng giá Gói Giáo Viên VIP (PRO):',
-    '   - 1 tháng: 399.000đ (tặng 100 Credit AI)',
-    '   - 6 tháng: 1.990.000đ (tiết kiệm 17%, tặng 350 Credit AI)',
-    '   - 12 tháng: 3.590.000đ (tiết kiệm 25%, tặng 800 Credit AI)',
-    '6. Bảng giá Gói Học Sinh VIP:',
-    '   - 1 tháng: 199.000đ | 3 tháng: 399.000đ | 6 tháng: 699.000đ | 12 tháng: 999.000đ',
+    '5. Bảng giá Gói Giáo Viên VIP (PRO): 999.000đ / 1 năm (tặng 800 Credit AI)',
+    '6. Bảng giá Gói Học Sinh VIP: 299.000đ / 1 năm (tặng 700 Credit AI) · Nạp Credit AI từ 10.000đ trở lên (1đ = 1 Credit)',
     '7. Thanh toán & Kích hoạt:',
     `   - Ngân hàng ${BANK_INFO.bankName} | STK: ${BANK_INFO.accountNo} | Chủ TK: ${BANK_INFO.accountName}`,
     '   - Nội dung CK: ELECAI PRO <Mã tài khoản> (GV) hoặc ELECAI VIP <Mã tài khoản> (HS). Quét VietQR trên web tự động kích hoạt sau 15-30 giây.',

@@ -103,10 +103,13 @@ export function buildPostExamAnalytics({ exam, result } = {}) {
     1: { part: 1, label: 'Phần I · Nhiều lựa chọn', correct: 0, total: 0 },
     2: { part: 2, label: 'Phần II · Đúng / Sai', correct: 0, total: 0 },
     3: { part: 3, label: 'Phần III · Trả lời ngắn', correct: 0, total: 0 },
+    4: { part: 4, label: 'Phần Tự luận / Đọc hiểu mở', correct: 0, total: 0 },
   };
 
   questions.forEach((q, i) => {
-    const p = q.part || (q.type === 'true_false' || Array.isArray(q.statements) ? 2 : q.type === 'short_answer' ? 3 : 1);
+    const p = q.type === 'essay' || q.part === 4
+      ? 4
+      : q.part || (q.type === 'true_false' || Array.isArray(q.statements) ? 2 : q.type === 'short_answer' ? 3 : 1);
     const bucket = parts[p] || parts[1];
     bucket.total += 1;
     if (detail[i]?.isCorrect) bucket.correct += 1;

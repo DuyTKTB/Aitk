@@ -6,6 +6,8 @@
  * Dùng cho Web UI, KaTeX, ELEC AI Companion và Xuất Word (.docx).
  */
 
+import { subjectUsesMath } from './subjects.js';
+
 const SUB_MAP = {
   '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
   '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
@@ -145,9 +147,7 @@ export function toSuperscript(str) {
 /**
  * Chuẩn hóa toàn diện công thức hóa học, vật lý, sinh học, toán học và ký hiệu khoa học
  */
-export function formatMathAndChemSymbols(text) {
-  if (!text || typeof text !== 'string') return text ?? '';
-
+function formatMathAndChemPlainSegment(text) {
   let s = text;
 
   // 1. Loại bỏ các lệnh bọc LaTeX không cần thiết khi hiển thị text thuần
@@ -231,8 +231,27 @@ export function formatMathAndChemSymbols(text) {
   // Dọn dẹp dấu $ đơn lẻ sót lại trước/sau các công thức
   s = s.replace(/\$([A-Za-z0-9₀-₉⁰-⁹⁺⁻]+)/g, '$1').replace(/([A-Za-z0-9₀-₉⁰-⁹⁺⁻]+)\$/g, '$1');
 
-  // 16. Dọn dẹp khoảng trắng dư
-  return s.trim();
+  // 16. Giữ nguyên khoảng trắng biên khi ghép với segment code, trim tổng ở hàm ngoài
+  return s;
+}
+
+const CODE_SEGMENT_RE = /(```[\s\S]*?```|`[^`\n]+`)/g;
+
+export function formatMathAndChemSymbols(text) {
+  if (!text || typeof text !== 'string') return text ?? '';
+  if (!text.includes('`')) return formatMathAndChemPlainSegment(text).trim();
+
+  // Bảo vệ các khối mã nguồn (Tin học: Python/C++/SQL/HTML) khỏi biến đổi !=, <=, >=, ->, chỉ số dưới
+  return text
+    .split(CODE_SEGMENT_RE)
+    .map((seg, idx) => (idx % 2 === 1 ? seg : formatMathAndChemPlainSegment(seg)))
+    .join('')
+    .trim();
+}
+
+export function formatTextForSubject(text, subject) {
+  if (!text || typeof text !== 'string') return text ?? '';
+  return subjectUsesMath(subject) ? formatMathAndChemSymbols(text) : text.trim();
 }
 
 export default formatMathAndChemSymbols;

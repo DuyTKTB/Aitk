@@ -59,154 +59,106 @@ function SvgBriefcase({ size = 16 }) {
 
 /* ============================================================
    DỮ LIỆU BẢNG GIÁ CHÍNH THỨC ELEC AI 2026
+   • Học sinh VIP: 299.000đ / 1 năm
+   • Giáo viên VIP: 999.000đ / 1 năm
+   • Nạp Credit AI: từ 10.000đ trở lên (1đ = 1 Credit)
    ============================================================ */
 export const PRICING_PACKAGES = {
   student: [
     {
-      id: 'hoc-ba',
-      name: 'Học Bá',
-      eyebrow: 'Khởi động linh hoạt',
-      badge: 'Chuẩn 199k/tháng',
-      badgeType: 'sparkle',
-      badgeColor: 'blue',
-      desc: 'Full đặc quyền Học sinh VIP trong 1 hoặc 3 tháng linh hoạt',
-      defaultTierId: '1m',
-      tiers: [
-        { id: '1m', pkgKey: 'hs-1m', months: 1, label: '1 tháng', fee: '199.000đ', origFee: '249.000đ', rate: '199.000đ/tháng', amount: 199000, save: null, isBest: true },
-        { id: '3m', pkgKey: 'hs-3m', months: 3, label: '3 tháng', fee: '399.000đ', origFee: '597.000đ', rate: '≈133.000đ/tháng', amount: 399000, save: 'Tiết kiệm 33%' },
-      ],
-      features: [
-        'Mở khóa 100% đề thi thử PRO & VIP (THPTQG, ĐGNL, TSA, V-ACT)',
-        '99 tim luyện tập/ngày & bảng thống kê Phòng thi ảo không giới hạn',
-        'AI Chẩn đoán lỗ hổng kiến thức & Đơn thuốc ôn tập sau mỗi đề thi',
-        'Studio Soạn Đề & Tài liệu thông minh từ PDF / Word / Ảnh',
-        'Gia sư Giọng nói AI trong Bài giảng 3D & Tư vấn Hướng nghiệp AI',
-      ],
-      ctaText: 'Đăng ký Học Bá',
-      tone: 'blue',
-    },
-    {
-      id: 'tinh-anh',
-      name: 'Tinh Anh',
-      eyebrow: 'Phổ biến nhất',
-      badge: 'Tiết kiệm đến 58%',
+      id: 'hs-12m',
+      pkgKey: 'hs-12m',
+      name: 'Học Sinh VIP · 1 Năm',
+      eyebrow: 'Trọn năm học',
+      badge: '299k / 1 năm',
       badgeType: 'crown',
       badgeColor: 'pink',
-      desc: 'Full toàn bộ quyền lợi Học sinh VIP trọn học kỳ hoặc cả năm học',
-      defaultTierId: '6m',
+      desc: 'Mở khóa toàn bộ quyền lợi Học sinh VIP suốt 365 ngày liên tục',
+      defaultTierId: '1y',
       isPopular: true,
       tiers: [
-        { id: '6m', pkgKey: 'hs-6m', months: 6, label: '6 tháng', fee: '699.000đ', origFee: '1.194.000đ', rate: '≈116.500đ/tháng', amount: 699000, save: 'Tiết kiệm 41%', isBest: true },
-        { id: '1y', pkgKey: 'hs-12m', months: 12, label: '12 tháng', fee: '999.000đ', origFee: '2.388.000đ', rate: '≈83.250đ/tháng', amount: 999000, save: 'Tiết kiệm 58%' },
+        {
+          id: '1y',
+          pkgKey: 'hs-12m',
+          months: 12,
+          label: '1 năm',
+          fee: '299.000đ',
+          origFee: '599.000đ',
+          rate: '≈24.900đ/tháng',
+          amount: 299000,
+          save: 'Tiết kiệm 50%',
+          isBest: true,
+        },
       ],
       features: [
-        'Mở khóa 100% kho đề PRO & VIP mọi kỳ thi suốt 6–12 tháng',
-        'Tặng kèm 320 – 700 Credit AI dùng cho Gia sư & AI Tạo Đề',
-        'Lộ trình KHTN, Chiến lược Nguyện vọng & Sổ lỗi sai đồng bộ liên tục',
-        'AI Chẩn đoán sau thi, Gia sư giọng nói 3D & Hướng nghiệp AI toàn diện',
-        'So sánh không giới hạn công cụ & Trợ lý AI Bảng tuần hoàn',
+        'Mở khóa 100% kho đề thi thử PRO & VIP (THPTQG, ĐGNL, TSA, V-ACT) suốt 1 năm',
+        '99 tim luyện tập/ngày & bảng thống kê Phòng thi ảo không giới hạn',
+        'Tặng kèm 700 Credit AI dùng cho Gia sư & AI Tạo Đề',
+        'AI Chẩn đoán lỗ hổng kiến thức & Đơn thuốc ôn tập sau mỗi đề thi',
+        'Studio Soạn Đề & Tài liệu thông minh từ PDF / Word / Ảnh + Hướng nghiệp AI',
       ],
-      ctaText: 'Nâng cấp Tinh Anh',
+      ctaText: 'Đăng ký Học Sinh VIP',
       tone: 'gradient-blue',
-    },
-    {
-      id: 've-dich-tsa',
-      name: 'Về Đích Ôn Thi',
-      eyebrow: 'Nước rút THPTQG & TSA',
-      badge: 'Hot',
-      badgeType: 'flame',
-      badgeColor: 'orange',
-      desc: 'Tăng tốc nước rút & ôn tổng lực chuẩn THPTQG, HSA, TSA',
-      tag: 'Phù hợp ôn cấp tốc 3–12 tháng',
-      defaultTierId: '3m',
-      tiers: [
-        { id: '3m', pkgKey: 'hs-3m', months: 3, label: '3 tháng', fee: '399.000đ', origFee: '597.000đ', rate: '≈133.000đ/tháng', amount: 399000, save: 'Tiết kiệm 33%', isBest: true },
-        { id: '1y', pkgKey: 'hs-12m', months: 12, label: '12 tháng', fee: '999.000đ', origFee: '2.388.000đ', rate: '≈83.250đ/tháng', amount: 999000, save: 'Tiết kiệm 58%' },
-      ],
-      features: [
-        'Mở toàn bộ đề tổng ôn giai đoạn nước rút THPTQG, HSA, TSA',
-        '99 tim luyện đề/ngày, làm lại không giới hạn để rà bẫy kiến thức',
-        'AI Chẩn đoán câu sai từng chuyên đề Nhận biết -> Vận dụng cao',
-        'Studio AI tách câu hỏi & tóm tắt tài liệu PDF/Ảnh trong vài giây',
-        'Tặng kèm 150 – 700 Credit AI hỗ trợ giải bài 24/7',
-      ],
-      ctaText: 'Chọn gói Về Đích',
-      tone: 'orange',
     },
   ],
 
   teacher: [
     {
-      id: 'gv-1m',
-      pkgKey: 'gv-1m',
-      name: 'Giáo Viên VIP · 1 Tháng',
-      eyebrow: 'Phổ biến nhất',
-      badge: 'Chuẩn 399k/tháng',
-      badgeType: 'crown',
-      badgeColor: 'pink',
-      desc: 'Mở khóa toàn bộ hệ sinh thái giảng dạy AI, OMR & Giám sát thi',
-      defaultTierId: '1m',
-      isPopular: true,
-      tiers: [
-        { id: '1m', months: 1, label: '1 tháng', fee: '399.000đ', origFee: '499.000đ', rate: '399.000đ/tháng', amount: 399000, save: null, isBest: true },
-      ],
-      features: [
-        'Không giới hạn số lớp học & sĩ số học sinh (Free: 1 lớp / 40 HS)',
-        'Không giới hạn nhập Word (.docx) & soạn thủ công (Free: 10 Word · 30 thủ công)',
-        'Mở khóa AI Tạo Đề theo ma trận & tách đề từ file PDF / Ảnh OCR',
-        'Ngân hàng câu hỏi không giới hạn + 4 công cụ AI giải, gắn tag, kiểm định',
-        'Quét chấm phiếu OMR A4 không giới hạn & Giám sát thi LIVE Camera AI',
-      ],
-      ctaText: 'Đăng ký VIP 1 Tháng',
-      tone: 'gradient-blue',
-    },
-    {
-      id: 'gv-6m',
-      pkgKey: 'gv-6m',
-      name: 'Giáo Viên VIP · 6 Tháng',
-      eyebrow: 'Trọn 1 học kỳ',
-      badge: 'Tiết kiệm 17%',
-      badgeType: 'sparkle',
-      badgeColor: 'blue',
-      desc: 'Đồng hành trọn vẹn 1 học kỳ, tối ưu chi phí hơn gia hạn từng tháng',
-      defaultTierId: '6m',
-      tiers: [
-        { id: '6m', months: 6, label: '6 tháng', fee: '1.990.000đ', origFee: '2.394.000đ', rate: '≈331.000đ/tháng', amount: 1990000, save: 'Tiết kiệm 17%', isBest: true },
-      ],
-      features: [
-        'Toàn bộ đặc quyền Giáo Viên VIP trong 180 ngày liên tục',
-        'Tặng kèm 350 Credit AI cho AI Copilot, sinh đề & phân tích lớp',
-        'Kết nối GVBM đa lớp & chia sẻ tài nguyên Tổ bộ môn',
-        'Giám sát phòng thi trực tuyến chế độ Siêu chặt & Camera/Audio AI',
-        'Báo cáo phổ điểm, cảnh báo học sinh yếu & xuất bảng điểm Excel',
-      ],
-      ctaText: 'Chọn gói 6 Tháng',
-      tone: 'blue',
-    },
-    {
       id: 'gv-12m',
       pkgKey: 'gv-12m',
-      name: 'Giáo Viên VIP · 12 Tháng',
-      eyebrow: 'Tối ưu cả năm',
-      badge: 'Tiết kiệm 25%',
-      badgeType: 'flame',
-      badgeColor: 'orange',
-      desc: 'Trọn gói 1 năm học cho Giáo viên bộ môn, chủ nhiệm & trung tâm luyện thi',
+      name: 'Giáo Viên VIP · 1 Năm',
+      eyebrow: 'Trọn 1 năm học',
+      badge: '999k / 1 năm',
+      badgeType: 'crown',
+      badgeColor: 'pink',
+      desc: 'Mở khóa toàn bộ hệ sinh thái giảng dạy AI, OMR & Giám sát thi suốt 365 ngày',
       defaultTierId: '1y',
+      isPopular: true,
       tiers: [
-        { id: '1y', months: 12, label: '12 tháng', fee: '3.590.000đ', origFee: '4.788.000đ', rate: '≈299.000đ/tháng', amount: 3590000, save: 'Tiết kiệm 25%', isBest: true },
+        {
+          id: '1y',
+          pkgKey: 'gv-12m',
+          months: 12,
+          label: '1 năm',
+          fee: '999.000đ',
+          origFee: '1.990.000đ',
+          rate: '≈83.250đ/tháng',
+          amount: 999000,
+          save: 'Tiết kiệm 50%',
+          isBest: true,
+        },
       ],
       features: [
-        'Toàn bộ đặc quyền Giáo Viên VIP suốt 365 ngày',
-        'Tặng kèm 800 Credit AI ưu tiên xử lý tác vụ biên soạn nặng',
-        'Chấm OMR hàng loạt, xuất Excel & đồng bộ điểm thẳng vào lớp',
-        'Mở khóa Phòng thí nghiệm & Mô phỏng trình chiếu trực tiếp',
-        'Hỗ trợ ưu tiên 1:1 & sao lưu toàn bộ ngân hàng đề riêng',
+        'Không giới hạn số lớp học & sĩ số học sinh suốt 365 ngày (Free: 1 lớp / 40 HS)',
+        'Không giới hạn nhập Word (.docx), soạn thủ công & Ngân hàng câu hỏi AI',
+        'Mở khóa AI Tạo Đề theo ma trận & tách đề từ file PDF / Ảnh OCR',
+        'Quét chấm phiếu OMR A4 không giới hạn, xuất Excel & Giám sát thi LIVE Camera AI',
+        'Tặng kèm 800 Credit AI ưu tiên xử lý tác vụ biên soạn & phân tích lớp',
       ],
-      ctaText: 'Nâng cấp 12 Tháng',
-      tone: 'orange',
+      ctaText: 'Đăng ký Giáo Viên VIP',
+      tone: 'gradient-blue',
     },
   ],
+};
+
+const CREDIT_TOPUP_CARD = {
+  id: 'credit-topup',
+  name: 'ELEC AI Credit',
+  eyebrow: 'Nạp linh hoạt theo nhu cầu',
+  badge: 'Từ 10k trở lên',
+  badgeColor: 'blue',
+  desc: 'Chỉ trả theo số lượt AI sử dụng, không giới hạn thời gian sử dụng',
+  fee: 'Từ 10.000đ',
+  unit: 'trở lên',
+  rate: '1đ = 1 ELEC Credit · Không hết hạn',
+  features: [
+    'Nạp tự do từ 10.000đ trở lên qua VietQR, cộng Credit tự động sau 5 giây',
+    'Chat nhanh chỉ từ 100 Credit/lượt, DeepThink 500 Credit/lượt',
+    'AI Tạo đề chuẩn GDPT 2018 & tách đề từ PDF / Ảnh OCR linh hoạt',
+    'Tự động hoàn 100% Credit nếu hệ thống AI gặp sự cố',
+    'Số dư Credit được cộng dồn và bảo lưu trọn đời trên tài khoản',
+  ],
+  ctaText: 'Nạp Credit ngay',
 };
 
 export default function SubscriptionTiers({
@@ -216,6 +168,7 @@ export default function SubscriptionTiers({
   exam = null,
   onRedeemVoucher = null,
   lockedRole = null,
+  onOpenCreditTopUp = null,
 }) {
   const effectiveLockedRole = lockedRole === 'teacher' || lockedRole === 'student' ? lockedRole : null;
   const [roleTab, setRoleTab] = useState(effectiveLockedRole || 'student');
@@ -224,11 +177,7 @@ export default function SubscriptionTiers({
   }, [effectiveLockedRole]);
 
   const [selectedTiers, setSelectedTiers] = useState({
-    'hoc-ba': '1m',
-    'tinh-anh': '6m',
-    've-dich-tsa': '3m',
-    'gv-1m': '1m',
-    'gv-6m': '6m',
+    'hs-12m': '1y',
     'gv-12m': '1y',
   });
   const [voucherCode, setVoucherCode] = useState('');
@@ -255,11 +204,7 @@ export default function SubscriptionTiers({
     const chosenTierId = selectedTiers[card.id] || card.defaultTierId;
     const tier = card.tiers.find((t) => t.id === chosenTierId) || card.tiers[0];
     const isStudent = roleTab === 'student';
-    const resolvedKey = tier.pkgKey || card.pkgKey || (
-      isStudent
-        ? (tier.months >= 12 ? 'hs-12m' : tier.months >= 6 ? 'hs-6m' : tier.months >= 3 ? 'hs-3m' : 'hs-1m')
-        : (tier.months >= 12 ? 'gv-12m' : tier.months >= 6 ? 'gv-6m' : 'gv-1m')
-    );
+    const resolvedKey = tier.pkgKey || card.pkgKey || (isStudent ? 'hs-12m' : 'gv-12m');
 
     onUpgrade?.({
       key: resolvedKey,
@@ -272,6 +217,17 @@ export default function SubscriptionTiers({
       amount: tier.amount,
       label: `ELEC AI ${card.name} — ${tier.label}`,
     });
+  };
+
+  const handleOpenCredit = () => {
+    if (typeof onOpenCreditTopUp === 'function') {
+      onOpenCreditTopUp();
+      return;
+    }
+    onClose?.();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('elec-open-credit-topup'));
+    }
   };
 
   const handleVoucherSubmit = async (e) => {
@@ -318,8 +274,8 @@ export default function SubscriptionTiers({
           </h2>
           <p className="ns9-9s-sub-title">
             {roleTab === 'teacher'
-              ? 'AI tạo đề, tách PDF/Ảnh OCR, trộn mã đề A4 & giám sát thi chỉ từ 399.000đ/tháng.'
-              : 'Học sinh VIP chỉ từ 199.000đ/tháng — luyện mọi bộ đề PRO & chẩn đoán AI 24/7.'}
+              ? 'AI tạo đề, tách PDF/Ảnh OCR, trộn mã đề A4 & giám sát thi chỉ 999.000đ/năm.'
+              : 'Học sinh VIP chỉ 299.000đ/năm — luyện mọi bộ đề PRO & chẩn đoán AI 24/7.'}
           </p>
 
           {exam && (
@@ -347,7 +303,7 @@ export default function SubscriptionTiers({
                 onClick={() => setRoleTab('student')}
               >
                 <SvgGradCap size={16} />
-                <span>Học sinh VIP (Từ 199k/tháng)</span>
+                <span>Học sinh VIP (299k/năm)</span>
               </button>
 
               <button
@@ -358,7 +314,7 @@ export default function SubscriptionTiers({
                 onClick={() => setRoleTab('teacher')}
               >
                 <SvgBriefcase size={16} />
-                <span>Giáo viên VIP (Từ 399k/tháng)</span>
+                <span>Giáo viên VIP (999k/năm)</span>
               </button>
             </div>
           ) : (
@@ -366,8 +322,8 @@ export default function SubscriptionTiers({
               {effectiveLockedRole === 'teacher' ? <SvgBriefcase size={15} /> : <SvgGradCap size={15} />}
               <span>
                 {effectiveLockedRole === 'teacher'
-                  ? 'Gói cước Giáo Viên VIP · Chuẩn 399.000đ/tháng'
-                  : 'Gói cước Học Sinh VIP · Chỉ từ 199.000đ/tháng'}
+                  ? 'Gói cước Giáo Viên VIP · Chuẩn 999.000đ/năm'
+                  : 'Gói cước Học Sinh VIP · Chỉ 299.000đ/năm'}
               </span>
             </div>
           )}
@@ -383,8 +339,8 @@ export default function SubscriptionTiers({
           </span>
         </div>
 
-        {/* ── GRID 3 THẺ GÓI CƯỚC HIỆN ĐẠI ── */}
-        <div className="ns9-9s-cards-grid">
+        {/* ── GRID 2 CỘT: GÓI VIP 1 NĂM & NẠP CREDIT TỪ 10K ── */}
+        <div className="ns9-9s-cards-grid is-two-cols">
           {currentPackages.map((card) => {
             const activeTierId = selectedTiers[card.id] || card.defaultTierId;
             const chosenTier = card.tiers.find((t) => t.id === activeTierId) || card.tiers[0];
@@ -471,6 +427,53 @@ export default function SubscriptionTiers({
               </article>
             );
           })}
+
+          {/* Thẻ Nạp Credit AI từ 10.000đ trở lên */}
+          <article className="ns9-9s-col-card tone-blue">
+            <div className="ns9-9s-card-top-row">
+              <span className="ns9-9s-card-eyebrow">{CREDIT_TOPUP_CARD.eyebrow}</span>
+              <span className={`ns9-9s-pill-badge badge-${CREDIT_TOPUP_CARD.badgeColor}`}>
+                <SvgSparkle size={12} />
+                <span>{CREDIT_TOPUP_CARD.badge}</span>
+              </span>
+            </div>
+
+            <div className="ns9-9s-card-head">
+              <h3 className="ns9-9s-card-title">{CREDIT_TOPUP_CARD.name}</h3>
+              <p className="ns9-9s-card-desc">{CREDIT_TOPUP_CARD.desc}</p>
+            </div>
+
+            <div className="ns9-9s-price-hero">
+              <div className="ns9-9s-price-main">
+                <strong>{CREDIT_TOPUP_CARD.fee}</strong>
+                <span className="ns9-9s-price-unit">{CREDIT_TOPUP_CARD.unit}</span>
+              </div>
+              <div className="ns9-9s-price-meta">
+                <span className="ns9-9s-price-rate">{CREDIT_TOPUP_CARD.rate}</span>
+              </div>
+            </div>
+
+            <div className="ns9-9s-features-box">
+              <ul className="ns9-9s-feat-list">
+                {CREDIT_TOPUP_CARD.features.map((feat, fIdx) => (
+                  <li key={fIdx} className="ns9-9s-feat-item">
+                    <SvgCheck size={12} />
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="ns9-9s-card-footer">
+              <button
+                type="button"
+                className="ns9-9s-card-cta-btn"
+                onClick={handleOpenCredit}
+              >
+                <span>{CREDIT_TOPUP_CARD.ctaText} · Từ 10.000đ</span>
+              </button>
+            </div>
+          </article>
         </div>
 
         {/* Voucher / Mã kích hoạt */}

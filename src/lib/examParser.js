@@ -596,11 +596,12 @@ function mergeQuestions(regexQ, aiQ) {
 function qualityRate(questions, expected) {
   const ok = (questions || []).filter((q) => {
     if (q._ok === false) return false;
-    const hasStem = (q.q || '').trim().length >= MIN_STEM || Boolean(q.image) || (q.images && q.images.length > 0);
+    const hasStem = (q.q || '').trim().length >= MIN_STEM || Boolean((q.passage || '').trim()) || Boolean(q.image) || (q.images && q.images.length > 0);
     const isP1 = (q.options || []).length >= MIN_OPTS;
     const isP2 = q.part === 2 || q.type === 'true_false' || (Array.isArray(q.statements) && q.statements.length > 0);
     const isP3 = q.part === 3 || q.type === 'short_answer' || Boolean(q.answer);
-    return hasStem && (isP1 || isP2 || isP3);
+    const isP4 = q.part === 4 || q.type === 'essay';
+    return hasStem && (isP1 || isP2 || isP3 || isP4);
   }).length;
   const denom = Math.max(expected, questions.length, 1);
   if (expected > 0) return ok / expected;
@@ -664,20 +665,25 @@ export async function parseExamFile(file, { onProgress, signal } = {}) {
           ? 'true_false'
           : q.type === 'short_answer' || q.type === 'sa'
             ? 'short_answer'
-            : 'single_choice';
-        const part = type === 'true_false' ? 2 : type === 'short_answer' ? 3 : 1;
+            : q.type === 'essay'
+              ? 'essay'
+              : 'single_choice';
+        const part = type === 'true_false' ? 2 : type === 'short_answer' ? 3 : type === 'essay' ? 4 : 1;
+        const hasStemOrPassage = Boolean((q.q || '').trim() || (q.passage || '').trim() || q.image || (q.images && q.images.length > 0));
         const ok =
           type === 'true_false'
-            ? Boolean(q.q && q.statements?.length >= 2)
-            : type === 'short_answer'
-              ? Boolean(q.q)
-              : Boolean(q.q && (q.options || []).length >= MIN_OPTS);
+            ? Boolean(hasStemOrPassage && q.statements?.length >= 2)
+            : type === 'short_answer' || type === 'essay'
+              ? Boolean(hasStemOrPassage)
+              : Boolean(hasStemOrPassage && (q.options || []).length >= MIN_OPTS);
         const needsAnswer =
           type === 'true_false'
             ? !q.statements?.some((s) => s.answer !== null)
             : type === 'short_answer'
               ? !q.answer
-              : q.correct == null || q.correct < 0;
+              : type === 'essay'
+                ? false
+                : q.correct == null || q.correct < 0;
         return {
           ...q,
           num: q.num || idx + 1,
@@ -706,6 +712,7 @@ export async function parseExamFile(file, { onProgress, signal } = {}) {
   const lowQuality = regexQuestions.filter((q) => {
     if (q.type === 'true_false') return !q.statements?.length || q.statements.every((s) => s.answer === null);
     if (q.type === 'short_answer') return !q.answer;
+    if (q.type === 'essay') return !(q.q || q.passage || '').trim();
     return q._needsAnswer || (q.options || []).length < 4;
   });
 
@@ -743,11 +750,12 @@ export async function parseExamFile(file, { onProgress, signal } = {}) {
 
   // Bảo vệ không làm mất câu hỏi Phần II, Phần III, hoặc câu chỉ có hình ảnh
   const cleaned = finalQuestions.filter((q) => {
-    const hasStem = (q.q || '').trim().length > 0 || Boolean(q.image) || (q.images && q.images.length > 0);
+    const hasStem = (q.q || '').trim().length > 0 || Boolean((q.passage || '').trim()) || Boolean(q.image) || (q.images && q.images.length > 0);
     const isPart1 = (q.options || []).length >= MIN_OPTS;
     const isPart2 = q.part === 2 || q.type === 'true_false' || (Array.isArray(q.statements) && q.statements.length > 0);
     const isPart3 = q.part === 3 || q.type === 'short_answer' || Boolean(q.answer);
-    return hasStem && (isPart1 || isPart2 || isPart3);
+    const isPart4 = q.part === 4 || q.type === 'essay';
+    return hasStem && (isPart1 || isPart2 || isPart3 || isPart4);
   });
 
   onProgress?.({ stage: 'done', percent: 100 });

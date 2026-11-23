@@ -33,7 +33,7 @@ export const norm = (s) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/** Khóa nhận diện câu trùng: hỗ trợ cả Trắc nghiệm 4 lựa chọn, Đúng/Sai 4 ý và Trả lời ngắn. */
+/** Khóa nhận diện câu trùng: hỗ trợ Trắc nghiệm, Đúng/Sai 4 ý, Trả lời ngắn và Tự luận. */
 export const questionKey = (item) => {
   const type = item?.type || (Array.isArray(item?.statements) ? 'true_false' : item?.answer !== undefined && !(item?.options?.length) ? 'short_answer' : 'single_choice');
   if (type === 'true_false') {
@@ -43,7 +43,10 @@ export const questionKey = (item) => {
   if (type === 'short_answer') {
     return `sa|${norm(item?.q)}|${norm(item?.answer)}`;
   }
-  return norm(item?.q) + '|' + (item?.options || []).map(norm).join('|');
+  if (type === 'essay') {
+    return `essay|${norm(item?.q)}|${norm(item?.passage)}|${norm(item?.answer)}`;
+  }
+  return norm(item?.q) + '|' + norm(item?.passage) + '|' + (item?.options || []).map(norm).join('|');
 };
 
 /** Tìm câu đã có trong `list` giống hệt `item`. */
@@ -65,9 +68,10 @@ const cleanTags = (tags) =>
 
 const cleanPoints = (p) => (Number(p) > 0 ? Number(p) : 1);
 
-/** Chuẩn hóa + kiểm tra 1 câu (hỗ trợ Trắc nghiệm, Đúng/Sai 4 ý và Trả lời ngắn). */
+/** Chuẩn hóa + kiểm tra 1 câu (hỗ trợ Trắc nghiệm, Đúng/Sai, Trả lời ngắn & Tự luận). */
 function buildQuestion(raw, teacherId) {
-  if (!raw?.q?.trim()) throw new Error('Câu hỏi rỗng');
+  const hasStemOrPassage = Boolean(String(raw?.q || '').trim() || String(raw?.passage || '').trim());
+  if (!hasStemOrPassage) throw new Error('Câu hỏi rỗng');
   const type = raw.type || (Array.isArray(raw.statements) ? 'true_false' : (raw.answer !== undefined && !(raw.options?.length)) ? 'short_answer' : 'single_choice');
   const base = {
     teacherId,
@@ -77,7 +81,12 @@ function buildQuestion(raw, teacherId) {
     topicId: String(raw.topicId || '').trim(),
     level: String(raw.level || '').trim(),
     tags: cleanTags(raw.tags),
-    q: String(raw.q).trim(),
+    q: String(raw.q || '').trim(),
+    ...(String(raw.passage || '').trim() ? { passage: String(raw.passage).trim() } : {}),
+    ...(String(raw.instruction || '').trim() ? { instruction: String(raw.instruction).trim() } : {}),
+    ...(raw.passageId != null ? { passageId: raw.passageId } : {}),
+    ...((raw.groupId || raw.pg) ? { groupId: raw.groupId || raw.pg } : {}),
+    ...(raw.lockGroupQuestionOrder ? { lockGroupQuestionOrder: true } : {}),
     explain: String(raw.explain || '').trim(),
     points: cleanPoints(raw.points),
     usageCount: 0,
@@ -115,6 +124,15 @@ function buildQuestion(raw, teacherId) {
     };
   }
 
+  if (type === 'essay') {
+    return {
+      ...base,
+      answer: String(raw.answer ?? '').trim(),
+      options: [],
+      correct: -1,
+    };
+  }
+
   if (!Array.isArray(raw.options) || raw.options.length < 2) throw new Error('Cần ít nhất 2 đáp án');
   const options = raw.options.map((o) => String(o || '').trim());
   const correct = Number(raw.correct);
@@ -132,13 +150,7 @@ export async function addQuestion({ teacherId, ...raw }) {
   const data = buildQuestion(raw, teacherId);
   const newDocRef = doc(collection(db, COL));
   const qData = { id: newDocRef.id, ...data };
-  const writePromise = setDoc(newDocRef, data);
-  await Promise.race([
-    writePromise,
-    new Promise((resolve) => setTimeout(resolve, 2000)),
-  ]).catch((err) => {
-    console.warn('[addQuestion] setDoc background warning:', err?.message);
-  });
+  await setDoc(newDocRef, data);
   return qData;
 }
 
@@ -190,7 +202,7 @@ export async function addQuestionsBatch({ teacherId, questions, skipDuplicates =
 export async function updateQuestion(questionId, patch) {
   if (!questionId) throw new Error('Thiếu questionId');
 
-  const allowed = ['type', 'subject', 'grade', 'topicId', 'level', 'tags', 'q', 'options', 'correct', 'statements', 'answer', 'accepted', 'explain', 'points'];
+  const allowed = ['type', 'subject', 'grade', 'topicId', 'level', 'tags', 'q', 'passage', 'instruction', 'passageId', 'groupId', 'lockGroupQuestionOrder', 'options', 'correct', 'statements', 'answer', 'accepted', 'explain', 'points'];
   const data = { updatedAt: serverTimestamp() };
 
   for (const k of allowed) {
@@ -206,12 +218,14 @@ export async function updateQuestion(questionId, patch) {
     } else if (k === 'accepted') {
       data[k] = Array.isArray(patch[k]) ? patch[k].map((a) => String(a || '').trim()).filter(Boolean) : [];
     } else if (k === 'points') data[k] = cleanPoints(patch[k]);
+    else if (k === 'lockGroupQuestionOrder') data[k] = Boolean(patch[k]);
     else if (k === 'correct' || k === 'grade') data[k] = Number(patch[k]) || 0;
+    else if (k === 'passageId') data[k] = patch[k];
     else data[k] = String(patch[k] || '').trim();
   }
 
   const effectiveType = data.type || patch.type;
-  if (effectiveType !== 'true_false' && effectiveType !== 'short_answer') {
+  if (effectiveType !== 'true_false' && effectiveType !== 'short_answer' && effectiveType !== 'essay') {
     if (data.options && data.options.length < 2) throw new Error('Cần ít nhất 2 đáp án');
     if (data.options && patch.correct !== undefined) {
       const c = data.correct;

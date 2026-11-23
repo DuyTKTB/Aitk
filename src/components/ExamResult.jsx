@@ -5,7 +5,8 @@
    • Báo rõ khi bài đang chờ nộp (rớt mạng) thay vì "chưa lưu được"
    ============================================================ */
 import { useEffect, useMemo, useState } from 'react';
-import MathText from './MathText.jsx';
+import MathText, { MathTextConfigContext } from './MathText.jsx';
+import { subjectUsesMath } from '../lib/subjects.js';
 import ExamAiDiagnostic from './ExamAiDiagnostic.jsx';
 import ScoreDistributionChart from './exam/ScoreDistributionChart.jsx';
 import { QuestionImage } from './QuestionAnswer.jsx';
@@ -105,7 +106,8 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
       const d = result.detail[i];
       if (!d) return null;
       const isSkipped = d.picked === -1 || (Array.isArray(d.picked) && d.picked.every((x) => x === null)) || (typeof d.picked === 'string' && !d.picked.trim());
-      const status = isSkipped ? 'skip' : d.isCorrect ? 'ok' : 'no';
+      const isPendingEssay = !isSkipped && (q?.type === 'essay' || d?.needsManualGrading) && !d?.manualGraded && !d.isCorrect;
+      const status = isSkipped ? 'skip' : isPendingEssay ? 'pending' : d.isCorrect ? 'ok' : 'no';
       return { q, d, i, status };
     }).filter(Boolean);
   }, [exam, result, showAnswer]);
@@ -114,11 +116,12 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
     ok: rows.filter((r) => r.status === 'ok').length,
     no: rows.filter((r) => r.status === 'no').length,
     skip: rows.filter((r) => r.status === 'skip').length,
+    pending: rows.filter((r) => r.status === 'pending').length,
   }), [rows]);
 
   const correctCount = result.correct ?? result.correctCount ?? counts.ok;
   const totalCount = result.total ?? result.totalQuestions ?? exam?.questions?.length ?? rows.length;
-  const wrongCount = Math.max(0, totalCount - correctCount - counts.skip);
+  const wrongCount = Math.max(0, totalCount - correctCount - counts.skip - counts.pending);
 
   const postAnalytics = useMemo(() => buildPostExamAnalytics({ exam, result }), [exam, result]);
   const histogram = useMemo(() => buildScoreDistributionHistogram(pct), [pct]);
@@ -138,6 +141,7 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
           (r.status === 'no' || r.status === 'skip') &&
           !(r.q.type === 'true_false' || Array.isArray(r.q.statements)) &&
           r.q.type !== 'short_answer' &&
+          r.q.type !== 'essay' &&
           Array.isArray(r.q.options) &&
           r.q.options.length >= 2
       ),
@@ -181,7 +185,8 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
             : 'think';
 
   return (
-    <div className="er-page erx er-studio">
+    <MathTextConfigContext.Provider value={{ disableChemFormat: Boolean(exam?.subject) && !subjectUsesMath(exam?.subject) }}>
+      <div className="er-page erx er-studio">
       <header className="erx-topbar">
         <div className="erx-topbar-left">
           <ElecFlaskBrandSvg size={30} />
@@ -460,6 +465,7 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
                     <i><b className="ok" />Đúng</i>
                     <i><b className="no" />Sai</i>
                     <i><b className="skip" />Bỏ qua</i>
+                    {counts.pending > 0 && <i><b className="skip" style={{ background: '#d97706' }} />Chờ chấm</i>}
                   </span>
                 </div>
                 <div className="s9-er-heatmap">
@@ -469,7 +475,7 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
                       type="button"
                       className={`s9-er-cell is-${r.status}`}
                       onClick={() => jumpToQuestion(r.i)}
-                      title={`Câu ${r.i + 1}: ${r.status === 'ok' ? 'Đúng' : r.status === 'no' ? 'Sai' : 'Bỏ qua'}`}
+                      title={`Câu ${r.i + 1}: ${r.status === 'ok' ? 'Đúng' : r.status === 'no' ? 'Sai' : r.status === 'pending' ? 'Chờ chấm' : 'Bỏ qua'}`}
                     >
                       {r.i + 1}
                     </button>
@@ -496,7 +502,7 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
             <div className="erx-bar">
               <h3 className="er-h3">Chi tiết bài làm</h3>
               <div className="erx-filter" role="tablist" aria-label="Lọc câu hỏi">
-                {[['all', 'Tất cả', rows.length], ['no', 'Sai', counts.no], ['skip', 'Bỏ qua', counts.skip], ['ok', 'Đúng', counts.ok]].map(([k, label, n]) => (
+                {[['all', 'Tất cả', rows.length], ['no', 'Sai', counts.no], ['skip', 'Bỏ qua', counts.skip], ...(counts.pending > 0 ? [['pending', 'Chờ chấm', counts.pending]] : []), ['ok', 'Đúng', counts.ok]].map(([k, label, n]) => (
                   <button key={k} type="button" role="tab" aria-selected={filter === k}
                     className={'erx-chip' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>
                     {label} <em>{n}</em>
@@ -515,10 +521,18 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
               {visible.map(({ q, d, i, status }) => (
                 <li key={i} id={`erx-q-${i}`} className={'erx-item ' + status}>
                   <div className="er-list-head">
-                    <span className={'erx-mark ' + status}>
+                    <span
+                      className={'erx-mark ' + status}
+                      style={status === 'pending' ? { background: 'rgba(217, 119, 6, 0.14)', color: '#d97706' } : undefined}
+                    >
                       {status === 'ok' ? <IcoCheck /> : status === 'no' ? <IcoX /> : <IcoMinus />}
                     </span>
                     <b>Câu {i + 1}</b>
+                    {status === 'pending' && (
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.45rem', borderRadius: 999, background: 'rgba(217, 119, 6, 0.14)', color: '#b45309' }}>
+                        Chờ GV chấm
+                      </span>
+                    )}
                     <span className="er-points">+{typeof d.earned === 'number' ? d.earned : (d.isCorrect ? (q.points || 1) : 0)} điểm</span>
                     {status !== 'ok' && (
                       <button
@@ -532,6 +546,12 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
                     )}
                   </div>
 
+                  {(q.instruction || q.passage) && (
+                    <div style={{ margin: '0.45rem 0', padding: '0.6rem 0.75rem', borderRadius: 10, background: 'rgba(148, 163, 184, 0.08)', borderLeft: '3px solid var(--acc, #2563eb)', fontSize: '0.88rem', lineHeight: 1.55 }}>
+                      {q.instruction && <div style={{ fontStyle: 'italic', color: 'var(--mut)', marginBottom: q.passage ? '0.3rem' : 0 }}>{q.instruction}</div>}
+                      {q.passage && <MathText as="div">{q.passage}</MathText>}
+                    </div>
+                  )}
                   <MathText as="p" className="er-q">{q.q}</MathText>
                   <QuestionImage q={q} />
 
@@ -567,6 +587,36 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
                           </div>
                         );
                       })}
+                    </div>
+                  ) : q.type === 'essay' ? (
+                    /* 2b. Dạng Tự luận / Đọc hiểu mở */
+                    <div
+                      className="er-sa-box"
+                      style={{
+                        marginTop: '0.6rem',
+                        padding: '0.75rem 0.9rem',
+                        borderRadius: '10px',
+                        background: 'rgba(14, 165, 233, 0.06)',
+                        border: '1px solid rgba(14, 165, 233, 0.25)',
+                        fontSize: '0.88rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.45rem',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontWeight: 700, color: '#0369a1' }}>Bài làm của bạn: </span>
+                        <div style={{ marginTop: 4 }}>
+                          {String(d.picked || '').trim() ? String(d.picked) : <em style={{ opacity: 0.7 }}>Chưa trả lời</em>}
+                        </div>
+                      </div>
+                      {(q.answer || (typeof d.correct === 'string' && d.correct)) && (
+                        <div>
+                          <span style={{ fontWeight: 700, color: '#047857' }}>Gợi ý chấm: </span>
+                          <MathText as="div">{q.answer || d.correct}</MathText>
+                        </div>
+                      )}
                     </div>
                   ) : q.type === 'short_answer' ? (
                     /* 2. Dạng Trả lời ngắn */
@@ -754,6 +804,7 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </MathTextConfigContext.Provider>
   );
 }

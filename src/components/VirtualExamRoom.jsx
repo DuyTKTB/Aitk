@@ -2498,8 +2498,8 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   const handleOpenPayment = (tier) => {
     const role = ent.isTeacherAccount ? 'teacher' : 'student';
     const pkgObj = role === 'teacher'
-      ? SUBSCRIPTION_CATALOG['gv-1m']
-      : (tier === 'VIP' ? SUBSCRIPTION_CATALOG['hs-12m'] : SUBSCRIPTION_CATALOG['hs-1m']);
+      ? SUBSCRIPTION_CATALOG['gv-12m']
+      : SUBSCRIPTION_CATALOG['hs-12m'];
     const custom = {
       key: pkgObj.id,
       role,
@@ -2523,8 +2523,8 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
           setTimeout(() => {
             const role = ent.isTeacherAccount ? 'teacher' : 'student';
             const pkgObj = role === 'teacher'
-              ? SUBSCRIPTION_CATALOG['gv-1m']
-              : (upgradeModalExam?.tier === 'VIP' ? SUBSCRIPTION_CATALOG['hs-12m'] : SUBSCRIPTION_CATALOG['hs-1m']);
+              ? SUBSCRIPTION_CATALOG['gv-12m']
+              : SUBSCRIPTION_CATALOG['hs-12m'];
             const custom = {
               key: pkgObj.id,
               role,
@@ -3196,8 +3196,8 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
           onUpgrade={(pack) => {
             const role = ent.isTeacherAccount ? 'teacher' : (pack.role || 'student');
             const fallbackPkg = role === 'teacher'
-              ? SUBSCRIPTION_CATALOG['gv-1m']
-              : (upgradeModalExam.tier === 'VIP' ? SUBSCRIPTION_CATALOG['hs-12m'] : SUBSCRIPTION_CATALOG['hs-1m']);
+              ? SUBSCRIPTION_CATALOG['gv-12m']
+              : SUBSCRIPTION_CATALOG['hs-12m'];
             const custom = {
               key: pack.key || fallbackPkg.id,
               role,
@@ -3215,8 +3215,8 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
               if (res.isDiscount) {
                 const role = ent.isTeacherAccount ? 'teacher' : 'student';
                 const fallbackPkg = role === 'teacher'
-                  ? SUBSCRIPTION_CATALOG['gv-1m']
-                  : (upgradeModalExam.tier === 'VIP' ? SUBSCRIPTION_CATALOG['hs-12m'] : SUBSCRIPTION_CATALOG['hs-1m']);
+                  ? SUBSCRIPTION_CATALOG['gv-12m']
+                  : SUBSCRIPTION_CATALOG['hs-12m'];
                 const custom = {
                   key: fallbackPkg.id,
                   role,

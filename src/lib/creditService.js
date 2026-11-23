@@ -83,10 +83,13 @@ function setCachedCredits(userId, data) {
 }
 
 /* ============================================================
-   BẢNG QUY ĐỔI ELEC AI CREDIT (CHUẨN 1 VNĐ ≈ 1 CREDIT)
+   BẢNG QUY ĐỔI ELEC AI CREDIT (NẠP TỪ 10.000Đ TRỞ LÊN · 1 VNĐ = 1 CREDIT)
    ============================================================ */
+export const MIN_CREDIT_TOPUP_VND = 10000;
+export const MAX_CREDIT_TOPUP_VND = 50000000;
+
 export const CREDIT_PACKAGES = [
-  { amount: 10000,  credits: 10000,  bonus: 0,     total: 10000,  name: 'PRO 1',   label: '10.000 đ',  coins: 1 },
+  { amount: 10000,  credits: 10000,  bonus: 0,     total: 10000,  name: 'PRO 1',   label: '10.000 đ',  coins: 1, rate: '1đ / credit', badge: 'Từ 10k' },
   { amount: 30000,  credits: 30000,  bonus: 0,     total: 30000,  name: 'PRO 2',   label: '30.000 đ',  coins: 1, rate: '~1đ / credit' },
   { amount: 60000,  credits: 60000,  bonus: 0,     total: 60000,  name: 'PRO 3',   label: '60.000 đ',  coins: 2, rate: '~1đ / credit' },
   { amount: 100000, credits: 100000, bonus: 0,     total: 100000, name: 'PREMIUM', label: '100.000 đ', coins: 3, rate: '~1đ / credit', badge: 'ĐƯỢC CHỌN NHIỀU NHẤT', popular: true },
@@ -96,6 +99,41 @@ export const CREDIT_PACKAGES = [
   { amount: 25000,  credits: 25000,  bonus: 0,     total: 25000,  name: 'TIẾP SỨC', label: '25.000 đ', coins: 1 },
   { amount: 50000,  credits: 50000,  bonus: 0,     total: 50000,  name: 'ÔN LUYỆN', label: '50.000 đ', coins: 2 },
 ];
+
+export function resolveCreditOrderAmount(rawAmount) {
+  const num = Number(rawAmount);
+  if (!Number.isFinite(num)) {
+    return { ok: false, error: `Số tiền nạp tối thiểu là ${MIN_CREDIT_TOPUP_VND.toLocaleString('vi-VN')}đ.` };
+  }
+  const amount = Math.round(num);
+  if (amount < MIN_CREDIT_TOPUP_VND) {
+    return { ok: false, error: `Số tiền nạp tối thiểu là ${MIN_CREDIT_TOPUP_VND.toLocaleString('vi-VN')}đ.` };
+  }
+  if (amount > MAX_CREDIT_TOPUP_VND) {
+    return { ok: false, error: `Số tiền mỗi giao dịch tối đa là ${MAX_CREDIT_TOPUP_VND.toLocaleString('vi-VN')}đ.` };
+  }
+  const matched = CREDIT_PACKAGES.find((p) => p.amount === amount);
+  if (matched) {
+    return {
+      ok: true,
+      amount: matched.amount,
+      credits: matched.credits,
+      bonus: matched.bonus || 0,
+      total: matched.total,
+      name: matched.name,
+      pkg: matched,
+    };
+  }
+  return {
+    ok: true,
+    amount,
+    credits: amount,
+    bonus: 0,
+    total: amount,
+    name: 'NẠP TÙY CHỌN',
+    pkg: null,
+  };
+}
 
 export const BANK_INFO = {
   bankId: '970422',
@@ -378,8 +416,9 @@ export async function runWithCredit(
    Tạo đơn nạp tiền → trả về QR code URL
    ============================================================ */
 export async function createPaymentOrder(userId, packageAmount) {
-  const pkg = CREDIT_PACKAGES.find((p) => p.amount === packageAmount);
-  if (!pkg) throw new Error('Gói không hợp lệ');
+  const resolved = resolveCreditOrderAmount(packageAmount);
+  if (!resolved.ok) throw new Error(resolved.error);
+  const pkg = { amount: resolved.amount, total: resolved.total };
 
   const orderCode = generateOrderCode();
   const transferContent = `ELEC ${orderCode}`;

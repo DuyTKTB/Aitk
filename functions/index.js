@@ -14,28 +14,29 @@ exports.askAIBatch = aiProxy.askAIBatch;
    ============================================================ */
 const CONFIG = {
   WEBHOOK_SECRET: process.env.ELECAI_WEBHOOK_SECRET || 'CHANGE_ME_SECRET',
-  // Hỗ trợ đầy đủ bảng giá Học Sinh (VIP) & Giáo Viên (PRO) + Legacy
+  // Bảng giá chính thức Học Sinh VIP (299k/năm) & Giáo Viên PRO (999k/năm) + Legacy
   PRICE_MAP: {
-    // Legacy rates
+    // Bảng giá chính thức hiện hành
+    299000:  { months: 12, tier: 'vip', role: 'student' },
+    999000:  { months: 12, tier: 'pro', role: 'teacher' },
+    // Legacy rates (tương thích ngược)
     50000:   { months: 1,  tier: 'vip', role: 'student' },
-    250000:  { months: 6,  tier: 'vip', role: 'student' },
-    450000:  { months: 12, tier: 'vip', role: 'student' },
-    // Học sinh VIP (ALL_PACKAGES + SubscriptionTiers)
     79000:   { months: 1,  tier: 'vip', role: 'student' },
-    199000:  { months: 3,  tier: 'vip', role: 'student' },
-    299000:  { months: 3,  tier: 'vip', role: 'student' },
+    199000:  { months: 1,  tier: 'vip', role: 'student' },
+    250000:  { months: 6,  tier: 'vip', role: 'student' },
     349000:  { months: 6,  tier: 'vip', role: 'student' },
     399000:  { months: 3,  tier: 'vip', role: 'student' },
+    450000:  { months: 12, tier: 'vip', role: 'student' },
     499000:  { months: 12, tier: 'vip', role: 'student' },
     599000:  { months: 3,  tier: 'vip', role: 'student' },
-    699000:  { months: 12, tier: 'vip', role: 'student' },
+    699000:  { months: 6,  tier: 'vip', role: 'student' },
     899000:  { months: 12, tier: 'vip', role: 'student' },
-    999000:  { months: 6,  tier: 'vip', role: 'student' },
     1399000: { months: 12, tier: 'vip', role: 'student' },
-    // Giáo viên PRO
     149000:  { months: 1,  tier: 'pro', role: 'teacher' },
     590000:  { months: 6,  tier: 'pro', role: 'teacher' },
     990000:  { months: 12, tier: 'pro', role: 'teacher' },
+    1990000: { months: 6,  tier: 'pro', role: 'teacher' },
+    3590000: { months: 12, tier: 'pro', role: 'teacher' },
   },
   CONTENT_REGEX: /ELECAI\s*(?:VIP|PRO)?\s+([A-Z0-9-]+)/i,
 };

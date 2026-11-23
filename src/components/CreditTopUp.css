@@ -1513,7 +1513,7 @@
 /* Danh sách thẻ gói cước */
 .ns9-cr-cards-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
 
@@ -1521,6 +1521,61 @@
   .ns9-cr-cards-row {
     grid-template-columns: 1fr;
   }
+}
+
+.ns9-cr-custom-box {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+[data-theme="dark"] .ns9-cr-custom-box {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+.ns9-cr-custom-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.ns9-cr-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ns9-cr-custom-input {
+  flex: 1;
+  font-weight: 700;
+}
+
+.ns9-cr-custom-unit {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.ns9-cr-custom-err {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.ns9-cr-custom-hint {
+  font-size: 0.76rem;
+  color: #16a34a;
+}
+
+.ns9-cr-input-err {
+  border-color: #dc2626 !important;
 }
 
 .ns9-cr-pkg-card {

@@ -77,7 +77,7 @@ export const TEMPLATE = {
 const DEFAULTS = {
   markThreshold: 0.20,   // độ đen >= ngưỡng → coi là đã tô
   faintBand: 0.07,       // trong vùng ngưỡng ± faintBand → báo "mờ, cần xem lại"
-  detectMaxDim: 1400,    // thu nhỏ ảnh về cỡ này để tìm vạch định vị
+  detectMaxDim: 1600,    // giữ độ phân giải sắc nét khi tách 4 ô góc & vạch mép từ webcam/camera
 };
 
 /* ============ TIỆN ÍCH ẢNH ============ */
@@ -178,7 +178,7 @@ function solveLinear(A, b) {
 }
 
 // Bình phương tối thiểu: tìm H (3x3, h33 = 1) sao cho dst ≈ H(src). Cần >= 4 cặp điểm.
-function fitHomography(src, dst) {
+export function fitHomography(src, dst) {
   // chuẩn hóa để ma trận không bị xấu điều kiện
   const sS = 1000;
   const sD = Math.max(...dst.map((p) => Math.max(Math.abs(p[0]), Math.abs(p[1])))) || 1;
@@ -234,7 +234,7 @@ function findMarks(small) {
       const x1 = Math.min(w, x + rad + 1);
       const sum = integ[y1 * (w + 1) + x1] - integ[y0 * (w + 1) + x1] - integ[y1 * (w + 1) + x0] + integ[y0 * (w + 1) + x0];
       const bg = sum / ((x1 - x0) * (y1 - y0));
-      bin[y * w + x] = chan[y * w + x] < bg * 0.70 && chan[y * w + x] < 170 ? 1 : 0;
+      bin[y * w + x] = chan[y * w + x] < bg * 0.74 && chan[y * w + x] < 185 ? 1 : 0;
     }
   }
 
@@ -273,40 +273,76 @@ function findMarks(small) {
   }
 
   const maxDim = Math.max(w, h);
-  let cand = comps.filter(
-    (m) => m.ratio >= 1.9 && m.ratio <= 4.8 && m.fill > 0.75 && m.fill < 1.25
-      && m.W >= 0.0014 * maxDim && m.L >= 0.006 * maxDim && m.L <= 0.045 * maxDim && m.n >= 20,
+  const refDim = Math.min(maxDim, Math.round(Math.min(w, h) * 1.45));
+  let bars = comps.filter(
+    (m) => m.ratio >= 1.65 && m.ratio <= 5.2 && m.fill > 0.68 && m.fill < 1.26
+      && m.W >= 0.0012 * refDim && m.L >= 0.0052 * refDim && m.L <= 0.052 * maxDim && m.n >= 12,
   );
-  if (cand.length >= 4) {
+  if (bars.length >= 4) {
     // Các vạch định vị có kích thước gần như giống hệt nhau → lấy nhóm đông nhất
     let bestSet = [];
-    for (const c of cand) {
-      const set = cand.filter((o) => Math.abs(o.L - c.L) < 0.2 * c.L && Math.abs(o.W - c.W) < 0.3 * c.W);
+    for (const c of bars) {
+      const set = bars.filter((o) => Math.abs(o.L - c.L) < 0.24 * c.L && Math.abs(o.W - c.W) < 0.35 * c.W);
       if (set.length > bestSet.length) bestSet = set;
     }
     // Phối cảnh làm vạch xa nhỏ hơn vạch gần → nới dần kích thước quanh nhóm chính
     const Lm = bestSet.map((m) => m.L).sort((p, q) => p - q)[Math.floor(bestSet.length / 2)];
-    cand = cand.filter((m) => m.L > 0.55 * Lm && m.L < 1.8 * Lm);
+    bars = bars.filter((m) => m.L > 0.55 * Lm && m.L < 1.8 * Lm);
   }
-  return cand;
+
+  // 4 ô vuông đen ở 4 góc chuẩn Bộ GD&ĐT / TNMaker (lớn hơn ô tô tròn, tỷ lệ gần vuông 1:1)
+  let squares = comps.filter(
+    (m) => m.ratio >= 0.80 && m.ratio <= 1.68 && m.fill > 0.72 && m.fill < 1.20
+      && m.W >= 0.0078 * refDim && m.L >= 0.0085 * refDim && m.L <= 0.06 * maxDim && m.n >= 18,
+  );
+  if (squares.length > 4) {
+    const largest4 = [...squares].sort((a, b) => b.n - a.n).slice(0, 4);
+    const medL = largest4.map((m) => m.L).sort((a, b) => a - b)[1];
+    squares = squares.filter((m) => m.L >= 0.62 * medL);
+  }
+
+  const barSet = new Set(bars);
+  const all = [...squares.filter((s) => !barSet.has(s)), ...bars];
+  return { all, bars, squares };
 }
 
-/* Thử nhiều cách chọn 4 góc (mỗi góc xét 4 ứng viên "ngoài cùng nhất", 4 hướng xoay),
-   chọn cách khiến nhiều vạch mẫu trùng với vạch phát hiện nhất. Chịu được vạch giả do nhiễu. */
-function findBestAlignment(marks, sc, tol) {
-  const top3 = (fn, dir) => [...marks].sort((p, q) => dir * (fn(q) - fn(p))).slice(0, 4);
-  const cTL = top3((m) => m.x + m.y, -1);
-  const cTR = top3((m) => m.x - m.y, 1);
-  const cBR = top3((m) => m.x + m.y, 1);
-  const cBL = top3((m) => m.x - m.y, -1);
+/* Thử nhiều cách chọn 4 góc (ưu tiên 4 ô vuông đen ở 4 góc, kết hợp thêm vạch ngoài cùng),
+   chọn cách khiến nhiều dấu định vị trùng với mẫu nhất và tạo thành tứ giác A4 hợp lệ. */
+function findBestAlignment(marksInfo, sc, tol, imgW, imgH) {
+  const { all, squares } = marksInfo;
+  const pickExtremal = (arr, fn, dir, limit) => [...arr].sort((p, q) => dir * (fn(q) - fn(p))).slice(0, limit);
+  const mergeCorner = (fn, dir) => {
+    const out = [];
+    const seen = new Set();
+    const pushList = (list) => list.forEach((m) => { if (!seen.has(m)) { seen.add(m); out.push(m); } });
+    if (squares.length >= 4) pushList(pickExtremal(squares, fn, dir, 3));
+    pushList(pickExtremal(all, fn, dir, 4));
+    return out.slice(0, 5);
+  };
+
+  const cTL = mergeCorner((m) => m.x + m.y, -1);
+  const cTR = mergeCorner((m) => m.x - m.y, 1);
+  const cBR = mergeCorner((m) => m.x + m.y, 1);
+  const cBL = mergeCorner((m) => m.x - m.y, -1);
+  const sqSet = new Set(squares);
+
   const tc = TEMPLATE.corners;
   const src4 = [tc.TL, tc.TR, tc.BR, tc.BL];
   let best = null;
   for (const a of cTL) for (const b of cTR) for (const c of cBR) for (const d of cBL) {
     const P = [a, b, c, d];
     if (new Set(P).size < 4) continue;
+    const sqCount = P.filter((p) => sqSet.has(p)).length;
     for (let sh = 0; sh < 4; sh++) {
-      const dst = [P[sh], P[(sh + 1) % 4], P[(sh + 2) % 4], P[(sh + 3) % 4]].map((p) => [p.x * sc, p.y * sc]);
+      const ord = [P[sh], P[(sh + 1) % 4], P[(sh + 2) % 4], P[(sh + 3) % 4]];
+      const dst = ord.map((p) => [p.x * sc, p.y * sc]);
+      if (!isConvexQuad(dst, true)) continue;
+      const wQuad = (Math.hypot(dst[1][0] - dst[0][0], dst[1][1] - dst[0][1]) + Math.hypot(dst[2][0] - dst[3][0], dst[2][1] - dst[3][1])) / 2;
+      const hQuad = (Math.hypot(dst[3][0] - dst[0][0], dst[3][1] - dst[0][1]) + Math.hypot(dst[2][0] - dst[1][0], dst[2][1] - dst[1][1])) / 2;
+      const quadRatio = wQuad / Math.max(1, hQuad);
+      if (quadRatio < 0.48 || quadRatio > 0.98) continue;
+      const area = quadArea(dst);
+      if (imgW && imgH && area < 0.08 * imgW * imgH) continue;
       const H = fitHomography(src4, dst);
       if (!H) continue;
       let hit = 0;
@@ -314,14 +350,15 @@ function findBestAlignment(marks, sc, tol) {
       for (const t of TEMPLATE.marks) {
         const [pu, pv] = H(t[0], t[1]);
         let bd = tol;
-        for (const mk of marks) {
+        for (const mk of all) {
           const dd = Math.hypot(mk.x * sc - pu, mk.y * sc - pv);
           if (dd < bd) bd = dd;
         }
         if (bd < tol) { hit++; dsum += bd; }
       }
-      const score = hit - (hit ? (dsum / hit / tol) * 0.5 : 0);
-      if (!best || score > best.score) best = { score, hit, H };
+      // Ưu tiên thêm nhỏ nếu cả 4 góc đều là ô vuông đen TNMaker/BGD
+      const score = hit + (sqCount === 4 ? 1.5 : sqCount * 0.15) - (hit ? (dsum / hit / tol) * 0.5 : 0);
+      if (!best || score > best.score) best = { score, hit, sqCount, H };
     }
   }
   return best;
@@ -391,47 +428,59 @@ function makeSampler(chanR, chanG, w, h, H) {
   return { measure, ringScore };
 }
 
-/* ============ HÀM CHÍNH ============ */
-export function readSheet(img, options = {}) {
-  const opt = { ...DEFAULTS, ...options };
+/* Căn chỉnh tọa độ phiếu A4 chung cho readSheet & probeSheetAlignment */
+function alignSheet(img, detectMaxDim = DEFAULTS.detectMaxDim) {
   const { width: w, height: h } = img;
-  if (!img?.data || !w || !h) return { ok: false, error: 'Ảnh không hợp lệ.' };
-
   const chanR = extractChannel(img, 0);
   const chanG = extractChannel(img, 1);
-  const small = downscale(chanR, w, h, opt.detectMaxDim);
+  const small = downscale(chanR, w, h, detectMaxDim);
 
-  // 1) Vạch định vị
-  const marks = findMarks(small);
-  if (marks.length < 6) {
-    return { ok: false, error: 'Không thấy các vạch đen định vị. Chụp thẳng, đủ sáng, thấy rõ cả 4 góc phiếu.' };
+  const marksInfo = findMarks(small);
+  const { all: marks, squares } = marksInfo;
+  if (marks.length < 4) {
+    return {
+      ok: false, stage: 'few_marks', marksCount: marks.length, squaresCount: squares.length,
+      bestHit: 0, H: null, small, chanR, chanG, cornerMatched: { TL: false, TR: false, BR: false, BL: false },
+    };
   }
   const sc = 1 / small.s;
   const toFull = (p) => [p.x * sc, p.y * sc];
-  // Dung sai khớp vạch = 40% chiều dài vạch (khoảng cách giữa các vạch ≥ 1,3 chiều dài) → không khớp nhầm sang vạch bên cạnh
+  // Dung sai khớp vạch = 45% chiều dài mẫu (nới hợp lý cho cả 4 ô vuông góc 56px và vạch mép 44px)
   const Ls = marks.map((m) => m.L).sort((p, q) => p - q);
-  const matchTol = 0.4 * Ls[Math.floor(Ls.length / 2)] * sc;
-  const best = findBestAlignment(marks, sc, matchTol);
-  if (!best || best.hit < 18) {
-    return { ok: false, error: 'Không nhận ra khung phiếu (thiếu vạch ở mép phải/dưới). Chụp lại đủ cả phiếu, đủ sáng, không bị che.' };
+  const matchTol = 0.45 * Ls[Math.floor(Ls.length / 2)] * sc;
+  const best = findBestAlignment(marksInfo, sc, matchTol, w, h);
+
+  // Cho phép nhận khi đủ >= 20 vạch khớp HOẶC bắt chuẩn cả 4 ô vuông đen TNMaker ở 4 góc
+  const fourSquareReady = Boolean(best && best.sqCount === 4 && best.hit >= 4);
+  if (!best || (best.hit < 20 && !fourSquareReady)) {
+    return {
+      ok: false,
+      stage: 'bad_fit',
+      marksCount: marks.length,
+      squaresCount: squares.length,
+      bestHit: best?.hit || 0,
+      H: best?.H || null,
+      small,
+      chanR,
+      chanG,
+      cornerMatched: { TL: false, TR: false, BR: false, BL: false },
+    };
   }
   let H = best.H;
 
-  // 2) Tinh chỉnh: ghép mọi vạch tìm được với vạch mẫu gần nhất, giải lại H
+  // Tinh chỉnh: ghép mọi vạch + ô vuông góc tìm được với mẫu gần nhất, giải lại H
   const refineOnce = (Hcur) => {
     const S = [];
     const D = [];
-    // Hnghịch bằng cách thử: với mỗi vạch mẫu, dự đoán vị trí trong ảnh rồi tìm vạch phát hiện gần nhất
-    const tol = matchTol;
     for (const t of TEMPLATE.marks) {
       const [pu, pv] = Hcur(t[0], t[1]);
-      let best = null;
-      let bd = tol;
+      let found = null;
+      let bd = matchTol;
       for (const mk of marks) {
         const d = Math.hypot(mk.x * sc - pu, mk.y * sc - pv);
-        if (d < bd) { bd = d; best = mk; }
+        if (d < bd) { bd = d; found = mk; }
       }
-      if (best) { S.push(t); D.push(toFull(best)); }
+      if (found) { S.push(t); D.push(toFull(found)); }
     }
     return { S, D };
   };
@@ -439,12 +488,198 @@ export function readSheet(img, options = {}) {
   for (let it = 0; it < 2; it++) {
     const { S, D } = refineOnce(H);
     matched = S.length;
-    if (S.length >= 8) {
+    if (S.length >= 4) {
       const H2 = fitHomography(S, D);
       if (H2) H = H2;
     }
   }
-  const markFit = matched / TEMPLATE.marks.length;
+
+  // Nếu chỉ có 4 ô vuông đen ở 4 góc (thiếu vạch mép phân biệt chiều trên/dưới),
+  // dùng độ khớp viền ô tròn SBD/Mã đề để tự động loại chiều ngược 180°.
+  if (matched < 10) {
+    const tc = TEMPLATE.corners;
+    const hFlip = fitHomography(
+      [tc.TL, tc.TR, tc.BR, tc.BL],
+      [H(...tc.BR), H(...tc.BL), H(...tc.TL), H(...tc.TR)],
+    );
+    if (hFlip) {
+      // Kiểm tra các cụm ô đặc trưng chỉ có ở nửa dưới (PHẦN III giữa phiếu) vs nửa trên trống (họ tên thí sinh)
+      const probePts = [
+        [TEMPLATE.p3X[1][1], TEMPLATE.p3DigitY[2]],
+        [TEMPLATE.p3X[2][0], TEMPLATE.p3DigitY[1]],
+        [TEMPLATE.p3X[2][2], TEMPLATE.p3DigitY[4]],
+        [TEMPLATE.p3X[2][3], TEMPLATE.p3DigitY[7]],
+        [TEMPLATE.p3X[3][1], TEMPLATE.p3DigitY[3]],
+        [TEMPLATE.p3X[3][2], TEMPLATE.p3DigitY[6]],
+        [TEMPLATE.p3X[4][1], TEMPLATE.p3DigitY[5]],
+        [TEMPLATE.p1X[1][1], TEMPLATE.p1Y[2]],
+        [TEMPLATE.p1X[2][2], TEMPLATE.p1Y[5]],
+      ];
+      const evalFit = (Hcand) => {
+        const sp = makeSampler(chanR, chanG, w, h, Hcand);
+        return probePts.reduce((acc, [px, py]) => acc + sp.ringScore(px, py), 0);
+      };
+      if (evalFit(hFlip) > evalFit(H) + 0.02) H = hFlip;
+    }
+  }
+
+  // Kiểm tra từng ô vuông đen tại 4 góc có khớp thực tế trên ảnh hay không
+  const cornerMatched = {};
+  Object.entries(TEMPLATE.corners).forEach(([key, pt]) => {
+    const [pu, pv] = H(pt[0], pt[1]);
+    cornerMatched[key] = marks.some((mk) => Math.hypot(mk.x * sc - pu, mk.y * sc - pv) < matchTol * 1.45);
+  });
+
+  return {
+    ok: true,
+    H,
+    matched,
+    markFit: matched / TEMPLATE.marks.length,
+    marksCount: marks.length,
+    squaresCount: squares.length,
+    cornerMatched,
+    small,
+    chanR,
+    chanG,
+  };
+}
+
+function quadArea(pts) {
+  let s = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[(i + 1) % pts.length];
+    s += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(s) * 0.5;
+}
+
+function isConvexQuad(pts, requireClockwise = false) {
+  let sign = 0;
+  for (let i = 0; i < 4; i++) {
+    const [x0, y0] = pts[i];
+    const [x1, y1] = pts[(i + 1) % 4];
+    const [x2, y2] = pts[(i + 2) % 4];
+    const cross = (x1 - x0) * (y2 - y1) - (y1 - y0) * (x2 - x1);
+    if (Math.abs(cross) < 1e-3) return false;
+    if (requireClockwise && cross <= 0) return false;
+    const s = cross > 0 ? 1 : -1;
+    if (!sign) sign = s;
+    else if (s !== sign) return false;
+  }
+  return true;
+}
+
+/**
+ * Thăm dò nhanh căn chỉnh phiếu A4 theo thời gian thực cho live camera viewfinder.
+ * Trả về 4 góc định vị, tỷ lệ khớp vạch, tình trạng ánh sáng và gợi ý căn khung.
+ */
+export function probeSheetAlignment(img, options = {}) {
+  const { width: w, height: h } = img || {};
+  if (!img?.data || !w || !h) {
+    return {
+      detected: false, ready: false, markFit: 0, hits: 0, totalMarks: TEMPLATE.marks.length,
+      marksCount: 0, brightness: 0, lightState: 'dark', cornersPx: null, paperQuadPx: null,
+      hint: 'Đang chờ tín hiệu camera…',
+    };
+  }
+
+  const detectMaxDim = options.detectMaxDim || 680;
+  const aligned = alignSheet(img, detectMaxDim);
+  const { small } = aligned;
+
+  let sumLuma = 0;
+  for (let i = 0; i < small.chan.length; i++) sumLuma += small.chan[i];
+  const brightness = small.chan.length ? Math.round(sumLuma / small.chan.length) : 0;
+  const lightState = brightness < 55
+    ? 'dark'
+    : (brightness > 252 && !aligned.ok && aligned.marksCount < 4)
+      ? 'bright'
+      : 'ok';
+
+  const hits = aligned.ok ? aligned.matched : aligned.bestHit;
+  const markFit = hits / TEMPLATE.marks.length;
+  const H = aligned.H;
+
+  let cornersPx = null;
+  let paperQuadPx = null;
+  let validQuad = false;
+
+  if (H && (hits >= 10 || (aligned.ok && hits >= 4))) {
+    const tl = H(...TEMPLATE.corners.TL);
+    const tr = H(...TEMPLATE.corners.TR);
+    const br = H(...TEMPLATE.corners.BR);
+    const bl = H(...TEMPLATE.corners.BL);
+    const cornerPts = [tl, tr, br, bl];
+    const area = quadArea(cornerPts);
+    const inBounds = cornerPts.every(([x, y]) => (
+      Number.isFinite(x) && Number.isFinite(y)
+      && x >= -0.18 * w && x <= 1.18 * w
+      && y >= -0.18 * h && y <= 1.18 * h
+    ));
+    if (inBounds && isConvexQuad(cornerPts) && area >= 0.1 * w * h) {
+      validQuad = true;
+      cornersPx = { TL: tl, TR: tr, BR: br, BL: bl };
+      paperQuadPx = [
+        H(0, 0),
+        H(TEMPLATE.width, 0),
+        H(TEMPLATE.width, TEMPLATE.height),
+        H(0, TEMPLATE.height),
+      ];
+    }
+  }
+
+  const detected = validQuad && (hits >= 12 || (aligned.squaresCount >= 4 && hits >= 4));
+  const cornersCount = Object.values(aligned.cornerMatched || {}).filter(Boolean).length;
+  const ready = aligned.ok && validQuad && (markFit >= 0.42 || cornersCount === 4) && lightState === 'ok';
+
+  let hint;
+  if (lightState === 'dark') {
+    hint = 'Ánh sáng hơi tối — hãy bật đèn Flash hoặc tăng sáng bàn thi.';
+  } else if (lightState === 'bright') {
+    hint = 'Phiếu bị lóa sáng — điều chỉnh góc nghiêng nhẹ tránh phản đèn.';
+  } else if (ready) {
+    hint = `Chuẩn 4/4 ô góc (${hits}/${TEMPLATE.marks.length} điểm định vị) — Giữ yên để tự chụp!`;
+  } else if (detected) {
+    hint = `Đã bắt ${cornersCount}/4 ô góc — Đưa 4 ô vuông đen vào khít 4 ô ở góc khung ngắm.`;
+  } else if (aligned.marksCount >= 2) {
+    hint = `Đã thấy ${aligned.squaresCount || 0} ô đen — Căn đủ 4 ô vuông đen trên giấy vào 4 ô góc.`;
+  } else {
+    hint = 'Đưa 4 ô vuông đen ở 4 góc phiếu khít vào 4 ô định vị màu xanh trên màn hình.';
+  }
+
+  return {
+    detected,
+    ready,
+    markFit: +markFit.toFixed(2),
+    hits,
+    totalMarks: TEMPLATE.marks.length,
+    marksCount: aligned.marksCount,
+    squaresCount: aligned.squaresCount || 0,
+    cornersCount,
+    cornerMatched: aligned.cornerMatched || { TL: false, TR: false, BR: false, BL: false },
+    brightness,
+    lightState,
+    cornersPx,
+    paperQuadPx,
+    hint,
+  };
+}
+
+/* ============ HÀM CHÍNH ============ */
+export function readSheet(img, options = {}) {
+  const opt = { ...DEFAULTS, ...options };
+  const { width: w, height: h } = img;
+  if (!img?.data || !w || !h) return { ok: false, error: 'Ảnh không hợp lệ.' };
+
+  const aligned = alignSheet(img, opt.detectMaxDim);
+  if (!aligned.ok) {
+    if (aligned.stage === 'few_marks') {
+      return { ok: false, error: 'Không thấy các vạch đen định vị. Chụp thẳng, đủ sáng, thấy rõ cả 4 góc phiếu.' };
+    }
+    return { ok: false, error: 'Không nhận ra khung phiếu (thiếu vạch ở mép phải/dưới). Chụp lại đủ cả phiếu, đủ sáng, không bị che.' };
+  }
+  const { H, markFit, chanR, chanG } = aligned;
 
   // 3) Đo mọi ô
   const T = TEMPLATE;
@@ -558,6 +793,17 @@ export function readSheet(img, options = {}) {
   const marked = allFills.filter(isOn).length;
   const mid = allFills.filter(isFaint).length;
 
+  const toNorm = ([ptx, pty]) => {
+    const [u, v] = H(ptx, pty);
+    return [+(u / w).toFixed(4), +(v / h).toFixed(4)];
+  };
+  const cornersNorm = {
+    TL: toNorm(T.corners.TL),
+    TR: toNorm(T.corners.TR),
+    BR: toNorm(T.corners.BR),
+    BL: toNorm(T.corners.BL),
+  };
+
   return {
     ok: true,
     sbd, code, p1, p2, p3,
@@ -568,6 +814,7 @@ export function readSheet(img, options = {}) {
       marked,
       uncertain: mid,
       threshold: thr,
+      cornersNorm,
       warn: markFit < 0.5 || alignment < 0.03
         ? 'Ảnh có thể bị lệch/méo — kiểm tra kỹ kết quả hoặc chụp lại.'
         : null,

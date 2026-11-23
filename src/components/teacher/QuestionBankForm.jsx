@@ -4,10 +4,12 @@
    v2: Chuyên đề đổi theo môn đã chọn
    ============================================================ */
 import { useState, useEffect, useRef, useMemo } from 'react';
-import MathText from '../MathText.jsx';
+import MathText, { MathTextConfigContext } from '../MathText.jsx';
+import { subjectUsesMath } from '../../lib/subjects.js';
 import {
   TOPICS_BY_SUBJECT,
   getTopicsForSubject,
+  resolveTopicsSubjectKey,
   ALL_SUBJECTS_LIST,
 } from '../../data/topicsBySubject.js';
 import '../../styles/question-bank.css';
@@ -42,10 +44,12 @@ const Q_TYPES = [
   { id: 'single_choice', label: 'Trắc nghiệm 4 chọn 1' },
   { id: 'true_false', label: 'Đúng / Sai (4 ý)' },
   { id: 'short_answer', label: 'Trả lời ngắn / Điền số' },
+  { id: 'essay', label: 'Tự luận / Đọc hiểu mở' },
 ];
 
 const normalizeFormType = (item) => {
   if (item?.type === 'true_false' || (Array.isArray(item?.statements) && item.statements.length > 0)) return 'true_false';
+  if (item?.type === 'essay') return 'essay';
   if (item?.type === 'short_answer' || (!item?.options?.length && (item?.answer !== undefined || item?.accepted?.length))) return 'short_answer';
   return 'single_choice';
 };
@@ -73,7 +77,7 @@ export default function QuestionBankForm({
   const [shortAnswer, setShortAnswer] = useState(() => String(initial?.answer ?? (initial?.accepted?.[0] || '')));
   const [explain, setExplain] = useState(initial?.explain || '');
   const [points, setPoints] = useState(initial?.points || 1);
-  const [subject, setSubject] = useState(initial?.subject || defaultSubject || 'Hóa học');
+  const [subject, setSubject] = useState(() => resolveTopicsSubjectKey(initial?.subject || defaultSubject) || initial?.subject || defaultSubject || 'Hóa học');
   const [grade, setGrade] = useState(initial?.grade || defaultGrade || 0);
   const [topicId, setTopicId] = useState(initial?.topicId || '');
   const [level, setLevel] = useState(initial?.level || '');
@@ -128,7 +132,7 @@ export default function QuestionBankForm({
   const removeTag = (t) => setTags((arr) => arr.filter((x) => x !== t));
 
   const handleSubmit = (another = false) => {
-    if (!q.trim()) { setError('Chưa có nội dung câu hỏi.'); return; }
+    if (!q.trim() && !String(initial?.passage || '').trim()) { setError('Chưa có nội dung câu hỏi.'); return; }
 
     const base = {
       type: qType,
@@ -140,6 +144,10 @@ export default function QuestionBankForm({
       topicId: topicId.trim(),
       level: level.trim(),
       tags,
+      ...(initial?.passage ? { passage: initial.passage } : {}),
+      ...(initial?.instruction ? { instruction: initial.instruction } : {}),
+      ...(initial?.passageId != null ? { passageId: initial.passageId } : {}),
+      ...(initial?.groupId ? { groupId: initial.groupId } : {}),
     };
 
     if (qType === 'true_false') {
@@ -153,6 +161,12 @@ export default function QuestionBankForm({
       }
       setError('');
       onSave?.({ ...base, options: [], correct: -1, statements: cleanedStmts }, { another: another === true });
+      return;
+    }
+
+    if (qType === 'essay') {
+      setError('');
+      onSave?.({ ...base, options: [], correct: -1, answer: String(shortAnswer ?? '').trim() }, { another: another === true });
       return;
     }
 
@@ -299,7 +313,9 @@ export default function QuestionBankForm({
           {q.trim() && (
             <div style={{ padding: '.6rem .9rem', background: 'var(--soft)', borderRadius: 10, fontSize: '.85rem' }}>
               <small style={{ color: 'var(--mut)', display: 'block', marginBottom: '.3rem' }}>Xem trước:</small>
-              <MathText>{q}</MathText>
+              <MathTextConfigContext.Provider value={{ disableChemFormat: Boolean(subject) && !subjectUsesMath(subject) }}>
+                <MathText>{q}</MathText>
+              </MathTextConfigContext.Provider>
             </div>
           )}
 
@@ -330,6 +346,17 @@ export default function QuestionBankForm({
                 </div>
               ))}
             </div>
+          ) : qType === 'essay' ? (
+            <label className="qb-field">
+              <span>Gợi ý chấm / Đáp án mẫu tự luận (không bắt buộc)</span>
+              <textarea
+                rows={2}
+                value={shortAnswer}
+                onChange={(e) => setShortAnswer(e.target.value)}
+                placeholder="Nhập hướng dẫn chấm hoặc ý chính..."
+                disabled={saving}
+              />
+            </label>
           ) : qType === 'short_answer' ? (
             <label className="qb-field">
               <span>Đáp án trả lời ngắn (VD: 12,5 hoặc 4)</span>

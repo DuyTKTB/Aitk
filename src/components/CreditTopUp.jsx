@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   CREDIT_PACKAGES,
+  MIN_CREDIT_TOPUP_VND,
   BANK_INFO,
   createPaymentOrder,
+  resolveCreditOrderAmount,
   getCredits,
   onOrderPaid,
   checkOrderStatus,
@@ -121,7 +123,9 @@ function StudyMascot() {
 export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: propIsOpen }) {
   const [isOpen, setIsOpen] = useState(Boolean(propIsOpen ?? false));
   const [balance, setBalance] = useState(null);
-  const [selectedAmount, setSelectedAmount] = useState(100000); // Mặc định gói Premium 100.000đ
+  const [selectedAmount, setSelectedAmount] = useState(10000); // Mặc định từ 10.000đ trở lên
+  const [customAmountInput, setCustomAmountInput] = useState('');
+  const [customError, setCustomError] = useState('');
   const [step, setStep] = useState('select'); // 'select' | 'qr'
   const [orderData, setOrderData] = useState(null);
   const [creating, setCreating] = useState(false);
@@ -175,18 +179,30 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
     setBuyerAddress(prof.invoice?.address || '');
   }, [userId]);
 
-  // Các gói chính hiển thị theo Ảnh 4: PRO 2 (30k), PRO 3 (60k), PREMIUM (100k)
+  // Các gói nạp nhanh từ 10.000đ trở lên: 10k, 30k, 60k, 100k
   const displayPackages = useMemo(() => {
-    return CREDIT_PACKAGES.filter((p) => [30000, 60000, 100000].includes(p.amount));
+    return CREDIT_PACKAGES.filter((p) => [10000, 30000, 60000, 100000].includes(p.amount));
   }, []);
 
-  const selectedPkg = useMemo(() => {
-    return (
-      CREDIT_PACKAGES.find((p) => p.amount === selectedAmount) ||
-      displayPackages[2] ||
-      CREDIT_PACKAGES[1]
-    );
-  }, [selectedAmount, displayPackages]);
+  const activeOrder = useMemo(() => {
+    const raw = customAmountInput ? Number(customAmountInput) : selectedAmount;
+    const res = resolveCreditOrderAmount(raw);
+    if (!res.ok) {
+      return {
+        ok: false,
+        amount: Number.isFinite(raw) ? raw : 0,
+        credits: Number.isFinite(raw) ? Math.max(0, Math.round(raw)) : 0,
+        name: 'NẠP TÙY CHỌN',
+        error: res.error,
+      };
+    }
+    return {
+      ok: true,
+      amount: res.amount,
+      credits: res.total,
+      name: res.name,
+    };
+  }, [customAmountInput, selectedAmount]);
 
   // Đếm ngược QR
   useEffect(() => {
@@ -275,6 +291,10 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
 
   // Tạo đơn hàng thanh toán
   const handleProceedPayment = async () => {
+    if (!activeOrder.ok) {
+      setCustomError(activeOrder.error || `Số tiền nạp tối thiểu là ${MIN_CREDIT_TOPUP_VND.toLocaleString('vi-VN')}đ.`);
+      return;
+    }
     if (!buyerName.trim()) {
       setInvoiceError('Vui lòng nhập họ tên đầy đủ để xuất hóa đơn.');
       return;
@@ -297,7 +317,7 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
 
     setCreating(true);
     try {
-      const order = await createPaymentOrder(effectiveUserId, selectedPkg.amount);
+      const order = await createPaymentOrder(effectiveUserId, activeOrder.amount);
       setOrderData(order);
       setStep('qr');
 
@@ -383,7 +403,7 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
                 </div>
                 <h2 className="ns9-cr-title">Mua ELEC AI Credit</h2>
                 <p className="ns9-cr-subtitle">
-                  Tiếp sức học tập cùng Trợ lý ELEC AI. ELEC Credit mua thêm giữ đến khi dùng hết.
+                  Nạp linh hoạt từ 10.000đ trở lên (1đ = 1 Credit). ELEC Credit mua thêm giữ đến khi dùng hết.
                 </p>
 
                 {/* Pill số dư */}
@@ -403,16 +423,20 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
             <div className="ns9-cr-grid">
               {/* CỘT TRÁI: CHỌN GÓI */}
               <div className="ns9-cr-col-left">
-                <h3 className="ns9-cr-col-heading">Chọn gói phù hợp với bạn</h3>
+                <h3 className="ns9-cr-col-heading">Chọn gói hoặc nhập số tiền từ 10.000đ trở lên</h3>
 
                 <div className="ns9-cr-cards-row">
                   {displayPackages.map((p) => {
-                    const isSelected = selectedAmount === p.amount;
+                    const isSelected = !customAmountInput && selectedAmount === p.amount;
                     return (
                       <div
                         key={p.amount}
                         className={`ns9-cr-pkg-card ${isSelected ? 'is-selected' : ''}`}
-                        onClick={() => setSelectedAmount(p.amount)}
+                        onClick={() => {
+                          setSelectedAmount(p.amount);
+                          setCustomAmountInput('');
+                          setCustomError('');
+                        }}
                       >
                         {p.badge && (
                           <div className="ns9-cr-pkg-ribbon">
@@ -426,9 +450,9 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
 
                         {/* Icon Coin */}
                         <div className="ns9-cr-coin-visual">
-                          {p.amount === 30000 && <CoinSingleSvg size={54} />}
+                          {p.amount <= 30000 && <CoinSingleSvg size={54} />}
                           {p.amount === 60000 && <CoinDoubleSvg size={58} />}
-                          {p.amount === 100000 && <CoinTripleSvg size={64} />}
+                          {p.amount >= 100000 && <CoinTripleSvg size={64} />}
                         </div>
 
                         <span className="ns9-cr-pkg-name">{p.name}</span>
@@ -441,6 +465,46 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Nhập số tiền tùy chọn từ 10.000đ trở lên */}
+                <div className="ns9-cr-custom-box">
+                  <label className="ns9-cr-custom-label" htmlFor="elec-credit-custom-amount">
+                    Hoặc nhập số tiền muốn nạp (tối thiểu 10.000đ)
+                  </label>
+                  <div className="ns9-cr-custom-row">
+                    <input
+                      id="elec-credit-custom-amount"
+                      type="text"
+                      inputMode="numeric"
+                      className={`ns9-cr-input ns9-cr-custom-input ${customError ? 'ns9-cr-input-err' : ''}`}
+                      placeholder="VD: 10000, 15000, 50000..."
+                      value={customAmountInput}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/[^\d]/g, '');
+                        setCustomAmountInput(digits);
+                        if (!digits) {
+                          setCustomError('');
+                          return;
+                        }
+                        const num = Number(digits);
+                        if (num < MIN_CREDIT_TOPUP_VND) {
+                          setCustomError(`Số tiền nạp tối thiểu là ${MIN_CREDIT_TOPUP_VND.toLocaleString('vi-VN')}đ.`);
+                        } else {
+                          setCustomError('');
+                          setSelectedAmount(num);
+                        }
+                      }}
+                    />
+                    <span className="ns9-cr-custom-unit">VNĐ</span>
+                  </div>
+                  {customError ? (
+                    <span className="ns9-cr-custom-err">{customError}</span>
+                  ) : customAmountInput ? (
+                    <span className="ns9-cr-custom-hint">
+                      Nhận <b>{activeOrder.credits.toLocaleString('vi-VN')} ELEC Credit</b>
+                    </span>
+                  ) : null}
                 </div>
 
                 {/* Nhập mã kích hoạt / Voucher */}
@@ -583,16 +647,16 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
                   )}
 
                   <div className="ns9-cr-summary-row">
-                    <span className="ns9-cr-summary-name">{selectedPkg.name}</span>
+                    <span className="ns9-cr-summary-name">{activeOrder.name}</span>
                     <span className="ns9-cr-summary-credits">
-                      {selectedPkg.credits.toLocaleString('vi-VN')} ELEC Credit
+                      {activeOrder.credits.toLocaleString('vi-VN')} ELEC Credit
                     </span>
                   </div>
 
                   <div className="ns9-cr-total-row">
                     <span className="ns9-cr-total-label">Tổng thanh toán</span>
                     <span className="ns9-cr-total-val">
-                      {selectedPkg.amount.toLocaleString('vi-VN')} đ
+                      {activeOrder.amount.toLocaleString('vi-VN')} đ
                     </span>
                   </div>
 
@@ -600,9 +664,13 @@ export default function CreditTopUp({ userId, onCreditUpdate, onClose, isOpen: p
                     type="button"
                     className="ns9-cr-pay-btn"
                     onClick={handleProceedPayment}
-                    disabled={creating}
+                    disabled={creating || !activeOrder.ok}
                   >
-                    {creating ? 'Đang tạo đơn QR…' : `Thanh toán ${selectedPkg.amount.toLocaleString('vi-VN')} đ`}
+                    {creating
+                      ? 'Đang tạo đơn QR…'
+                      : !activeOrder.ok
+                        ? 'Nhập tối thiểu 10.000 đ'
+                        : `Thanh toán ${activeOrder.amount.toLocaleString('vi-VN')} đ`}
                   </button>
 
                   <p className="ns9-cr-caption">

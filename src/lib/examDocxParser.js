@@ -79,7 +79,8 @@ export const textToLines = (raw) => {
     const t = s
       .normalize('NFC')
       .replace(/\t/g, ' ')
-      .replace(/\*\*|__/g, '')
+      .replace(/\*\*/g, '')
+      .replace(/(?<!_)__([^_\n]+?)__(?!_)/g, '$1')
       .replace(/^\s*(?:#{1,6}\s+|>\s*|[-•]\s+)/, '')
       .replace(/ {2,}/g, ' ');
     out.push(mkLine(t));
@@ -95,11 +96,11 @@ const ANS_LETTER_RES = [
   /^(?:da|ans|key)\s*[:\-.]\s*\(?([a-f])\)?(?![a-z0-9])(.*)$/,
 ];
 const ANS_TEXT_RE = /^(?:dap\s*an(?:\s*dung)?|answer)\s*[:\-.]\s*(.+)$/;
-const EXPLAIN_RE = /^(?:giai thich|loi giai(?: chi tiet)?|huong dan(?: giai)?|answer\s*:|explanation|explain)\s*(?:[:\-.]\s*(.*))?$/;
+const EXPLAIN_RE = /^(?:giai thich|loi giai(?: chi tiet)?|huong dan(?: giai| cham)?|goi y(?: tra loi| lam bai)?|dap an goi y|bieu diem|answer\s*:|explanation|explain)\s*(?:[:\-.]\s*(.*))?$/;
 const KEY_HEAD_RE = /^(?:bang\s*)?dap\s*an(?:\s*(?:va\s*thang\s*diem|chi\s*tiet|tham\s*khao|goi\s*y))?(?:\s*\([^)]*\))?\s*[:\-]?\s*/;
 const KEY_PAIR_RE = /(?:cau\s*)?(\d{1,3})\s*[.:\-–)=]*\s*([a-f])\b/g;
-const SECTION_PREFIX_RE = /^(?:phan|part|section|dang)\s+(?:[ivx]+|\d+|trac nghiem|nhieu lua chon|dung\s*[\/\-–]?\s*sai|tra loi ngan)\b/;
-const SECTION_ALT_RE = /^(?!cau\s*\d)(?:(?:i{1,3}|[1-3]|[a-c])\s*[.:)\-–]\s*)?(?:cau\s*(?:hoi\s*)?)?(?:trac nghiem\s*(?:nhieu\s*lua\s*chon|dung\s*[\/\-–]?\s*sai|tra\s*loi\s*ngan)|phan\s*dung\s*[\/\-–]?\s*sai|dung\s*(?:\/|-|–)\s*sai|cau\s*dung\s*sai|tra\s*loi\s*ngan|tu\s*luan\s*ngan|dien\s*ket\s*qua)\b/;
+const SECTION_PREFIX_RE = /^(?:phan|part|section|dang)\s+(?:[ivx]+|\d+|trac nghiem|nhieu lua chon|dung\s*[\/\-–]?\s*sai|tra loi ngan|tu luan|lam van|viet|doc hieu)\b/;
+const SECTION_ALT_RE = /^(?!cau\s*\d)(?:(?:i{1,3}|iv|[1-4]|[a-d])\s*[.:)\-–]\s*)?(?:cau\s*(?:hoi\s*)?)?(?:trac nghiem\s*(?:nhieu\s*lua\s*chon|dung\s*[\/\-–]?\s*sai|tra\s*loi\s*ngan)|phan\s*dung\s*[\/\-–]?\s*sai|dung\s*(?:\/|-|–)\s*sai|cau\s*dung\s*sai|tra\s*loi\s*ngan|tu\s*luan\s*ngan|tu\s*luan|phan\s*viet|lam\s*van|doc\s*hieu(?:\s*(?:va|&)\s*lam\s*van)?|dien\s*ket\s*qua)\b/;
 const SECTION_BANNER_RE = /^thi sinh tra loi tu cau\b.*(?:\btrong moi y\s*a\)?,?\s*b\)?|\bchon\s+(?:mot|1)\s+phuong\s+an|\btra loi ngan|\bdung hoac sai|\bdien ket qua)/;
 const isSectionLine = (f) =>
   Boolean(f && f.length <= 220 && (SECTION_PREFIX_RE.test(f) || SECTION_ALT_RE.test(f) || SECTION_BANNER_RE.test(f)));
@@ -112,7 +113,7 @@ const matchOptPrefix = (str) => {
   if (!m) return null;
   const raw = m[1] || m[2] || (m[3] ? m[3].trim()[0] : '');
   if (!raw) return null;
-  const isLowerLetter = raw === raw.toLowerCase() && ['a', 'b', 'c', 'd'].includes(raw);
+  const isLowerLetter = raw === raw.toLowerCase() && ['a', 'b', 'c', 'd', 'e', 'f'].includes(raw);
   const isLowerParen = Boolean(isLowerLetter && m[3] && m[3].trimEnd().endsWith(')'));
   return { full: m[0], len: m[0].length, letter: raw, isLowerLetter, isLowerParen };
 };
@@ -548,15 +549,17 @@ export const classifySmartLevel = (qText, type = 'mcq', explain = '') => {
 export const sectType = (f) => {
   if (/dung\s*(?:\/|-|–|hoac|hay|,)?\s*sai|true\s*(?:\/|-|–|or)?\s*false|moi y\s*a\)?,?\s*b\)?/.test(f)) return 'tf';
   if (/tra loi ngan|dien\s*(?:so|ket qua|dap an)|short\s*answer|ket qua bang so|tu luan ngan/.test(f)) return 'sa';
-  if (/nhieu lua chon|multiple\s*choice|chon\s*(?:mot|1)\s*phuong an|khach quan/.test(f)) return 'mc';
+  if (/\btu\s*luan\b|\blam\s*van\b|\bphan\s*viet\b|\bbai\s*viet\b|\bdoc\s*hieu(?:\s*(?:va|&)\s*lam\s*van)?\b|\bwriting\b|\bessay\b/.test(f)) return 'essay';
+  if (/nhieu lua chon|multiple\s*choice|chon\s*(?:mot|1)\s*phuong an|khach quan|\b(?:reading|grammar|vocabulary|phonetics|pronunciation|stress|listening|communication|arrangement|cloze|use of english)\b/.test(f)) return 'mc';
   if (/^(?:phan|part|section|dang)\s+(?:ii|2)\b|^ii[.:)\-\s]|^b[.:)\-\s]+(?:cau\s*)?dung/.test(f)) return 'tf';
   if (/^(?:phan|part|section|dang)\s+(?:iii|3)\b|^iii[.:)\-\s]|^c[.:)\-\s]+(?:cau\s*)?tra loi/.test(f)) return 'sa';
+  if (/^(?:phan|part|section|dang)\s+(?:iv|4)\b|^iv[.:)\-\s]/.test(f)) return 'essay';
   return 'mc';
 };
 
 const bareSectType = (f) => {
-  const m = f.match(/^(?:phan|part|section|dang)\s+(iii|ii|i|3|2|1)\b[^a-z]*$/);
-  return m ? ({ i: 'mc', 1: 'mc', ii: 'tf', 2: 'tf', iii: 'sa', 3: 'sa' })[m[1]] : null;
+  const m = f.match(/^(?:phan|part|section|dang)\s+(iii|ii|iv|i|4|3|2|1)\b[^a-z]*$/);
+  return m ? ({ i: 'mc', 1: 'mc', ii: 'tf', 2: 'tf', iii: 'sa', 3: 'sa', iv: 'essay', 4: 'essay' })[m[1]] : null;
 };
 
 export const readTf = (txt) => {
@@ -591,6 +594,7 @@ const appendText = (c, text, sep) => {
   else if (c.mode === 'opts') {
     const o = c.opts[c.opts.length - 1];
     o.t += (o.t ? sep : '') + text;
+    if (o.rawLines) o.rawLines.push(text);
   } else if (c.mode === 'stem') {
     c.stem += (c.stem ? sep : '') + text;
   }
@@ -603,13 +607,26 @@ const readKey = (f) => {
   return { pairs, clean: pairs.length > 0 && leftover.length <= 6 };
 };
 
-export const extractMcqAnswerFromExplain = (explainStr) => {
+const normOptForMatch = (str) =>
+  fold(str || '')
+    .replace(/[’‘`]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s*[-–—]\s*/g, '-')
+    .replace(/[.,;!?]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const escapeRegExpStr = (s) => String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export const extractMcqAnswerFromExplain = (explainStr, options = []) => {
   const f = fold(explainStr || '');
   if (!f) return -1;
   const patterns = [
     /(?:chon(?:\s+dap\s+an)?|dap\s*an(?:\s+dung)?(?:\s+la)?|ket\s*luan\s*:?\s*chon|=>\s*chon|→\s*chon|vay\s+chon)\s*[:=\-–]?\s*\(?([a-d])\)?(?![a-z0-9])/i,
     /^\s*\(?([a-d])\)\s*(?:dung|la\s+dap\s+an\s+dung)\b/i,
     /(?:=>|→|vay)\s*dap\s*an\s*\(?([a-d])\)?(?![a-z0-9])/i,
+    /(?:trung\s+voi\s+y\s+(?:cua\s+)?|y\s+dung\s*(?:la|:)|phuong\s+an(?:\s+dung)?\s*(?:la|:)|chon\s+phuong\s+an|chon\s+y|y\s+cua)\s*\(?([a-d])\)?(?![a-z0-9])/i,
+    /(?:dap\s*an|phuong\s*an|cau|y)\s*\(?([a-d])\)?\s*(?:la\s+)?(?:chinh\s*xac|hop\s*li|hop\s*ly|phu\s*hop)(?![a-z0-9])/i,
   ];
   for (const re of patterns) {
     const m = f.match(re);
@@ -618,7 +635,120 @@ export const extractMcqAnswerFromExplain = (explainStr) => {
       if (idx >= 0 && idx < 4) return idx;
     }
   }
+
+  // Loại trừ 3 phương án đều sai / đều được đề cập -> còn 1 phương án duy nhất
+  if (!Array.isArray(options) || options.length === 0 || options.length === 4) {
+    const excl = f.match(/\b([a-d])\s*,\s*([a-d])\s*(?:,|va|&)\s*([a-d])\s+(?:deu\s+)?(?:duoc\s+de\s+cap|co\s+trong\s+bai|sai|loai|khong\s+dung|khong\s+phai)\b/i);
+    if (excl) {
+      const excluded = new Set([excl[1], excl[2], excl[3]].map((x) => x.toUpperCase()));
+      if (excluded.size === 3) {
+        const left = ['A', 'B', 'C', 'D'].find((L) => !excluded.has(L));
+        if (left) return LETTERS.indexOf(left);
+      }
+    }
+  }
+
+  if (!Array.isArray(options) || options.length < 2) return -1;
+
+  const normOpts = options.map(normOptForMatch);
+  const fText = fold(explainStr || '')
+    .replace(/[’‘`]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const fSeq = fText.replace(/\s*[-–—]\s*/g, '-');
+
+  // 2a. Câu sắp xếp đoạn văn / hội thoại ("Thứ tự đúng: b-a-c")
+  const seqMatch = fSeq.match(/(?:thu\s+tu\s+dung|sap\s+xep\s+dung|thu\s+tu)\s*[:=\-–→]?\s*([a-f](?:-[a-f]){1,5})\b/i);
+  if (seqMatch) {
+    const wantSeq = seqMatch[1].toLowerCase();
+    const seqIdx = normOpts.findIndex((o) => o === wantSeq);
+    if (seqIdx >= 0) return seqIdx;
+  }
+
+  // 2b. Cụm từ kết luận đứng ngay trước nội dung phương án đúng ("nên chọn nuclear family", "→ playing", "dùng which; không dùng that")
+  const cueRe = /(?:(?:khong|tranh|khong\s+duoc)\s+)?(?:(?:nen\s+)?(?:chon|su\s+dung|dung|dien)|dap\s*an(?:\s+dung)?\s*(?:la)?|phuong\s*an(?:\s+dung)?\s*(?:la)?|gan\s+nghia\s+nhat\s+voi|trai\s+nghia\s+voi|=>|→|⇒|:)\s*/gi;
+  let cm;
+  while ((cm = cueRe.exec(fText))) {
+    const fullCue = cm[0].trim();
+    if (/^(?:khong|tranh)\b/.test(fullCue)) continue;
+    const after = fText.slice(cm.index + cm[0].length).replace(/^["'“(]+/, '').trim();
+    if (!after) continue;
+
+    // Khớp dài nhất trước để tránh 'adapt' khớp trước 'adapt to'
+    const ranked = normOpts
+      .map((o, idx) => ({ o, idx }))
+      .filter(({ o }) => o.length > 0)
+      .sort((a, b) => b.o.length - a.o.length);
+
+    for (const { o, idx } of ranked) {
+      const seqAfter = after.replace(/\s*[-–—]\s*/g, '-');
+      const optPattern = new RegExp(`^${escapeRegExpStr(o)}(?=$|[\\s.,;:!?)"'”+])`, 'i');
+      if (optPattern.test(after) || optPattern.test(seqAfter)) {
+        return idx;
+      }
+    }
+
+    // Kiểm tra dạng nguyên mẫu động từ (VD: "chọn look + adj" khớp với option "looks")
+    const clause = after.split(/[.;,(\n+]/)[0].trim();
+    if (clause.length >= 3 && /^[a-z]+$/.test(clause)) {
+      const stemMatches = normOpts
+        .map((o, idx) => ({ o, idx }))
+        .filter(({ o }) => o === `${clause}s` || o === `${clause}es` || o === `${clause}ed` || o === `${clause}d`);
+      if (stemMatches.length === 1) return stemMatches[0].idx;
+    }
+  }
+
+  // 2c. Chuỗi tính từ / token trong ngoặc nối bằng mũi tên (VD: "size (large) → age (modern) → colour (green).")
+  const arrowTokens = [];
+  const arrowTokRe = /\(([a-z][a-z\s-]{1,25})\)(?=\s*(?:→|⇒|->|[.,;!?]|$))/gi;
+  let am;
+  while ((am = arrowTokRe.exec(fText))) arrowTokens.push(am[1].trim());
+  if (arrowTokens.length >= 2) {
+    const joinedTokens = arrowTokens.join(' ');
+    const tokIdx = normOpts.findIndex((o) => o === joinedTokens);
+    if (tokIdx >= 0) return tokIdx;
+  }
+
+  // 2d. Duy nhất một phương án xuất hiện tích cực (không nằm trong ngữ cảnh phủ định/sai)
+  const positiveMatches = [];
+  for (let idx = 0; idx < normOpts.length; idx++) {
+    const o = normOpts[idx];
+    if (!o) continue;
+    const pat = new RegExp(`(?:^|(?<=[^a-z0-9]))${escapeRegExpStr(o)}(?=$|[^a-z0-9])`, 'gi');
+    let hit;
+    let hasPositive = false;
+    while ((hit = pat.exec(fText))) {
+      const before = fText.slice(Math.max(0, hit.index - 32), hit.index);
+      const after = fText.slice(hit.index + hit[0].length, hit.index + hit[0].length + 45);
+      if (o.length < 4 && !/[a-z]{2,}\s+$/.test(before)) continue;
+      const isRejected =
+        /(?:(?:khong\s+(?:dung|chon|phai|nhac\s+den|di\s+voi)|tranh|thay\s+vi|sai|loai)\s*["'“(]*$|phai\s+di\s+voi\s+["'“a-z0-9\s]*\(\s*$)/i.test(before) ||
+        /^\s*["'”)]*\s*(?:sai\b|loai\b|khong\s+(?:di\s+voi|dung|chon|dien\s+ta|hop|phu\s+hop)|phai\s+di\s+voi|chi\s+su\b|gan\s+nghia\b|la\s+ngoai\s+dong\s+tu,\s*khong\b)/i.test(after);
+      if (!isRejected) {
+        hasPositive = true;
+        break;
+      }
+    }
+    if (hasPositive) positiveMatches.push(idx);
+  }
+  if (positiveMatches.length === 1) return positiveMatches[0];
+
   return -1;
+};
+
+const EN_PASSAGE_HEAD_RE = /^(?:read the following|read the passage|read the text|read the advertisement|read the announcement|read the leaflet)\b/i;
+const VI_PASSAGE_HEAD_RE = /^(?:doc\s+(?:doan\s*(?:trich|van|tu\s*lieu)|van\s*ban|thong\s*tin|ngu\s*lieu|doan\s*sau)|dua\s+vao\s+(?:doan\s*(?:trich|tu\s*lieu|thong\s*tin|van\s*ban)|thong\s*tin|ngu\s*lieu|bang\s*so\s*lieu)|cho\s+(?:doan\s*(?:trich|tu\s*lieu)|van\s*ban|thong\s*tin|bang\s*so\s*lieu)\s+(?:sau|duoi\s*day)).*(?:tra\s*loi|thuc\s*hien|chon\s*(?:phuong\s*an|dap\s*an)|tu\s*cau|cau\s*\d+\s*[-–]|ben\s*duoi|duoi\s*day|doc\s*hieu|cau\s*hoi)\b/;
+const EN_SECTION_HEAD_RE = /^(?:mark the letter\s+[a-d]|choose the\s+(?:word|option|best|correct|underlined|most)|find the\s+(?:mistake|error|word)|complete the\s+(?:following\s+)?(?:sentences|conversation|dialogue)|rewrite the\s+following|combine the\s+sentences)\b/i;
+const ESSAY_CUE_RE = /\b(?:tu\s*luan|viet\s*(?:doan\s*van|bai\s*van|mot\s*doan|thu)|phan\s*tich|cam\s*nhan|trinh\s*bay\s*(?:suy\s*nghi|y\s*kien|quan\s*diem|giai\s*phap)|neu\s*(?:cam\s*nghi|y\s*kien|bai\s*hoc|thong\s*diep)|xac\s*dinh\s*(?:the\s*tho|phuong\s*thuc\s*bieu\s*dat|ngoi\s*ke|bien\s*phap\s*tu\s*tu)|chi\s*ra\s*va\s*neu\s*tac\s*dung|chung\s*minh\s*rang|giai\s*thich\s*(?:vi\s*sao|tai\s*sao)|giai\s*(?:phuong\s*trinh|he\s*phuong\s*trinh|bat\s*phuong\s*trinh|bai\s*toan)|viet\s*chuong\s*trinh|lap\s*trinh)\b/;
+
+const parseQuestionRange = (str) => {
+  const folded = fold(str || '');
+  const m = folded.match(/(?:questions?\s*(?:from\s+)?|from\s+|(?:cac\s*cau(?:\s*hoi)?\s*(?:tu\s+)?)|tu\s+cau\s+|cau\s+)(\d{1,3})\s*(?:to|den|toi|[-–])\s*(?:cau\s*)?(\d{1,3})\b/);
+  if (!m) return null;
+  const start = Number(m[1]);
+  const end = Number(m[2]);
+  return Number.isFinite(start) && Number.isFinite(end) && end >= start ? { start, end } : null;
 };
 
 /* Phân tích cấu trúc các dòng thành câu hỏi 3 phần chuẩn GDPT 2025 */
@@ -640,6 +770,8 @@ export const parseLines = (lines, extractedImages = []) => {
   let currentGroupPassage = '';
   let currentGroupInstruction = '';
   let currentGroupId = '';
+  let currentGroupRange = null;
+  let justStartedHeader = false;
   let groupCounter = 0;
 
   const addKey = (n, L) => {
@@ -688,6 +820,7 @@ export const parseLines = (lines, extractedImages = []) => {
 
     cur.opts.push({
       t: text,
+      rawLines: [seg.t],
       marked,
       uMarked,
       bBodyMarked,
@@ -738,8 +871,10 @@ export const parseLines = (lines, extractedImages = []) => {
     cuts.forEach((c, i) => pushOpt(trimLine(sliceLine(ln, c, cuts[i + 1]))));
   };
 
-  const findInlineStart = (t) => {
-    const m = /\s[*✓✔]?(?:\(([Aa])\)|\[([Aa])\]|([Aa][.)]|A:))\s*\S/.exec(t);
+  const findInlineStart = (t, upperOnly = false) => {
+    const m = upperOnly
+      ? /\s[*✓✔]?(?:\((A)\)|\[(A)\]|(A[.)]|A:))\s*\S/.exec(t)
+      : /\s[*✓✔]?(?:\(([Aa])\)|\[([Aa])\]|([Aa][.)]|A:))\s*\S/.exec(t);
     if (!m) return -1;
     const ch = (m[1] || m[2] || (m[3] ? m[3][0] : 'A'));
     const L = ch === 'A' ? 'B' : 'b';
@@ -763,8 +898,39 @@ export const parseLines = (lines, extractedImages = []) => {
       return;
     }
 
-    const next = cur.opts.length;
     const om = matchOptPrefix(ln.t);
+    // Đề sắp xếp câu / hội thoại tiếng Anh: a. b. c. (d. e.) nằm trong đề dẫn, sau đó mới tới phương án A. B. C. D.
+    const hasLowerProvisionalOpts =
+      cur.mode !== 'explain' &&
+      cur.mode !== 'skip' &&
+      cur.opts.length > 0 &&
+      cur.opts.every((o) => o.isLowerLetter);
+
+    if (hasLowerProvisionalOpts && om && !om.isLowerLetter) {
+      const demoted = cur.opts
+        .map((o) => (o.rawLines ? o.rawLines.join('\n') : o.t))
+        .join('\n');
+      cur.stem = cur.stem ? `${cur.stem}\n${demoted}` : demoted;
+      cur.opts = [];
+      cur.type = 'mc';
+      cur.mode = 'stem';
+    } else if (hasLowerProvisionalOpts && !om) {
+      const miUpper = findInlineStart(ln.t, true);
+      if (miUpper > 0) {
+        const demoted = cur.opts
+          .map((o) => (o.rawLines ? o.rawLines.join('\n') : o.t))
+          .join('\n');
+        const beforeInline = ln.t.slice(0, miUpper).trim();
+        cur.stem = [cur.stem, demoted, beforeInline].filter(Boolean).join('\n');
+        cur.opts = [];
+        cur.type = 'mc';
+        cur.mode = 'stem';
+        addOptions({ ...sliceLine(ln, miUpper), fromTable: Boolean(raw.fromTable) }, 0);
+        return;
+      }
+    }
+
+    const next = cur.opts.length;
     if (cur.mode !== 'explain' && cur.mode !== 'skip' && om) {
       const idx = LETTERS.indexOf(om.letter.toUpperCase());
       const isSequential = idx === next;
@@ -794,9 +960,12 @@ export const parseLines = (lines, extractedImages = []) => {
 
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].code) {
+      const codeText = lines[i].code === 'close' ? '```' : lines[i].t;
       if (cur) {
-        appendText(cur, lines[i].code === 'close' ? '```' : lines[i].t, '\n');
+        appendText(cur, codeText, '\n');
         if (lines[i].code === 'close') cur.nl = true;
+      } else if (currentGroupId) {
+        currentGroupPassage += (currentGroupPassage ? '\n' : '') + codeText;
       }
       continue;
     }
@@ -807,11 +976,26 @@ export const parseLines = (lines, extractedImages = []) => {
 
     if (/^(?:trang|page)\s*\d+(?:\s*\/\s*\d+)?$/.test(f) || /^[-_=*.\s]{3,}$/.test(f)) continue;
 
-    if (/^read the following/i.test(ln.t)) {
+    const isEnPassage = !inKey && !inExplainAppendix && EN_PASSAGE_HEAD_RE.test(ln.t);
+    const isViPassage = !inKey && !inExplainAppendix && !Q_RE.test(f) && !isSectionLine(f) && VI_PASSAGE_HEAD_RE.test(f);
+    if (isEnPassage || isViPassage) {
       groupCounter++;
-      currentGroupId = `pg_en_${groupCounter}`;
+      currentGroupId = `${isEnPassage ? 'pg_en' : 'pg_vi'}_${groupCounter}`;
       currentGroupInstruction = ln.t;
       currentGroupPassage = '';
+      currentGroupRange = parseQuestionRange(ln.t);
+      cur = null;
+      justStartedHeader = true;
+      continue;
+    }
+
+    if (!inKey && !inExplainAppendix && EN_SECTION_HEAD_RE.test(ln.t)) {
+      cur = null;
+      currentGroupId = '';
+      currentGroupInstruction = '';
+      currentGroupPassage = '';
+      currentGroupRange = null;
+      justStartedHeader = true;
       continue;
     }
 
@@ -943,7 +1127,7 @@ export const parseLines = (lines, extractedImages = []) => {
         const idx = cur.opts.findIndex((o) => fold(o.t).trim() === want);
         if (idx >= 0) { cur.explicit = idx; cur.mode = 'skip'; continue; }
       }
-      if ((m = f.match(EXPLAIN_RE)) && (cur.opts.length > 0 || cur.explicit !== null || cur.type === 'sa')) {
+      if ((m = f.match(EXPLAIN_RE)) && (cur.opts.length > 0 || cur.explicit !== null || cur.type === 'sa' || cur.type === 'essay')) {
         cur.explain = ln.t.slice(f.length - (m[1] || '').length).trim();
         cur.mode = 'explain';
         continue;
@@ -979,6 +1163,8 @@ export const parseLines = (lines, extractedImages = []) => {
       currentGroupId = '';
       currentGroupInstruction = '';
       currentGroupPassage = '';
+      currentGroupRange = null;
+      justStartedHeader = true;
       continue;
     }
 
@@ -986,8 +1172,15 @@ export const parseLines = (lines, extractedImages = []) => {
     if (qm) {
       const n = Number(qm[1] ?? qm[2] ?? qm[3]);
       const keyword = qm[1] !== undefined;
-      const sequential = n === lastNum + 1 || qs.length === 0 || (n === 1 && cur && (cur.opts.length >= 2 || cur.type === 'sa' || cur.type === 'tf'));
+      const sequential = n === lastNum + 1 || qs.length === 0 || (n === 1 && (justStartedHeader || (cur && (cur.opts.length >= 2 || cur.type === 'sa' || cur.type === 'tf'))));
       if (keyword || sequential) {
+        if (currentGroupRange && Number.isFinite(n) && n > currentGroupRange.end) {
+          currentGroupId = '';
+          currentGroupInstruction = '';
+          currentGroupPassage = '';
+          currentGroupRange = null;
+        }
+        justStartedHeader = false;
         cur = {
           num: n,
           type: sect,
@@ -1072,27 +1265,69 @@ export const parseLines = (lines, extractedImages = []) => {
       c.type = 'mc';
     }
 
+    if (c.type === 'essay' && c.opts.length >= 2) {
+      c.type = 'mc';
+    }
+
+    const { cleanText: stemWithoutImgs, imgUrls: stemImgs } = extractImgTokens(c.stem, extractedImages);
+    const { level: parsedLevel, text: stemWithPts, hadTag } = parseAndStripLevelTag(stemWithoutImgs);
+    if (hadTag) hadAnyLevelTag = true;
+
+    const ptsHead = stemWithPts.match(/^\s*(?:\(\s*(\d+(?:[.,]\d+)?)\s*(?:điểm|diem|đ)\s*\)|\[\s*(\d+(?:[.,]\d+)?)\s*(?:điểm|diem|đ)\s*\])\s*[:.\-–]?\s*/i);
+    let parsedPoints = ptsHead ? parseFloat((ptsHead[1] || ptsHead[2]).replace(',', '.')) : null;
+    let rawFinalStem = ptsHead ? stemWithPts.slice(ptsHead[0].length).trim() : stemWithPts;
+    if (c.opts.length === 0) {
+      const ptsTail = rawFinalStem.match(/\s*(?:\(\s*(\d+(?:[.,]\d+)?)\s*(?:điểm|diem|đ)\s*\)|\[\s*(\d+(?:[.,]\d+)?)\s*(?:điểm|diem|đ)\s*\])\s*[.:]?\s*$/i);
+      if (ptsTail) {
+        if (parsedPoints === null) parsedPoints = parseFloat((ptsTail[1] || ptsTail[2]).replace(',', '.'));
+        rawFinalStem = rawFinalStem.slice(0, ptsTail.index).trim();
+      }
+    }
+
     if (c.type === 'mc' && c.opts.length === 0) {
       const explainNum = c.explain.match(/(?:đáp\s*án|đa|đáp\s*số|kết\s*quả|kq|trả\s*lời)\s*(?:đúng)?\s*(?:là\s*)?[:=]?\s*([+-]?\d[\d.,]*(?:\/\d+)?)/i);
       const hasSaStemCue = /tra loi ngan|ket qua|dap so|gia tri cua|co bao nhieu|bang bao nhieu|tinh tong|tim so|lam tron|dat gia tri/.test(fold(c.stem));
+      const hasEssayCue = ESSAY_CUE_RE.test(fold(c.stem)) || (parsedPoints !== null && parsedPoints >= 1.25 && !hasSaStemCue);
       const isTrailingAfterOpts = hasAnyStructuredOpts && qs.slice(cIdx + 1).every((later) => later.opts.length === 0);
       if (c.saAns || explainNum || c._sawBlankSaLine) {
         c.type = 'sa';
         if (!c.saAns && explainNum) c.saAns = explainNum[1].replace(/[.,]+$/, '');
+      } else if (!hasExplicitMcqKey && hasEssayCue) {
+        c.type = 'essay';
       } else if (!hasExplicitMcqKey && (hasSaStemCue || isTrailingAfterOpts)) {
         c.type = 'sa';
       }
     }
-
-    const { cleanText: stemWithoutImgs, imgUrls: stemImgs } = extractImgTokens(c.stem, extractedImages);
-    const { level: parsedLevel, text: rawFinalStem, hadTag } = parseAndStripLevelTag(stemWithoutImgs);
-    if (hadTag) hadAnyLevelTag = true;
 
     // Đảm bảo không bao giờ để trống stem nếu câu hỏi có hình ảnh
     const finalStem = rawFinalStem.trim() || (stemImgs.length > 0 ? 'Quan sát hình vẽ / sơ đồ / đồ thị sau:' : '');
 
     const { cleanText: cleanExplain } = extractImgTokens(c.explain, extractedImages);
     const autoLevel = parsedLevel || classifySmartLevel(finalStem, c.type, cleanExplain);
+
+    if (c.type === 'essay') {
+      return {
+        id: 'q' + (++idSeq),
+        num: c.num,
+        type: 'essay',
+        part: 4,
+        level: autoLevel,
+        hadLevelTag: hadTag,
+        q: finalStem,
+        image: stemImgs[0] || null,
+        images: stemImgs,
+        options: [],
+        correct: -1,
+        points: parsedPoints && Number.isFinite(parsedPoints) ? parsedPoints : 1,
+        src: cleanExplain ? 'hướng dẫn chấm' : '',
+        explain: cleanExplain,
+        warns: [...c.warns],
+        pg: c.pg,
+        ...(c.pg ? { lockGroupQuestionOrder: true } : {}),
+        instruction: c.instruction,
+        passage: c.passage,
+      };
+    }
 
     /* ----- PHẦN II: ĐÚNG / SAI ----- */
     if (c.type === 'tf') {
@@ -1218,7 +1453,7 @@ export const parseLines = (lines, extractedImages = []) => {
       }
     }
     if (correct < 0 && cleanExplain) {
-      const fromExp = extractMcqAnswerFromExplain(cleanExplain);
+      const fromExp = extractMcqAnswerFromExplain(cleanExplain, options);
       if (fromExp >= 0 && fromExp < options.length) {
         correct = fromExp;
         src = 'lời giải';
@@ -1242,6 +1477,7 @@ export const parseLines = (lines, extractedImages = []) => {
       explain: cleanExplain,
       warns: [...c.warns],
       pg: c.pg,
+        ...(c.pg ? { lockGroupQuestionOrder: true } : {}),
       instruction: c.instruction,
       passage: c.passage,
     };
@@ -1314,6 +1550,7 @@ export async function parseExamDocxFile(file) {
   const part1 = parsed.questions.filter((q) => q.part === 1 || q.type === 'single_choice').length;
   const part2 = parsed.questions.filter((q) => q.part === 2 || q.type === 'true_false').length;
   const part3 = parsed.questions.filter((q) => q.part === 3 || q.type === 'short_answer').length;
+  const part4 = parsed.questions.filter((q) => q.part === 4 || q.type === 'essay').length;
 
   return {
     questions: parsed.questions,
@@ -1327,6 +1564,7 @@ export async function parseExamDocxFile(file) {
       part1,
       part2,
       part3,
+      part4,
       imageCount: extractedImages.length,
       successRate: 100,
     },
@@ -1339,7 +1577,9 @@ export const normalizeImporterType = (t) =>
     ? 'true_false'
     : t === 'short_answer' || t === 'sa'
       ? 'short_answer'
-      : 'single_choice';
+      : t === 'essay' || t === 'tuluan' || t === 'tu_luan'
+        ? 'essay'
+        : 'single_choice';
 
 /* Phân tích bảng đáp án dán nhanh cho cả Phần I (ABCD), Phần II (Đúng/Sai), Phần III (Trả lời ngắn) */
 export function parsePastedAnswerKey(raw, currentQuestions = []) {
@@ -1350,6 +1590,7 @@ export function parsePastedAnswerKey(raw, currentQuestions = []) {
   const p3Indices = [];
   list.forEach((q, idx) => {
     const t = normalizeImporterType(q?.type);
+    if (t === 'essay') return;
     if (t === 'true_false') p2Indices.push(idx);
     else if (t === 'short_answer') p3Indices.push(idx);
     else p1Indices.push(idx);

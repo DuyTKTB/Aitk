@@ -11,7 +11,7 @@
                (In A4, OMR, Word/PDF/CSV, Gán mã đề tự động cho HS, Lịch sử & Hoàn tác)
    ============================================================ */
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import MathText from '../MathText.jsx';
+import MathText, { MathTextConfigContext } from '../MathText.jsx';
 import {
   generateShuffledVersions,
   answerKeyRows,
@@ -22,7 +22,7 @@ import {
 } from '../../lib/examShuffle.js';
 import { exportStyledWorkbook } from '../../lib/excelExport.js';
 import sound from '../../lib/gameSound.js';
-import { getSubject } from '../../lib/subjects.js';
+import { getSubject, getSubjectExamProfile } from '../../lib/subjects.js';
 import { normLevel, LEVEL_INFO } from '../../lib/matrixAiService.js';
 import { exportToWord, exportToPDF, exportBundleZip } from '../../lib/examExport.js';
 import { printOmrSheetA4, printMultipleOmrSheets } from '../../lib/omrSheetGenerator.js';
@@ -187,6 +187,11 @@ function computeExamPrediction(questions = [], duration = 45) {
     const lv = normLevel(q.level);
     counts[lv] = (counts[lv] || 0) + 1;
     const type = q.type || 'single_choice';
+    if (type === 'essay') {
+      const pts = Number(q.points) || 0;
+      estMinutes += pts >= 3 ? 35 : pts >= 1.5 ? 20 : 8;
+      return;
+    }
     const baseTime =
       lv === 'nb' ? 0.8 : lv === 'th' ? 1.4 : lv === 'vd' ? 2.4 : 3.6;
     const typeFactor = type === 'true_false' ? 1.5 : type === 'short_answer' ? 1.3 : 1.0;
@@ -268,6 +273,43 @@ function writeJsonStorage(key, value) {
   } catch {
     // ignore storage quota errors
   }
+}
+
+function shouldShowPassageHeader(list, idx) {
+  const q = list?.[idx];
+  if (!q || (!q.instruction && !q.passage)) return false;
+  if (idx === 0) return true;
+  const prev = list[idx - 1];
+  if (!prev) return true;
+  if (q.groupId && prev.groupId) return q.groupId !== prev.groupId;
+  return prev.passage !== q.passage || prev.instruction !== q.instruction;
+}
+
+function PassageContextBox({ q, useMath, compact = false, forPrint = false }) {
+  if (!q?.instruction && !q?.passage) return null;
+  return (
+    <div
+      style={{
+        margin: compact ? '6px 0 8px' : '0 0 12px',
+        padding: compact ? '8px 10px' : '12px 14px',
+        borderRadius: forPrint ? 4 : 10,
+        background: forPrint ? '#f8fafc' : 'color-mix(in srgb, var(--acc, #0284c7) 6%, transparent)',
+        borderLeft: `3px solid ${forPrint ? '#334155' : 'var(--acc, #0284c7)'}`,
+        whiteSpace: 'pre-wrap',
+        lineHeight: 1.55,
+        fontSize: compact ? '0.8rem' : '0.94rem',
+      }}
+    >
+      {q.instruction && (
+        <div style={{ fontStyle: 'italic', fontWeight: 600, marginBottom: q.passage ? 6 : 0 }}>
+          {q.instruction}
+        </div>
+      )}
+      {q.passage && (
+        <div>{useMath ? <MathText text={q.passage} /> : q.passage}</div>
+      )}
+    </div>
+  );
 }
 
 /* ============================================================
@@ -514,6 +556,17 @@ export default function ExamPreviewSimulator({
       const p1Count = editData.questions.filter((q) => (q.type || 'single_choice') === 'single_choice').length;
       const p2Count = editData.questions.filter((q) => q.type === 'true_false').length;
       const p3Count = editData.questions.filter((q) => q.type === 'short_answer').length;
+      if (p1Count === 0 && p2Count === 0 && p3Count === 0) {
+        showToast('Đề 100% Tự luận không chấm tự động qua phiếu trắc nghiệm OMR A4.', 'warning');
+        setSendingToOmr(false);
+        return;
+      }
+      const subjProf = getSubjectExamProfile(editData.subject);
+      const omrScoring = {
+        ...DEFAULT_SCORING,
+        p1: subjProf?.pointPerQuestion?.single_choice > 0 ? subjProf.pointPerQuestion.single_choice : DEFAULT_SCORING.p1,
+        p3: subjProf?.pointPerQuestion?.short_answer > 0 ? subjProf.pointPerQuestion.short_answer : DEFAULT_SCORING.p3,
+      };
       const counts = {
         p1: p1Count,
         p2: p2Count,
@@ -539,7 +592,7 @@ export default function ExamPreviewSimulator({
         classId: selectedClassId !== 'default-class' ? selectedClassId : (exam.classId || null),
         title: `${editData.examTitle} (${shuffledExams.length} mã đề: 101–${100 + shuffledExams.length})`,
         counts,
-        scoring: DEFAULT_SCORING,
+        scoring: omrScoring,
         keys,
         sbdMap: {},
       });
@@ -1109,7 +1162,8 @@ export default function ExamPreviewSimulator({
   );
 
   return (
-    <div className={`eps-root ${embedded ? 'embedded' : 'fullscreen'}`}>
+    <MathTextConfigContext.Provider value={{ disableChemFormat: !useMath }}>
+      <div className={`eps-root ${embedded ? 'embedded' : 'fullscreen'}`}>
       {/* HEADER */}
       <header className="eps-header">
         <div className="eps-header-left">
@@ -1511,7 +1565,7 @@ export default function ExamPreviewSimulator({
 
                         <div className="eps-lock-content">
                           <div className="eps-lock-qtext">
-                            {useMath ? <MathText text={q.q} /> : q.q}
+                            {q.q ? (useMath ? <MathText text={q.q} /> : q.q) : q.passage ? '(Điền vào chỗ trống theo đoạn văn)' : ''}
                           </div>
                           <div className="eps-lock-meta">
                             <span
@@ -1596,6 +1650,9 @@ export default function ExamPreviewSimulator({
                       {currentQ.type === 'short_answer' && (
                         <span className="eps-badge sa">TRẢ LỜI NGẮN</span>
                       )}
+                      {currentQ.type === 'essay' && (
+                        <span className="eps-badge sa">TỰ LUẬN</span>
+                      )}
                       <button
                         type="button"
                         className={`eps-flag-btn ${flagged[simActiveQ] ? 'on' : ''}`}
@@ -1608,8 +1665,14 @@ export default function ExamPreviewSimulator({
                     </div>
                   </div>
 
+                  <PassageContextBox q={currentQ} useMath={useMath} />
+
                   <div className="eps-q-text">
-                    {useMath ? <MathText text={currentQ.q} /> : currentQ.q}
+                    {currentQ.q
+                      ? (useMath ? <MathText text={currentQ.q} /> : currentQ.q)
+                      : currentQ.passage
+                        ? <span style={{ color: 'var(--ink2, #64748b)', fontStyle: 'italic' }}>(Chọn đáp án điền vào chỗ trống tương ứng trong đoạn văn trên)</span>
+                        : ''}
                   </div>
                   {currentQ.image && (
                     <img
@@ -1740,6 +1803,28 @@ export default function ExamPreviewSimulator({
                       {simSubmitted && (
                         <div className="eps-input-result">
                           Đáp án được chấp nhận: <strong>{(currentQ.accepted || []).join(' | ')}</strong>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {currentQ.type === 'essay' && (
+                    <div>
+                      <textarea
+                        rows={5}
+                        className="eps-input"
+                        style={{ width: '100%', minHeight: 120, resize: 'vertical', lineHeight: 1.55 }}
+                        value={simAnswers[simActiveQ] || ''}
+                        onChange={(e) => {
+                          if (simSubmitted) return;
+                          setSimAnswers((prev) => ({ ...prev, [simActiveQ]: e.target.value }));
+                        }}
+                        placeholder="Nhập bài làm tự luận của bạn..."
+                        disabled={simSubmitted}
+                      />
+                      {simSubmitted && currentQ.answer && (
+                        <div className="eps-input-result">
+                          Gợi ý trả lời: <strong>{currentQ.answer}</strong>
                         </div>
                       )}
                     </div>
@@ -2137,8 +2222,10 @@ export default function ExamPreviewSimulator({
                       <div className="eps-code-col-body">
                         {ver.questions.map((q, qIdx) => {
                           const type = q.type || 'single_choice';
+                          const showPassage = shouldShowPassageHeader(ver.questions, qIdx);
                           return (
                             <div key={qIdx} className="eps-preview-q-item">
+                              {showPassage && <PassageContextBox q={q} useMath={useMath} compact />}
                               <div className="eps-preview-q-top">
                                 <strong>Câu {qIdx + 1}</strong>
                                 <span className="eps-preview-orig-tag">
@@ -2156,7 +2243,11 @@ export default function ExamPreviewSimulator({
                                 )}
                               </div>
                               <div className="eps-preview-q-text">
-                                {useMath ? <MathText text={q.q} /> : q.q}
+                                {q.q
+                                  ? (useMath ? <MathText text={q.q} /> : q.q)
+                                  : q.passage
+                                    ? <span style={{ fontStyle: 'italic', opacity: 0.75 }}>(Điền vào chỗ trống câu {qIdx + 1})</span>
+                                    : ''}
                               </div>
                               {q.image && (
                                 <img
@@ -2211,6 +2302,11 @@ export default function ExamPreviewSimulator({
                               {type === 'short_answer' && (
                                 <div style={{ marginTop: 6, fontSize: '0.84rem', color: '#047857', fontWeight: 700 }}>
                                   Đáp số: {q.answer ?? (q.accepted || [])[0] ?? '—'}
+                                </div>
+                              )}
+                              {type === 'essay' && (
+                                <div style={{ marginTop: 6, fontSize: '0.82rem', color: '#0369a1', fontWeight: 600 }}>
+                                  Câu tự luận{q.points ? ` (${q.points} điểm)` : ''}
                                 </div>
                               )}
                             </div>
@@ -2443,7 +2539,9 @@ export default function ExamPreviewSimulator({
                     <p className="a4-kick">{teacherExamPrefs.headerExamMotto || 'KỲ THI ĐÁNH GIÁ NĂNG LỰC HỌC TẬP'}</p>
                     <p className="a4-year">NĂM HỌC {exam.headerInfo?.schoolYear || '2026 - 2027'}</p>
                     <p className="a4-duration">Thời gian làm bài: {exam.headerInfo?.duration || editData.duration} phút</p>
-                    <div className="a4-code-box">MÃ ĐỀ: {activeCode}</div>
+                    {printQuestions.some((q) => (q.type || 'single_choice') !== 'essay') && (
+                      <div className="a4-code-box">MÃ ĐỀ: {activeCode}</div>
+                    )}
                   </div>
                 </div>
 
@@ -2454,11 +2552,19 @@ export default function ExamPreviewSimulator({
                 <div className="a4-questions">
                   {printQuestions.map((q, idx) => {
                     const type = q.type || 'single_choice';
+                    const showPassage = shouldShowPassageHeader(printQuestions, idx);
                     return (
                       <div key={idx} className="a4-q">
+                        {showPassage && <PassageContextBox q={q} useMath={useMath} forPrint />}
                         <p className="a4-q-title">
                           <strong>Câu {idx + 1}:</strong>{' '}
-                          <span>{useMath ? <MathText text={q.q} /> : q.q}</span>
+                          <span>
+                            {q.q
+                              ? (useMath ? <MathText text={q.q} /> : q.q)
+                              : q.passage
+                                ? '(Điền vào chỗ trống)'
+                                : ''}
+                          </span>
                         </p>
                         {q.image && (
                           <img
@@ -2502,6 +2608,11 @@ export default function ExamPreviewSimulator({
                         {type === 'short_answer' && (
                           <div className="a4-sa">
                             <span>Trả lời: ...................................................</span>
+                          </div>
+                        )}
+                        {type === 'essay' && (
+                          <div className="a4-sa" style={{ marginTop: 4 }}>
+                            <span>Bài làm: ..........................................................................................</span>
                           </div>
                         )}
                       </div>
@@ -3190,6 +3301,7 @@ export default function ExamPreviewSimulator({
           <span>{toast.message}</span>
         </div>
       )}
-    </div>
+      </div>
+    </MathTextConfigContext.Provider>
   );
 }

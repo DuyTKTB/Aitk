@@ -7,7 +7,8 @@
      ngữ cảnh, SymbolBar (Toán/Hóa), xem trước MathText, thêm/xóa đáp án & ảnh phương án
    ============================================================ */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import MathText from '../MathText.jsx';
+import MathText, { MathTextConfigContext } from '../MathText.jsx';
+import { getSubjectExamProfile, subjectUsesMath } from '../../lib/subjects.js';
 import ExamPreviewSimulator from './ExamPreviewSimulator.jsx';
 import WordDocxEditor from './WordDocxEditor.jsx';
 import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
@@ -70,6 +71,13 @@ const SUBJECT_OPTIONS = [
   'Công nghệ',
   'Khoa học tự nhiên',
 ];
+const normalizeSubjectOption = (s) => {
+  const val = String(s || '').trim();
+  if (val === 'Toán') return 'Toán học';
+  if (val === 'Vật lý') return 'Vật lí';
+  if (val === 'Giáo dục kinh tế và pháp luật' || val === 'GDCD') return 'GDKT&PL';
+  return val;
+};
 const GRADE_OPTIONS = ['12', '11', '10', '9', '8', '7', '6'];
 
 const SYM_GROUPS = [
@@ -491,8 +499,8 @@ const normalizeJsonExam = (data) => {
       });
     }
     let answer = '';
-    if (type === 'short_answer') {
-      const av = pickK(o, ['answer', 'dapan', 'correct', 'correctanswer', 'key', 'result', 'ketqua']);
+    if (type === 'short_answer' || type === 'essay') {
+      const av = pickK(o, ['answer', 'dapan', 'correct', 'correctanswer', 'key', 'result', 'ketqua', 'rubric', 'goiy']);
       answer = String(Array.isArray(av) ? av[0] : av ?? '').trim();
     }
 
@@ -577,7 +585,7 @@ const toUiQuestion = (q, fallbackIdx = 0) => {
 
 const issuesOf = (it) => {
   const out = [];
-  if (!String(it.q || '').trim() && !it.image) out.push('Thiếu nội dung câu hỏi');
+  if (!String(it.q || '').trim() && !String(it.passage || '').trim() && !it.image) out.push('Thiếu nội dung câu hỏi');
   const normType = normalizeImporterType(it.type);
   if (normType === 'true_false') {
     const st = it.statements || [];
@@ -588,6 +596,9 @@ const issuesOf = (it) => {
   }
   if (normType === 'short_answer') {
     if (!String(it.answer || '').trim()) out.push('Chưa có đáp án trả lời ngắn');
+    return out;
+  }
+  if (normType === 'essay') {
     return out;
   }
   const opts = it.options || [];
@@ -826,6 +837,7 @@ function QuestionDetailEditor({
             { id: 'single_choice', label: 'Phần I · Trắc nghiệm (A/B/C/D)' },
             { id: 'true_false', label: 'Phần II · Đúng / Sai (a-d)' },
             { id: 'short_answer', label: 'Phần III · Trả lời ngắn' },
+            { id: 'essay', label: 'Phần IV · Tự luận' },
           ].map((opt) => (
             <button
               key={opt.id}
@@ -1208,6 +1220,20 @@ function QuestionDetailEditor({
         </div>
       )}
 
+      {normType === 'essay' && (
+        <div>
+          <label className="wimp-field-label">Gợi ý trả lời / Hướng dẫn chấm (tùy chọn)</label>
+          <textarea
+            rows={2}
+            className="wimp-textarea"
+            value={item.answer || ''}
+            onFocus={registerFocus({ kind: 'answer' })}
+            onChange={(e) => onPatch({ answer: e.target.value, src: 'bạn nhập' })}
+            placeholder="Nhập đáp án gợi ý hoặc biểu điểm chấm tự luận..."
+          />
+        </div>
+      )}
+
       {normType === 'short_answer' && (
         <div className="wimp-grid-2">
           <div>
@@ -1318,6 +1344,7 @@ export default function ExamImporter({
   const lastFileRef = useRef(null);
   const extractedTextRef = useRef('');
   const userPickedClassRef = useRef(false);
+  const userPickedSubjectRef = useRef(false);
   const [pdfMeta, setPdfMeta] = useState(null);
 
   const [inputMode, setInputMode] = useState('file'); // 'file' | 'paste' | 'json'
@@ -1339,7 +1366,7 @@ export default function ExamImporter({
   const [searchTerm, setSearchTerm] = useState('');
 
   const [title, setTitle] = useState(defaultTitle || '');
-  const [detectedSubject, setDetectedSubject] = useState(defaultSubject || classInfo?.subject || '');
+  const [detectedSubject, setDetectedSubject] = useState(initialEnglishMode ? 'Tiếng Anh' : (defaultSubject || classInfo?.subject || ''));
   const [detectedGrade, setDetectedGrade] = useState(String(defaultGrade || classInfo?.grade || '12'));
   const [duration, setDuration] = useState(String(defaultDuration || '45'));
   const [classId, setClassId] = useState(classInfo?.id || classes[0]?.id || '');
@@ -1349,8 +1376,27 @@ export default function ExamImporter({
   const isModal = Boolean(isModalProp ?? (Boolean(onClose) && variant !== 'page' && variant !== 'inline'));
   const canCreateExam = Boolean(onCreateSoftExam && (allowSoftExam || isModalProp || onConfirm));
 
+  const syncDetectedMeta = (qsForDetect = [], textForDetect = '', fName = '') => {
+    const corpusText = textForDetect || (qsForDetect || []).map((q) => `${q.passage || ''} ${q.q || ''} ${(q.options || []).join(' ')}`).join('\n');
+    const detected = detectExamSubjectAndGrade({
+      fileName: fName,
+      text: corpusText,
+      questions: qsForDetect,
+    });
+    if (detected.subject && !userPickedSubjectRef.current) {
+      const normalizedSubj = normalizeSubjectOption(detected.subject);
+      setDetectedSubject(normalizedSubj);
+      setEnglishMode(normalizedSubj === 'Tiếng Anh');
+    }
+    if (detected.grade) setDetectedGrade(String(detected.grade));
+  };
+
   useEffect(() => {
-    if (initialEnglishMode !== undefined) setEnglishMode(Boolean(initialEnglishMode));
+    if (initialEnglishMode !== undefined) {
+      const en = Boolean(initialEnglishMode);
+      setEnglishMode(en);
+      if (en && !userPickedSubjectRef.current) setDetectedSubject('Tiếng Anh');
+    }
   }, [initialEnglishMode]);
 
   useEffect(() => {
@@ -1385,6 +1431,12 @@ export default function ExamImporter({
         setItems((prev) => (appendMode === 'append' ? [...prev, ...normalized] : normalized));
         if (ex.meta.title) setTitle((t) => t || String(ex.meta.title));
         if (ex.meta.duration) setDuration((d) => d || String(ex.meta.duration));
+        if (ex.meta.subject && !userPickedSubjectRef.current) {
+          setDetectedSubject(String(ex.meta.subject));
+          if (String(ex.meta.subject).toLowerCase().includes('anh')) setEnglishMode(true);
+        } else {
+          syncDetectedMeta(normalized, textVal, '');
+        }
         setFormulaCount(normalized.reduce((s, q) => s + countFormulasInText(`${q.q} ${(q.options || []).join(' ')}`), 0));
         return;
       }
@@ -1392,6 +1444,7 @@ export default function ExamImporter({
 
     const res = parseLines(textToLines(textVal), []);
     const normalized = res.questions.map((q, idx) => toUiQuestion(q, idx));
+    syncDetectedMeta(normalized, textVal, '');
     setFormulaCount(normalized.reduce((s, q) => s + countFormulasInText(`${q.q} ${(q.options || []).join(' ')}`), 0));
     setItems((prev) => (appendMode === 'append' ? [...prev, ...normalized] : normalized));
   };
@@ -1409,12 +1462,12 @@ export default function ExamImporter({
       }
       const isPdfOrImage = /\.pdf$/i.test(f.name) || /^image\//i.test(f.type) || /\.(jpe?g|png|webp|bmp)$/i.test(f.name);
       if (isPdfOrImage && !vipUnlocked) {
-        const vipMsg = `Tách đề từ file PDF / Ảnh OCR thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng). Tài khoản Free được dùng thử ${FREE_TEACHER_LIMITS.maxWordImports} lần nhập trực tiếp file Word (.docx).`;
+        const vipMsg = `Tách đề từ file PDF / Ảnh OCR thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm). Tài khoản Free được dùng thử ${FREE_TEACHER_LIMITS.maxWordImports} lần nhập trực tiếp file Word (.docx).`;
         onRequestUpgrade?.(vipMsg);
         throw new Error(vipMsg);
       }
       if (/\.docx$/i.test(f.name) && !vipUnlocked && getWordImportTrialRemaining(user?.uid, false) <= 0) {
-        const limitMsg = `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxWordImports}/${FREE_TEACHER_LIMITS.maxWordImports} lượt dùng thử nhập file Word miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng) để nhập không giới hạn.`;
+        const limitMsg = `Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxWordImports}/${FREE_TEACHER_LIMITS.maxWordImports} lượt dùng thử nhập file Word miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để nhập không giới hạn.`;
         onRequestUpgrade?.(limitMsg);
         throw new Error(limitMsg);
       }
@@ -1482,14 +1535,7 @@ export default function ExamImporter({
       setFileName(f.name);
       if (!title) setTitle(f.name.replace(/\.[^.]+$/, ''));
 
-      const corpusText = newQuestions.map((q) => `${q.q} ${(q.options || []).join(' ')}`).join('\n');
-      const detected = detectExamSubjectAndGrade({
-        fileName: f.name,
-        text: corpusText,
-        questions: newQuestions,
-      });
-      if (detected.subject) setDetectedSubject(detected.subject);
-      if (detected.grade) setDetectedGrade(String(detected.grade));
+      syncDetectedMeta(newQuestions, '', f.name);
 
       setItems((prev) => {
         if (appendMode === 'append' && prev.length > 0) {
@@ -1509,7 +1555,7 @@ export default function ExamImporter({
   /* Quét sâu lại toàn bộ đề / PDF scan bằng AI Vision */
   const handleAiDeepScan = async () => {
     if (!vipUnlocked) {
-      const m = `Quét sâu AI / Vision thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+      const m = `Quét sâu AI / Vision thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`;
       setMsg(m);
       onRequestUpgrade?.(m);
       return;
@@ -1656,7 +1702,7 @@ export default function ExamImporter({
               ]
             : [],
         answer: '',
-        points: norm === 'true_false' ? 1 : 0.25,
+        points: norm === 'true_false' || norm === 'essay' ? 1 : 0.25,
         src: 'thêm thủ công',
       },
       items.length
@@ -1671,32 +1717,41 @@ export default function ExamImporter({
     let n1 = 0;
     let n2 = 0;
     let n3 = 0;
+    let n4 = 0;
     setItems((arr) =>
       arr.map((it) => {
         const t = normalizeImporterType(it.type);
         if (t === 'true_false') return { ...it, num: ++n2 };
         if (t === 'short_answer') return { ...it, num: ++n3 };
+        if (t === 'essay') return { ...it, num: ++n4 };
         return { ...it, num: ++n1 };
       })
     );
-    setMsg('Đã đánh lại số thứ tự 1..N theo từng Phần I, II, III.');
+    setMsg('Đã đánh lại số thứ tự 1..N theo từng phần.');
   };
 
-  /* Chia điểm tự động: Chuẩn GDPT 2025 (0.25 / 1.0 / 0.25) hoặc chia đều thang 10 */
+  /* Chia điểm tự động: Chuẩn GDPT 2025 theo môn học hoặc chia đều thang 10 */
   const handleDistributePoints = () => {
     if (!items.length) return;
     const p1 = items.filter((q) => normalizeImporterType(q.type) === 'single_choice').length;
     const p2 = items.filter((q) => normalizeImporterType(q.type) === 'true_false').length;
     const p3 = items.filter((q) => normalizeImporterType(q.type) === 'short_answer').length;
-    const gdptTotal = p1 * 0.25 + p2 * 1 + p3 * 0.25;
-    if (Math.abs(gdptTotal - 10) < 0.01) {
+    const p4 = items.filter((q) => normalizeImporterType(q.type) === 'essay').length;
+    const subjProfile = getSubjectExamProfile(detectedSubject || (englishMode ? 'Tiếng Anh' : ''));
+    const w = subjProfile.standardCounts?.weights || { multiple_choice: 1, true_false: 4, short_answer: 1, essay: 4 };
+    const p1Pt = 0.25 * (w.multiple_choice || 1);
+    const p2Pt = 0.25 * (w.true_false || 4);
+    const p3Pt = 0.25 * (w.short_answer || 1);
+    const gdptTotal = p1 * p1Pt + p2 * p2Pt + p3 * p3Pt;
+
+    if (p4 === 0 && Math.abs(gdptTotal - 10) < 0.01) {
       setItems((arr) =>
         arr.map((q) => {
           const t = normalizeImporterType(q.type);
-          return { ...q, points: t === 'true_false' ? 1 : 0.25 };
+          return { ...q, points: t === 'true_false' ? p2Pt : t === 'short_answer' ? p3Pt : p1Pt };
         })
       );
-      setMsg('Đã áp dụng thang điểm chuẩn BGD 2025: Phần I = 0,25đ • Phần II = 1,0đ • Phần III = 0,25đ (Tổng 10đ).');
+      setMsg(`Đã áp dụng thang điểm chuẩn ${subjProfile.label}: Phần I = ${p1Pt}đ${p2 ? ` • Phần II = ${p2Pt}đ` : ''}${p3 ? ` • Phần III = ${p3Pt}đ` : ''} (Tổng 10đ).`);
       return;
     }
     const perQ = Math.round((10 / items.length) * 100) / 100;
@@ -1715,7 +1770,7 @@ export default function ExamImporter({
     let fixed = false;
 
     if (normType === 'single_choice' && (it.correct < 0 || it.correct === undefined)) {
-      const fromExp = extractMcqAnswerFromExplain(it.explain || '');
+      const fromExp = extractMcqAnswerFromExplain(it.explain || '', it.options || []);
       if (fromExp >= 0 && fromExp < (it.options || []).length) {
         nextCorrect = fromExp;
         nextSrc = 'dò từ lời giải';
@@ -1773,7 +1828,7 @@ export default function ExamImporter({
   /* Bác sĩ AI bổ sung đủ 3 phần */
   const handleAiComplete3Parts = async () => {
     if (!vipUnlocked) {
-      const m = `AI bổ sung đề chuẩn 3 phần thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+      const m = `AI bổ sung đề chuẩn 3 phần thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`;
       setMsg(m);
       onRequestUpgrade?.(m);
       return;
@@ -1882,6 +1937,16 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
           };
         }
 
+        if (normTarget === 'essay') {
+          return {
+            ...it,
+            type: 'essay',
+            points: Number(it.points) > 0.25 ? Number(it.points) : 1,
+            warns: [],
+            src: it.src || 'chuyển dạng thủ công',
+          };
+        }
+
         // Chuyển sang Trắc nghiệm nhiều lựa chọn
         let nextOpts = Array.isArray(it.options) && it.options.length >= 2 ? [...it.options] : [];
         let nextCorrect = it.correct >= 0 ? it.correct : -1;
@@ -1975,6 +2040,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
     let p1 = 0;
     let p2 = 0;
     let p3 = 0;
+    let essay = 0;
     let hasAnswer = 0;
     let hasExplain = 0;
     let imgCount = 0;
@@ -1990,6 +2056,9 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
       } else if (t === 'short_answer') {
         p3++;
         if (String(it.answer || '').trim()) hasAnswer++;
+      } else if (t === 'essay') {
+        essay++;
+        hasAnswer++;
       } else {
         p1++;
         if (it.correct >= 0 && it.correct < (it.options || []).length) hasAnswer++;
@@ -2000,7 +2069,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
       lv[lKey] = (lv[lKey] || 0) + 1;
     });
 
-    return { total: items.length, p1, p2, p3, hasAnswer, hasExplain, imgCount, lv };
+    return { total: items.length, p1, p2, p3, essay, hasAnswer, hasExplain, imgCount, lv };
   }, [items]);
 
   const checked = useMemo(() => items.map((it) => ({ it, issues: issuesOf(it) })), [items]);
@@ -2011,6 +2080,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
     if (filterTab === 'p1') list = list.filter(({ it }) => normalizeImporterType(it.type) === 'single_choice');
     else if (filterTab === 'p2') list = list.filter(({ it }) => normalizeImporterType(it.type) === 'true_false');
     else if (filterTab === 'p3') list = list.filter(({ it }) => normalizeImporterType(it.type) === 'short_answer');
+    else if (filterTab === 'essay') list = list.filter(({ it }) => normalizeImporterType(it.type) === 'essay');
     else if (filterTab === 'img') list = list.filter(({ it }) => Boolean(it.image));
     else if (filterTab === 'issue') list = list.filter(({ issues }) => issues.length > 0);
 
@@ -2030,14 +2100,19 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
   const buildNormalizedQuestions = (sourceList = items) =>
     sourceList.map((it) => {
       const normType = normalizeImporterType(it.type);
-      const resolvedSubject = detectedSubject || defaultSubject || classInfo?.subject || 'Toán học';
+      const resolvedSubject = detectedSubject || (englishMode ? 'Tiếng Anh' : '') || defaultSubject || classInfo?.subject || 'Toán học';
       const resolvedGrade = Number(detectedGrade || defaultGrade || classInfo?.grade || 12) || 12;
+      const groupId = it.groupId || it.pg || '';
       const meta = {
         ...(it.topic ? { topic: it.topic } : {}),
         level: it.level || 'nb',
         ...(it.image ? { image: it.image } : {}),
         ...(Array.isArray(it.images) && it.images.length ? { images: it.images } : {}),
         ...(it.optionImages ? { optionImages: it.optionImages } : {}),
+        ...(groupId ? { groupId } : {}),
+        ...(it.passage ? { passage: it.passage } : {}),
+        ...(it.instruction ? { instruction: it.instruction } : {}),
+        ...(it.lockGroupQuestionOrder ? { lockGroupQuestionOrder: true } : {}),
         subject: resolvedSubject,
         grade: resolvedGrade,
       };
@@ -2065,6 +2140,18 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
           explain: it.explain || '',
         };
       }
+      if (normType === 'essay') {
+        return {
+          ...meta,
+          type: 'essay',
+          q: it.q,
+          options: [],
+          correct: -1,
+          ...(String(it.answer || '').trim() ? { answer: String(it.answer).trim() } : {}),
+          points: Number(it.points) || 1,
+          explain: it.explain || '',
+        };
+      }
       return {
         ...meta,
         type: 'single_choice',
@@ -2073,7 +2160,6 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
         correct: it.correct >= 0 ? it.correct : 0,
         points: Number(it.points) || 0.25,
         explain: it.explain || '',
-        ...(it.pg ? { groupId: it.pg, passage: it.passage, instruction: it.instruction } : {}),
       };
     });
 
@@ -2098,7 +2184,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
 
   const handleExportRepairedWord = async () => {
     if (!vipUnlocked) {
-      const m = `Xuất file Word (.docx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+      const m = `Xuất file Word (.docx) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`;
       setMsg(m);
       onRequestUpgrade?.(m);
       return;
@@ -2133,7 +2219,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
 
   const handleSendToMixerClick = () => {
     if (!vipUnlocked) {
-      const m = `Trộn nhiều mã đề & mô phỏng đề A4 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+      const m = `Trộn nhiều mã đề & mô phỏng đề A4 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`;
       setMsg(m);
       onRequestUpgrade?.(m);
       return;
@@ -2146,7 +2232,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
     if (typeof onSendToMixer === 'function') {
       onSendToMixer({
         title: title || fileName.replace(/\.[^.]+$/, '') || 'Đề kiểm tra',
-        subject: detectedSubject || defaultSubject || classInfo?.subject || 'Toán học',
+        subject: detectedSubject || (englishMode ? 'Tiếng Anh' : '') || defaultSubject || classInfo?.subject || 'Toán học',
         grade: Number(detectedGrade || defaultGrade || classInfo?.grade || 12) || 12,
         duration: Number(duration) || 45,
         sourceFile: fileName || 'Đề vừa nạp',
@@ -2168,7 +2254,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
       ? classId
       : classId || classInfo?.id || classes[0]?.id || '';
     const targetClassObj = (classes || []).find((c) => c.id === targetClassId) || null;
-    const resolvedSubject = detectedSubject || defaultSubject || targetClassObj?.subject || classInfo?.subject || 'Toán học';
+    const resolvedSubject = detectedSubject || (englishMode ? 'Tiếng Anh' : '') || targetClassObj?.subject || defaultSubject || classInfo?.subject || 'Toán học';
     const resolvedGrade = Number(detectedGrade || defaultGrade || targetClassObj?.grade || classInfo?.grade || 12) || 12;
     const payload = {
       title: title || fileName.replace(/\.[^.]+$/, '') || 'Đề nhập từ file Word',
@@ -2231,7 +2317,13 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
           <button
             type="button"
             className={`wimp-btn wimp-btn-sm ${englishMode ? 'wimp-btn-accent' : ''}`}
-            onClick={() => setEnglishMode((v) => !v)}
+            onClick={() =>
+              setEnglishMode((v) => {
+                const next = !v;
+                if (next) setDetectedSubject('Tiếng Anh');
+                return next;
+              })
+            }
           >
             <IcoGlobe size={14} /> {englishMode ? 'Đang bật: Tiếng Anh' : 'Đề Tiếng Anh'}
           </button>
@@ -2240,7 +2332,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
             className="wimp-btn wimp-btn-sm"
             onClick={() => {
               if (!vipUnlocked) {
-                const m = `Trình soạn thảo Word A4 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+                const m = `Trình soạn thảo Word A4 thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`;
                 setMsg(m);
                 onRequestUpgrade?.(m);
                 return;
@@ -2444,7 +2536,12 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                 <select
                   className="wimp-select"
                   value={detectedSubject || 'Toán học'}
-                  onChange={(e) => setDetectedSubject(e.target.value)}
+                  onChange={(e) => {
+                    userPickedSubjectRef.current = true;
+                    const val = e.target.value;
+                    setDetectedSubject(val);
+                    setEnglishMode(val === 'Tiếng Anh');
+                  }}
                 >
                   {SUBJECT_OPTIONS.map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -2556,6 +2653,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                 <span className="wimp-stat-pill">Phần I <b>{stats.p1}</b></span>
                 <span className="wimp-stat-pill">Phần II (Đ/S) <b>{stats.p2}</b></span>
                 <span className="wimp-stat-pill">Phần III (Ngắn) <b>{stats.p3}</b></span>
+                {stats.essay > 0 && <span className="wimp-stat-pill">Tự luận <b>{stats.essay}</b></span>}
                 <span className={`wimp-stat-pill ${stats.total > 0 && stats.hasAnswer === stats.total ? 'ok' : ''}`}>
                   Có ĐA <b>{stats.hasAnswer}/{stats.total}</b>
                 </span>
@@ -2594,6 +2692,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                     { id: 'p1', label: 'Phần I (TN)', count: stats.p1 },
                     { id: 'p2', label: 'Phần II (Đ/S)', count: stats.p2 },
                     { id: 'p3', label: 'Phần III (Ngắn)', count: stats.p3 },
+                    ...(stats.essay > 0 ? [{ id: 'essay', label: 'Tự luận', count: stats.essay }] : []),
                     ...(stats.imgCount > 0 ? [{ id: 'img', label: 'Có hình', count: stats.imgCount }] : []),
                     ...(issueCount > 0 ? [{ id: 'issue', label: 'Cần kiểm tra', count: issueCount }] : []),
                   ].map((tab) => (
@@ -2622,29 +2721,41 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
               </div>
             )}
 
-            {items.length > 0 && (stats.p2 < 4 || stats.p3 < 6) && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 10,
-                  flexWrap: 'wrap',
-                  padding: '7px 11px',
-                  borderRadius: 11,
-                  background: 'var(--wi-warn-soft)',
-                  border: '1px solid color-mix(in srgb, var(--wi-warn) 28%, transparent)',
-                  fontSize: 12,
-                }}
-              >
-                <span style={{ color: 'var(--wi-ink2)' }}>
-                  Gợi ý chuẩn GDPT 2025: Hiện có {stats.p2} câu Đúng/Sai và {stats.p3} câu Trả lời ngắn — có thể nhờ AI sinh bù phần còn thiếu.
-                </span>
-                <button type="button" className="wimp-btn wimp-btn-xs wimp-btn-accent" disabled={busy} onClick={handleAiComplete3Parts}>
-                  <IcoSparkles size={12} /> AI bổ sung đủ 3 phần
-                </button>
-              </div>
-            )}
+            {(() => {
+              const subjProfile = getSubjectExamProfile(detectedSubject || (englishMode ? 'Tiếng Anh' : ''));
+              const showMissingParts =
+                items.length > 0 &&
+                stats.essay === 0 &&
+                subjProfile.hasTrueFalse &&
+                ((subjProfile.hasShortAnswer && (stats.p2 < 4 || stats.p3 < 6)) ||
+                  (!subjProfile.hasShortAnswer && stats.p2 < 4));
+              if (!showMissingParts) return null;
+              return (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                    padding: '7px 11px',
+                    borderRadius: 11,
+                    background: 'var(--wi-warn-soft)',
+                    border: '1px solid color-mix(in srgb, var(--wi-warn) 28%, transparent)',
+                    fontSize: 12,
+                  }}
+                >
+                  <span style={{ color: 'var(--wi-ink2)' }}>
+                    {subjProfile.hasShortAnswer
+                      ? `Gợi ý chuẩn GDPT 2025 (${subjProfile.label}): Hiện có ${stats.p2} câu Đúng/Sai và ${stats.p3} câu Trả lời ngắn — có thể nhờ AI sinh bù phần còn thiếu.`
+                      : `Gợi ý chuẩn GDPT 2025 (${subjProfile.label}): Hiện có ${stats.p2} câu Đúng/Sai — có thể nhờ AI sinh bù phần còn thiếu.`}
+                  </span>
+                  <button type="button" className="wimp-btn wimp-btn-xs wimp-btn-accent" disabled={busy} onClick={handleAiComplete3Parts}>
+                    <IcoSparkles size={12} /> {subjProfile.hasShortAnswer ? 'AI bổ sung đủ 3 phần' : 'AI bổ sung Đúng/Sai'}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Danh sách câu hỏi */}
@@ -2690,8 +2801,9 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                 const normType = normalizeImporterType(it.type);
                 const isTf = normType === 'true_false';
                 const isSa = normType === 'short_answer';
-                const partBadgeClass = isTf ? 'wimp-badge-p2' : isSa ? 'wimp-badge-p3' : 'wimp-badge-p1';
-                const partLabel = isTf ? 'Phần II · Đúng/Sai' : isSa ? 'Phần III · Trả lời ngắn' : 'Phần I · Trắc nghiệm';
+                const isEssay = normType === 'essay';
+                const partBadgeClass = isTf ? 'wimp-badge-p2' : (isSa || isEssay) ? 'wimp-badge-p3' : 'wimp-badge-p1';
+                const partLabel = isTf ? 'Phần II · Đúng/Sai' : isSa ? 'Phần III · Trả lời ngắn' : isEssay ? 'Phần IV · Tự luận' : 'Phần I · Trắc nghiệm';
                 const lvCode = LEVEL_LABELS[(it.level || 'nb').toLowerCase()] || 'NB';
 
                 let ansText = '';
@@ -2710,6 +2822,8 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                     ansText = 'Thiếu đáp án';
                     ansOk = false;
                   }
+                } else if (isEssay) {
+                  ansText = String(it.answer || '').trim() ? 'Có gợi ý' : 'Tự luận';
                 } else if (it.correct >= 0 && it.correct < (it.options || []).length) {
                   ansText = `ĐA: ${LETTERS[it.correct]}`;
                 } else {
@@ -2812,7 +2926,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                       <div className="wimp-warn-strip">
                         <span>{issues.join(' • ')}</span>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {!isTf && !isSa && (it.options || []).length === 0 && (
+                          {!isTf && !isSa && !isEssay && (it.options || []).length === 0 && (
                             <button
                               type="button"
                               className="wimp-btn wimp-btn-xs"
@@ -2821,7 +2935,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                               Đổi sang Trả lời ngắn
                             </button>
                           )}
-                          {!isTf && !isSa && (it.options || []).length === 4 && (
+                          {!isTf && !isSa && !isEssay && (it.options || []).length === 4 && (
                             <button
                               type="button"
                               className="wimp-btn wimp-btn-xs"
@@ -2879,7 +2993,17 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                         )}
 
                         <div className="wimp-stem">
-                          {it.q ? <MathText text={it.q} /> : <span style={{ color: 'var(--wi-ink3)', fontStyle: 'italic' }}>(Chưa có nội dung câu hỏi — bấm "Sửa chi tiết" để nhập)</span>}
+                          {it.q ? (
+                            <MathText text={it.q} />
+                          ) : it.passage ? (
+                            <span style={{ color: 'var(--wi-ink3)', fontStyle: 'italic' }}>
+                              (Điền vào chỗ trống câu {it.num} theo đoạn văn trên)
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--wi-ink3)', fontStyle: 'italic' }}>
+                              (Chưa có nội dung câu hỏi — bấm &quot;Sửa chi tiết&quot; để nhập)
+                            </span>
+                          )}
                         </div>
 
                         {it.image && (
@@ -2888,7 +3012,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                           </div>
                         )}
 
-                        {!isTf && !isSa && (
+                        {!isTf && !isSa && !isEssay && (
                           <div className="wimp-opts-grid">
                             {(it.options || []).map((opt, oIdx) => {
                               const isCorr = it.correct === oIdx;
@@ -2976,6 +3100,21 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                               <span style={{ fontSize: 11.5, color: 'var(--wi-ink3)' }}>
                                 Chấp nhận: {it.accepted.join(' • ')}
                               </span>
+                            )}
+                          </div>
+                        )}
+
+                        {isEssay && (
+                          <div className="wimp-passage-box" style={{ borderLeftColor: 'var(--wi-accent)' }}>
+                            <b>Câu hỏi tự luận</b>
+                            {it.answer ? (
+                              <div style={{ marginTop: 4 }}>
+                                <b>Gợi ý chấm:</b> <MathText text={it.answer} />
+                              </div>
+                            ) : (
+                              <div style={{ marginTop: 2, fontSize: 12, color: 'var(--wi-ink3)' }}>
+                                Học sinh sẽ nhập bài làm trực tiếp hoặc làm trên giấy (giáo viên tự chấm / dùng AI Rubric).
+                              </div>
                             )}
                           </div>
                         )}
@@ -3148,13 +3287,23 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
     </div>
   );
 
+  const disableChemForImporter = Boolean(
+    englishMode || (detectedSubject && !subjectUsesMath(detectedSubject))
+  );
+
   if (isModal) {
     return (
-      <div className="wimp-scope wimp-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
-        {studioShell}
-      </div>
+      <MathTextConfigContext.Provider value={{ disableChemFormat: disableChemForImporter }}>
+        <div className="wimp-scope wimp-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
+          {studioShell}
+        </div>
+      </MathTextConfigContext.Provider>
     );
   }
 
-  return studioShell;
+  return (
+    <MathTextConfigContext.Provider value={{ disableChemFormat: disableChemForImporter }}>
+      {studioShell}
+    </MathTextConfigContext.Provider>
+  );
 }

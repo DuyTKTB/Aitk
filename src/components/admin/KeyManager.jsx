@@ -80,14 +80,14 @@ export function getKeyMeta(k) {
   if (note.includes('[STUDENT_VIP') || code.startsWith('VIP-')) {
     return {
       type: 'student',
-      label: `⭐ HS VIP (199k) · ${k?.duration_days}d`,
+      label: `⭐ HS VIP (299k) · ${k?.duration_days}d`,
       badgeColor: '#a78bfa',
       badgeBg: 'rgba(124, 58, 237, 0.16)',
     };
   }
   return {
     type: 'teacher',
-    label: `🎓 GV PRO (399k) · ${k?.duration_days}d`,
+    label: `🎓 GV PRO (999k) · ${k?.duration_days}d`,
     badgeColor: '#f59e0b',
     badgeBg: 'rgba(217, 119, 6, 0.16)',
   };
@@ -434,8 +434,8 @@ export default function KeyManager() {
             {[
               { id: 'all',      label: `Tất cả (${stats.total})` },
               { id: 'discount', label: `🏷️ Mã giảm giá / Voucher (${categoryCounts.discount})` },
-              { id: 'teacher',  label: `🎓 GV PRO 399k (${categoryCounts.teacher})` },
-              { id: 'student',  label: `⭐ HS VIP 199k (${categoryCounts.student})` },
+              { id: 'teacher',  label: `🎓 GV PRO 999k (${categoryCounts.teacher})` },
+              { id: 'student',  label: `⭐ HS VIP 299k (${categoryCounts.student})` },
               { id: 'credit',   label: `⚡ Thẻ Credit AI (${categoryCounts.credit})` },
             ].map((c) => (
               <button
@@ -824,8 +824,8 @@ function CreateKeyModal({ initialCategory = 'discount', onClose, onDone }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
             {[
               { id: 'discount', label: '🏷️ Mã giảm giá / Voucher', color: '#ec4899' },
-              { id: 'teacher',  label: '🎓 GV PRO (399k/th)', color: '#d97706' },
-              { id: 'student',  label: '⭐ HS VIP (199k/th)', color: '#7c3aed' },
+              { id: 'teacher',  label: '🎓 GV PRO (999k/năm)', color: '#d97706' },
+              { id: 'student',  label: '⭐ HS VIP (299k/năm)', color: '#7c3aed' },
               { id: 'credit',   label: '⚡ Nạp Credit AI', color: '#0284c7' },
             ].map((item) => (
               <button
@@ -1049,8 +1049,8 @@ function CreateKeyModal({ initialCategory = 'discount', onClose, onDone }) {
             : cat === 'credit'
               ? `Thẻ sinh ra dạng CREDIT-XXXX-XXXX, cộng +${credits} điểm AI khi kích hoạt.`
               : cat === 'student'
-                ? `Key sinh ra dạng VIP-XXXX-XXXX (gói chuẩn 199.000đ/tháng), có hiệu lực ${finalDays} ngày.`
-                : `Key sinh ra dạng PRO-XXXX-XXXX (gói chuẩn 399.000đ/tháng), có hiệu lực ${finalDays} ngày.`}
+                ? `Key sinh ra dạng VIP-XXXX-XXXX (gói chuẩn 299.000đ/năm), có hiệu lực ${finalDays} ngày.`
+                : `Key sinh ra dạng PRO-XXXX-XXXX (gói chuẩn 999.000đ/năm), có hiệu lực ${finalDays} ngày.`}
         </p>
       </div>
     </Modal>
@@ -1149,8 +1149,8 @@ function CreateBatchModal({ initialCategory = 'teacher', onClose, onDone }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
             {[
               { id: 'discount', label: '🏷️ Mã giảm giá', color: '#ec4899' },
-              { id: 'teacher',  label: '🎓 GV PRO (399k)', color: '#d97706' },
-              { id: 'student',  label: '⭐ HS VIP (199k)', color: '#7c3aed' },
+              { id: 'teacher',  label: '🎓 GV PRO (999k)', color: '#d97706' },
+              { id: 'student',  label: '⭐ HS VIP (299k)', color: '#7c3aed' },
               { id: 'credit',   label: '⚡ Nạp Credit AI', color: '#0284c7' },
             ].map((item) => (
               <button

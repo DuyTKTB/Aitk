@@ -49,7 +49,9 @@ const PaperQuestion = memo(function PaperQuestion({ q, qi, pos, picked, flagged,
           <IcoFlag filled={flagged} />
         </button>
       </div>
-      <MathText as="p" className="pp-q-text">{q.q}</MathText>
+      <MathText as="p" className="pp-q-text">
+        {q.q || (q.passage ? '(Điền vào chỗ trống / trả lời theo ngữ liệu bên cạnh)' : '')}
+      </MathText>
       <QuestionImage q={q} onZoom={onZoom} />
       {!isChoiceType(q) && <QuestionAnswer q={q} qi={qi} picked={picked} paused={paused} onPick={onPick} />}
       {isChoiceType(q) && (

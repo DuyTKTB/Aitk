@@ -61,9 +61,9 @@ export function extractAnswerKey(questions = []) {
         if (typeof st?.correct === 'boolean') return st.correct;
         return false;
       });
-    } else if (type === 'short_answer') {
+    } else if (type === 'short_answer' || type === 'essay') {
       entry.answer = q?.answer ?? '';
-      if (Array.isArray(q?.accepted) && q.accepted.length > 0) {
+      if (type === 'short_answer' && Array.isArray(q?.accepted) && q.accepted.length > 0) {
         entry.accepted = q.accepted.filter((x) => x !== undefined && x !== null && x !== '');
       }
     } else {
@@ -103,9 +103,9 @@ export function mergeAnswerKeyIntoQuestions(questions = [], keyEntries = []) {
         ...(typeof st === 'object' && st !== null ? st : { text: String(st ?? '') }),
         answer: typeof ansArr[sIdx] === 'boolean' ? ansArr[sIdx] : Boolean(st?.answer),
       }));
-    } else if (type === 'short_answer') {
+    } else if (type === 'short_answer' || type === 'essay') {
       if (k.answer !== undefined) merged.answer = k.answer;
-      if (Array.isArray(k.accepted)) merged.accepted = k.accepted;
+      if (type === 'short_answer' && Array.isArray(k.accepted)) merged.accepted = k.accepted;
     } else if (Number.isInteger(k.correct)) {
       merged.correct = k.correct;
     }
@@ -128,9 +128,9 @@ export function hasEmbeddedAnswers(questions = []) {
     if (t === 'true_false') {
       return Array.isArray(q.statements) && q.statements.some((s) => typeof s?.answer === 'boolean');
     }
-    if (t === 'short_answer') {
+    if (t === 'short_answer' || t === 'essay') {
       return (q.answer !== undefined && q.answer !== null && q.answer !== '')
-        || (Array.isArray(q.accepted) && q.accepted.length > 0);
+        || (t === 'short_answer' && Array.isArray(q.accepted) && q.accepted.length > 0);
     }
     return Number.isInteger(q.correct) && q.correct >= 0;
   });

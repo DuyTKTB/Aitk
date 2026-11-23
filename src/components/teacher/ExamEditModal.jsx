@@ -11,7 +11,7 @@ import { IconClose, IconImage, IconScale, IconBook, IconSave } from '../Icons.js
 /* ---- 3 dạng câu chuẩn THPT 2025 ---- */
 const normType = (q) => {
   const t = q?.type;
-  if (t === 'true_false' || t === 'short_answer') return t;
+  if (t === 'true_false' || t === 'short_answer' || t === 'essay') return t;
   return 'single_choice'; // 'mcq' | 'multiple_choice' | undefined → trắc nghiệm
 };
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -26,9 +26,12 @@ const blankQ = (type) => {
   if (type === 'short_answer') {
     return { type, q: '', answer: '', accepted: [], options: [], correct: -1, points: 0.25 };
   }
+  if (type === 'essay') {
+    return { type, q: '', answer: '', options: [], correct: -1, points: 1 };
+  }
   return { type: 'single_choice', q: '', options: ['', '', '', ''], correct: 0, points: 0.25 };
 };
-const TYPE_LABEL = { single_choice: 'Trắc nghiệm', true_false: 'Đúng/Sai', short_answer: 'Trả lời ngắn' };
+const TYPE_LABEL = { single_choice: 'Trắc nghiệm', true_false: 'Đúng/Sai', short_answer: 'Trả lời ngắn', essay: 'Tự luận' };
 
 /* ---- Ảnh minh hoạ: nén về JPEG ≤1000px để vừa giới hạn 1MB/tài liệu của Firestore ---- */
 const fileToDataUrl = (file, maxW = 1000, quality = 0.75) => new Promise((resolve, reject) => {
@@ -252,7 +255,7 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
   const [openQ, setOpenQ] = useState(0);
   const [imgBusy, setImgBusy] = useState(-1);
   const [scoreOpen, setScoreOpen] = useState(false);
-  const [typePts, setTypePts] = useState({ single_choice: '0.25', true_false: '1', short_answer: '0.25' });
+  const [typePts, setTypePts] = useState({ single_choice: '0.25', true_false: '1', short_answer: '0.25', essay: '1' });
   const [targetTotal, setTargetTotal] = useState('10');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
@@ -276,7 +279,7 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
       setQuestions((qs) => qs.map((qq, k) => (
         k === tgt.i ? { ...qq, statements: (qq.statements || []).map((s, k2) => (k2 === tgt.si ? { ...s, text: next } : s)) } : qq
       )));
-    } else if (tgt.type === 'sa') {
+    } else if (tgt.type === 'sa' || tgt.type === 'essay') {
       patchQ(tgt.i, { answer: next });
     } else {
       patchQ(tgt.i, { q: next });
@@ -288,7 +291,7 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
 
   const totalPoints = useMemo(() => round2(questions.reduce((s, q) => s + ptsOf(q), 0)), [questions]);
   const promptVipProctor = () => {
-    const msg = `Giám sát Camera AI & Chế độ Siêu chặt thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/tháng).`;
+    const msg = `Giám sát Camera AI & Chế độ Siêu chặt thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`;
     if (typeof onRequestUpgrade === 'function') onRequestUpgrade(msg);
     else if (typeof window !== 'undefined') window.location.hash = 'profile?tab=vip';
   };
@@ -362,7 +365,7 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
 
   /* ----- Chấm điểm nhanh ----- */
   const counts = useMemo(() => {
-    const c = { single_choice: 0, true_false: 0, short_answer: 0 };
+    const c = { single_choice: 0, true_false: 0, short_answer: 0, essay: 0 };
     questions.forEach((q) => { c[normType(q)] += 1; });
     return c;
   }, [questions]);
@@ -374,7 +377,8 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
     }));
   };
   const presetTHPT = () => {
-    const m = { single_choice: '0.25', true_false: '1', short_answer: '0.25' };
+    const isMath = /to[aá]n/i.test(subject || '');
+    const m = { single_choice: '0.25', true_false: '1', short_answer: isMath ? '0.5' : '0.25', essay: typePts.essay || '1' };
     setTypePts(m);
     applyTypePts(m);
   };
@@ -401,7 +405,7 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
     if (!questions.length) return 'Đề thi cần ít nhất 1 câu hỏi.';
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i];
-      if (!String(q.q || '').trim()) return `Câu ${i + 1}: thiếu nội dung câu hỏi.`;
+      if (!String(q.q || '').trim() && !String(q.passage || '').trim() && !q.image) return `Câu ${i + 1}: thiếu nội dung câu hỏi.`;
       const t = normType(q);
       if (t === 'true_false') {
         const st = q.statements || [];
@@ -409,6 +413,7 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
         if (st.some((x) => !String(x.text || '').trim())) return `Câu ${i + 1} (Đúng/Sai): có ý bị bỏ trống.`;
         continue;
       }
+      if (t === 'essay') continue;
       if (t === 'short_answer') {
         if (!String(q.answer ?? '').trim()) return `Câu ${i + 1} (Trả lời ngắn): chưa nhập đáp án.`;
         continue;
@@ -450,7 +455,15 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
             statements: (q.statements || []).map((x) => ({ text: String(x.text || '').trim(), answer: x.answer === true })),
           };
         }
-        if (t === 'short_answer') {
+        if (t === 'essay') {
+          return {
+            ...base,
+            options: [],
+            correct: -1,
+            answer: String(q.answer ?? '').trim(),
+          };
+        }
+      if (t === 'short_answer') {
           const vi = String(q.answer ?? '').trim().replace(/\./g, ',');
           const extraAccepted = vi === (q._origAnswer ?? vi) ? (q.accepted || []) : [];
           return {
@@ -480,6 +493,7 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
         subject: subject.trim(),
         grade: grade.trim(),
         classId: classId || '',
+        isDraft: !classId,
         showAnswerAfter,
         allowRetry,
         shuffle,
@@ -495,7 +509,8 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
         ...exam,
         title: title.trim(), description: description.trim(), duration: Number(duration),
         subject: subject.trim(), grade: grade.trim(),
-        classId: classId || '', showAnswerAfter, allowRetry, shuffle, displayMode,
+        classId: classId || '',
+        isDraft: !classId, showAnswerAfter, allowRetry, shuffle, displayMode,
         gradeType: ['tx', 'dgk', 'ckk'].includes(gradeType) ? gradeType : '',
         proctor,
         opensAt: opensAt ? new Date(opensAt) : null,
@@ -685,7 +700,7 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.7rem' }}>
             <h3 style={{ margin: 0, font: '800 .85rem var(--t-font-sans)', color: 'var(--t-ink)' }}>Câu hỏi ({questions.length})</h3>
             <div style={{ display: 'flex', gap: '.35rem', flexWrap: 'wrap' }}>
-              {['single_choice', 'true_false', 'short_answer'].map((t) => (
+              {['single_choice', 'true_false', 'short_answer', 'essay'].map((t) => (
                 <button key={t} type="button" onClick={() => addQ(t)} style={{ ...P.btn, background: 'var(--t-accent)', color: 'var(--t-accent-ink)' }}>
                   + {TYPE_LABEL[t]}
                 </button>
@@ -718,7 +733,7 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
                 <div>
                   <label style={P.label}>1. Điểm mỗi câu theo dạng</label>
                   <div style={{ display: 'grid', gap: '.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-                    {['single_choice', 'true_false', 'short_answer'].map((t) => (
+                    {['single_choice', 'true_false', 'short_answer', 'essay'].map((t) => (
                       <div key={t} style={{ display: 'flex', alignItems: 'center', gap: '.5rem', padding: '.45rem .6rem', borderRadius: 'var(--t-r-md)', background: 'var(--t-surface-2)', border: '1px solid var(--t-border)' }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <b style={{ display: 'block', font: '700 .8rem var(--t-font-sans)', color: 'var(--t-ink)' }}>{TYPE_LABEL[t]}</b>
@@ -897,6 +912,19 @@ export default function ExamEditModal({ exam, classes = [], isTeacherVip = undef
                         <small style={{ display: 'block', marginTop: '.3rem', color: 'var(--t-ink-muted)', font: '500 .68rem var(--t-font-sans)' }}>
                           Hệ thống tự chấp nhận cả dấu phẩy và dấu chấm (12,5 = 12.5).
                         </small>
+                      </div>
+                    )}
+                    {normType(q) === 'essay' && (
+                      <div>
+                        <label style={P.label}>Gợi ý chấm / Đáp án mẫu tự luận (không bắt buộc)</label>
+                        <textarea
+                          rows={2}
+                          style={{ ...P.input, resize: 'vertical' }}
+                          value={q.answer ?? ''}
+                          placeholder="Nhập hướng dẫn chấm hoặc ý chính để giáo viên đối chiếu khi chấm tay..."
+                          onFocus={(e) => { fieldRef.current = e.target; targetRef.current = { type: 'essay', i }; }}
+                          onChange={(e) => patchQ(i, { answer: e.target.value })}
+                        />
                       </div>
                     )}
                     {normType(q) === 'single_choice' && (

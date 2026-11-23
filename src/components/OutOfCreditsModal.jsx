@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import {
   CREDIT_PACKAGES,
+  MIN_CREDIT_TOPUP_VND,
   BANK_INFO,
   createPaymentOrder,
+  resolveCreditOrderAmount,
   onOrderPaid,
   formatCredits,
 } from '../lib/creditService.js';
@@ -76,8 +78,10 @@ export default function OutOfCreditsModal() {
   const [needed, setNeeded] = useState(100);
   const [activeTab, setActiveTab] = useState('qr'); // 'qr' | 'key'
 
-  // QR state — mặc định gói PRO 2 (30.000đ = 30.000 Credit)
-  const [selectedPkg, setSelectedPkg] = useState(CREDIT_PACKAGES[1] || CREDIT_PACKAGES[0]);
+  // QR state — mặc định gói từ 10.000đ trở lên (PRO 1: 10.000đ = 10.000 Credit)
+  const [selectedPkg, setSelectedPkg] = useState(CREDIT_PACKAGES[0] || CREDIT_PACKAGES[1]);
+  const [customAmountInput, setCustomAmountInput] = useState('');
+  const [customAmountError, setCustomAmountError] = useState('');
   const [orderInfo, setOrderInfo] = useState(null);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
@@ -247,7 +251,7 @@ export default function OutOfCreditsModal() {
             <div className="ooc-hero-copy">
               <span className="ooc-badge">
                 <SvgZap size={11} />
-                ELEC AI CREDIT · 1 CREDIT = 1 Đ
+                ELEC AI CREDIT · NẠP TỪ 10.000Đ (1 CREDIT = 1 Đ)
               </span>
               <h2 id="ooc-title" className="ooc-title">
                 {orderSuccess ? 'Nạp năng lượng thành công!' : 'ELEC AI cần thêm Credit'}
@@ -332,14 +336,18 @@ export default function OutOfCreditsModal() {
                 <>
                   <div className="ooc-packages-grid">
                     {CREDIT_PACKAGES.slice(0, 4).map((pkg) => {
-                      const isSelected = selectedPkg.amount === pkg.amount;
+                      const isSelected = selectedPkg.amount === pkg.amount && !customAmountInput;
                       const badge = getCompactBadge(pkg);
                       return (
                         <button
                           key={pkg.amount}
                           type="button"
                           className={`ooc-pkg-card ${isSelected ? 'selected' : ''} ${pkg.popular ? 'is-popular' : ''}`}
-                          onClick={() => setSelectedPkg(pkg)}
+                          onClick={() => {
+                            setCustomAmountInput('');
+                            setCustomAmountError('');
+                            setSelectedPkg(pkg);
+                          }}
                         >
                           {badge && <span className="ooc-pkg-tag">{badge}</span>}
                           <span className="ooc-pkg-tier">{pkg.name}</span>
@@ -352,6 +360,44 @@ export default function OutOfCreditsModal() {
                       );
                     })}
                   </div>
+
+                  <form
+                    className="ooc-custom-amount-row"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const res = resolveCreditOrderAmount(customAmountInput);
+                      if (!res.ok) {
+                        setCustomAmountError(res.error);
+                        return;
+                      }
+                      setCustomAmountError('');
+                      setSelectedPkg({
+                        amount: res.amount,
+                        credits: res.credits,
+                        total: res.total,
+                        name: res.name,
+                        label: `${res.amount.toLocaleString('vi-VN')} đ`,
+                      });
+                    }}
+                  >
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={customAmountInput}
+                      onChange={(e) => {
+                        setCustomAmountInput(e.target.value.replace(/[^\d]/g, ''));
+                        if (customAmountError) setCustomAmountError('');
+                      }}
+                      placeholder={`Hoặc nhập số tiền từ ${MIN_CREDIT_TOPUP_VND.toLocaleString('vi-VN')}đ trở lên...`}
+                      className="ooc-custom-amount-input"
+                    />
+                    <button type="submit" className="ooc-custom-amount-btn">
+                      Tạo QR
+                    </button>
+                  </form>
+                  {customAmountError && (
+                    <div className="ooc-custom-amount-err">{customAmountError}</div>
+                  )}
 
                   <div className="ooc-qr-area">
                     <div className="ooc-qr-image-wrap">

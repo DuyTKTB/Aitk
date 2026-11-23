@@ -330,7 +330,20 @@ export default function TeacherSimulatorHub({
 
   // Available subjects for filter
   const allSubjects = useMemo(() => {
-    const set = new Set(['Hóa học', 'Vật lý', 'Sinh học', 'Toán học', 'Tiếng Anh']);
+    const set = new Set([
+      'Toán học',
+      'Vật lý',
+      'Hóa học',
+      'Sinh học',
+      'Tiếng Anh',
+      'Ngữ văn',
+      'Lịch sử',
+      'Địa lí',
+      'GDKT&PL',
+      'Tin học',
+      'Công nghệ',
+      'Khoa học tự nhiên',
+    ]);
     teacherExams.forEach((e) => {
       if (e.subject) set.add(e.subject);
     });
@@ -1399,7 +1412,7 @@ export default function TeacherSimulatorHub({
         onClose={() => setImporterOpen(false)}
         initialEnglishMode={importerEnglishMode}
         classes={classes}
-        defaultSubject={headerInfo.subject || 'Hóa học'}
+        defaultSubject={importerEnglishMode ? 'Tiếng Anh' : (headerInfo.subject || 'Hóa học')}
         defaultTitle={headerInfo.examName || 'Đề kiểm tra'}
         defaultDuration={Number(headerInfo.duration) || 45}
         allowBank={true}
@@ -1413,8 +1426,16 @@ export default function TeacherSimulatorHub({
             fileName: data.sourceFile || data.fileName || `${data.title || 'De-thi'}.docx`,
             questions: data.questions || [],
             subject: data.subject || headerInfo.subject || 'Hóa học',
+            grade: data.grade || Number(headerInfo.grade) || 12,
             duration: data.duration || Number(headerInfo.duration) || 45,
           });
+          setHeaderInfo((p) => ({
+            ...p,
+            ...(data.title ? { examName: data.title } : {}),
+            ...(data.subject ? { subject: data.subject } : {}),
+            ...(data.grade ? { grade: String(data.grade) } : {}),
+            ...(data.duration ? { duration: String(data.duration) } : {}),
+          }));
           setImporterOpen(false);
           sound.cheer();
         }}
@@ -1425,8 +1446,16 @@ export default function TeacherSimulatorHub({
             fileName: data.sourceFile || data.fileName || `${data.title || 'De-thi'}.docx`,
             questions: data.questions || [],
             subject: data.subject || headerInfo.subject || 'Hóa học',
+            grade: data.grade || Number(headerInfo.grade) || 12,
             duration: data.duration || Number(headerInfo.duration) || 45,
           });
+          setHeaderInfo((p) => ({
+            ...p,
+            ...(data.title ? { examName: data.title } : {}),
+            ...(data.subject ? { subject: data.subject } : {}),
+            ...(data.grade ? { grade: String(data.grade) } : {}),
+            ...(data.duration ? { duration: String(data.duration) } : {}),
+          }));
           if (typeof onImportPreset === 'function') {
             onImportPreset(data);
           }

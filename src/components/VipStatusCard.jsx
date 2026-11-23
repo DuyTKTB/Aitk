@@ -221,7 +221,7 @@ export default function VipStatusCard({ onUpgrade }) {
       <div className="vsc-upgrade-cta">
         <div className="vsc-upgrade-info">
           <b>ELECAI VIP</b>
-          <span>Mở khoá Đề thi VIP · Tặng Credit AI · AI Quiz · Từ 50.000đ/tháng</span>
+          <span>Mở khoá Đề thi VIP · Tặng Credit AI · AI Quiz · Chỉ 299.000đ/năm</span>
         </div>
         <button
           type="button"

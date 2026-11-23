@@ -4,6 +4,7 @@ import { verifyDiscountCode, recordDiscountUsage } from '../lib/discountService.
 import {
   SUBSCRIPTION_CATALOG,
   TEACHER_VIP_PRICE_TEXT,
+  STUDENT_VIP_PRICE_TEXT,
   formatVnd,
 } from '../lib/entitlements.js';
 import { OFFICIAL_YOUTUBE_CHANNEL_URL, OFFICIAL_TEACHER_ZALO_GROUP_URL } from '../lib/youtubeService.js';
@@ -85,7 +86,7 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
     const candidateKey = customPackage?.key || customPackage?.id;
     const candidate = candidateKey ? ALL_PACKAGES[candidateKey] : null;
     if (candidate && candidate.role === initialRole) return candidate.id;
-    return initialRole === 'teacher' ? 'gv-1m' : 'hs-1m';
+    return initialRole === 'teacher' ? 'gv-12m' : 'hs-12m';
   });
   const [step, setStep] = useState(() => (customPackage ? 'qr' : 'select'));
   const [checking, setChecking] = useState(false);
@@ -99,7 +100,7 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
   const [discountMsg, setDiscountMsg] = useState(null);
   const [activatingFree, setActivatingFree] = useState(false);
 
-  const rawPkg = customPackage || ALL_PACKAGES[selected] || ALL_PACKAGES['hs-1m'];
+  const rawPkg = customPackage || ALL_PACKAGES[selected] || ALL_PACKAGES['hs-12m'];
   const finalAmount = appliedDiscount ? appliedDiscount.finalPrice : rawPkg.amount;
   const isFree = Boolean(appliedDiscount?.isFree);
   const discountUserId = userId || identCode;
@@ -307,8 +308,8 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
             </h3>
             <p className="apl-pay-sub">
               {panelRole === 'teacher'
-                ? `Mở khóa toàn bộ Lớp học, AI soạn đề, OMR & Giám sát thi (${TEACHER_VIP_PRICE_TEXT}/tháng).`
-                : 'Mở khóa toàn bộ Đề thi PRO/VIP, Gia sư AI & Phân tích chuyên sâu.'}
+                ? `Mở khóa toàn bộ Lớp học, AI soạn đề, OMR & Giám sát thi (${TEACHER_VIP_PRICE_TEXT}/năm).`
+                : `Mở khóa toàn bộ Đề thi PRO/VIP, Gia sư AI & Phân tích chuyên sâu (${STUDENT_VIP_PRICE_TEXT}/năm).`}
             </p>
           </div>
 
@@ -321,10 +322,10 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
                 style={{ padding: '6px 14px', fontSize: '0.82rem' }}
                 onClick={() => {
                   setPanelRole('student');
-                  setSelected('hs-1m');
+                  setSelected('hs-12m');
                 }}
               >
-                1. Học Sinh VIP
+                1. Học Sinh VIP ({STUDENT_VIP_PRICE_TEXT}/năm)
               </button>
               <button
                 type="button"
@@ -332,21 +333,21 @@ export default function PaymentPanel({ identCode, userId, onPaymentSuccess, onCh
                 style={{ padding: '6px 14px', fontSize: '0.82rem' }}
                 onClick={() => {
                   setPanelRole('teacher');
-                  setSelected('gv-1m');
+                  setSelected('gv-12m');
                 }}
               >
-                2. Giáo Viên VIP ({TEACHER_VIP_PRICE_TEXT}/tháng)
+                2. Giáo Viên VIP ({TEACHER_VIP_PRICE_TEXT}/năm)
               </button>
             </div>
           ) : (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 980, background: panelRole === 'teacher' ? 'rgba(245,158,11,0.14)' : 'rgba(59,130,246,0.12)', color: panelRole === 'teacher' ? '#b45309' : '#1d4ed8', fontSize: '0.8rem', fontWeight: 700, width: 'fit-content' }}>
               {panelRole === 'teacher'
-                ? `Gói dành riêng cho Giáo viên · Chuẩn ${TEACHER_VIP_PRICE_TEXT}/tháng`
-                : 'Gói dành riêng cho Học sinh'}
+                ? `Gói dành riêng cho Giáo viên · Chuẩn ${TEACHER_VIP_PRICE_TEXT}/năm`
+                : `Gói dành riêng cho Học sinh · Chuẩn ${STUDENT_VIP_PRICE_TEXT}/năm`}
             </div>
           )}
 
-          <div className={`apl-pay-options ${panelRole === 'student' ? 'is-student' : 'is-teacher'}`}>
+          <div className={`apl-pay-options ${panelRole === 'student' ? 'is-student' : 'is-teacher'} ${filteredPackages.length === 1 ? 'is-single' : ''}`}>
             {filteredPackages.map(([key, p]) => (
               <button
                 key={key}
