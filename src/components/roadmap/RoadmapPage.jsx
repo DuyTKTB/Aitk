@@ -50,6 +50,7 @@ import RoadmapCommandDeck from './RoadmapCommandDeck.jsx';
 import ChapterInspectorPanel from './ChapterInspectorPanel.jsx';
 import DiagnosticTestModal from './DiagnosticTestModal.jsx';
 import StudyMethodologyGuideModal from './StudyMethodologyGuideModal.jsx';
+import KnowledgeBookshelfView from './KnowledgeBookshelfView.jsx';
 import { isAdmin } from '../../lib/isAdmin.js';
 import { getUserRole } from '../../lib/userRole.js';
 import { useCurrentSubject } from '../SubjectSwitcher.jsx';
@@ -157,6 +158,13 @@ const IcoAlertBook = () => (
     <path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
     <line x1="12" y1="9" x2="12" y2="13" />
     <line x1="12" y1="17" x2="12.01" y2="17" />
+  </Svg>
+);
+
+const IcoBookshelf = () => (
+  <Svg size={14}>
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
   </Svg>
 );
 
@@ -317,8 +325,8 @@ export default function RoadmapPage() {
       const tabParam = p.get('tab');
       const modeParam = p.get('mode');
       if (sub && SUBJECT_META[sub]) setSubjectKey(sub);
-      if (tabParam && ['trail', 'dag', 'timeline', 'wrong', 'study'].includes(tabParam)) {
-        setActiveTab(tabParam);
+      if (tabParam && ['trail', 'dag', 'timeline', 'wrong', 'study', 'bookshelf', 'library', 'kien-thuc'].includes(tabParam)) {
+        setActiveTab(['library', 'kien-thuc'].includes(tabParam) ? 'bookshelf' : tabParam);
       } else if (tabParam === 'subjects') {
         setActiveTab('trail');
       }
@@ -760,6 +768,18 @@ export default function RoadmapPage() {
               <span>Sổ sai</span>
               {dueTotal > 0 && <span className="rm-pro-mode-badge">{dueTotal}</span>}
             </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'bookshelf'}
+              className={`rm-pro-mode-btn ${activeTab === 'bookshelf' ? 'is-active' : ''}`}
+              onClick={() => setActiveTab('bookshelf')}
+              title="Thư viện Kệ sách & Giáo trình tương tác (8 tầng kệ · 14 chương trình · 89 đầu sách)"
+            >
+              <IcoBookshelf />
+              <span>Kệ sách</span>
+            </button>
           </div>
 
           {(activeTab === 'trail' || activeTab === 'dag') && (
@@ -1078,6 +1098,27 @@ export default function RoadmapPage() {
               )}
             </div>
           )}
+        </section>
+      )}
+
+      {/* ── TAB KỆ SÁCH KIẾN THỨC & GIÁO TRÌNH TƯƠNG TÁC (8 TẦNG KỆ · 89 ĐẦU SÁCH) ── */}
+      {activeTab === 'bookshelf' && (
+        <section className="ns9-bookshelf-section" aria-label="Thư viện Kệ sách Kiến thức và Giáo trình tương tác">
+          <KnowledgeBookshelfView
+            subjectKey={subjectKey}
+            onOpenChapterLesson={(subKey, chId) => {
+              if (subKey && SUBJECT_META[subKey] && subKey !== subjectKey) {
+                setSubjectKey(subKey);
+                setGlobalSubject(subKey);
+              }
+              if (chId) {
+                openChapter(chId);
+              } else {
+                setActiveTab('trail');
+              }
+            }}
+            onAskAiTopic={(promptText) => askAI(promptText)}
+          />
         </section>
       )}
 

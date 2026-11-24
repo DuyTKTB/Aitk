@@ -27,6 +27,13 @@ import {
 } from '../src/lib/admissionCareerEngine.js';
 import { loadTargetUniversity } from '../src/lib/studentAnalytics.js';
 import { evaluatePortfolioHealth } from '../src/lib/aspirationPortfolioOptimizer.js';
+import {
+  KNOWLEDGE_PROGRAMMES,
+  KNOWLEDGE_SHELF_TIERS,
+  DETAILED_TEXTBOOK_CURRICULA,
+  getAllKnowledgeVolumes,
+  getDetailedBookCurriculum,
+} from '../src/data/aiducationKnowledgeLibrary.js';
 
 describe('9Study Pro Upgrade — Định hướng Nghề nghiệp AI & Xét Nguyện vọng Đại học', () => {
   let memoryStore = {};
@@ -233,5 +240,39 @@ describe('9Study Pro Upgrade — Định hướng Nghề nghiệp AI & Xét Nguy
     });
     expect(uniResolved.schoolId).toBe('HHA');
     expect(uniResolved.src).toBe('/img/elec/outfits/hha.webp');
+  });
+
+  it('cung cấp trọn bộ Thư viện Kệ sách Kiến thức & Giáo trình Tương tác (8 tầng kệ · 14 chương trình · 89 đầu sách)', () => {
+    expect(KNOWLEDGE_PROGRAMMES).toHaveLength(14);
+    expect(KNOWLEDGE_SHELF_TIERS).toHaveLength(8);
+
+    const allVolumes = getAllKnowledgeVolumes();
+    expect(allVolumes.length).toBeGreaterThanOrEqual(85);
+
+    for (const vol of allVolumes) {
+      expect(vol.slug).toBeTruthy();
+      expect(vol.title).toBeTruthy();
+      expect(vol.chapters).toBeGreaterThan(0);
+      expect(vol.accent).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(vol.tierId).toBeTruthy();
+    }
+
+    // Kiểm tra giáo trình Hoá Đại Cương — Vô Cơ (3 Phần · 10 Chương đầy đủ mục tiêu & lý thuyết)
+    const hoaVoCoVol = allVolumes.find((v) => v.slug === 'hoa-dai-cuong-vo-co');
+    expect(hoaVoCoVol).toBeTruthy();
+    const hoaVoCoBook = getDetailedBookCurriculum(hoaVoCoVol);
+    expect(hoaVoCoBook.parts).toHaveLength(3);
+    const totalChapters = hoaVoCoBook.parts.reduce((s, p) => s + p.chapters.length, 0);
+    expect(totalChapters).toBe(10);
+    expect(hoaVoCoBook.parts[0].chapters[0].objectives.length).toBeGreaterThanOrEqual(4);
+    expect(hoaVoCoBook.parts[0].chapters[0].sections.length).toBeGreaterThanOrEqual(3);
+
+    // Kiểm tra sách KHTN THPT GDPT 2018 tự động sinh mục lục & bài đọc từ DAG
+    const hoa12Vol = allVolumes.find((v) => v.slug === 'hoa-hoc-12');
+    expect(hoa12Vol).toBeTruthy();
+    const hoa12Book = getDetailedBookCurriculum(hoa12Vol);
+    expect(hoa12Book.parts.length).toBeGreaterThanOrEqual(2);
+    expect(hoa12Book.parts[0].chapters[0].sections.length).toBeGreaterThanOrEqual(2);
+    expect(Object.keys(DETAILED_TEXTBOOK_CURRICULA)).toContain('hoa-dai-cuong-vo-co');
   });
 });
