@@ -1,0 +1,849 @@
+/* ============================================================
+   career-admission-9study.css — GIAO DIỆN ĐỊNH HƯỚNG NGHỀ NGHIỆP AI
+   & XÉT NGUYỆN VỌNG ĐẠI HỌC CHUẨN 9STUDY STUDIO BENTO
+   - Hỗ trợ Light Mode & Dark Mode ([data-theme="dark"])
+   - Responsive hoàn chỉnh từ Mobile 360px tới Desktop 1440px
+   ============================================================ */
+
+.s9c-page {
+  min-height: 100dvh;
+  background: var(--bg, #f3f6fc);
+  color: var(--ink, #0f172a);
+  font-family: var(--sans, 'Be Vietnam Pro', 'Inter', -apple-system, sans-serif);
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 4rem;
+}
+
+.s9c-wrap {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 1.15rem 1rem 3rem;
+}
+
+/* ── Thanh chỉ số hồ sơ học sinh đồng bộ thời gian thực ── */
+.s9c-live-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.s9c-stat-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, rgba(100, 120, 180, 0.16));
+  border-radius: 18px;
+  padding: 0.85rem 1rem;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.035);
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.s9c-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--stat-accent, #2563eb);
+}
+
+.s9c-stat-lbl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mut, #64748b);
+}
+
+.s9c-stat-val {
+  font-size: 1.18rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+  line-height: 1.25;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.s9c-stat-sub {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--mut, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Bố cục 2 cột Bento trên màn hình Intro & Test ── */
+.s9c-bento-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 0.95fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.s9c-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, rgba(100, 120, 180, 0.16));
+  border-radius: 22px;
+  padding: 1.35rem 1.4rem;
+  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.04);
+}
+
+.s9c-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.95rem;
+  flex-wrap: wrap;
+}
+
+.s9c-sec-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.s9c-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+}
+
+/* ── Chọn chế độ làm bài test (24 câu chuyên sâu vs 6 câu 60 giây) ── */
+.s9c-mode-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1.1rem;
+}
+
+.s9c-mode-card {
+  border-radius: 18px;
+  border: 1.5px solid var(--line, rgba(100, 120, 180, 0.18));
+  background: var(--surface-2, #f8fafc);
+  padding: 1rem 1.05rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  position: relative;
+}
+
+.s9c-mode-card:hover {
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+}
+
+.s9c-mode-card.is-active {
+  border-color: #2563eb;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(124, 58, 237, 0.05));
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.12);
+}
+
+.s9c-mode-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.s9c-mode-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.s9c-mode-tag.is-pro {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.s9c-mode-tag.is-fast {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.s9c-mode-card h3 {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.s9c-mode-card p {
+  margin: 0;
+  font-size: 0.79rem;
+  line-height: 1.5;
+  color: var(--mut, #64748b);
+}
+
+.s9c-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.78rem 1.5rem;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.26);
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.s9c-primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.34);
+}
+
+.s9c-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.68rem 1.15rem;
+  border-radius: 13px;
+  border: 1px solid var(--line, rgba(100, 120, 180, 0.24));
+  background: var(--surface, #ffffff);
+  color: var(--ink, #0f172a);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.s9c-ghost-btn:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.05);
+}
+
+/* ── Bản đồ 6 Nhóm Tính Cách Holland RIASEC Tương tác ── */
+.s9c-riasec-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.95rem;
+}
+
+.s9c-riasec-tab {
+  padding: 0.55rem 0.4rem;
+  border-radius: 14px;
+  border: 1.5px solid var(--line, rgba(100, 120, 180, 0.16));
+  background: var(--surface-2, #f8fafc);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  transition: all 0.16s ease;
+  font-family: inherit;
+}
+
+.s9c-riasec-tab b {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.86rem;
+  font-weight: 900;
+  color: #ffffff;
+  background: var(--dim-color, #2563eb);
+}
+
+.s9c-riasec-tab span {
+  font-size: 0.71rem;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.s9c-riasec-tab.is-active {
+  border-color: var(--dim-color, #2563eb);
+  background: var(--dim-soft, rgba(37, 99, 235, 0.1));
+  transform: translateY(-2px);
+}
+
+.s9c-dim-detail {
+  border-radius: 18px;
+  border: 1px solid var(--line, rgba(100, 120, 180, 0.18));
+  background: var(--surface-2, #f8fafc);
+  padding: 1.05rem 1.15rem;
+}
+
+.s9c-dim-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.s9c-dim-head h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+.s9c-dim-head p {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--mut, #64748b);
+}
+
+.s9c-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  margin: 0.45rem 0;
+}
+
+.s9c-chip {
+  padding: 0.26rem 0.68rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, rgba(100, 120, 180, 0.18));
+  color: var(--ink, #0f172a);
+}
+
+.s9c-chip.is-accent {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: rgba(37, 99, 235, 0.25);
+  color: #2563eb;
+}
+
+/* ── Giao diện Làm Bài Test (Theo trang 4 câu hoặc Từng câu) ── */
+.s9c-test-layout {
+  display: grid;
+  grid-template-columns: 1.45fr 0.85fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.s9c-q-block {
+  padding: 1rem 1.05rem;
+  border-radius: 16px;
+  border: 1px solid var(--line, rgba(100, 120, 180, 0.16));
+  background: var(--surface-2, #f8fafc);
+  margin-bottom: 0.75rem;
+  transition: border-color 0.15s ease;
+}
+
+.s9c-q-block.is-answered {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: var(--surface, #ffffff);
+}
+
+.s9c-q-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink, #0f172a);
+  margin-bottom: 0.65rem;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.s9c-q-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 7px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
+  font-size: 0.75rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.s9c-likert-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.s9c-likert-btn {
+  padding: 0.52rem 0.35rem;
+  border-radius: 11px;
+  border: 1.5px solid var(--line, rgba(100, 120, 180, 0.18));
+  background: var(--surface, #ffffff);
+  color: var(--ink, #0f172a);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.14s ease;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.s9c-likert-btn:hover {
+  border-color: #3b82f6;
+}
+
+.s9c-likert-btn.is-on {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+/* ── Báo cáo Định hướng Nghề nghiệp AI Chuyên sâu ── */
+.s9c-report-hero {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 1.1rem;
+  margin-bottom: 1.1rem;
+  align-items: stretch;
+}
+
+.s9c-code-pill-big {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  color: #ffffff;
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.24);
+}
+
+.s9c-dim-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+}
+
+.s9c-dim-bar-row {
+  display: grid;
+  grid-template-columns: 148px 1fr 44px;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+}
+
+.s9c-dim-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-3, #e2e8f0);
+  overflow: hidden;
+}
+
+.s9c-dim-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+/* ── Thẻ Nhóm Ngành Top 1-2-3 ── */
+.s9c-family-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1.1rem;
+}
+
+.s9c-family-card {
+  background: var(--surface, #ffffff);
+  border: 1.5px solid var(--line, rgba(100, 120, 180, 0.16));
+  border-radius: 20px;
+  padding: 1.15rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.035);
+}
+
+.s9c-family-card.rank-0 {
+  border-color: rgba(37, 99, 235, 0.45);
+  background: linear-gradient(180deg, rgba(37, 99, 235, 0.04) 0%, var(--surface, #ffffff) 100%);
+}
+
+/* ── Bảng Ngành & Trường ĐH Đề xuất (Ghim trực tiếp NV1-NV2-NV3) ── */
+.s9c-major-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.s9c-major-card {
+  border-radius: 18px;
+  border: 1px solid var(--line, rgba(100, 120, 180, 0.18));
+  background: var(--surface, #ffffff);
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.7rem;
+  transition: all 0.16s ease;
+}
+
+.s9c-major-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.08);
+}
+
+.s9c-nv-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.s9c-nv-btn {
+  padding: 0.32rem 0.62rem;
+  border-radius: 8px;
+  border: 1px solid var(--line, rgba(100, 120, 180, 0.24));
+  background: var(--surface-2, #f8fafc);
+  color: var(--ink, #0f172a);
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  font-family: inherit;
+}
+
+.s9c-nv-btn:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+.s9c-nv-btn.is-active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+/* ============================================================
+   PHẦN 2: TRẠM XÉT NGUYỆN VỌNG & TRA CỨU ĐIỂM CHUẨN 9STUDY (#admission)
+   ============================================================ */
+
+/* ── Bảng điều khiển Rổ Nguyện vọng 3 Tầng (NV1 - NV2 - NV3) ── */
+.s9a-portfolio-deck {
+  background: var(--surface, #ffffff);
+  border: 1.5px solid rgba(37, 99, 235, 0.24);
+  border-radius: 22px;
+  padding: 1.2rem 1.3rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.07);
+}
+
+.s9a-deck-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.s9a-deck-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.s9a-health-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.32rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.s9a-health-pill.tone-ok {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
+.s9a-health-pill.tone-warn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+.s9a-health-pill.tone-err {
+  background: rgba(239, 68, 68, 0.15);
+  color: #dc2626;
+}
+
+.s9a-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.s9a-slot-card {
+  border-radius: 16px;
+  border: 1.5px solid var(--line, rgba(100, 120, 180, 0.18));
+  background: var(--surface-2, #f8fafc);
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.45rem;
+  position: relative;
+}
+
+.s9a-slot-card.is-filled {
+  background: var(--surface, #ffffff);
+  border-color: rgba(37, 99, 235, 0.28);
+}
+
+.s9a-slot-card.is-empty {
+  border-style: dashed;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 112px;
+}
+
+.s9a-slot-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.s9a-nv-badge {
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 0.18rem 0.55rem;
+  border-radius: 7px;
+  color: #ffffff;
+}
+
+.s9a-nv-badge.nv-1 { background: #2563eb; }
+.s9a-nv-badge.nv-2 { background: #7c3aed; }
+.s9a-nv-badge.nv-3 { background: #059669; }
+
+.s9a-tier-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.16rem 0.52rem;
+  border-radius: 999px;
+}
+
+.s9a-tier-tag.is-safety { background: #dcfce7; color: #15803d; }
+.s9a-tier-tag.is-target { background: #dbeafe; color: #1d4ed8; }
+.s9a-tier-tag.is-reach { background: #fef3c7; color: #b45309; }
+.s9a-tier-tag.is-overreach { background: #fee2e2; color: #b91c1c; }
+
+/* ── Trạm Tính Điểm Ưu Tiên Bộ GD&ĐT & Quy Đổi Đa Kỳ Thi ── */
+.s9a-calc-workbench {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--line, rgba(100, 120, 180, 0.18));
+  border-radius: 22px;
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.035);
+}
+
+.s9a-calc-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.s9a-inputs-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.6rem;
+}
+
+.s9a-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.s9a-field label {
+  font-size: 0.71rem;
+  font-weight: 700;
+  color: var(--mut, #64748b);
+}
+
+.s9a-field input,
+.s9a-field select {
+  padding: 0.5rem 0.65rem;
+  border-radius: 11px;
+  border: 1.5px solid var(--line, rgba(100, 120, 180, 0.22));
+  background: var(--surface-2, #f8fafc);
+  color: var(--ink, #0f172a);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  outline: none;
+}
+
+.s9a-field input:focus,
+.s9a-field select:focus {
+  border-color: #2563eb;
+  background: var(--surface, #ffffff);
+}
+
+.s9a-equiv-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.s9a-equiv-cell {
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  background: var(--surface-2, #f8fafc);
+  border: 1px solid var(--line, rgba(100, 120, 180, 0.14));
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.s9a-equiv-cell small {
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: var(--mut, #64748b);
+}
+
+.s9a-equiv-cell b {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--ink, #0f172a);
+}
+
+/* ── Dark Mode Overrides ── */
+[data-theme="dark"] .s9c-page {
+  background: #0b1120;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .s9c-card,
+[data-theme="dark"] .s9c-stat-card,
+[data-theme="dark"] .s9c-family-card,
+[data-theme="dark"] .s9c-major-card,
+[data-theme="dark"] .s9a-portfolio-deck,
+[data-theme="dark"] .s9a-calc-workbench,
+[data-theme="dark"] .s9a-slot-card.is-filled {
+  background: #111827;
+  border-color: rgba(148, 163, 184, 0.16);
+}
+
+[data-theme="dark"] .s9c-mode-card,
+[data-theme="dark"] .s9c-riasec-tab,
+[data-theme="dark"] .s9c-dim-detail,
+[data-theme="dark"] .s9c-q-block,
+[data-theme="dark"] .s9a-slot-card,
+[data-theme="dark"] .s9a-field input,
+[data-theme="dark"] .s9a-field select,
+[data-theme="dark"] .s9a-equiv-cell,
+[data-theme="dark"] .s9c-nv-btn {
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.18);
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .s9c-likert-btn,
+[data-theme="dark"] .s9c-ghost-btn,
+[data-theme="dark"] .s9c-chip {
+  background: #0f172a;
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .s9c-likert-btn.is-on,
+[data-theme="dark"] .s9c-nv-btn.is-active {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+/* ── Responsive Mobile / Tablet ── */
+@media (max-width: 960px) {
+  .s9c-live-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .s9c-bento-grid,
+  .s9c-test-layout,
+  .s9c-report-hero,
+  .s9a-calc-grid {
+    grid-template-columns: 1fr;
+  }
+  .s9c-family-grid,
+  .s9a-slots-grid {
+    grid-template-columns: 1fr;
+  }
+  .s9c-major-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .s9c-mode-cards,
+  .s9a-inputs-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .s9c-riasec-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .s9c-likert-row {
+    grid-template-columns: 1fr;
+  }
+  .s9c-dim-bar-row {
+    grid-template-columns: 110px 1fr 38px;
+  }
+}

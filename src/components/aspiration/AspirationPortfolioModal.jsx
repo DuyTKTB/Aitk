@@ -10,8 +10,7 @@ import {
   evaluatePortfolioHealth,
   compareMajorsHeadToHead,
 } from '../../lib/aspirationPortfolioOptimizer.js';
-import { getSchools } from '../../lib/aspirationService.js';
-import referenceData from '../../data/admissionsReference.json';
+import { getSchools, getMajorsBySchool } from '../../lib/aspirationService.js';
 import '../../styles/aspiration-portfolio.css';
 
 /* ── Bộ Icon SVG thuần (0 emoji) ── */
@@ -60,8 +59,11 @@ export default function AspirationPortfolioModal({
     return evaluatePortfolioHealth(aspirations, predictedScore, examScale);
   }, [aspirations, predictedScore, examScale]);
 
-  // Danh sách các ngành có sẵn để so sánh đối đầu
-  const allMajors = useMemo(() => referenceData.majors || [], []);
+  // Danh sách toàn bộ các ngành của 105 trường để so sánh đối đầu
+  const allMajors = useMemo(
+    () => getSchools().flatMap((sch) => getMajorsBySchool(sch.id)),
+    []
+  );
   const [compareIdA, setCompareIdA] = useState(() => aspirations[0]?.majorId || 'bka-tdh');
   const [compareIdB, setCompareIdB] = useState(() => aspirations[1]?.majorId || 'neu-cntt');
 

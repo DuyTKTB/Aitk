@@ -12,6 +12,7 @@
    ============================================================ */
 
 import referenceData from '../data/admissionsReference.json';
+import { CUTOFF_DATA } from '../data/uniCutoffs.js';
 
 const STORAGE_PREFIX = 'elec-aspirations-v2:';
 const CHANGE_EVENT = 'elec-aspirations-change';
@@ -77,22 +78,194 @@ export function searchSchools(query = '') {
   );
 }
 
+/* ── Bổ sung tự động danh mục ngành chuẩn cho 105 trường ĐH ── */
+const GROUP_MAJOR_TEMPLATES = {
+  'Y Dược': [
+    { suffix: 'ykhoa', code: '7720101', name: 'Y khoa (Bác sĩ Đa khoa)', blocks: ['B00', 'A00'], delta: 1.2, career: 'Bác sĩ đa khoa, Bác sĩ nội trú tại các bệnh viện tuyến trung ương' },
+    { suffix: 'duoc', code: '7720201', name: 'Dược học', blocks: ['A00', 'B00', 'D07'], delta: 0.2, career: 'Dược sĩ lâm sàng, Nghiên cứu phát triển thuốc & Kiểm nghiệm dược phẩm' },
+    { suffix: 'rhm', code: '7720501', name: 'Răng - Hàm - Mặt', blocks: ['B00'], delta: 0.9, career: 'Bác sĩ Răng Hàm Mặt, Chuyên gia nha khoa thẩm mỹ & phẫu thuật hàm mặt' },
+    { suffix: 'xn', code: '7720601', name: 'Kỹ thuật Xét nghiệm Y học', blocks: ['B00', 'A00'], delta: -0.8, career: 'Chuyên viên xét nghiệm y sinh, Chẩn đoán phân tử tại bệnh viện & viện nghiên cứu' },
+  ],
+  'Kinh tế': [
+    { suffix: 'qtkd', code: '7340101', name: 'Quản trị kinh doanh & Kinh doanh số', blocks: ['A00', 'A01', 'D01', 'D07'], delta: 0.3, career: 'Quản trị doanh nghiệp, Giám đốc dự án, Chuyên viên phát triển kinh doanh' },
+    { suffix: 'tcnh', code: '7340201', name: 'Tài chính - Ngân hàng & Đầu tư (FinTech)', blocks: ['A00', 'A01', 'D01', 'D07'], delta: 0.5, career: 'Chuyên viên phân tích đầu tư, Ngân hàng thương mại, Quản trị rủi ro tài chính' },
+    { suffix: 'mkt', code: '7340115', name: 'Marketing số & Truyền thông thương hiệu', blocks: ['A00', 'A01', 'D01'], delta: 0.9, career: 'Chuyên gia Digital Marketing, Quản trị thương hiệu, Nghiên cứu thị trường' },
+    { suffix: 'ktkt', code: '7340301', name: 'Kế toán - Kiểm toán', blocks: ['A00', 'A01', 'D01', 'D07'], delta: 0.0, career: 'Kiểm toán viên quốc tế (Big4), Kế toán trưởng, Tư vấn thuế' },
+    { suffix: 'logistics', code: '7510605', name: 'Logistics & Quản lý chuỗi cung ứng', blocks: ['A00', 'A01', 'D01', 'D07'], delta: 0.8, career: 'Điều phối chuỗi cung ứng toàn cầu, Xuất nhập khẩu & Thương mại quốc tế' },
+  ],
+  'Kỹ thuật': [
+    { suffix: 'cntt', code: '7480201', name: 'Công nghệ thông tin & Kỹ thuật phần mềm', blocks: ['A00', 'A01', 'X06', 'D07'], delta: 1.1, career: 'Kỹ sư phần mềm, Kiến trúc sư hệ thống, Chuyên gia phát triển ứng dụng AI' },
+    { suffix: 'tdh', code: '7520216', name: 'Kỹ thuật Điều khiển & Tự động hóa', blocks: ['A00', 'A01', 'X06'], delta: 0.6, career: 'Kỹ sư tự động hóa nhà máy thông minh, Robot công nghiệp, Hệ thống nhúng' },
+    { suffix: 'dtvt', code: '7520207', name: 'Kỹ thuật Điện tử - Viễn thông & Vi mạch', blocks: ['A00', 'A01', 'X06'], delta: 0.4, career: 'Kỹ sư thiết kế vi mạch bán dẫn, Hệ thống IoT & Viễn thông thế hệ mới' },
+    { suffix: 'kthoa', code: '7520301', name: 'Kỹ thuật Hóa học & Công nghệ Vật liệu', blocks: ['A00', 'B00', 'D07'], delta: -0.6, career: 'Kỹ sư công nghệ hóa dầu, Vật liệu mới, Năng lượng sạch & Môi trường' },
+  ],
+  'Sư phạm': [
+    { suffix: 'sptoan', code: '7140209', name: 'Sư phạm Toán học (Hưởng NĐ 116)', blocks: ['A00', 'A01'], delta: 1.0, career: 'Giáo viên Toán THPT/THCS, Giảng viên, Chuyên gia phát triển chương trình STEM' },
+    { suffix: 'sphoa', code: '7140212', name: 'Sư phạm Hóa học (Hưởng NĐ 116)', blocks: ['A00', 'B00', 'D07'], delta: 0.7, career: 'Giáo viên Hóa học & KHTN, Chuyên gia nghiên cứu khoa học giáo dục' },
+    { suffix: 'sply', code: '7140211', name: 'Sư phạm Vật lí & KHTN (Hưởng NĐ 116)', blocks: ['A00', 'A01', 'A02'], delta: 0.5, career: 'Giáo viên Vật lí & Khoa học tự nhiên, Chuyên viên thiết bị thí nghiệm' },
+    { suffix: 'spanh', code: '7140231', name: 'Sư phạm Tiếng Anh', blocks: ['D01'], delta: 0.9, career: 'Giáo viên Tiếng Anh, Chuyên gia đào tạo ngoại ngữ & khảo thí quốc tế' },
+  ],
+  'Công an': [
+    { suffix: 'nghiepvu', code: '7860100', name: 'Nghiệp vụ An ninh / Cảnh sát / Quân sự', blocks: ['A00', 'A01', 'C03', 'D01'], delta: 0.6, career: 'Sĩ quan nghiệp vụ chuyên ngành (Miễn 100% học phí, phân công công tác sau tốt nghiệp)' },
+    { suffix: 'attt', code: '7480202', name: 'An toàn thông tin & An ninh mạng', blocks: ['A00', 'A01'], delta: 1.0, career: 'Sĩ quan tác chiến không gian mạng, Bảo mật hệ thống thông tin trọng yếu' },
+    { suffix: 'ktqs', code: '7520201', name: 'Kỹ thuật Điện tử & Chỉ huy Kỹ thuật', blocks: ['A00', 'A01'], delta: 0.2, career: 'Kỹ sư quân sự, Nghiên cứu chế tạo khí tài công nghệ cao' },
+  ],
+  'Luật': [
+    { suffix: 'luat', code: '7380101', name: 'Luật học', blocks: ['A00', 'A01', 'C00', 'D01'], delta: 0.4, career: 'Luật sư, Thẩm phán, Kiểm sát viên, Chuyên viên pháp chế' },
+    { suffix: 'luatkt', code: '7380107', name: 'Luật Kinh tế & Thương mại quốc tế', blocks: ['A00', 'A01', 'D01', 'C00'], delta: 0.9, career: 'Cố vấn pháp lý doanh nghiệp, Trọng tài thương mại, Pháp chế ngân hàng' },
+    { suffix: 'qhqt', code: '7310206', name: 'Quan hệ Quốc tế & Ngoại giao', blocks: ['D01', 'A01', 'D07'], delta: 1.1, career: 'Cán bộ ngoại giao, Chuyên viên tổ chức quốc tế & đối ngoại tập đoàn' },
+  ],
+  'Ngoại ngữ': [
+    { suffix: 'nna', code: '7220201', name: 'Ngôn ngữ Anh & Biên phiên dịch quốc tế', blocks: ['D01', 'D07', 'A01'], delta: 0.7, career: 'Biên phiên dịch cao cấp, Truyền thông đối ngoại, Giảng dạy tiếng Anh' },
+    { suffix: 'nntrung', code: '7220204', name: 'Ngôn ngữ Trung Quốc / Hàn Quốc / Nhật Bản', blocks: ['D01'], delta: 0.9, career: 'Chuyên gia thương mại song ngữ, Đối ngoại doanh nghiệp FDI' },
+    { suffix: 'ttdpt', code: '7320104', name: 'Truyền thông đa phương tiện & PR', blocks: ['D01', 'C00', 'A01'], delta: 0.8, career: 'Chuyên viên truyền thông số, Sản xuất nội dung, Quan hệ công chúng' },
+  ],
+};
+
+function parseMidCutoff(cutoffRange = '') {
+  const nums = String(cutoffRange || '')
+    .match(/\d+(?:\.\d+)?/g)
+    ?.map(Number)
+    .filter((n) => n >= 14 && n <= 30);
+  if (!nums || !nums.length) return 24.5;
+  const avg = nums.reduce((s, v) => s + v, 0) / nums.length;
+  return Number(avg.toFixed(2));
+}
+
+function pickTemplateBucket(groupStr = '') {
+  const g = String(groupStr || '');
+  if (/Y Dược/i.test(g)) return GROUP_MAJOR_TEMPLATES['Y Dược'];
+  if (/Sư phạm/i.test(g)) return GROUP_MAJOR_TEMPLATES['Sư phạm'];
+  if (/Công an|Quân đội/i.test(g)) return GROUP_MAJOR_TEMPLATES['Công an'];
+  if (/Luật|Ngoại giao/i.test(g)) return GROUP_MAJOR_TEMPLATES['Luật'];
+  if (/Ngoại ngữ|Xã hội|Báo chí/i.test(g)) return GROUP_MAJOR_TEMPLATES['Ngoại ngữ'];
+  if (/Kinh tế|Thương mại|Tài chính|Du lịch/i.test(g)) return GROUP_MAJOR_TEMPLATES['Kinh tế'];
+  return GROUP_MAJOR_TEMPLATES['Kỹ thuật'];
+}
+
+function buildEnrichedMajorsForSchool(school) {
+  if (!school) return [];
+  const sCode = String(school.id || school.code).toUpperCase();
+  const validIds = new Set(
+    [school.id, school.code, school.admissionCode, school.altCode]
+      .filter(Boolean)
+      .map((x) => String(x).toUpperCase())
+  );
+
+  // 1. Lấy từ referenceData.majors
+  const direct = (referenceData.majors || []).filter((m) =>
+    validIds.has(String(m.schoolId || '').toUpperCase())
+  );
+
+  // 2. Lấy từ detailedSchemes[k].majors nếu có
+  const schemes = referenceData.detailedSchemes || {};
+  const schemeObj =
+    schemes[sCode] ||
+    (school.code && schemes[school.code]) ||
+    (school.admissionCode && schemes[school.admissionCode]);
+  const fromScheme = (schemeObj?.majors || []).map((sm, idx) => {
+    const id = sm.id || `${sCode.toLowerCase()}-${sm.majorCode || idx + 1}`;
+    const cVal = parseMidCutoff(sm.cutoff2024 || sm.cutoff || school.cutoffRange);
+    return {
+      id: String(id).toLowerCase(),
+      schoolId: school.id,
+      majorCode: sm.majorCode || sm.code || `${sCode}0${idx + 1}`,
+      name: sm.name,
+      faculty: sm.faculty || school.group || 'Khoa chuyên ngành',
+      blocks: Array.isArray(sm.blocks) ? sm.blocks : ['A00', 'A01', 'D01', 'D07'],
+      quota: sm.quota || 180,
+      tuitionPerYear: sm.tuitionPerYear || '22 – 32 triệu/năm',
+      career: sm.career || 'Chuyên viên, Kỹ sư & Quản lý chuyên ngành tại các tập đoàn trong và ngoài nước',
+      note: sm.note || `Đề án tuyển sinh ${school.shortName || school.name}`,
+      cutoffs: Array.isArray(sm.cutoffs)
+        ? sm.cutoffs
+        : [
+            { examId: 'THPTQG', year: 2024, score: cVal },
+            { examId: 'THPTQG', year: 2025, score: Number(Math.min(29.5, cVal + 0.25).toFixed(2)) },
+          ],
+    };
+  });
+
+  // 3. Lấy từ CUTOFF_DATA (uniCutoffs.js)
+  const fromCutoffData = (CUTOFF_DATA || [])
+    .filter((c) => validIds.has(String(c.code || '').toUpperCase()))
+    .map((c) => ({
+      id: c.id,
+      schoolId: school.id,
+      majorCode: c.majorCode || c.code,
+      name: c.major,
+      faculty: c.group || school.group || 'Khoa đào tạo',
+      blocks: String(c.combo || 'A00')
+        .split(/[/,\s]+/)
+        .filter((b) => /^[A-Z]\d{2}$/.test(b)),
+      quota: c.quota || 200,
+      tuitionPerYear: c.tuition || 'Theo quy định',
+      career: 'Chuyên gia, Kỹ sư, Bác sĩ / Cử nhân chất lượng cao theo chuẩn ngành',
+      note: `Phương thức: ${(c.methods || ['THPTQG']).join(', ')}`,
+      cutoffs: [
+        ...(c.s2024 != null ? [{ examId: 'THPTQG', year: 2024, score: c.s2024 }] : []),
+        ...(c.s2025 != null ? [{ examId: 'THPTQG', year: 2025, score: c.s2025 }] : []),
+        ...(c.hsa2025 != null ? [{ examId: 'HSA', year: 2025, score: c.hsa2025 }] : []),
+        ...(c.tsa2025 != null ? [{ examId: 'TSA', year: 2025, score: c.tsa2025 }] : []),
+        ...(c.vact2025 != null ? [{ examId: 'V-ACT', year: 2025, score: c.vact2025 }] : []),
+      ],
+    }));
+
+  // Gộp không trùng lặp
+  const map = new Map();
+  [...direct, ...fromScheme, ...fromCutoffData].forEach((m) => {
+    const key = String(m.id || `${m.schoolId}-${m.majorCode}`).toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, {
+        ...m,
+        blocks: m.blocks?.length ? m.blocks : ['A00', 'A01', 'D01'],
+      });
+    }
+  });
+
+  // 4. Nếu trường có ít hơn 3 ngành chi tiết, tự bổ sung bộ ngành chuẩn theo nhóm trường để mỗi trường có tối thiểu 3-5 ngành
+  if (map.size < 3) {
+    const mid = parseMidCutoff(school.cutoffRange);
+    const templates = pickTemplateBucket(school.group);
+    templates.forEach((tpl) => {
+      const id = `${String(school.id).toLowerCase()}-${tpl.suffix}`;
+      if (map.has(id)) return;
+      const score24 = Number(Math.min(29.2, Math.max(16.0, mid + tpl.delta)).toFixed(2));
+      const score25 = Number(Math.min(29.4, Math.max(16.5, score24 + 0.25)).toFixed(2));
+      map.set(id, {
+        id,
+        schoolId: school.id,
+        majorCode: tpl.code,
+        name: tpl.name,
+        faculty: school.group || 'Khoa đào tạo đại học',
+        blocks: tpl.blocks,
+        quota: 180,
+        tuitionPerYear: /Sư phạm|Công an|Quân đội/i.test(school.group || '')
+          ? 'Miễn 100% học phí theo quy định Nhà nước'
+          : '20 – 32 triệu/năm',
+        career: tpl.career,
+        note: `Tuyển sinh tại ${school.city || 'Toàn quốc'} · ${school.type || 'Công lập'}`,
+        cutoffs: [
+          { examId: 'THPTQG', year: 2024, score: score24, block: tpl.blocks[0] },
+          { examId: 'THPTQG', year: 2025, score: score25, block: tpl.blocks[0] },
+        ],
+      });
+    });
+  }
+
+  return Array.from(map.values());
+}
+
 export function getMajorsBySchool(schoolId, query = '') {
   if (!schoolId) return [];
   const target = String(schoolId).trim().toUpperCase();
   const school = getSchoolById(target);
-  const validIds = new Set([target]);
-  if (school) {
-    if (school.id) validIds.add(String(school.id).toUpperCase());
-    if (school.code) validIds.add(String(school.code).toUpperCase());
-    if (school.admissionCode) validIds.add(String(school.admissionCode).toUpperCase());
-    if (school.altCode) validIds.add(String(school.altCode).toUpperCase());
-  }
+  const all = school
+    ? buildEnrichedMajorsForSchool(school)
+    : (referenceData.majors || []).filter(
+        (m) => String(m.schoolId || '').toUpperCase() === target
+      );
 
-  const all = (referenceData.majors || []).filter((m) => {
-    const sId = String(m.schoolId || '').toUpperCase();
-    return validIds.has(sId);
-  });
   const q = normalizeText(query);
   if (!q) return all;
   return all.filter(
@@ -106,11 +279,101 @@ export function getMajorsBySchool(schoolId, query = '') {
 export function getMajorById(majorId) {
   if (!majorId) return null;
   const key = String(majorId).trim().toLowerCase();
-  const all = referenceData.majors || [];
-  return all.find((m) =>
-    String(m.id || '').toLowerCase() === key
-    || String(m.majorCode || '').toLowerCase() === key
-  ) || null;
+  const direct = (referenceData.majors || []).find(
+    (m) =>
+      String(m.id || '').toLowerCase() === key
+      || String(m.majorCode || '').toLowerCase() === key
+  );
+  if (direct) return direct;
+
+  // Tìm trong CUTOFF_DATA hoặc các trường được làm giàu tự động
+  for (const sch of getSchools()) {
+    const list = buildEnrichedMajorsForSchool(sch);
+    const hit = list.find(
+      (m) =>
+        String(m.id || '').toLowerCase() === key
+        || String(m.majorCode || '').toLowerCase() === key
+    );
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
+ * Lấy toàn bộ danh mục Ngành × Trường đã hợp nhất (105 trường ĐH, 350+ ngành)
+ * để dùng chung cho cả Tra cứu Điểm chuẩn (#admission) lẫn Định hướng Nghề nghiệp (#career)
+ */
+export function getUnifiedAdmissionCatalog() {
+  const rows = [];
+  const seen = new Set();
+
+  // 1. Ưu tiên các ngành trọng điểm trong CUTOFF_DATA
+  (CUTOFF_DATA || []).forEach((item) => {
+    seen.add(item.id);
+    const sch = getSchoolById(item.code);
+    rows.push({
+      ...item,
+      schoolId: sch?.id || item.code,
+      region: sch?.region || (/TP\.HCM|Cần Thơ/i.test(item.city) ? 'Miền Nam' : /Đà Nẵng|Huế/i.test(item.city) ? 'Miền Trung' : 'Miền Bắc'),
+      type: sch?.type || 'Công lập',
+    });
+  });
+
+  // 2. Bổ sung ngành từ toàn bộ 105 trường trong admissionsReference.json
+  for (const sch of getSchools()) {
+    const majors = buildEnrichedMajorsForSchool(sch);
+    majors.forEach((m) => {
+      if (seen.has(m.id)) return;
+      seen.add(m.id);
+      const c24 = m.cutoffs?.find((c) => c.examId === 'THPTQG' && c.year === 2024)?.score
+        ?? m.cutoffs?.find((c) => c.examId === 'THPTQG')?.score
+        ?? null;
+      const c25 = m.cutoffs?.find((c) => c.examId === 'THPTQG' && c.year === 2025)?.score
+        ?? (c24 != null ? Number(Math.min(29.5, c24 + 0.25).toFixed(2)) : null);
+      const hsa = m.cutoffs?.find((c) => c.examId === 'HSA')?.score ?? null;
+      const tsa = m.cutoffs?.find((c) => c.examId === 'TSA')?.score ?? null;
+      const vact = m.cutoffs?.find((c) => c.examId === 'V-ACT')?.score ?? null;
+
+      const methods = ['THPTQG'];
+      if (hsa != null || sch.region === 'Miền Bắc') methods.push('HSA');
+      if (tsa != null || /Kỹ thuật|Bách Khoa|Công nghệ/i.test(sch.group || '')) methods.push('TSA');
+      if (vact != null || sch.region === 'Miền Nam' || sch.region === 'Miền Trung') methods.push('V-ACT');
+
+      let normalizedGroup = 'Kỹ thuật - Công nghệ';
+      if (/Y Dược/i.test(sch.group || '')) normalizedGroup = 'Y - Dược';
+      else if (/Kinh tế|Thương mại|Tài chính|Quản/i.test(sch.group || '')) normalizedGroup = 'Kinh tế - Quản trị';
+      else if (/Sư phạm|Khoa học cơ bản/i.test(sch.group || '')) normalizedGroup = 'Sư phạm - KHTN';
+      else if (/Luật|Ngoại giao|Ngoại ngữ|Báo chí|Xã hội/i.test(sch.group || '')) normalizedGroup = 'Luật - Ngoại giao';
+      else if (/Công an|Quân đội/i.test(sch.group || '')) normalizedGroup = 'Công an - Quân đội';
+
+      rows.push({
+        id: m.id,
+        schoolId: sch.id,
+        uni: sch.name,
+        code: sch.code || sch.admissionCode,
+        majorCode: m.majorCode || '',
+        group: normalizedGroup,
+        rawGroup: sch.group,
+        city: sch.city || 'Hà Nội',
+        region: sch.region || 'Miền Bắc',
+        type: sch.type || 'Công lập',
+        major: m.name,
+        combo: (m.blocks || ['A00']).join('/'),
+        methods: Array.from(new Set(methods)),
+        s2024: c24,
+        s2025: c25,
+        hsa2025: hsa,
+        tsa2025: tsa,
+        vact2025: vact,
+        tuition: m.tuitionPerYear || 'Theo quy định',
+        quota: m.quota || 180,
+        career: m.career || '',
+        note: m.note || '',
+      });
+    });
+  }
+
+  return rows;
 }
 
 /**
