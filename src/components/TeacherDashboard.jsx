@@ -87,6 +87,7 @@ const InsightPanel = lazy(() => import('./teacher/InsightPanel.jsx'));
 const TeacherProfileSection = lazy(() => import('./teacher/TeacherProfileSection.jsx'));
 const ExamImporter = lazy(() => import('./teacher/ExamImporter.jsx'));
 const WordDocxEditor = lazy(() => import('./teacher/WordDocxEditor.jsx'));
+const ClassroomToolkitModal = lazy(() => import('./teacher/ClassroomToolkitModal.jsx'));
 import TeacherFloatingChat from './teacher/TeacherFloatingChat.jsx';
 import { ElecFlaskBrandSvg, ElecMascot } from './teacher/ElecBrandMark.jsx';
 import TeacherVipLock from './teacher/TeacherVipLock.jsx';
@@ -1026,6 +1027,7 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   /* Bảng Tìm Kiếm & Lệnh Nhanh Toàn Cục (Ctrl+K Command Palette) */
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [toolkitOpen, setToolkitOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
   const [cmdIndex, setCmdIndex] = useState(0);
 
@@ -2420,6 +2422,7 @@ export default function TeacherDashboard({ onExit } = {}) {
             sessionId={viewingSessionId}
             className={classById[vs?.classId]?.name}
             totalQuestions={vExam?.questions?.length || 0}
+            cameraMode={vExam?.proctor?.camera || 'off'}
             onBack={() => setViewingSessionId(null)}
           />
         </Suspense>
@@ -2496,6 +2499,16 @@ export default function TeacherDashboard({ onExit } = {}) {
       label: 'Số liệu & Phổ điểm',
       Icon: IcoChart,
       group: 'Báo cáo & Hồ sơ',
+    },
+
+    /* 5b. Công cụ Dạy học Trên lớp (Gọi tên, Sơ đồ phòng thi, Chia nhóm, Đồng hồ) */
+    {
+      key: 'toolkit',
+      shortLabel: 'Công cụ lớp',
+      label: 'Công cụ dạy học',
+      Icon: IcoSparkles,
+      group: 'Lớp học & Giảng dạy',
+      onClick: () => setToolkitOpen(true),
     },
 
     /* 6. Hồ sơ giáo viên */
@@ -3209,6 +3222,18 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <span className="t-action-dock-copy">
                       <strong>Chấm phiếu A4</strong>
                       <small>Quét OMR tự động</small>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="t-action-dock-tile tone-violet"
+                    onClick={() => setToolkitOpen(true)}
+                  >
+                    <span className="t-action-dock-ico"><IcoSparkles size={15} /></span>
+                    <span className="t-action-dock-copy">
+                      <strong>Công cụ lớp học</strong>
+                      <small>Vòng quay · Sơ đồ · Độ ồn</small>
                     </span>
                   </button>
 
@@ -4449,13 +4474,13 @@ export default function TeacherDashboard({ onExit } = {}) {
                 <div className="t-exam-cmd-mascot-box">
                   <ElecMascot
                     mood={liveSessions.length > 0 ? 'cool' : 'fighting'}
-                    size={68}
+                    size={48}
                     alt="ELEC AI Giám thị"
                   />
                 </div>
                 <div className="t-exam-cmd-copy">
                   <div className="t-exam-cmd-eyebrow">
-                    <ElecFlaskBrandSvg size={15} variant="gradient" />
+                    <ElecFlaskBrandSvg size={14} variant="gradient" />
                     <span>ELEC AI Proctor Studio</span>
                     {liveSessions.length > 0 ? (
                       <span className="t-exam-cmd-live-pill">
@@ -4465,16 +4490,16 @@ export default function TeacherDashboard({ onExit } = {}) {
                       <span className="t-exam-cmd-ready-pill">Sẵn sàng mở phòng thi</span>
                     )}
                   </div>
-                  <h2 className="t-exam-cmd-title">Trung tâm Khảo thí &amp; Phòng Giám sát AI</h2>
+                  <h2 className="t-exam-cmd-title">Phòng thi trực tuyến &amp; Giám sát AI</h2>
                   <p className="t-exam-cmd-sub">
-                    Theo dõi tiến độ làm bài theo thời gian thực, phát hiện chuyển tab/bất thường bằng AI và can thiệp kịp thời.
+                    Theo dõi tiến độ làm bài theo thời gian thực, phát hiện rời tab và can thiệp kịp thời.
                   </p>
                 </div>
               </div>
 
               <div className="t-exam-cmd-right">
                 <div className="t-exam-cmd-stats">
-                  <div className="t-exam-cmd-stat">
+                  <div className={`t-exam-cmd-stat ${liveSessions.length > 0 ? 'is-live' : ''}`}>
                     <strong>{liveSessions.length}</strong>
                     <span>Phòng LIVE</span>
                   </div>
@@ -4495,7 +4520,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   {liveSessions.length > 0 && (
                     <button
                       type="button"
-                      className="vt-btn sm primary"
+                      className="vt-btn sm primary t-cmd-cta"
                       onClick={() => setViewingSessionId(liveSessions[0].id)}
                     >
                       <IcoMonitor size={14} /> Vào phòng Giám sát LIVE
@@ -4503,7 +4528,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                   )}
                   <button
                     type="button"
-                    className="vt-btn sm"
+                    className={`vt-btn sm ${liveSessions.length === 0 ? 'primary t-cmd-cta' : ''}`}
                     onClick={() => goSection('exams')}
                   >
                     <IcoPlus size={14} /> Mở phòng thi mới
@@ -4512,65 +4537,55 @@ export default function TeacherDashboard({ onExit } = {}) {
               </div>
             </section>
 
-            <div className="vt-range" style={{ flexWrap: 'wrap', gap: '0.6rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                <h2 style={{ margin: 0 }}>Danh sách Phiên thi ({list.length})</h2>
+            <div className="t-assess-toolbar">
+              <div className="t-assess-toolbar-left">
+                <h2>Danh sách Phiên thi ({list.length})</h2>
+                <div className="t-assess-seg" role="group" aria-label="Lọc trạng thái phiên thi">
+                  {[
+                    { k: 'all', l: 'Tất cả' },
+                    { k: 'live', l: `LIVE (${liveSessions.length})` },
+                    { k: 'ended', l: 'Đã kết thúc' },
+                  ].map((f) => (
+                    <button
+                      key={f.k}
+                      type="button"
+                      className={subTab === f.k ? 'is-on' : ''}
+                      onClick={() => setSubTab(f.k)}
+                    >
+                      {f.l}
+                    </button>
+                  ))}
+                </div>
                 {roomStudents > 0 && (
-                  <span style={{ padding: '0.28rem 0.7rem', borderRadius: 999, background: 'rgba(16,185,129,0.15)', color: '#059669', fontSize: '0.76rem', fontWeight: 800 }}>
-                    ● {roomStudents} học sinh đang làm bài trực tiếp
+                  <span className="t-exam-cmd-live-pill">
+                    <span className="t-exam-cmd-pulse-dot" /> {roomStudents} đang thi
                   </span>
                 )}
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+              <div className="t-assess-toolbar-right">
                 <select
                   aria-label="Sắp xếp phiên thi"
+                  className="t-assess-select"
                   value={sessionSort}
                   onChange={(e) => setSessionSort(e.target.value)}
-                  style={{
-                    padding: '0.38rem 0.65rem',
-                    borderRadius: 10,
-                    border: '1px solid var(--soft)',
-                    background: 'var(--panel)',
-                    color: 'var(--ink)',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                  }}
                 >
-                  <option value="newest">Sắp xếp: Mới mở gần đây</option>
-                  <option value="active">Sắp xếp: Đông học sinh đang làm nhất</option>
+                  <option value="newest">Mới mở gần đây</option>
+                  <option value="active">Đông học sinh đang làm</option>
                 </select>
 
-                <div style={{ display: 'inline-flex', background: 'var(--vt-tint)', borderRadius: 10, padding: '0.2rem', gap: '0.2rem' }} role="group" aria-label="Chế độ hiển thị phiên thi">
+                <div className="t-assess-seg" role="group" aria-label="Chế độ hiển thị phiên thi">
                   <button
                     type="button"
+                    className={sessionViewMode === 'grid' ? 'is-on' : ''}
                     onClick={() => setSessionViewMode('grid')}
-                    style={{
-                      padding: '0.3rem 0.6rem',
-                      borderRadius: 8,
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      background: sessionViewMode === 'grid' ? 'var(--acc)' : 'transparent',
-                      color: sessionViewMode === 'grid' ? 'var(--acc-text, #fff)' : 'var(--ink)',
-                    }}
                   >
                     Lưới
                   </button>
                   <button
                     type="button"
+                    className={sessionViewMode === 'list' ? 'is-on' : ''}
                     onClick={() => setSessionViewMode('list')}
-                    style={{
-                      padding: '0.3rem 0.6rem',
-                      borderRadius: 8,
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      background: sessionViewMode === 'list' ? 'var(--acc)' : 'transparent',
-                      color: sessionViewMode === 'list' ? 'var(--acc-text, #fff)' : 'var(--ink)',
-                    }}
                   >
                     Danh sách
                   </button>
@@ -4592,84 +4607,114 @@ export default function TeacherDashboard({ onExit } = {}) {
                 </button>
               </div>
             ) : (
-              <div className={sessionViewMode === 'list' ? 'vt-stackcards' : 'vt-grid'}>
+              <div className={sessionViewMode === 'list' ? 't-session-list' : 't-session-grid'}>
                 {list.map((s) => {
                   const exam = exams.find((e) => e.id === s.examId);
                   const remaining = timeRemaining(s, now);
                   const isLive = s.status === 'live';
                   const expired = isLive && remaining <= 0;
-                  const total = (s.duration || 1) * 60;
+                  const totalSec = Math.max(1, (s.duration || 1) * 60);
                   const joined = s.stats?.joined || 0;
                   const submitted = s.stats?.submitted || 0;
                   const doingNow = Math.max(0, joined - submitted);
                   const viol = s.stats?.violationCount || 0;
-                  const tone = remaining < 60 ? 'danger' : remaining < 300 ? 'warn' : 'acc';
+                  const pctBar = isLive
+                    ? Math.max(0, Math.min(100, Math.round((remaining / totalSec) * 100)))
+                    : joined > 0
+                      ? Math.max(0, Math.min(100, Math.round((submitted / joined) * 100)))
+                      : 0;
+                  const barTone = isLive
+                    ? (remaining < 60 ? 'is-danger' : remaining < 300 ? 'is-warn' : 'is-live')
+                    : (joined > 0 && submitted >= joined ? 'is-done' : 'is-neutral');
                   return (
-                    <article key={s.id} className={'vt-card vt-session' + (isLive ? ' live' : ' ended')}>
-                      <header>
-                        <span className={'vt-chip ' + (isLive ? (expired ? 'closed' : 'live') : 'closed')}>
-                          <IcoDot size={7} /> {isLive ? (expired ? 'Hết giờ' : 'Đang thi (LIVE)') : 'Đã kết thúc'}
+                    <article
+                      key={s.id}
+                      className={`t-session-card${isLive ? ' is-live' : ' is-ended'}${sessionViewMode === 'list' ? ' is-row' : ''}`}
+                    >
+                      <header className="t-sc-head">
+                        <span className={`t-sc-status ${isLive ? (expired ? 'is-expired' : 'is-live') : 'is-ended'}`}>
+                          <span className="t-sc-dot" />
+                          {isLive ? (expired ? 'Hết giờ' : 'Đang thi LIVE') : 'Đã kết thúc'}
                         </span>
-                        <small>{fmtClock(s.startedAtMs)}</small>
+                        <time className="t-sc-time">{fmtClock(s.startedAtMs)}</time>
                       </header>
 
-                      <div className="vt-session-body">
-                        <Donut
-                          value={isLive ? remaining : submitted}
-                          max={isLive ? total : Math.max(joined, 1)}
-                          size={92}
-                          stroke={9}
-                          tone={isLive ? tone : 'acc'}
-                        >
-                          {isLive
-                            ? <strong className="sm"><IcoClock size={12} /> {fmtMMSS(remaining)}</strong>
-                            : <strong className="sm">{submitted}/{joined}</strong>}
-                        </Donut>
-                        <div>
-                          <h3>{s.title}</h3>
-                          <small>{exam?.questions?.length || 0} câu · {s.duration} phút</small>
+                      <div className="t-sc-body">
+                        <h3 className="t-sc-title" title={s.title || 'Phiên thi'}>
+                          {s.title || 'Phiên thi chưa đặt tên'}
+                        </h3>
+                        <div className="t-sc-meta">
+                          <span>{exam?.questions?.length || 0} câu</span>
+                          <span>·</span>
+                          <span>{s.duration} phút</span>
                           {isLive && (
-                            <div style={{ marginTop: '0.35rem', fontSize: '0.78rem', fontWeight: 700, color: '#10b981' }}>
-                              ● {doingNow} học sinh đang làm bài
-                            </div>
-                          )}
-                          {viol > 0 && (
-                            <div className="t-session-ai-flag">
-                              <ElecFlaskBrandSvg size={12} variant="current" /> AI ghi nhận {viol} tín hiệu cần rà soát
-                            </div>
+                            <>
+                              <span>·</span>
+                              <span className="t-sc-clock">
+                                <IcoClock size={12} /> {fmtMMSS(remaining)}
+                              </span>
+                            </>
                           )}
                         </div>
+
+                        <div className="t-sc-progress">
+                          <div className="t-sc-progress-top">
+                            <span>{isLive ? 'Thời gian còn lại' : 'Tỉ lệ hoàn thành'}</span>
+                            <b>{isLive ? `${pctBar}%` : `${submitted}/${joined} bài`}</b>
+                          </div>
+                          <div className="t-sc-track">
+                            <div className={`t-sc-fill ${barTone}`} style={{ width: `${pctBar}%` }} />
+                          </div>
+                        </div>
+
+                        {viol > 0 && (
+                          <div className="t-sc-alert" title={`AI ghi nhận ${viol} tín hiệu cần rà soát`}>
+                            <ElecFlaskBrandSvg size={12} variant="current" />
+                            <span>AI ghi nhận {viol} tín hiệu cần rà soát</span>
+                          </div>
+                        )}
                       </div>
 
-                      <dl className="vt-mini-stats">
-                        <div><dd>{doingNow}</dd><dt>Đang làm</dt></div>
-                        <div><dd>{submitted}/{joined}</dd><dt>Đã nộp</dt></div>
-                        <div className={viol > 0 ? 'danger' : ''}><dd>{viol}</dd><dt>Vi phạm</dt></div>
+                      <dl className="t-sc-metrics">
+                        <div>
+                          <dd>{doingNow}</dd>
+                          <dt>Đang làm</dt>
+                        </div>
+                        <div>
+                          <dd>{submitted}/{joined}</dd>
+                          <dt>Đã nộp</dt>
+                        </div>
+                        <div className={viol > 0 ? 'is-danger' : ''}>
+                          <dd>{viol}</dd>
+                          <dt>Vi phạm</dt>
+                        </div>
                       </dl>
 
-                      <footer>
-                        {isLive ? (
-                          <>
-                            <button type="button" className="vt-btn sm primary" onClick={() => setViewingSessionId(s.id)}>
-                              <IcoMonitor size={13} /> Giám sát
+                      <footer className="t-sc-foot">
+                        <div className="t-sc-foot-main">
+                          {isLive ? (
+                            <>
+                              <button type="button" className="vt-btn sm primary t-cmd-cta" onClick={() => setViewingSessionId(s.id)}>
+                                <IcoMonitor size={13} /> Giám sát
+                              </button>
+                              <button type="button" className="vt-btn sm danger" onClick={() => handleEndSession(s)}>
+                                <IcoStop size={13} /> Kết thúc
+                              </button>
+                            </>
+                          ) : (
+                            <button type="button" className="vt-btn sm t-sc-review-btn" onClick={() => setViewingSessionId(s.id)}>
+                              <IcoChart size={13} /> Xem lại báo cáo
                             </button>
-                            <button type="button" className="vt-btn sm danger" onClick={() => handleEndSession(s)}>
-                              <IcoStop size={13} /> Kết thúc
-                            </button>
-                          </>
-                        ) : (
-                          <button type="button" className="vt-btn sm" onClick={() => setViewingSessionId(s.id)}>
-                            <IcoChart size={13} /> Xem lại
-                          </button>
-                        )}
+                          )}
+                        </div>
                         <button
                           type="button"
-                          className="vt-icon-btn danger"
+                          className="t-sc-del-btn"
                           aria-label="Xóa phiên thi"
                           onClick={() => handleDeleteSession(s)}
-                          title="Xóa phiên"
+                          title="Xóa phiên thi"
                         >
-                          <IcoTrash size={15} />
+                          <IcoTrash size={14} />
                         </button>
                       </footer>
                     </article>
@@ -4857,8 +4902,8 @@ export default function TeacherDashboard({ onExit } = {}) {
         return (
           <>
             {renderAssessmentHubNav()}
-            <div className="vt-range" style={{ flexWrap: 'wrap', gap: '0.6rem' }}>
-              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="t-assess-toolbar">
+              <div className="t-assess-toolbar-left">
                 {[
                   { k: 'pending', label: `Chờ duyệt (${retryRequests.filter((r) => r.status === 'pending').length})` },
                   { k: 'resolved', label: `Đã xử lý (${retryRequests.filter((r) => r.status !== 'pending').length})` },
@@ -4876,17 +4921,9 @@ export default function TeacherDashboard({ onExit } = {}) {
 
                 <select
                   aria-label="Lọc yêu cầu theo lớp"
+                  className="t-assess-select"
                   value={retryClassFilter}
                   onChange={(e) => setRetryClassFilter(e.target.value)}
-                  style={{
-                    padding: '0.38rem 0.65rem',
-                    borderRadius: 10,
-                    border: '1px solid var(--soft)',
-                    background: 'var(--panel)',
-                    color: 'var(--ink)',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                  }}
                 >
                   <option value="all">Tất cả lớp</option>
                   {classes.map((c) => (
@@ -4895,32 +4932,22 @@ export default function TeacherDashboard({ onExit } = {}) {
                 </select>
               </div>
 
-              <button
-                type="button"
-                className="vt-btn sm"
-                onClick={async () => {
-                  await refresh();
-                  say('Đã tải lại danh sách yêu cầu thi lại', 'success');
-                }}
-              >
-                <IcoRefresh size={13} /> Làm mới
-              </button>
+              <div className="t-assess-toolbar-right">
+                <button
+                  type="button"
+                  className="vt-btn sm"
+                  onClick={async () => {
+                    await refresh();
+                    say('Đã tải lại danh sách yêu cầu thi lại', 'success');
+                  }}
+                >
+                  <IcoRefresh size={13} /> Làm mới
+                </button>
+              </div>
             </div>
 
             {pendingFiltered.length > 0 && (
-              <div
-                className="vt-card"
-                style={{
-                  marginBottom: '0.85rem',
-                  padding: '0.75rem 1rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '0.75rem',
-                  flexWrap: 'wrap',
-                  background: 'var(--vt-tint)',
-                }}
-              >
+              <div className="t-retry-bulk-bar">
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 700 }}>
                   <input
                     type="checkbox"
@@ -4933,20 +4960,11 @@ export default function TeacherDashboard({ onExit } = {}) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
                   <input
                     type="text"
+                    className="t-retry-input"
                     placeholder="Lý do / ghi chú chung khi duyệt hoặc từ chối hàng loạt..."
                     value={bulkRetryNote}
                     onChange={(e) => setBulkRetryNote(e.target.value)}
-                    style={{
-                      minWidth: 220,
-                      flex: '1 1 220px',
-                      maxWidth: 360,
-                      padding: '0.45rem 0.75rem',
-                      borderRadius: 10,
-                      border: '1px solid var(--soft)',
-                      background: 'var(--panel)',
-                      color: 'var(--ink)',
-                      fontSize: '0.8rem',
-                    }}
+                    style={{ minWidth: 220, flex: '1 1 220px', maxWidth: 360 }}
                   />
                   <button
                     type="button"
@@ -5020,7 +5038,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     (s) => s.studentId === r.studentId || s.studentName === r.studentName
                   );
                   return (
-                    <article key={r.id} className="vt-card">
+                    <article key={r.id} className="t-retry-card">
                       <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                         {isPending && (
                           <input
@@ -5031,41 +5049,27 @@ export default function TeacherDashboard({ onExit } = {}) {
                             style={{ marginTop: '0.85rem', width: 17, height: 17, cursor: 'pointer' }}
                           />
                         )}
-                        <MemoAvatar name={r.studentName} size={48} />
+                        <MemoAvatar name={r.studentName} size={44} />
                         <div style={{ flex: 1, minWidth: 200 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <h3 style={{ margin: 0, font: '800 1.05rem var(--sans)', letterSpacing: '-.02em' }}>
+                            <h3 style={{ margin: 0, font: '800 0.98rem var(--sans)', letterSpacing: '-.02em' }}>
                               {r.studentName}
                             </h3>
                             <span className={'vt-chip ' + (isPending ? 'soon' : r.status === 'approved' ? 'ready' : 'closed')}>
                               {isPending ? 'Chờ duyệt' : r.status === 'approved' ? 'Đã duyệt' : 'Đã từ chối'}
                             </span>
                             {prevSub && (
-                              <span
-                                className="vt-chip"
-                                style={{
-                                  background: (prevSub.violationCount || 0) > 0 ? 'rgba(239, 68, 68, 0.14)' : 'rgba(14, 165, 233, 0.14)',
-                                  color: (prevSub.violationCount || 0) > 0 ? '#ef4444' : '#38bdf8',
-                                  fontWeight: 700,
-                                }}
-                              >
+                              <span className={`t-retry-prev-chip ${(prevSub.violationCount || 0) > 0 ? 'is-viol' : ''}`}>
                                 Lần trước: {prevSub.score}/{prevSub.totalPoints} ({Math.round(pctOf(prevSub))}%) · {prevSub.violationCount || 0} vi phạm
                                 {prevSub.timeTaken ? ` · ${Math.max(1, Math.round(prevSub.timeTaken / 60))} phút` : ''}
                               </span>
                             )}
                           </div>
-                          <p style={{ margin: '.2rem 0 0', color: 'var(--mut)', font: '500 .82rem var(--sans)' }}>
-                            Lớp {cls?.name || '—'} · Đề {exam?.title || '—'}
+                          <p style={{ margin: '.25rem 0 0', color: 'var(--mut)', font: '500 .8rem var(--sans)' }}>
+                            Lớp <b>{cls?.name || '—'}</b> · Đề <b>{exam?.title || '—'}</b>
                           </p>
                           {r.reason && (
-                            <p style={{
-                              margin: '.7rem 0 0',
-                              padding: '.6rem .9rem',
-                              borderRadius: 10,
-                              background: 'var(--vt-tint)',
-                              color: 'var(--ink)',
-                              font: '500 .85rem/1.5 var(--sans)',
-                            }}>
+                            <p className="t-retry-reason">
                               Lý do xin thi lại: “{r.reason}”
                             </p>
                           )}
@@ -5077,22 +5081,13 @@ export default function TeacherDashboard({ onExit } = {}) {
                           {isPending && (
                             <input
                               type="text"
+                              className="t-retry-input"
                               placeholder="Lý do duyệt / từ chối gửi học sinh (không bắt buộc)"
                               value={retryNotes[r.id] || ''}
                               onChange={(e) => setRetryNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
                               maxLength={200}
                               disabled={isActing}
-                              style={{
-                                marginTop: '.7rem',
-                                width: '100%',
-                                padding: '.55rem .85rem',
-                                borderRadius: 10,
-                                border: '1.5px solid var(--soft)',
-                                background: 'var(--vt-tint)',
-                                color: 'var(--ink)',
-                                font: '500 .82rem var(--sans)',
-                                outline: 0,
-                              }}
+                              style={{ marginTop: '.65rem', width: '100%' }}
                             />
                           )}
                         </div>
@@ -6062,6 +6057,19 @@ export default function TeacherDashboard({ onExit } = {}) {
           </div>
         );
       })()}
+
+      {/* ============================================================
+          BỘ CÔNG CỤ DẠY HỌC TRÊN LỚP (CLASSROOM TOOLKIT)
+          ============================================================ */}
+      {toolkitOpen && (
+        <Suspense fallback={<div className="vt-loading"><div className="page-loader-spinner" /><p>Đang mở công cụ lớp học...</p></div>}>
+          <ClassroomToolkitModal
+            classes={linkedClasses.length ? [...classes, ...linkedClasses.filter((lc) => !classes.some((mc) => mc.id === lc.id))] : classes}
+            initialClassId={selectedClass?.id || classes[0]?.id || linkedClasses[0]?.id || ''}
+            onClose={() => setToolkitOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* ============================================================
           MODAL NHẬP ĐỀ THI TỪ FILE WORD / PDF (EXAM IMPORTER V4.0)

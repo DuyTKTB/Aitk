@@ -2,6 +2,7 @@
    ProUserManager.jsx — Quản lý Thuê bao VIP & PRO (GV PRO 999k/năm / HS VIP 299k/năm)
    ============================================================ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAuth } from '../../hooks/useAuth.jsx';
 import {
   adminGetProUsers,
   adminExtendProUser,
@@ -13,6 +14,8 @@ import {
   isProActive,
   daysLeft,
 } from '../../lib/proKeyApi.js';
+import { preserveRemainingDaysForSwitch } from '../../lib/adminAnalyticsEngine.js';
+import { logAdminAction } from '../../lib/adminAuditService.js';
 import AdminShell, { Topbar, Avatar, downloadCsv, setGlobalAdminBadges } from './AdminShell.jsx';
 import { Modal, ConfirmDialog } from './AdminUI.jsx';
 import {
@@ -37,6 +40,7 @@ const fmtDate = (v) => {
 };
 
 export default function ProUserManager() {
+  const { user: adminUser } = useAuth();
   const [tab, setTab] = useState('all');
   const [planFilter, setPlanFilter] = useState('all'); // all | teacher | student
   const [search, setSearch] = useState('');
@@ -209,22 +213,30 @@ export default function ProUserManager() {
 
   const handleSwitchPackage = (row) => {
     const toTeacher = row.isStudentVip;
+    const keepDays = preserveRemainingDaysForSwitch(row.left, 30);
     setConfirm({
       title: toTeacher ? 'Chuyển sang Giáo viên PRO (999k/năm)?' : 'Chuyển sang Học sinh VIP (299k/năm)?',
       body: toTeacher
-        ? `Chuyển "${row.name}" từ Học sinh VIP sang Giáo viên PRO (+30 ngày, mở toàn bộ tính năng giảng dạy & vai trò Giáo viên)?`
-        : `Chuyển "${row.name}" từ Giáo viên PRO sang Học sinh VIP (+30 ngày)? Lưu ý: tài khoản sẽ KHÔNG còn quyền Giáo viên PRO.`,
+        ? `Chuyển "${row.name}" từ Học sinh VIP sang Giáo viên PRO (giữ nguyên ${keepDays} ngày hạn còn lại, mở toàn bộ tính năng giảng dạy & vai trò Giáo viên)?`
+        : `Chuyển "${row.name}" từ Giáo viên PRO sang Học sinh VIP (giữ nguyên ${keepDays} ngày hạn còn lại)? Lưu ý: tài khoản sẽ KHÔNG còn quyền Giáo viên PRO.`,
       okLabel: toTeacher ? 'Chuyển sang GV PRO' : 'Chuyển sang HS VIP',
       danger: !toTeacher,
       onOk: async () => {
         try {
           if (toTeacher) {
-            await adminGrantProDirect({ userId: row.user_id, durationDays: 30, note: 'Chuyển sang Giáo viên PRO từ Admin' });
-            say(`Đã chuyển ${row.name} sang Giáo viên PRO`);
+            await adminGrantProDirect({ userId: row.user_id, durationDays: keepDays, note: 'Chuyển sang Giáo viên PRO từ Admin' });
+            say(`Đã chuyển ${row.name} sang Giáo viên PRO (giữ ${keepDays} ngày)`);
           } else {
-            await adminGrantVipDirect({ userId: row.user_id, durationDays: 30, note: 'Chuyển sang Học sinh VIP từ Admin' });
-            say(`Đã chuyển ${row.name} sang Học sinh VIP`);
+            await adminGrantVipDirect({ userId: row.user_id, durationDays: keepDays, note: 'Chuyển sang Học sinh VIP từ Admin' });
+            say(`Đã chuyển ${row.name} sang Học sinh VIP (giữ ${keepDays} ngày)`);
           }
+          logAdminAction({
+            actor: adminUser,
+            action: 'switch_plan',
+            target: row.user_id,
+            targetLabel: `${row.name} (${row.email})`,
+            summary: `Đổi gói ${row.name} → ${toTeacher ? 'Giáo viên PRO' : 'Học sinh VIP'} (bảo toàn ${keepDays} ngày)`,
+          });
           await load();
         } catch (e) {
           say('Lỗi: ' + e.message);
@@ -398,7 +410,7 @@ export default function ProUserManager() {
                     </td>
                     <td>
                       <div className="vt-user-cell">
-                        <Avatar name={r.name} size={34} />
+                        <Avatar name={r.name} src={r.avatar} size={34} />
                         <div style={{ minWidth: 0 }}>
                           <b style={{ display: 'block', fontSize: '.9rem' }}>{r.name}</b>
                           <small style={{ color: 'var(--mut)', fontSize: '.72rem' }}>{r.email}</small>

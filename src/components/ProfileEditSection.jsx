@@ -9,6 +9,7 @@ import {
 } from '../lib/userProfileService.js';
 import { joinNameParts } from '../lib/authValidation.js';
 import { getSubscriptionAndQuota, getUserReports } from '../data/virtualExamsBank.js';
+import { syncPendingLocalReports, fetchUserReportsFromCloud } from '../lib/userReportsService.js';
 import UserAvatar from './UserAvatar.jsx';
 import '../styles/profile-edit-section.css';
 
@@ -75,8 +76,32 @@ export default function ProfileEditSection({
 
   const subData = propSubQuota || getSubscriptionAndQuota(uid);
   const txList = subData?.transactions || [];
-  const reportList = propReports || getUserReports(uid);
+  const [cloudReports, setCloudReports] = useState(null);
+  const reportList = cloudReports || propReports || getUserReports(uid);
   const referralCode = propIdentCode || (uid ? `ELECAI-${uid.slice(0, 6).toUpperCase()}` : 'VIP2026');
+
+  // Đồng bộ báo lỗi cũ lên Cloud cho Admin + tải trạng thái & phản hồi mới nhất từ Admin
+  useEffect(() => {
+    if (!uid || activeSubTab !== 'reports') return undefined;
+    let alive = true;
+    (async () => {
+      await syncPendingLocalReports(uid, user);
+      const merged = await fetchUserReportsFromCloud(uid);
+      if (alive && Array.isArray(merged)) {
+        setCloudReports(merged);
+        onRefreshData?.();
+      }
+    })();
+    const onLocalChange = () => {
+      if (alive) setCloudReports(getUserReports(uid));
+    };
+    window.addEventListener('elec-user-reports-changed', onLocalChange);
+    return () => {
+      alive = false;
+      window.removeEventListener('elec-user-reports-changed', onLocalChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, activeSubTab]);
 
   // Form State thông tin cá nhân (khởi tạo rỗng, tuyệt đối không dùng dữ liệu giả)
   const [lastName, setLastName] = useState('');
@@ -1014,8 +1039,16 @@ export default function ProfileEditSection({
                           borderRadius: 980,
                           fontSize: '0.75rem',
                           fontWeight: 700,
-                          background: rp.status === 'Đã giải quyết' ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                          color: rp.status === 'Đã giải quyết' ? '#10b981' : '#f59e0b'
+                          background:
+                            rp.status === 'Đã giải quyết' ? 'rgba(16,185,129,0.12)' :
+                            rp.status === 'Đang xử lý' ? 'rgba(37,99,235,0.12)' :
+                            rp.status === 'Từ chối' ? 'rgba(239,68,68,0.12)' :
+                            'rgba(245,158,11,0.12)',
+                          color:
+                            rp.status === 'Đã giải quyết' ? '#10b981' :
+                            rp.status === 'Đang xử lý' ? '#2563eb' :
+                            rp.status === 'Từ chối' ? '#ef4444' :
+                            '#f59e0b'
                         }}>
                           {rp.status || 'Đã tiếp nhận'}
                         </span>
@@ -1023,6 +1056,23 @@ export default function ProfileEditSection({
                       <p style={{ margin: '4px 0 0', fontSize: '0.92rem', color: '#1e293b', lineHeight: 1.5 }}>
                         {rp.content}
                       </p>
+                      {rp.adminReply && (
+                        <div style={{
+                          marginTop: 6,
+                          padding: '10px 14px',
+                          borderRadius: 10,
+                          background: 'rgba(37,99,235,0.06)',
+                          borderLeft: '3px solid #2563eb',
+                        }}>
+                          <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#2563eb', marginBottom: 3 }}>
+                            Phản hồi từ {rp.adminName || 'Admin ELEC AI'}
+                            {rp.adminReplyAt ? ` · ${new Date(rp.adminReplyAt).toLocaleString('vi-VN')}` : ''}
+                          </div>
+                          <p style={{ margin: 0, fontSize: '0.86rem', color: '#1e293b', lineHeight: 1.5 }}>
+                            {rp.adminReply}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -1728,10 +1728,15 @@ export function getUserReports(uid) {
 
 export function addUserReport(uid, report) {
   const cur = getUserReports(uid);
+  const now = Date.now();
   const item = {
-    id: 'RP-' + Date.now().toString(36).toUpperCase(),
-    at: new Date().toLocaleString('vi-VN'),
+    id: 'RP-' + now.toString(36).toUpperCase(),
+    uid: uid || 'guest',
+    at: new Date(now).toLocaleString('vi-VN'),
+    createdAtMs: now,
+    page: typeof window !== 'undefined' ? (window.location.hash || '#home') : '',
     status: 'Đã tiếp nhận',
+    synced: false,
     ...report,
   };
   const next = [item, ...cur];
@@ -1741,5 +1746,11 @@ export function addUserReport(uid, report) {
       window.dispatchEvent(new CustomEvent('elec-user-reports-changed'));
     }
   } catch { /* ignore */ }
+  // Tự động gửi đồng bộ lên Firestore để Admin nhận realtime tại #admin/reports
+  if (uid && uid !== 'guest') {
+    import('../lib/userReportsService.js')
+      .then(({ syncReportToCloud }) => syncReportToCloud(uid, item))
+      .catch(() => {});
+  }
   return next;
 }

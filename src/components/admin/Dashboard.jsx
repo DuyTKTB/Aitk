@@ -8,6 +8,7 @@ import {
 import ApiUsagePanel from './ApiUsagePanel.jsx';
 import AdminShell, { Topbar, Donut, setGlobalAdminBadges } from './AdminShell.jsx';
 import { isProActive, daysLeft, adminExtendProUser, isStudentVipRecord, adminFetchMergedUsers } from '../../lib/proKeyApi.js';
+import { bucketAttemptsByVietnamDay } from '../../lib/adminAnalyticsEngine.js';
 import { friendlyError, formatDate } from './adminUtils.js';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -65,10 +66,10 @@ export default function Dashboard({ onNavigate }) {
       const teacherProActive = proActive.filter((u) => !isStudentVipRecord(u)).length;
       const studentVipActive = proActive.filter((u) => isStudentVipRecord(u)).length;
       const proExpired = proUsers.filter((u) => !isProActive(u.expiry));
-      const soon = proActive
+      const soonAll = proActive
         .filter((u) => daysLeft(u.expiry) <= 7)
-        .sort((a, b) => new Date(a.expiry) - new Date(b.expiry))
-        .slice(0, 5);
+        .sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+      const soon = soonAll.slice(0, 5);
 
       let profilesMap = {};
       if (mergedUsers?.length) {
@@ -89,6 +90,7 @@ export default function Dashboard({ onNavigate }) {
         studentVipActive,
         proExpired: proExpired.length,
         totalCredits, userWithCredits,
+        soonTotal: soonAll.length,
         soon: soon.map((u) => ({
           ...u,
           isStudentVip: isStudentVipRecord(u),
@@ -100,7 +102,7 @@ export default function Dashboard({ onNavigate }) {
       setKeyStats(nextStats);
       setGlobalAdminBadges({
         key: unused > 0 ? unused : null,
-        pro: soon.length > 0 ? soon.length : null,
+        pro: soonAll.length > 0 ? soonAll.length : null,
       });
     } catch (e) {
       console.warn('[Dashboard] load key stats lỗi:', e.message);
@@ -138,7 +140,7 @@ export default function Dashboard({ onNavigate }) {
         supabase.from('exams').select('id, title, is_published, questions(count)')
           .eq('is_published', true).limit(300),
         supabase.from('exam_attempts').select('started_at, score')
-          .gte('started_at', since).order('started_at', { ascending: true }).limit(600),
+          .gte('started_at', since).order('started_at', { ascending: false }).limit(1500),
       ]);
 
       if (topRes.error && recentRes.error) throw topRes.error;
@@ -148,19 +150,8 @@ export default function Dashboard({ onNavigate }) {
         || !!topRes.error || !!recentRes.error || !!emptyRes.error,
       );
 
-      // Tính biểu đồ 7 ngày gần nhất từ recentAttemptsRes
-      const dayBuckets = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(Date.now() - i * 86400000);
-        const key = d.toISOString().slice(0, 10);
-        const label = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-        dayBuckets.push({ key, label, count: 0 });
-      }
-      const bucketMap = Object.fromEntries(dayBuckets.map((b) => [b.key, b]));
-      (recentAttemptsRes.data || []).forEach((a) => {
-        const k = String(a.started_at || '').slice(0, 10);
-        if (bucketMap[k]) bucketMap[k].count += 1;
-      });
+      // Tính biểu đồ 7 ngày gần nhất chuẩn múi giờ Việt Nam (UTC+7), không cắt ngọn ngày mới nhất
+      const dayBuckets = bucketAttemptsByVietnamDay(recentAttemptsRes.data || [], 7, Date.now(), 'started_at');
 
       setData({
         stats: { exams, questions, attempts, users, noExplainCount: noExplainCount ?? 0 },

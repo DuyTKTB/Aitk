@@ -14,7 +14,7 @@ import WordDocxEditor from './WordDocxEditor.jsx';
 import { ElecFlaskBrandSvg } from './ElecBrandMark.jsx';
 import { exportToWord } from '../../lib/examExport.js';
 import { askAI } from '../../lib/ai.js';
-import { digitizeExam } from '../../lib/examAiUtils.js';
+import { digitizeExam, criticReviewExamWithAI } from '../../lib/examAiUtils.js';
 import { readFile } from '../../lib/fileReader.js';
 import { readExamPdfFile } from '../../lib/pdfExamReader.js';
 import { ocrImages } from '../../lib/aiOcr.js';
@@ -44,7 +44,19 @@ import {
   readTf,
   textToLines,
 } from '../../lib/examDocxParser.js';
+import {
+  detectLmsFormat,
+  parseMoodleXml,
+  parseAikenText,
+  parseGiftText,
+  parseSpreadsheetQuestions,
+  exportToMoodleXml,
+  exportToAnkiDeckTsv,
+  buildKahootSpreadsheetRows,
+} from '../../lib/lmsQuizFormats.js';
+import { auditExamQuality, balanceMcqAnswerPositions } from '../../lib/examQualityAudit.js';
 import '../../styles/word-importer.css';
+import '../../styles/teacher-pro-studio.css';
 
 export { classifySmartLevel, parseLines };
 
@@ -1449,9 +1461,10 @@ export default function ExamImporter({
     setItems((prev) => (appendMode === 'append' ? [...prev, ...normalized] : normalized));
   };
 
-  /* Đọc file .docx / .pdf / ảnh / .txt / .json */
-  const processFile = async (f) => {
+  /* Đọc file .docx / .pdf / ảnh / .txt / .json / Moodle / Excel */
+  const processFile = async (f, overrideAppendMode = null) => {
     if (!f) return;
+    const effectiveAppend = overrideAppendMode || appendMode;
     setBusy(true);
     setMsg('');
     lastFileRef.current = f;
@@ -1516,13 +1529,49 @@ export default function ExamImporter({
         const res = parseLines(textToLines(ocrRes.text), []);
         newQuestions = res.questions.map((q, idx) => toUiQuestion(q, idx));
         fCount = newQuestions.reduce((s, q) => s + countFormulasInText(`${q.q} ${(q.options || []).join(' ')}`), 0);
+      } else if (/\.(xlsx|xls|csv)$/i.test(f.name)) {
+        setMsg('Đang đọc bảng câu hỏi từ Excel/CSV...');
+        const XLSX = await import('xlsx');
+        const buf = await f.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array' });
+        const firstSheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = firstSheet ? XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' }) : [];
+        const parsed = parseSpreadsheetQuestions(rows);
+        if (!parsed.length) {
+          throw new Error('Không tìm thấy cột "Câu hỏi" trong file Excel/CSV. Tiêu đề gợi ý: Câu hỏi | A | B | C | D | Đáp án | Giải thích.');
+        }
+        newQuestions = parsed.map((q, idx) => toUiQuestion(q, idx));
+        fCount = newQuestions.reduce((s, q) => s + countFormulasInText(`${q.q} ${(q.options || []).join(' ')}`), 0);
+        setMsg(`Đã nhập ${newQuestions.length} câu hỏi từ bảng Excel/CSV.`);
       } else {
         const text = await f.text();
         extractedTextRef.current = text;
-        const jx = extractJson(text);
-        if (jx?.value) {
-          const ex = normalizeJsonExam(jx.value);
-          if (ex) newQuestions = ex.questions.map((q, idx) => toUiQuestion(q, idx));
+        const lmsFmt = detectLmsFormat(text, f.name);
+        if (lmsFmt === 'moodle_xml') {
+          const parsed = parseMoodleXml(text);
+          if (parsed.length) {
+            newQuestions = parsed.map((q, idx) => toUiQuestion(q, idx));
+            setMsg(`Đã nhập ${newQuestions.length} câu hỏi chuẩn Moodle XML.`);
+          }
+        } else if (lmsFmt === 'gift') {
+          const parsed = parseGiftText(text);
+          if (parsed.length) {
+            newQuestions = parsed.map((q, idx) => toUiQuestion(q, idx));
+            setMsg(`Đã nhập ${newQuestions.length} câu hỏi chuẩn Moodle GIFT.`);
+          }
+        } else if (lmsFmt === 'aiken') {
+          const parsed = parseAikenText(text);
+          if (parsed.length) {
+            newQuestions = parsed.map((q, idx) => toUiQuestion(q, idx));
+            setMsg(`Đã nhập ${newQuestions.length} câu hỏi chuẩn Aiken.`);
+          }
+        }
+        if (!newQuestions.length) {
+          const jx = extractJson(text);
+          if (jx?.value) {
+            const ex = normalizeJsonExam(jx.value);
+            if (ex) newQuestions = ex.questions.map((q, idx) => toUiQuestion(q, idx));
+          }
         }
         if (!newQuestions.length) {
           const res = parseLines(textToLines(text), []);
@@ -1538,7 +1587,7 @@ export default function ExamImporter({
       syncDetectedMeta(newQuestions, '', f.name);
 
       setItems((prev) => {
-        if (appendMode === 'append' && prev.length > 0) {
+        if (effectiveAppend === 'append' && prev.length > 0) {
           return [...prev, ...newQuestions.map((q, idx) => ({ ...q, id: `${q.id}_ap_${Date.now()}_${idx}` }))];
         }
         return newQuestions;
@@ -1623,10 +1672,57 @@ export default function ExamImporter({
     }
   };
 
+  const [criticReport, setCriticReport] = useState(null);
+  const [criticBusy, setCriticBusy] = useState(false);
+
+  const handleRunAiCritic = async () => {
+    if (!items.length || criticBusy) return;
+    if (!vipUnlocked) {
+      const m = `AI Thẩm định 5 tiêu chí (Critic Rubric) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`;
+      setMsg(m);
+      onRequestUpgrade?.(m);
+      return;
+    }
+    setCriticBusy(true);
+    setMsg('Hội đồng AI Critic đang thẩm định đề trên 5 tiêu chí sư phạm...');
+    try {
+      const res = await criticReviewExamWithAI({
+        questions: items,
+        subject: detectedSubject || 'Khoa học tự nhiên',
+        grade: detectedGrade || '12',
+      });
+      setCriticReport(res);
+      setMsg(`AI Critic hoàn tất thẩm định: ${res.overallScore}/100 điểm.`);
+    } catch (err) {
+      setMsg(`Thẩm định AI Critic lỗi: ${err?.message || err}`);
+    } finally {
+      setCriticBusy(false);
+    }
+  };
+
+  const processMultipleFiles = async (fileList) => {
+    const files = Array.from(fileList || []).filter(Boolean);
+    if (!files.length) return;
+    if (files.length === 1) {
+      await processFile(files[0]);
+      return;
+    }
+    const prevAppend = appendMode;
+    for (let i = 0; i < files.length; i++) {
+      await processFile(files[i], i > 0 ? 'append' : prevAppend);
+    }
+    setMsg(`Đã ghép xong ${files.length} file thành 1 bộ đề tổng hợp!`);
+  };
+
   const onFileChange = (e) => {
-    const f = e.target.files?.[0];
-    e.target.value = '';
-    if (f) processFile(f);
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const arr = Array.from(files);
+      e.target.value = '';
+      processMultipleFiles(arr);
+    } else {
+      e.target.value = '';
+    }
   };
 
   /* Nhập nhanh bảng đáp án cho CẢ 3 PHẦN */
@@ -1728,6 +1824,71 @@ export default function ExamImporter({
       })
     );
     setMsg('Đã đánh lại số thứ tự 1..N theo từng phần.');
+  };
+
+  /* Kiểm định chất lượng đề tức thì (0 tốn credit) */
+  const qualityAudit = useMemo(() => auditExamQuality(items), [items]);
+
+  /* Cân bằng phân bố vị trí đáp án A/B/C/D (~25% mỗi chữ cái) */
+  const handleBalanceAnswers = () => {
+    if (!items.length) return;
+    setItems((arr) => balanceMcqAnswerPositions(arr));
+    setMsg('Đã cân bằng lại vị trí đáp án đúng A/B/C/D đồng đều (bỏ qua câu tham chiếu "Cả A và B").');
+  };
+
+  /* Xuất đề sang định dạng Moodle XML 4.x (.xml) */
+  const handleExportMoodleXml = () => {
+    if (!items.length) return;
+    const xml = exportToMoodleXml({
+      title: title || 'De-kiem-tra-ELEC-AI',
+      subject: detectedSubject || '',
+      questions: items,
+    });
+    const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(title || 'de-thi-moodle').replace(/[^a-zA-Z0-9\u00C0-\u1EF9_-]+/g, '_')}.xml`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setMsg(`Đã xuất ${items.length} câu sang chuẩn Moodle XML (.xml).`);
+  };
+
+  /* Xuất bộ câu hỏi sang Flashcard Anki (.txt TSV) */
+  const handleExportAnki = () => {
+    if (!items.length) return;
+    const tsv = exportToAnkiDeckTsv({
+      title: title || 'ELEC-AI-Deck',
+      subject: detectedSubject || '',
+      questions: items,
+    });
+    const blob = new Blob([tsv], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(title || 'anki-flashcards').replace(/[^a-zA-Z0-9\u00C0-\u1EF9_-]+/g, '_')}_Anki.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setMsg(`Đã xuất ${items.length} thẻ Flashcard chuẩn Anki (.txt TSV).`);
+  };
+
+  /* Xuất bộ câu hỏi sang Kahoot! Excel (.xlsx) */
+  const handleExportKahoot = async () => {
+    const rows = buildKahootSpreadsheetRows(items, 30);
+    if (rows.length <= 1) {
+      setMsg('Cần ít nhất 1 câu trắc nghiệm nhiều lựa chọn để xuất sang Kahoot!.');
+      return;
+    }
+    const XLSX = await import('xlsx');
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Kahoot Quiz');
+    XLSX.writeFile(wb, `${(title || 'kahoot-quiz').replace(/[^a-zA-Z0-9\u00C0-\u1EF9_-]+/g, '_')}_Kahoot.xlsx`);
+    setMsg(`Đã xuất ${rows.length - 1} câu trắc nghiệm sang mẫu Kahoot! (.xlsx).`);
   };
 
   /* Chia điểm tự động: Chuẩn GDPT 2025 theo môn học hoặc chia đều thang 10 */
@@ -2413,14 +2574,15 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                   onDrop={(e) => {
                     e.preventDefault();
                     setDragOver(false);
-                    const f = e.dataTransfer?.files?.[0];
-                    if (f) processFile(f);
+                    const files = e.dataTransfer?.files;
+                    if (files && files.length > 0) processMultipleFiles(files);
                   }}
                 >
                   <input
                     ref={fileRef}
                     type="file"
-                    accept=".docx,.doc,.pdf,.txt,.md,.json,.png,.jpg,.jpeg,.webp"
+                    multiple
+                    accept=".docx,.doc,.pdf,.txt,.md,.json,.xml,.gift,.aiken,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.webp"
                     hidden
                     onChange={onFileChange}
                     disabled={busy}
@@ -2429,10 +2591,10 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                     <IcoUpload size={18} />
                   </div>
                   <div className="wimp-drop-title">
-                    {busy ? 'Đang giải mã công thức & cấu trúc đề...' : 'Chọn hoặc kéo thả file Word / PDF / Ảnh'}
+                    {busy ? 'Đang giải mã công thức & cấu trúc đề...' : 'Chọn hoặc kéo thả 1 hoặc nhiều file đề cùng lúc'}
                   </div>
                   <div className="wimp-drop-sub">
-                    Hỗ trợ .docx (MathType, OMML, bảng, ảnh), .pdf (text, 2 cột &amp; OCR), ảnh đề, .txt, .json
+                    Hỗ trợ ghép nhiều file .docx (OMML LaTeX), .pdf (2 cột &amp; OCR), Moodle XML / GIFT / Aiken, Excel/CSV, ảnh đề
                   </div>
                 </label>
 
@@ -2718,6 +2880,196 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                     placeholder="Tìm nội dung câu hỏi..."
                   />
                 </div>
+              </div>
+            )}
+
+            {items.length > 0 && (
+              <div className="tps-audit-bar">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '3px 10px',
+                      borderRadius: 999,
+                      fontWeight: 800,
+                      fontSize: 11.5,
+                      background:
+                        qualityAudit.tone === 'ex'
+                          ? 'rgba(16,185,129,0.14)'
+                          : qualityAudit.tone === 'good'
+                          ? 'rgba(37,99,235,0.12)'
+                          : qualityAudit.tone === 'mid'
+                          ? 'rgba(245,158,11,0.15)'
+                          : 'rgba(239,68,68,0.14)',
+                      color:
+                        qualityAudit.tone === 'ex'
+                          ? '#059669'
+                          : qualityAudit.tone === 'good'
+                          ? '#2563eb'
+                          : qualityAudit.tone === 'mid'
+                          ? '#b45309'
+                          : '#dc2626',
+                    }}
+                    title="Kiểm định chất lượng đề tức thì (0 tốn credit)"
+                  >
+                    Chất lượng đề: {qualityAudit.score}/100 · {qualityAudit.grade}
+                  </span>
+
+                  {qualityAudit.mcqCount >= 2 && (
+                    <span style={{ color: 'var(--wi-ink2)', fontSize: 11.5, fontVariantNumeric: 'tabular-nums' }}>
+                      Đáp án:{' '}
+                      {['A', 'B', 'C', 'D'].map((ch, idx) => (
+                        <strong key={ch} style={{ marginRight: 6, color: 'var(--wi-ink)' }}>
+                          {ch}:{qualityAudit.answerDistribution[idx]}
+                        </strong>
+                      ))}
+                    </span>
+                  )}
+
+                  {qualityAudit.issues.slice(0, 2).map((iss) => (
+                    <span
+                      key={iss.code}
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 650,
+                        padding: '2px 7px',
+                        borderRadius: 999,
+                        background: iss.severity === 'error' ? 'rgba(239,68,68,0.11)' : 'rgba(245,158,11,0.13)',
+                        color: iss.severity === 'error' ? '#dc2626' : '#b45309',
+                      }}
+                    >
+                      {iss.label}
+                    </span>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="wimp-btn wimp-btn-xs wimp-btn-accent"
+                    disabled={busy || criticBusy}
+                    onClick={handleRunAiCritic}
+                    title="Hội đồng AI Critic chấm điểm đề trên 5 tiêu chí sư phạm (Chính xác, Ngôn ngữ, Nhiễu, Bloom, Công thức)"
+                  >
+                    <IcoSparkles size={12} /> {criticBusy ? 'Đang thẩm định...' : 'AI Thẩm định 5 tiêu chí'}
+                  </button>
+                  {qualityAudit.mcqCount >= 4 && (
+                    <button
+                      type="button"
+                      className="wimp-btn wimp-btn-xs wimp-btn-soft"
+                      onClick={handleBalanceAnswers}
+                      title="Đảo vị trí đáp án A/B/C/D đồng đều ~25% (không đảo câu tham chiếu Cả A và B)"
+                    >
+                      <IcoShuffle size={12} /> Cân bằng A/B/C/D
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="wimp-btn wimp-btn-xs"
+                    onClick={handleExportMoodleXml}
+                    title="Xuất bộ câu hỏi chuẩn Moodle XML 4.x (.xml) để dùng trên Moodle / LMS"
+                  >
+                    <IcoDownload size={12} /> Moodle XML
+                  </button>
+                  <button
+                    type="button"
+                    className="wimp-btn wimp-btn-xs"
+                    onClick={handleExportAnki}
+                    title="Xuất thành thẻ nhớ Flashcard chuẩn Anki / AnkiDroid (.txt TSV)"
+                  >
+                    <IcoDownload size={12} /> Anki
+                  </button>
+                  <button
+                    type="button"
+                    className="wimp-btn wimp-btn-xs"
+                    onClick={handleExportKahoot}
+                    title="Xuất thành bảng câu hỏi trò chơi chuẩn Kahoot! (.xlsx)"
+                  >
+                    <IcoDownload size={12} /> Kahoot
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {criticReport && (
+              <div className="tps-critic-panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div>
+                    <strong style={{ fontSize: 13 }}>
+                      Hội đồng AI Critic: {criticReport.overallScore}/100 điểm
+                    </strong>
+                    <div style={{ fontSize: 12, color: 'var(--wi-ink2)', marginTop: 2 }}>{criticReport.summary}</div>
+                  </div>
+                  <button type="button" className="wimp-btn wimp-btn-xs" onClick={() => setCriticReport(null)}>
+                    Đóng thẩm định
+                  </button>
+                </div>
+
+                {criticReport.criteria?.length > 0 && (
+                  <div className="tps-critic-bars">
+                    {criticReport.criteria.map((c, idx) => {
+                      const sc = Math.max(0, Math.min(20, Number(c.score) || 0));
+                      return (
+                        <div key={c.key || idx} className="tps-critic-item">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, fontWeight: 700 }}>
+                            <span>{c.label || c.key}</span>
+                            <span style={{ color: sc >= 16 ? '#059669' : sc >= 12 ? '#2563eb' : '#d97706' }}>{sc}/20</span>
+                          </div>
+                          <div className="tps-critic-track"><i style={{ width: `${(sc / 20) * 100}%` }} /></div>
+                          {c.note && <div style={{ fontSize: 11, color: 'var(--wi-ink2)' }}>{c.note}</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {criticReport.flaggedQuestions?.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <strong style={{ fontSize: 11.5, color: '#b45309' }}>
+                      Câu hỏi AI khuyến nghị chỉnh sửa ({criticReport.flaggedQuestions.length}):
+                    </strong>
+                    {criticReport.flaggedQuestions.slice(0, 6).map((fq, idx) => {
+                      const qIdx = Math.max(0, (Number(fq.i) || 1) - 1);
+                      const targetItem = items[qIdx];
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 10,
+                            flexWrap: 'wrap',
+                            padding: '6px 10px',
+                            borderRadius: 9,
+                            background: 'var(--wi-panel, #ffffff)',
+                            border: '1px solid var(--wi-border, rgba(15,23,42,0.08))',
+                            fontSize: 11.5,
+                          }}
+                        >
+                          <div>
+                            <strong>Câu #{fq.i}:</strong> {fq.issue}
+                            {fq.suggestion ? <span style={{ color: '#059669' }}> → Gợi ý: {fq.suggestion}</span> : null}
+                          </div>
+                          {targetItem && (
+                            <button
+                              type="button"
+                              className="wimp-btn wimp-btn-xs wimp-btn-soft"
+                              onClick={() => {
+                                setFilterTab('all');
+                                setEditingId(targetItem.id);
+                              }}
+                            >
+                              Mở sửa câu #{fq.i}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 

@@ -277,37 +277,26 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
       {view === 'list' && (
         <>
           <header className="pg-head pg-head-hero">
-            <div>
-              <h2>
-                <IcoScan size={22} /> Chấm Phiếu Trắc Nghiệm (OMR)
-                <span className="pg-moet-pill">Chuẩn Bộ GD&amp;ĐT 2025+</span>
-              </h2>
-              <p>In &amp; chấm tự động phiếu A4 3 phần (ELEC Science AI) bằng Camera trực tiếp hoặc ảnh chụp, xuất Excel &amp; phân tích phổ điểm.</p>
+            <div className="pg-head-main">
+              <div className="pg-head-icon-wrap" aria-hidden="true">
+                <IcoScan size={22} />
+              </div>
+              <div className="pg-head-copy">
+                <div className="pg-head-title-row">
+                  <h2>Chấm Phiếu Trắc Nghiệm A4 (OMR)</h2>
+                  <span className="pg-moet-pill">Chuẩn Bộ GD&amp;ĐT 2025+</span>
+                </div>
+                <p>Chấm tự động phiếu A4 3 phần bằng Camera trực tiếp hoặc ảnh chụp, xuất Excel &amp; phân tích phổ điểm.</p>
+              </div>
             </div>
             <div className="pg-head-actions">
-              <button
-                type="button"
-                className="vt-btn sm"
-                onClick={() => setView('rubric')}
-                title="AI Chấm tự luận & bài giải viết tay theo Rubric thành phần (Gradescope / EduGrader)"
-              >
-                <IcoEdit size={14} /> Chấm Tự luận Rubric
-              </button>
-              <button
-                type="button"
-                className="vt-btn sm"
-                onClick={() => setView('pedagogy')}
-                title="Soạn Giáo án CV 5512, Ma trận Đặc tả CV 7991 & Nhận xét Thông tư 22 xuất Word"
-              >
-                <IcoSpark size={14} /> Giáo án 5512 &amp; Ma trận 7991
-              </button>
               <button
                 type="button"
                 className="vt-btn sm"
                 onClick={() => handlePrintSheet(null)}
                 title="Mở Studio Thiết kế & In mẫu phiếu A4 chuẩn Bộ GD&ĐT 2025"
               >
-                <IcoPrint size={14} /> Mẫu phiếu A4
+                <IcoPrint size={14} /> In mẫu phiếu A4
               </button>
               <button
                 type="button"
@@ -319,37 +308,43 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
             </div>
           </header>
 
+          {/* Thanh công cụ chuyên môn bổ trợ gọn gàng */}
+          <div className="pg-tools-strip">
+            <span className="pg-tools-label">Công cụ mở rộng:</span>
+            <button
+              type="button"
+              className="pg-tool-pill"
+              onClick={() => setView('rubric')}
+              title="AI Chấm tự luận & bài giải viết tay theo Rubric thành phần"
+            >
+              <IcoEdit size={13} /> Chấm Tự luận Rubric AI
+            </button>
+            <button
+              type="button"
+              className="pg-tool-pill"
+              onClick={() => setView('pedagogy')}
+              title="Soạn Giáo án CV 5512, Ma trận Đặc tả CV 7991 & Nhận xét Thông tư 22 xuất Word"
+            >
+              <IcoSpark size={13} /> Giáo án CV 5512 &amp; Ma trận CV 7991
+            </button>
+          </div>
+
           {papers.length > 0 && (
-            <div className="pg-toolbar" style={{ marginBottom: '0.75rem' }}>
+            <div className="pg-toolbar pg-list-toolbar">
               <input
                 type="search"
+                className="pg-search-input"
                 value={paperSearch}
                 onChange={(e) => setPaperSearch(e.target.value)}
                 placeholder="Tìm tên bài chấm phiếu…"
                 aria-label="Tìm bài chấm phiếu"
-                style={{
-                  padding: '0.45rem 0.8rem',
-                  borderRadius: 10,
-                  border: '1px solid var(--t-border, rgba(15,23,42,0.12))',
-                  background: 'var(--t-surface, #fff)',
-                  color: 'var(--t-ink, #0f172a)',
-                  fontSize: '0.85rem',
-                  minWidth: 220,
-                }}
               />
               {classes.length > 0 && (
                 <select
+                  className="pg-select-input"
                   value={paperClassFilter}
                   onChange={(e) => setPaperClassFilter(e.target.value)}
                   aria-label="Lọc bài chấm theo lớp"
-                  style={{
-                    padding: '0.45rem 0.8rem',
-                    borderRadius: 10,
-                    border: '1px solid var(--t-border, rgba(15,23,42,0.12))',
-                    background: 'var(--t-surface, #fff)',
-                    color: 'var(--t-ink, #0f172a)',
-                    fontSize: '0.85rem',
-                  }}
                 >
                   <option value="all">Tất cả lớp ({papers.length})</option>
                   {classes.map((c) => <option key={c.id} value={c.id}>Lớp {c.name}</option>)}
@@ -362,17 +357,25 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
             <div className="vt-loading"><p>Đang tải danh sách bài chấm...</p></div>
           ) : papers.length === 0 ? (
             <div className="pg-empty">
-              <IcoScan size={44} />
+              <div className="pg-empty-ico"><IcoScan size={32} /></div>
               <h3>Chưa có bài chấm phiếu nào</h3>
-              <p>Hãy tạo bài chấm mới, cấu hình đáp án và bắt đầu quét ảnh phiếu thi!</p>
-              <button
-                type="button"
-                className="vt-btn primary"
-                style={{ marginTop: '0.5rem' }}
-                onClick={() => { setCurrent(null); setView('setup'); }}
-              >
-                <IcoPlus size={14} /> Tạo bài chấm đầu tiên
-              </button>
+              <p>Tạo bài chấm mới, nhập bảng đáp án theo mã đề (hoặc nạp từ đề đã soạn) rồi quét phiếu A4 bằng Camera hoặc tải ảnh lên.</p>
+              <div className="pg-empty-actions">
+                <button
+                  type="button"
+                  className="vt-btn primary"
+                  onClick={() => { setCurrent(null); setView('setup'); }}
+                >
+                  <IcoPlus size={14} /> Tạo bài chấm đầu tiên
+                </button>
+                <button
+                  type="button"
+                  className="vt-btn"
+                  onClick={() => handlePrintSheet(null)}
+                >
+                  <IcoPrint size={14} /> Tải / In mẫu phiếu A4
+                </button>
+              </div>
             </div>
           ) : filteredPapers.length === 0 ? (
             <div className="pg-empty">
@@ -387,14 +390,29 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
               {filteredPapers.map((p) => {
                 const cls = classOf(p.classId);
                 const codeCount = Object.keys(p.keys || {}).length;
+                const p1c = p.counts?.p1 || 0;
+                const p2c = p.counts?.p2 || 0;
+                const p3c = p.counts?.p3 || 0;
                 return (
                   <article key={p.id} className="pg-card">
-                    <div>
-                      <b>{p.title}</b>
-                      <small>
-                        {cls ? `Lớp ${cls.name}` : 'Không gắn lớp'} · {codeCount} mã đề ·
-                        Phần I ({p.counts?.p1 || 0}c), Phần II ({p.counts?.p2 || 0}c), Phần III ({p.counts?.p3 || 0}c)
-                      </small>
+                    <div className="pg-card-info">
+                      <div className="pg-card-badge" aria-hidden="true">
+                        <IcoScan size={18} />
+                      </div>
+                      <div className="pg-card-copy">
+                        <b>{p.title}</b>
+                        <div className="pg-card-meta">
+                          <span className={`pg-meta-tag${cls ? ' is-class' : ''}`}>
+                            {cls ? `Lớp ${cls.name}` : 'Chưa gắn lớp'}
+                          </span>
+                          <span className="pg-meta-tag">{codeCount} mã đề</span>
+                          <span className="pg-meta-struct">
+                            {p1c > 0 && `P.I ${p1c}c`}
+                            {p2c > 0 && `${p1c > 0 ? ' · ' : ''}P.II ${p2c}c`}
+                            {p3c > 0 && `${(p1c > 0 || p2c > 0) ? ' · ' : ''}P.III ${p3c}c`}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <div className="pg-card-actions">
                       <button

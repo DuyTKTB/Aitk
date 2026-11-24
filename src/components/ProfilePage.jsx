@@ -840,6 +840,8 @@ export default function ProfilePage({ credits: propCredits }) {
       kind,
       category: feedbackTopic,
       content: feedbackText.trim(),
+      userName: user?.displayName || '',
+      userEmail: user?.email || '',
     });
     setReports(next);
     setFeedbackText('');

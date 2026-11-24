@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import {
   computeStudentAbilityRadar,
   computeRealPredictedScore30,
@@ -9,6 +9,8 @@ import {
 } from '../lib/studentAnalytics.js';
 import { getWrongQuestions } from '../lib/wrongQuestionService.js';
 import { readStore } from '../lib/roadmapStore.js';
+
+const Heart3DViewer = lazy(() => import('./Heart3DViewer.jsx'));
 
 /**
  * Định dạng rút gọn số lớn cho KPI (vd: 100000000 -> 100M, 12500 -> 12.5k).
@@ -794,10 +796,25 @@ export default function ProfileAtlasDashboard({
             <div className="pf-atlas-ambient-glow" />
 
             {centerMode === 0 && (
-              <VolumetricScienceSculpture
-                readiness={metrics.overallReadiness}
-                isPro={metrics.isPro}
-              />
+              <Suspense
+                fallback={
+                  <VolumetricScienceSculpture
+                    readiness={metrics.overallReadiness}
+                    isPro={metrics.isPro}
+                  />
+                }
+              >
+                <Heart3DViewer
+                  readiness={metrics.overallReadiness}
+                  isPro={metrics.isPro}
+                  fallback={
+                    <VolumetricScienceSculpture
+                      readiness={metrics.overallReadiness}
+                      isPro={metrics.isPro}
+                    />
+                  }
+                />
+              </Suspense>
             )}
 
             {centerMode === 1 && (

@@ -18,6 +18,17 @@ const DEFAULT = {
   announcementText: '',
   announcementLink: '',
   announcementBadge: '🔥 Nổi bật',
+  announcementTheme: 'cobalt',
+  announcementDisplay: 'banner',
+  announcementAudience: 'all',
+  announcementCtaText: 'Khám phá ngay',
+  announcementStartAt: '',
+  announcementEndAt: '',
+  announcementShowCountdown: false,
+  announcementDismissible: true,
+  announcementVersion: 1,
+  announcementImage: '',
+  announcementImageFit: 'cover',
 };
 
 const SettingsContext = createContext({
@@ -89,21 +100,21 @@ export function SettingsProvider({ children }) {
     } catch { /* noop */ }
   }, [settings]);
 
-  const updateSettings = (patch) => {
-    setSettings((s) => {
-      const next = { ...s, ...patch };
-      if (db) {
-        setDoc(doc(db, 'siteConfig', 'global'), { ...next, updatedAt: Date.now() }, { merge: true }).catch(() => {});
-      }
-      return next;
-    });
+  const updateSettings = async (patch) => {
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    if (db) {
+      await setDoc(doc(db, 'siteConfig', 'global'), { ...next, updatedAt: Date.now() }, { merge: true });
+    }
+    return next;
   };
 
-  const resetSettings = () => {
+  const resetSettings = async () => {
     setSettings(DEFAULT);
     if (db) {
-      setDoc(doc(db, 'siteConfig', 'global'), { ...DEFAULT, updatedAt: Date.now() }, { merge: true }).catch(() => {});
+      await setDoc(doc(db, 'siteConfig', 'global'), { ...DEFAULT, updatedAt: Date.now() }, { merge: true });
     }
+    return DEFAULT;
   };
 
   return (

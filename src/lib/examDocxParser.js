@@ -152,7 +152,46 @@ export const countFormulasInText = (str) => {
   return latexMatches ? latexMatches.length : 0;
 };
 
-/* Giải mã node <m:oMath> của Word thành công thức đọc được */
+const getDirectChildByLocal = (node, localName) => {
+  if (!node?.childNodes) return null;
+  for (let i = 0; i < node.childNodes.length; i++) {
+    const ch = node.childNodes[i];
+    const ln = ch.localName || ch.nodeName?.replace(/^.*:/, '');
+    if (ln === localName) return ch;
+  }
+  return null;
+};
+
+const getDirectChildrenByLocal = (node, localName) => {
+  const out = [];
+  if (!node?.childNodes) return out;
+  for (let i = 0; i < node.childNodes.length; i++) {
+    const ch = node.childNodes[i];
+    const ln = ch.localName || ch.nodeName?.replace(/^.*:/, '');
+    if (ln === localName) out.push(ch);
+  }
+  return out;
+};
+
+const readOmmlVal = (node, tagName) => {
+  if (!node) return '';
+  const el = node.getElementsByTagNameNS ? node.getElementsByTagNameNS('*', tagName)[0] : null;
+  if (!el) return '';
+  return el.getAttribute?.('m:val') || el.getAttribute?.('val') || el.getAttributeNS?.('*', 'val') || '';
+};
+
+const NARY_TO_LATEX = {
+  '∫': '\\int',
+  '∬': '\\iint',
+  '∭': '\\iiint',
+  '∮': '\\oint',
+  '∑': '\\sum',
+  '∏': '\\prod',
+  '⋃': '\\bigcup',
+  '⋂': '\\bigcap',
+};
+
+/* Giải mã node <m:oMath> của Word thành công thức LaTeX / Unicode chuẩn (lấy cảm hứng từ docx-math-converter) */
 export const convertOmmlNode = (node) => {
   if (!node) return '';
   const local = node.localName || node.nodeName?.replace(/^.*:/, '');
@@ -160,37 +199,159 @@ export const convertOmmlNode = (node) => {
     Array.from(node.childNodes || []).map(convertOmmlNode).join('');
 
   if (local === 't') return node.textContent || '';
+  if (local === 'oMathPara' || local === 'oMath') {
+    return childrenText().trim();
+  }
   if (local === 'f') {
-    const num = node.getElementsByTagNameNS('*', 'num')[0];
-    const den = node.getElementsByTagNameNS('*', 'den')[0];
+    const num = getDirectChildByLocal(node, 'num') || node.getElementsByTagNameNS?.('*', 'num')[0];
+    const den = getDirectChildByLocal(node, 'den') || node.getElementsByTagNameNS?.('*', 'den')[0];
     const nTxt = num ? convertOmmlNode(num).trim() : '';
     const dTxt = den ? convertOmmlNode(den).trim() : '';
-    return `(${nTxt})/(${dTxt})`;
+    return `\\frac{${nTxt}}{${dTxt}}`;
   }
   if (local === 'sSup') {
-    const e = node.getElementsByTagNameNS('*', 'e')[0];
-    const sup = node.getElementsByTagNameNS('*', 'sup')[0];
-    return `${e ? convertOmmlNode(e) : ''}${toUnicodeSup(sup ? convertOmmlNode(sup) : '')}`;
+    const e = getDirectChildByLocal(node, 'e') || node.getElementsByTagNameNS?.('*', 'e')[0];
+    const sup = getDirectChildByLocal(node, 'sup') || node.getElementsByTagNameNS?.('*', 'sup')[0];
+    const base = e ? convertOmmlNode(e) : '';
+    const supTxt = sup ? convertOmmlNode(sup).trim() : '';
+    if (!supTxt) return base;
+    if (base.includes('\\') || supTxt.includes('\\') || supTxt.length > 3) {
+      return `${base}^{${supTxt}}`;
+    }
+    return `${base}${toUnicodeSup(supTxt)}`;
   }
   if (local === 'sSub') {
-    const e = node.getElementsByTagNameNS('*', 'e')[0];
-    const sub = node.getElementsByTagNameNS('*', 'sub')[0];
-    return `${e ? convertOmmlNode(e) : ''}${toUnicodeSub(sub ? convertOmmlNode(sub) : '')}`;
+    const e = getDirectChildByLocal(node, 'e') || node.getElementsByTagNameNS?.('*', 'e')[0];
+    const sub = getDirectChildByLocal(node, 'sub') || node.getElementsByTagNameNS?.('*', 'sub')[0];
+    const base = e ? convertOmmlNode(e) : '';
+    const subTxt = sub ? convertOmmlNode(sub).trim() : '';
+    if (!subTxt) return base;
+    if (base.includes('\\') || subTxt.includes('\\') || subTxt.length > 3) {
+      return `${base}_{${subTxt}}`;
+    }
+    return `${base}${toUnicodeSub(subTxt)}`;
   }
   if (local === 'sSubSup') {
-    const e = node.getElementsByTagNameNS('*', 'e')[0];
-    const sub = node.getElementsByTagNameNS('*', 'sub')[0];
-    const sup = node.getElementsByTagNameNS('*', 'sup')[0];
-    return `${e ? convertOmmlNode(e) : ''}${toUnicodeSub(sub ? convertOmmlNode(sub) : '')}${toUnicodeSup(sup ? convertOmmlNode(sup) : '')}`;
+    const e = getDirectChildByLocal(node, 'e') || node.getElementsByTagNameNS?.('*', 'e')[0];
+    const sub = getDirectChildByLocal(node, 'sub') || node.getElementsByTagNameNS?.('*', 'sub')[0];
+    const sup = getDirectChildByLocal(node, 'sup') || node.getElementsByTagNameNS?.('*', 'sup')[0];
+    const base = e ? convertOmmlNode(e) : '';
+    const subTxt = sub ? convertOmmlNode(sub).trim() : '';
+    const supTxt = sup ? convertOmmlNode(sup).trim() : '';
+    if (base.includes('\\') || subTxt.includes('\\') || supTxt.includes('\\') || subTxt.length > 3 || supTxt.length > 3) {
+      return `${base}_{${subTxt}}^{${supTxt}}`;
+    }
+    return `${base}${toUnicodeSub(subTxt)}${toUnicodeSup(supTxt)}`;
+  }
+  if (local === 'sPre') {
+    // Kí hiệu đồng vị Hóa/Lý: ^{14}_{6}C
+    const e = getDirectChildByLocal(node, 'e') || node.getElementsByTagNameNS?.('*', 'e')[0];
+    const sub = getDirectChildByLocal(node, 'sub') || node.getElementsByTagNameNS?.('*', 'sub')[0];
+    const sup = getDirectChildByLocal(node, 'sup') || node.getElementsByTagNameNS?.('*', 'sup')[0];
+    const base = e ? convertOmmlNode(e).trim() : '';
+    const subTxt = sub ? convertOmmlNode(sub).trim() : '';
+    const supTxt = sup ? convertOmmlNode(sup).trim() : '';
+    return `{}^{${supTxt}}_{${subTxt}}${base}`;
   }
   if (local === 'rad') {
-    const e = node.getElementsByTagNameNS('*', 'e')[0];
-    return `√(${e ? convertOmmlNode(e) : ''})`;
+    const deg = getDirectChildByLocal(node, 'deg') || node.getElementsByTagNameNS?.('*', 'deg')[0];
+    const e = getDirectChildByLocal(node, 'e') || node.getElementsByTagNameNS?.('*', 'e')[0];
+    const degTxt = deg ? convertOmmlNode(deg).trim() : '';
+    const body = e ? convertOmmlNode(e).trim() : '';
+    return degTxt ? `\\sqrt[${degTxt}]{${body}}` : `\\sqrt{${body}}`;
+  }
+  if (local === 'nary') {
+    const naryPr = getDirectChildByLocal(node, 'naryPr');
+    const chr = readOmmlVal(naryPr, 'chr') || '∫';
+    const op = NARY_TO_LATEX[chr] || chr;
+    const sub = getDirectChildByLocal(node, 'sub');
+    const sup = getDirectChildByLocal(node, 'sup');
+    const e = getDirectChildByLocal(node, 'e');
+    const subTxt = sub ? convertOmmlNode(sub).trim() : '';
+    const supTxt = sup ? convertOmmlNode(sup).trim() : '';
+    const body = e ? convertOmmlNode(e).trim() : '';
+    return `${op}${subTxt ? `_{${subTxt}}` : ''}${supTxt ? `^{${supTxt}}` : ''} ${body}`.trim();
+  }
+  if (local === 'limLow') {
+    const e = getDirectChildByLocal(node, 'e');
+    const lim = getDirectChildByLocal(node, 'lim');
+    const eTxt = e ? convertOmmlNode(e).trim() : '';
+    const limTxt = lim ? convertOmmlNode(lim).trim() : '';
+    const op = /^lim$/i.test(eTxt) ? '\\lim' : eTxt;
+    return limTxt ? `${op}_{${limTxt}}` : op;
+  }
+  if (local === 'limUpp') {
+    const e = getDirectChildByLocal(node, 'e');
+    const lim = getDirectChildByLocal(node, 'lim');
+    const eTxt = e ? convertOmmlNode(e).trim() : '';
+    const limTxt = lim ? convertOmmlNode(lim).trim() : '';
+    return limTxt ? `\\overset{${limTxt}}{${eTxt}}` : eTxt;
+  }
+  if (local === 'func') {
+    const fName = getDirectChildByLocal(node, 'fName');
+    const e = getDirectChildByLocal(node, 'e');
+    const fnTxt = fName ? convertOmmlNode(fName).trim() : '';
+    const argTxt = e ? convertOmmlNode(e).trim() : '';
+    return `${fnTxt} ${argTxt}`.trim();
+  }
+  if (local === 'acc') {
+    const accPr = getDirectChildByLocal(node, 'accPr');
+    const chr = readOmmlVal(accPr, 'chr');
+    const e = getDirectChildByLocal(node, 'e');
+    const body = e ? convertOmmlNode(e).trim() : '';
+    if (chr === '\u20D7' || chr === '→' || chr === '\u2192') return `\\vec{${body}}`;
+    if (chr === '\u0302' || chr === '^') return body.length > 1 ? `\\widehat{${body}}` : `\\hat{${body}}`;
+    if (chr === '\u0304' || chr === '¯') return body.length > 1 ? `\\overline{${body}}` : `\\bar{${body}}`;
+    if (chr === '\u0303' || chr === '~') return `\\tilde{${body}}`;
+    return body;
+  }
+  if (local === 'bar') {
+    const e = getDirectChildByLocal(node, 'e');
+    const body = e ? convertOmmlNode(e).trim() : '';
+    return body ? `\\overline{${body}}` : '';
+  }
+  if (local === 'eqArr') {
+    const rows = getDirectChildrenByLocal(node, 'e').map((r) => convertOmmlNode(r).trim()).filter(Boolean);
+    return rows.length > 1 ? `\\begin{cases} ${rows.join(' \\\\ ')} \\end{cases}` : (rows[0] || '');
+  }
+  if (local === 'm') {
+    const rows = getDirectChildrenByLocal(node, 'mr').map((mr) =>
+      getDirectChildrenByLocal(mr, 'e').map((cell) => convertOmmlNode(cell).trim()).join(' & ')
+    );
+    return rows.length ? `\\begin{matrix} ${rows.join(' \\\\ ')} \\end{matrix}` : '';
   }
   if (local === 'd') {
-    return `(${childrenText()})`;
+    const dPr = getDirectChildByLocal(node, 'dPr');
+    const begChr = readOmmlVal(dPr, 'begChr');
+    const endChr = readOmmlVal(dPr, 'endChr');
+    const sepChr = readOmmlVal(dPr, 'sepChr') || '|';
+    const open = begChr === '' && dPr?.getElementsByTagNameNS?.('*', 'begChr')?.length ? '' : (begChr || '(');
+    const close = endChr === '' && dPr?.getElementsByTagNameNS?.('*', 'endChr')?.length ? '' : (endChr || ')');
+    const elems = getDirectChildrenByLocal(node, 'e');
+    const inner = elems.length
+      ? elems.map((el) => convertOmmlNode(el).trim()).join(elems.length > 1 ? ` ${sepChr} ` : '')
+      : childrenText();
+    // Nếu là hệ phương trình mở bằng "{" và không đóng ngoặc
+    if (open === '{' && !close && inner.includes('\\begin{cases}')) {
+      return inner;
+    }
+    return `${open}${inner}${close}`;
+  }
+  if (local === 'rPr' || local === 'ctrlPr' || local === 'dPr' || local === 'naryPr' || local === 'accPr' || local === 'fPr' || local === 'radPr') {
+    return '';
   }
   return childrenText();
+};
+
+const NEEDS_LATEX_WRAP_RE = /\\(?:frac|sqrt|int|iint|iiint|oint|sum|prod|lim|vec|hat|widehat|bar|overline|tilde|overset|begin|bigcup|bigcap)\b|\^\{|_\{/;
+
+const formatOmmlOutput = (rawFormula) => {
+  const s = String(rawFormula || '').trim();
+  if (!s) return '';
+  if (NEEDS_LATEX_WRAP_RE.test(s) && !s.startsWith('$')) {
+    return `$${s}$`;
+  }
+  return s;
 };
 
 /* Tiền xử lý buffer docx bằng JSZip để giải mã OMML và biến Floating/Anchored image thành Inline */
@@ -227,7 +388,7 @@ export const preprocessDocxBuffer = async (arrayBuffer) => {
       const oMaths = Array.from(xmlDoc.getElementsByTagNameNS('*', 'oMath'));
       ommlCount = oMaths.length;
       oMaths.forEach((mathNode) => {
-        const formulaText = convertOmmlNode(mathNode);
+        const formulaText = formatOmmlOutput(convertOmmlNode(mathNode));
         if (formulaText && mathNode.parentNode) {
           const wRun = xmlDoc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:r');
           const wText = xmlDoc.createElementNS('http://schemas.openxmlformats.org/wordprocessingml/2006/main', 'w:t');

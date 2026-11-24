@@ -49,6 +49,12 @@ import {
   ALL_SUBJECTS_LIST,
   resolveTopicsSubjectKey,
 } from '../../data/topicsBySubject.js';
+import {
+  exportToMoodleXml,
+  exportToAnkiDeckTsv,
+  buildKahootSpreadsheetRows,
+} from '../../lib/lmsQuizFormats.js';
+import { balanceMcqAnswerPositions } from '../../lib/examQualityAudit.js';
 import '../../styles/question-bank.css';
 
 export function AiQuestionChoicesPreview({ item, wrapClass, itemClass = '', correctClass = 'correct', inline = false }) {
@@ -565,6 +571,11 @@ export default function QuestionBank({
   const [showStatsPanel, setShowStatsPanel] = useState(false);
   const [showAiGeneratorModal, setShowAiGeneratorModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showImportMenu, setShowImportMenu] = useState(false);
+  const [showMatrixBuilder, setShowMatrixBuilder] = useState(false);
+  const [matrixCounts, setMatrixCounts] = useState({ easy: 4, medium: 3, hard: 2, veryHard: 1 });
+  const [matrixBalanceAns, setMatrixBalanceAns] = useState(true);
+  const [matrixPreferFresh, setMatrixPreferFresh] = useState(true);
 
   /* Confirm Modal nội bộ & Toast Hoàn tác */
   const [confirmModal, setConfirmModal] = useState(null);
@@ -791,7 +802,7 @@ export default function QuestionBank({
         isDuplicate: Boolean(duplicateOf),
         badAnswer,
         noExplain,
-        hasIssue: Boolean(duplicateOf) || badAnswer || noExplain,
+        hasIssue: Boolean(duplicateOf) || badAnswer,
       };
     });
     return map;
@@ -2069,6 +2080,112 @@ Trả về DUY NHẤT JSON:
     }
   };
 
+  const handleExportMoodleXml = () => {
+    if (filtered.length === 0) return;
+    setShowExportMenu(false);
+    const xml = exportToMoodleXml({
+      title: `Ngan-hang-${filterSubject || 'Tong-hop'}`,
+      subject: filterSubject || '',
+      questions: filtered,
+    });
+    const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Ngan-hang-${(filterSubject || 'Tong-hop').replace(/[^a-zA-Z0-9\u00C0-\u1EF9_-]+/g, '_')}_Moodle.xml`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    say(`Đã xuất ${filtered.length} câu chuẩn Moodle XML (.xml)`);
+  };
+
+  const handleExportAnki = () => {
+    if (filtered.length === 0) return;
+    setShowExportMenu(false);
+    const tsv = exportToAnkiDeckTsv({
+      title: `Ngan-hang-${filterSubject || 'Tong-hop'}`,
+      subject: filterSubject || '',
+      questions: filtered,
+    });
+    const blob = new Blob([tsv], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Ngan-hang-${(filterSubject || 'Tong-hop').replace(/[^a-zA-Z0-9\u00C0-\u1EF9_-]+/g, '_')}_Anki.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    say(`Đã xuất ${filtered.length} thẻ Flashcard chuẩn Anki (.txt)`);
+  };
+
+  const handleExportKahoot = async () => {
+    if (filtered.length === 0) return;
+    setShowExportMenu(false);
+    const rows = buildKahootSpreadsheetRows(filtered, 30);
+    if (rows.length <= 1) {
+      say('Cần ít nhất 1 câu trắc nghiệm nhiều lựa chọn để xuất Kahoot!.');
+      return;
+    }
+    const XLSX = await import('xlsx');
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Kahoot Quiz');
+    XLSX.writeFile(wb, `Ngan-hang-${(filterSubject || 'Tong-hop').replace(/[^a-zA-Z0-9\u00C0-\u1EF9_-]+/g, '_')}_Kahoot.xlsx`);
+    say(`Đã xuất ${rows.length - 1} câu trắc nghiệm chuẩn Kahoot! (.xlsx)`);
+  };
+
+  /* Rút đề ngẫu nhiên thông minh theo Ma trận 4 mức độ nhận thức */
+  const matrixStock = useMemo(() => {
+    const stock = { easy: [], medium: [], hard: [], veryHard: [] };
+    filtered.forEach((q) => {
+      const lv = normalizeLevel(q.level);
+      if (lv === 'very_hard' || lv === 'vdc') stock.veryHard.push(q);
+      else if (lv === 'hard' || lv === 'vd') stock.hard.push(q);
+      else if (lv === 'medium' || lv === 'th') stock.medium.push(q);
+      else stock.easy.push(q);
+    });
+    return stock;
+  }, [filtered]);
+
+  const handleAssembleMatrixExam = () => {
+    const pickFrom = (arr, n) => {
+      const need = Math.max(0, Math.min(arr.length, Math.floor(Number(n) || 0)));
+      if (!need) return [];
+      const copy = [...arr];
+      if (matrixPreferFresh) {
+        // Ưu tiên câu ít dùng gần đây, xáo nhẹ trong nhóm cùng lượt dùng
+        copy.sort((a, b) => (Number(a.usedCount) || 0) - (Number(b.usedCount) || 0) + (Math.random() - 0.5) * 0.6);
+      } else {
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+      }
+      return copy.slice(0, need);
+    };
+
+    const chosen = [
+      ...pickFrom(matrixStock.easy, matrixCounts.easy),
+      ...pickFrom(matrixStock.medium, matrixCounts.medium),
+      ...pickFrom(matrixStock.hard, matrixCounts.hard),
+      ...pickFrom(matrixStock.veryHard, matrixCounts.veryHard),
+    ];
+
+    if (chosen.length === 0) {
+      say('Không có câu nào khớp ma trận hiện tại. Hãy điều chỉnh số lượng hoặc bộ lọc.');
+      return;
+    }
+
+    const finalList = matrixBalanceAns ? balanceMcqAnswerPositions(chosen) : chosen;
+    setDraftExamItems(finalList);
+    setDraftTitle(`Đề ma trận ${filterSubject || 'Tổng hợp'} (${finalList.length} câu)`);
+    setShowMatrixBuilder(false);
+    setShowDraftModal(true);
+    say(`Đã rút ${finalList.length} câu theo ma trận${matrixBalanceAns ? ' & tự cân bằng A/B/C/D' : ''}!`);
+  };
+
   const handleImportToBank = async (qs) => {
     if (!vipUnlocked) {
       const remainingCap = Math.max(0, FREE_TEACHER_LIMITS.maxBankQuestions - list.length);
@@ -2202,12 +2319,23 @@ Trả về DUY NHẤT JSON:
                 type="button"
                 className="qb-head-warn-link"
                 onClick={() => setQualityFilter(qualityFilter === 'any_issue' ? 'all' : 'any_issue')}
+                title="Câu hỏi bị trùng lặp hoặc thiếu/sai đáp án"
               >
-                <IcoAlert size={13} /> {counts.issueCount} câu cần rà soát
+                <IcoAlert size={13} /> {counts.issueCount} câu lỗi cần sửa
+              </button>
+            )}
+            {counts.noExplainCount > 0 && (
+              <button
+                type="button"
+                className="qb-head-info-pill"
+                onClick={() => setQualityFilter(qualityFilter === 'no_explain' ? 'all' : 'no_explain')}
+                title="Bấm để lọc nhanh các câu chưa có lời giải chi tiết"
+              >
+                {counts.noExplainCount} chưa có lời giải
               </button>
             )}
             <span className="qb-shortcut-hint" title="Phím tắt bàn phím">
-              Phím tắt: <kbd>/</kbd> Tìm · <kbd>N</kbd> Thêm mới · <kbd>Esc</kbd> Đóng
+              <kbd>/</kbd> Tìm · <kbd>N</kbd> Thêm mới
             </span>
           </div>
         </div>
@@ -2215,32 +2343,81 @@ Trả về DUY NHẤT JSON:
         <div className="qb-head-actions">
           <button
             type="button"
-            className={'vt-btn sm' + (showStatsPanel ? ' primary' : '')}
-            onClick={() => setShowStatsPanel((v) => !v)}
+            className={'vt-btn sm' + (showMatrixBuilder ? ' primary' : '')}
+            onClick={() => { setShowMatrixBuilder((v) => !v); setShowImportMenu(false); setShowExportMenu(false); }}
+            disabled={filtered.length === 0}
+            title="Rút đề ngẫu nhiên tự động theo ma trận 4 mức độ nhận thức"
           >
-            <IcoChart size={15} /> Thống kê
+            <IcoSparkles size={14} /> Rút đề Ma trận
           </button>
 
-          {/* Menu Xuất đa định dạng */}
+          {/* Menu Nhập gọn 1 nút */}
           <div className="qb-export-dropdown-wrap">
             <button
               type="button"
               className="vt-btn sm"
-              onClick={() => setShowExportMenu((v) => !v)}
+              onClick={() => { setShowImportMenu((v) => !v); setShowExportMenu(false); }}
+            >
+              <IcoUpload size={15} /> Nhập đề <IcoChevronDown size={13} />
+            </button>
+            {showImportMenu && (
+              <div className="qb-export-menu" role="menu">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowImportMenu(false);
+                    if (!vipUnlocked && wordTrialLeft <= 0) {
+                      promptVipBank(`Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxWordImports}/10 lượt nhập file Word miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để nhập không giới hạn.`);
+                      return;
+                    }
+                    setShowImporter(true);
+                  }}
+                >
+                  <IcoFileText size={15} /> Word / PDF / Moodle / Excel {!vipUnlocked ? `(${wordTrialLeft}/10)` : ''}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowImportMenu(false);
+                    if (vipUnlocked) setShowQuickImport(true);
+                    else promptVipBank(`Nhập nhanh CSV / Dán văn bản thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`);
+                  }}
+                >
+                  <IcoUpload size={15} /> Nhập nhanh bảng CSV / Dán text {!vipUnlocked ? '(VIP)' : ''}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Menu Xuất đa định dạng Quốc tế (6 chuẩn) */}
+          <div className="qb-export-dropdown-wrap">
+            <button
+              type="button"
+              className="vt-btn sm"
+              onClick={() => { setShowExportMenu((v) => !v); setShowImportMenu(false); }}
               disabled={loading || filtered.length === 0}
             >
               <IcoDownload size={15} /> Xuất ({filtered.length}) <IcoChevronDown size={13} />
             </button>
             {showExportMenu && (
               <div className="qb-export-menu" role="menu">
-                <button type="button" onClick={handleExportCsv}>
-                  <IcoFileText size={15} /> Xuất Excel (.xlsx)
-                </button>
                 <button type="button" onClick={handleExportWord}>
-                  <IcoFileText size={15} /> Xuất đề Word (.docx)
+                  <IcoFileText size={15} /> Đề Word chuẩn (.docx)
+                </button>
+                <button type="button" onClick={handleExportCsv}>
+                  <IcoFileText size={15} /> Bảng Excel (.xlsx)
                 </button>
                 <button type="button" onClick={handleExportPdf}>
-                  <IcoFileText size={15} /> Xuất bản in PDF (.pdf)
+                  <IcoFileText size={15} /> Bản in PDF (.pdf)
+                </button>
+                <button type="button" onClick={handleExportMoodleXml}>
+                  <IcoDownload size={15} /> Moodle XML (.xml)
+                </button>
+                <button type="button" onClick={handleExportAnki}>
+                  <IcoDownload size={15} /> Thẻ Flashcard Anki (.txt)
+                </button>
+                <button type="button" onClick={handleExportKahoot}>
+                  <IcoDownload size={15} /> Game Kahoot! (.xlsx)
                 </button>
               </div>
             )}
@@ -2249,33 +2426,18 @@ Trả về DUY NHẤT JSON:
           <button
             type="button"
             className="vt-btn sm"
-            onClick={() => (vipUnlocked ? setShowQuickImport(true) : promptVipBank(`Nhập nhanh CSV / Excel thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`))}
-            title="Nhập nhanh từ bảng Excel, CSV hoặc văn bản có kiểm tra lỗi từng dòng"
-          >
-            <IcoUpload size={15} /> Nhập CSV / Excel {!vipUnlocked ? '(VIP)' : ''}
-          </button>
-
-          <button
-            type="button"
-            className="vt-btn sm"
-            onClick={() => {
-              if (!vipUnlocked && wordTrialLeft <= 0) {
-                promptVipBank(`Bạn đã dùng hết ${FREE_TEACHER_LIMITS.maxWordImports}/10 lượt nhập file Word miễn phí. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để nhập không giới hạn.`);
-                return;
-              }
-              setShowImporter(true);
-            }}
-            title="Nhập đề từ file Word (.docx)"
-          >
-            <IcoUpload size={15} /> Nhập Word {!vipUnlocked ? `(${wordTrialLeft}/10)` : ''}
-          </button>
-
-          <button
-            type="button"
-            className="vt-btn sm"
             onClick={handleTriggerAiStudio}
           >
             <IcoSparkles size={15} /> Sinh bằng AI {!vipUnlocked ? '(VIP)' : ''}
+          </button>
+
+          <button
+            type="button"
+            className={'vt-btn sm' + (showStatsPanel ? ' primary' : '')}
+            onClick={() => setShowStatsPanel((v) => !v)}
+            title="Thống kê phân bố ngân hàng câu hỏi"
+          >
+            <IcoChart size={15} />
           </button>
 
           <button
@@ -2308,6 +2470,101 @@ Trả về DUY NHẤT JSON:
           </button>
         </div>
       </header>
+
+      {/* BỘ RÚT ĐỀ THÔNG MINH THEO MA TRẬN 4 MỨC ĐỘ (AUTO-EXAM ASSEMBLER) */}
+      {showMatrixBuilder && (
+        <section className="qb-matrix-builder" aria-label="Rút đề tự động theo Ma trận">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div>
+              <strong style={{ fontSize: '0.94rem' }}>
+                Rút Đề Thi Tự Động Theo Ma Trận (từ {filtered.length} câu đang lọc)
+              </strong>
+              <div style={{ fontSize: '0.78rem', color: 'var(--mut)', marginTop: 2 }}>
+                Chọn số câu từng mức độ nhận thức — hệ thống rút ngẫu nhiên không trùng &amp; mở ngay khung tạo đề
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="vt-btn sm"
+                onClick={() => setMatrixCounts({
+                  easy: Math.min(matrixStock.easy.length, 4),
+                  medium: Math.min(matrixStock.medium.length, 3),
+                  hard: Math.min(matrixStock.hard.length, 2),
+                  veryHard: Math.min(matrixStock.veryHard.length, 1),
+                })}
+              >
+                Mẫu 15p (10 câu)
+              </button>
+              <button
+                type="button"
+                className="vt-btn sm"
+                onClick={() => setMatrixCounts({
+                  easy: Math.min(matrixStock.easy.length, 8),
+                  medium: Math.min(matrixStock.medium.length, 6),
+                  hard: Math.min(matrixStock.hard.length, 4),
+                  veryHard: Math.min(matrixStock.veryHard.length, 2),
+                })}
+              >
+                Mẫu 45p (20 câu)
+              </button>
+              <button type="button" className="vt-btn sm" onClick={() => setShowMatrixBuilder(false)}>
+                Đóng
+              </button>
+            </div>
+          </div>
+
+          <div className="qb-matrix-grid">
+            {[
+              { key: 'easy', label: 'Nhận biết (Dễ)', max: matrixStock.easy.length },
+              { key: 'medium', label: 'Thông hiểu (Vừa)', max: matrixStock.medium.length },
+              { key: 'hard', label: 'Vận dụng (Khó)', max: matrixStock.hard.length },
+              { key: 'veryHard', label: 'Vận dụng cao', max: matrixStock.veryHard.length },
+            ].map((lv) => (
+              <div key={lv.key} className="qb-matrix-cell">
+                <label>
+                  <span>{lv.label}</span>
+                  <small>Có {lv.max}</small>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={lv.max}
+                  value={Math.min(matrixCounts[lv.key], lv.max)}
+                  onChange={(e) =>
+                    setMatrixCounts((prev) => ({
+                      ...prev,
+                      [lv.key]: Math.max(0, Math.min(lv.max, Number(e.target.value) || 0)),
+                    }))
+                  }
+                />
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: '0.8rem', fontWeight: 600 }}>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input type="checkbox" checked={matrixBalanceAns} onChange={(e) => setMatrixBalanceAns(e.target.checked)} style={{ accentColor: '#2563eb' }} />
+                Tự cân bằng đáp án A/B/C/D (~25%)
+              </label>
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input type="checkbox" checked={matrixPreferFresh} onChange={(e) => setMatrixPreferFresh(e.target.checked)} style={{ accentColor: '#2563eb' }} />
+                Ưu tiên câu ít dùng gần đây
+              </label>
+            </div>
+
+            <button type="button" className="vt-btn sm primary" onClick={handleAssembleMatrixExam}>
+              <IcoSparkles size={14} /> Rút{' '}
+              {Math.min(matrixCounts.easy, matrixStock.easy.length) +
+                Math.min(matrixCounts.medium, matrixStock.medium.length) +
+                Math.min(matrixCounts.hard, matrixStock.hard.length) +
+                Math.min(matrixCounts.veryHard, matrixStock.veryHard.length)}{' '}
+              câu thành Đề thi ngay
+            </button>
+          </div>
+        </section>
+      )}
 
       {!vipUnlocked && (
         <div style={{ margin: '0.65rem 0' }}>
@@ -2635,7 +2892,7 @@ Trả về DUY NHẤT JSON:
                   type="search"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tìm toàn văn câu hỏi, phương án, lời giải, chuyên đề (không phân biệt dấu)..."
+                  placeholder="Tìm câu hỏi, đáp án, lời giải, chuyên đề..."
                 />
                 {search ? (
                   <button

@@ -58,7 +58,9 @@ export default function FeedbackModal({ isOpen: propIsOpen, onClose }) {
       category,
       rating: rating || 5,
       content: content.trim(),
+      userName: user?.displayName || '',
       userEmail: user?.email || 'Học sinh ELEC AI',
+      page: typeof window !== 'undefined' ? (window.location.hash || '#home') : '',
       submittedAt: Date.now(),
     };
 

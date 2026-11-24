@@ -10,46 +10,54 @@ import { DashFrame, Topbar, Donut, TrendChart, Avatar, tsMs, fmtMMSS, fmtClock, 
 import {
   IconDashboard, IconExam, IconQuestion, IconUsers, IconActivity, IconSettings,
   IconBook, IconSparkle, IconKey, IconCrown, IconUserCheck, IconSearch, IconClose,
-  IconKeyboard,
+  IconKeyboard, IconBell, IconChart, IconShield,
 } from './AdminIcons.jsx';
 
 /* ============================================================
    MENU ADMIN & NHÓM LIÊN KẾT NHANH
    ============================================================ */
 export const ADMIN_MENU = [
-  { key: 'dashboard',  label: 'Tổng quan',     Icon: IconDashboard, group: 1, desc: 'Số liệu hệ thống, hạn mức API & cảnh báo đề trống' },
-  { key: 'exams',      label: 'Đề thi',        Icon: IconExam,      group: 2, desc: 'Quản lý, xuất JSON/CSV, ẩn/hiện và nhân bản đề' },
-  { key: 'create',     label: 'Tạo đề',        Icon: IconSparkle,   group: 2, desc: 'Tạo đề bằng AI, Import JSON hoặc tạo thủ công' },
-  { key: 'questions',  label: 'Câu hỏi',       Icon: IconQuestion,  group: 2, desc: 'Ngân hàng câu hỏi toàn hệ thống, sửa nhanh & lọc lỗi' },
-  { key: 'keys',       label: 'Key & Voucher', Icon: IconKey,       group: 3, badge: 'key', desc: 'Phát hành Key GV PRO (999k/năm), HS VIP (299k/năm), Voucher & Credit' },
-  { key: 'pro-users',  label: 'VIP & PRO',     Icon: IconCrown,     group: 3, badge: 'pro', desc: 'Quản lý Giáo viên PRO (999k/năm) & Học sinh VIP (299k/năm)' },
-  { key: 'users',      label: 'Người dùng',    Icon: IconUsers,     group: 3, desc: 'Phân quyền, đồng bộ Firestore & Reset dùng thử GV' },
-  { key: 'activity',   label: 'Hoạt động',     Icon: IconActivity,  group: 4, desc: 'Nhật ký làm bài của học sinh, phổ điểm & chi tiết câu' },
-  { key: 'settings',   label: 'Cài đặt',       Icon: IconSettings,  group: 4, desc: 'Bảng giá VIP/PRO, hạn mức dùng thử, sao lưu & khôi phục' },
-  { key: 'guide',      label: 'Hướng dẫn',     Icon: IconBook,      group: 4, desc: 'Quy trình chuẩn, mẫu JSON & xử lý sự cố' },
+  { key: 'dashboard',  label: 'Tổng quan',        Icon: IconDashboard, group: 1, desc: 'Số liệu hệ thống, hạn mức API & cảnh báo đề trống' },
+  { key: 'exams',      label: 'Đề thi',           Icon: IconExam,      group: 2, desc: 'Quản lý, xuất JSON/CSV, ẩn/hiện và nhân bản đề' },
+  { key: 'create',     label: 'Tạo đề',           Icon: IconSparkle,   group: 2, desc: 'Tạo đề bằng AI, Import JSON hoặc tạo thủ công' },
+  { key: 'questions',  label: 'Câu hỏi',          Icon: IconQuestion,  group: 2, desc: 'Ngân hàng câu hỏi toàn hệ thống, sửa nhanh & lọc lỗi' },
+  { key: 'keys',       label: 'Key & Voucher',    Icon: IconKey,       group: 3, badge: 'key', desc: 'Phát hành Key GV PRO (999k/năm), HS VIP (299k/năm), Voucher & Credit' },
+  { key: 'pro-users',  label: 'VIP & PRO',        Icon: IconCrown,     group: 3, badge: 'pro', desc: 'Quản lý Giáo viên PRO (999k/năm) & Học sinh VIP (299k/năm)' },
+  { key: 'users',      label: 'Người dùng',       Icon: IconUsers,     group: 3, desc: 'Phân quyền, đồng bộ Firestore & Reset dùng thử GV' },
+  { key: 'finance',    label: 'Tài chính & Health', Icon: IconChart,   group: 3, desc: 'Doanh thu MRR/ARR, Sổ cái Credit AI & Kiểm tra sức khỏe máy chủ' },
+  { key: 'reports',    label: 'Báo lỗi & Góp ý',  Icon: IconBell,      group: 4, badge: 'reports', desc: 'Tiếp nhận, xử lý và phản hồi báo lỗi của học sinh & giáo viên' },
+  { key: 'audit',      label: 'Kiểm toán',        Icon: IconShield,    group: 4, desc: 'Nhật ký kiểm toán bất biến mọi thao tác nhạy cảm của Admin' },
+  { key: 'activity',   label: 'Hoạt động',        Icon: IconActivity,  group: 4, desc: 'Nhật ký làm bài của học sinh, phổ điểm & chi tiết câu' },
+  { key: 'settings',   label: 'Cài đặt',          Icon: IconSettings,  group: 4, desc: 'Bảng giá VIP/PRO, thông báo, bảo trì, sao lưu & khôi phục' },
+  { key: 'guide',      label: 'Hướng dẫn',        Icon: IconBook,      group: 4, desc: 'Quy trình chuẩn, mẫu JSON & xử lý sự cố' },
 ];
 
 const GROUP_TABS = {
   2: [
-    { key: 'exams',     label: 'Danh sách Đề thi',  Icon: IconExam },
-    { key: 'create',    label: 'Tạo & Import Đề',   Icon: IconSparkle },
-    { key: 'questions', label: 'Ngân hàng Câu hỏi', Icon: IconQuestion },
+    { key: 'exams',     label: 'Danh sách Đề thi',   Icon: IconExam },
+    { key: 'create',    label: 'Tạo & Import Đề',    Icon: IconSparkle },
+    { key: 'questions', label: 'Ngân hàng Câu hỏi',  Icon: IconQuestion },
   ],
   3: [
-    { key: 'keys',      label: 'Key & Voucher',     Icon: IconKey },
-    { key: 'pro-users', label: 'Thuê bao VIP/PRO',  Icon: IconCrown },
-    { key: 'users',     label: 'Tất cả Người dùng', Icon: IconUsers },
+    { key: 'keys',      label: 'Key & Voucher',      Icon: IconKey },
+    { key: 'pro-users', label: 'Thuê bao VIP/PRO',   Icon: IconCrown },
+    { key: 'users',     label: 'Tất cả Người dùng',  Icon: IconUsers },
+    { key: 'finance',   label: 'Tài chính & Health', Icon: IconChart },
   ],
   4: [
-    { key: 'activity',  label: 'Nhật ký Hoạt động', Icon: IconActivity },
-    { key: 'settings',  label: 'Cài đặt & Sao lưu', Icon: IconSettings },
-    { key: 'guide',     label: 'Hướng dẫn',         Icon: IconBook },
+    { key: 'reports',   label: 'Báo lỗi & Góp ý',    Icon: IconBell },
+    { key: 'audit',     label: 'Kiểm toán',          Icon: IconShield },
+    { key: 'activity',  label: 'Nhật ký Hoạt động',  Icon: IconActivity },
+    { key: 'settings',  label: 'Cài đặt & Sao lưu',  Icon: IconSettings },
+    { key: 'guide',     label: 'Hướng dẫn',          Icon: IconBook },
   ],
 };
 
-let cachedBadges = { key: null, pro: null };
+let cachedBadges = { key: null, pro: null, reports: null };
+const badgeListeners = new Set();
 export function setGlobalAdminBadges(next) {
   cachedBadges = { ...cachedBadges, ...next };
+  badgeListeners.forEach((fn) => fn(cachedBadges));
 }
 
 /* ============================================================
@@ -59,12 +67,24 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
   const { user } = useAuth();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
+  const [cmdIdx, setCmdIdx] = useState(0);
+  const [liveBadges, setLiveBadges] = useState(() => cachedBadges);
   const cmdInputRef = useRef(null);
 
+  useEffect(() => { setCmdIdx(0); }, [cmdQuery, cmdOpen]);
+
+  useEffect(() => {
+    const onBadge = (next) => setLiveBadges({ ...next });
+    badgeListeners.add(onBadge);
+    setLiveBadges({ ...cachedBadges });
+    return () => { badgeListeners.delete(onBadge); };
+  }, []);
+
   const mergedBadges = useMemo(() => ({
-    key: badges.key !== undefined ? badges.key : cachedBadges.key,
-    pro: badges.pro !== undefined ? badges.pro : cachedBadges.pro,
-  }), [badges]);
+    key: badges.key !== undefined ? badges.key : liveBadges.key,
+    pro: badges.pro !== undefined ? badges.pro : liveBadges.pro,
+    reports: badges.reports !== undefined ? badges.reports : liveBadges.reports,
+  }), [badges, liveBadges]);
 
   const items = useMemo(() => ADMIN_MENU.map((m) => ({
     key: m.key,
@@ -170,7 +190,7 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
           <nav className="ad-context-tabs" aria-label="Chuyển nhanh trong nhóm">
             {siblingTabs.map((t) => {
               const isOn = t.key === active;
-              const badgeVal = t.key === 'keys' ? mergedBadges.key : t.key === 'pro-users' ? mergedBadges.pro : null;
+              const badgeVal = t.key === 'keys' ? mergedBadges.key : t.key === 'pro-users' ? mergedBadges.pro : t.key === 'reports' ? mergedBadges.reports : null;
               return (
                 <button
                   key={t.key}
@@ -222,12 +242,18 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
                 value={cmdQuery}
                 onChange={(e) => setCmdQuery(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && cmdActions.length > 0) {
+                  if (e.key === 'ArrowDown' && cmdActions.length > 0) {
                     e.preventDefault();
-                    cmdActions[0].run();
+                    setCmdIdx((i) => (i + 1) % cmdActions.length);
+                  } else if (e.key === 'ArrowUp' && cmdActions.length > 0) {
+                    e.preventDefault();
+                    setCmdIdx((i) => (i - 1 + cmdActions.length) % cmdActions.length);
+                  } else if (e.key === 'Enter' && cmdActions.length > 0) {
+                    e.preventDefault();
+                    (cmdActions[cmdIdx] || cmdActions[0]).run();
                   }
                 }}
-                placeholder="Gõ tên trang hoặc chức năng cần mở (VD: tạo đề, key pro, sao lưu, người dùng)…"
+                placeholder="Gõ tên trang hoặc chức năng cần mở (VD: tạo đề, key pro, tài chính, kiểm toán, báo lỗi)…"
               />
               <button type="button" className="vt-icon-btn" onClick={() => setCmdOpen(false)} aria-label="Đóng">
                 <IconClose size={14} />
@@ -243,7 +269,8 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
                   <button
                     key={a.id}
                     type="button"
-                    className={'ad-cmd-item' + (idx === 0 && cmdQuery ? ' first' : '')}
+                    className={'ad-cmd-item' + (idx === cmdIdx ? ' first' : '')}
+                    onMouseEnter={() => setCmdIdx(idx)}
                     onClick={a.run}
                   >
                     <span className="ad-cmd-ico"><a.Icon size={17} /></span>

@@ -778,5 +778,63 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ===============================================================
+    // 19. USER REPORTS — Báo lỗi & Góp ý gửi trực tiếp tới Admin
+    //     Assumed Data Model:
+    //       id: string (required), uid: string (required, immutable == auth.uid),
+    //       userName: string, userEmail: string, kind: 'report'|'feedback',
+    //       category: string (1..100), rating: number (1..5),
+    //       content: string (1..3000), page: string,
+    //       status: 'Đã tiếp nhận'|'Đang xử lý'|'Đã giải quyết'|'Từ chối',
+    //       adminReply: string (<=2000), adminReplyAt: number, adminName: string,
+    //       createdAtMs: number (immutable), at: string
+    // ===============================================================
+    function isValidUserReportCreate() {
+      let d = request.resource.data;
+      return d.uid is string && d.uid == request.auth.uid
+        && d.content is string && d.content.size() >= 1 && d.content.size() <= 3000
+        && d.kind in ['report', 'feedback']
+        && d.status == 'Đã tiếp nhận'
+        && d.createdAtMs is number
+        && (!('adminReply' in d) || d.adminReply == '')
+        && (!('category' in d) || (d.category is string && d.category.size() <= 100));
+    }
+
+    function isValidUserReportUpdate() {
+      let d = request.resource.data;
+      return d.uid == resource.data.uid
+        && d.content == resource.data.content
+        && d.status in ['Đã tiếp nhận', 'Đang xử lý', 'Đã giải quyết', 'Từ chối']
+        && (!('adminReply' in d) || (d.adminReply is string && d.adminReply.size() <= 2000));
+    }
+
+    match /user_reports/{reportId} {
+      allow read: if signedIn() && (isAdmin() || resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && isValidUserReportCreate();
+      allow update: if isAdmin() && isValidUserReportUpdate();
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // 20. ADMIN AUDIT LOGS — Nhật ký kiểm toán quản trị (bất biến)
+    //     Assumed Data Model:
+    //       id: string, actorUid: string (== auth.uid), actorEmail: string,
+    //       actorName: string, action: string (1..64), target: string,
+    //       targetLabel: string, summary: string (1..500), createdAtMs: number
+    // ===============================================================
+    function isValidAdminAuditCreate() {
+      let d = request.resource.data;
+      return d.actorUid is string && d.actorUid == request.auth.uid
+        && d.action is string && d.action.size() >= 1 && d.action.size() <= 64
+        && d.summary is string && d.summary.size() >= 1 && d.summary.size() <= 500
+        && d.createdAtMs is number;
+    }
+
+    match /admin_audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && isValidAdminAuditCreate();
+      allow update, delete: if false;
+    }
+
   }
 }

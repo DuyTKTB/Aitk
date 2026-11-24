@@ -18,6 +18,10 @@ import CreateExam from './CreateExam.jsx';
 import GuidePage from './GuidePage.jsx';
 import KeyManager from './KeyManager.jsx';
 import ProUserManager from './ProUserManager.jsx';
+import ReportManager from './ReportManager.jsx';
+import FinanceHealthPage from './FinanceHealthPage.jsx';
+import AuditLogPage from './AuditLogPage.jsx';
+import { subscribeAdminReports, countOpenReports } from '../../lib/userReportsService.js';
 import '../../styles/dash-vitality.css';
 import '../../styles/teacher-ds.css';
 import '../../styles/admin-apple.css';
@@ -28,7 +32,7 @@ import '../../styles/admin-enhance.css';
 /* ============================================================
    ROUTING: hash = #admin/<sub>
    ============================================================ */
-const VIEWS = ['dashboard', 'exams', 'create', 'questions', 'keys', 'pro-users', 'users', 'activity', 'settings', 'guide'];
+const VIEWS = ['dashboard', 'exams', 'create', 'questions', 'keys', 'pro-users', 'users', 'finance', 'reports', 'audit', 'activity', 'settings', 'guide'];
 
 function parseHash() {
   const h = (window.location.hash || '').replace(/^#/, '');
@@ -142,7 +146,17 @@ function AdminApp() {
       });
     }).catch(() => {});
 
-    return () => { alive = false; };
+    // Lắng nghe realtime số báo lỗi/góp ý chưa xử lý cho badge Admin
+    const unsubReports = subscribeAdminReports(
+      (list) => {
+        if (!alive) return;
+        const open = countOpenReports(list);
+        setGlobalAdminBadges({ reports: open > 0 ? open : null });
+      },
+      () => {}
+    );
+
+    return () => { alive = false; unsubReports?.(); };
   }, []);
 
   const openExam = (id) => navigate('exams', { editId: id });
@@ -165,6 +179,9 @@ function AdminApp() {
         {view === 'keys'       && <KeyManager />}
         {view === 'pro-users'  && <ProUserManager />}
         {view === 'users'      && <UserManager />}
+        {view === 'finance'    && <FinanceHealthPage onNavigate={navigate} />}
+        {view === 'reports'    && <ReportManager />}
+        {view === 'audit'      && <AuditLogPage />}
         {view === 'activity'   && <ActivityPage />}
         {view === 'settings'   && <SettingsPage />}
         {view === 'guide'      && <GuidePage onNavigate={navigate} />}

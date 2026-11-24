@@ -1,21 +1,34 @@
 /* ============================================================
-   focusAudioEngine.js — Bộ phát âm thanh tập trung Web Audio API
-   - Chạy hoàn toàn offline, 0 file MP3 nặng, chuyển kênh mượt
-   - 5 kênh chuẩn học tập:
+   focusAudioEngine.js — Bộ trộn Âm thanh Tập trung Web Audio API (Moodist-Grade)
+   - Chạy hoàn toàn offline, 0 file MP3 nặng, hỗ trợ MIX ĐA LỚP đồng thời
+   - 8 kênh chuẩn học tập:
      1. binaural40 — Sóng 40Hz Gamma Binaural (200Hz trái / 240Hz phải)
-     2. rain       — Tiếng mưa rơi dịu tai (Pink noise + lọc thông thấp)
-     3. brown      — Thư viện đêm (Brown noise ấm khử ồn)
-     4. waves      — Sóng biển nhịp thở (LFO chậm 0.12Hz)
-     5. lofi       — Hợp âm Ambient êm dịu (Cmaj9 sine/triangle pad)
+     2. alpha10    — Sóng 10Hz Alpha Thư giãn ghi nhớ sâu (210Hz / 220Hz)
+     3. rain       — Tiếng mưa rơi dịu tai (Pink noise + lọc thông thấp)
+     4. brown      — Thư viện đêm (Brown noise ấm khử ồn)
+     5. waves      — Sóng biển nhịp thở (LFO chậm 0.12Hz)
+     6. lofi       — Hợp âm Ambient êm dịu (Cmaj9 sine/triangle pad)
+     7. cafe       — Quán cà phê học bài (Bandpass brown/pink noise ấm)
+     8. fireplace  — Lò sưởi ấm áp (Lowpass crackle noise)
    ============================================================ */
 
 export const FOCUS_SOUND_TRACKS = [
   { id: 'none', label: 'Tắt tiếng', short: 'Tắt' },
   { id: 'binaural40', label: '40Hz Binaural', short: '40Hz Focus' },
+  { id: 'alpha10', label: '10Hz Alpha', short: '10Hz Nhớ sâu' },
   { id: 'rain', label: 'Mưa rơi', short: 'Mưa rơi' },
   { id: 'brown', label: 'Thư viện đêm', short: 'Thư viện' },
   { id: 'waves', label: 'Sóng biển', short: 'Sóng biển' },
   { id: 'lofi', label: 'Ambient Pad', short: 'Ambient' },
+  { id: 'cafe', label: 'Quán cà phê', short: 'Cà phê' },
+  { id: 'fireplace', label: 'Lò sưởi ấm', short: 'Lò sưởi' },
+];
+
+export const FOCUS_MIX_PRESETS = [
+  { id: 'deep_exam', label: 'Đêm ôn thi sâu', layers: { rain: 0.45, binaural40: 0.28, brown: 0.2 } },
+  { id: 'cozy_library', label: 'Thư viện mưa', layers: { rain: 0.4, fireplace: 0.35, lofi: 0.3 } },
+  { id: 'alpha_memory', label: 'Ghi nhớ Alpha', layers: { waves: 0.45, alpha10: 0.3, lofi: 0.25 } },
+  { id: 'cafe_sprint', label: 'Cà phê giải đề', layers: { cafe: 0.5, rain: 0.25 } },
 ];
 
 class FocusAudioEngine {
@@ -23,6 +36,7 @@ class FocusAudioEngine {
     this.ctx = null;
     this.masterGain = null;
     this.nodes = [];
+    this.layers = new Map(); // trackId -> { gain, nodes, volume }
     this.activeId = 'none';
     this.volume = 0.35;
   }
@@ -78,6 +92,14 @@ class FocusAudioEngine {
       try { n.disconnect?.(); } catch { /* ignore */ }
     });
     this.nodes = [];
+    this.layers.forEach((layer) => {
+      layer.nodes.forEach((n) => {
+        try { n.stop?.(); } catch { /* ignore */ }
+        try { n.disconnect?.(); } catch { /* ignore */ }
+      });
+      try { layer.gain?.disconnect?.(); } catch { /* ignore */ }
+    });
+    this.layers.clear();
     this.activeId = 'none';
   }
 
@@ -88,25 +110,19 @@ class FocusAudioEngine {
     }
   }
 
-  play(trackId) {
-    this.stop();
-    if (!trackId || trackId === 'none') return;
-    const ctx = this._ensureContext();
-    if (!ctx || !this.masterGain) return;
-
-    this.activeId = trackId;
-    const out = this.masterGain;
-
-    if (trackId === 'binaural40') {
-      // 200Hz left ear, 240Hz right ear => 40Hz Gamma binaural beat
+  _buildTrackNodes(ctx, trackId, out) {
+    const created = [];
+    if (trackId === 'binaural40' || trackId === 'alpha10') {
+      const baseFreq = trackId === 'alpha10' ? 210 : 200;
+      const beatHz = trackId === 'alpha10' ? 10 : 40;
       const oscL = ctx.createOscillator();
       const oscR = ctx.createOscillator();
       const gainL = ctx.createGain();
       const gainR = ctx.createGain();
       oscL.type = 'sine';
       oscR.type = 'sine';
-      oscL.frequency.value = 200;
-      oscR.frequency.value = 240;
+      oscL.frequency.value = baseFreq;
+      oscR.frequency.value = baseFreq + beatHz;
       gainL.gain.value = 0.22;
       gainR.gain.value = 0.22;
 
@@ -117,54 +133,63 @@ class FocusAudioEngine {
         panR.pan.value = 0.9;
         oscL.connect(gainL).connect(panL).connect(out);
         oscR.connect(gainR).connect(panR).connect(out);
-        this.nodes.push(panL, panR);
+        created.push(panL, panR);
       } else {
         oscL.connect(gainL).connect(out);
         oscR.connect(gainR).connect(out);
       }
       oscL.start();
       oscR.start();
-      this.nodes.push(oscL, oscR, gainL, gainR);
-      return;
+      created.push(oscL, oscR, gainL, gainR);
+      return created;
     }
 
-    if (trackId === 'rain' || trackId === 'brown' || trackId === 'waves') {
+    if (trackId === 'rain' || trackId === 'brown' || trackId === 'waves' || trackId === 'cafe' || trackId === 'fireplace') {
       const src = ctx.createBufferSource();
-      src.buffer = this._createNoiseBuffer(ctx, trackId === 'brown' ? 'brown' : 'pink');
+      const isBrown = trackId === 'brown' || trackId === 'fireplace';
+      src.buffer = this._createNoiseBuffer(ctx, isBrown ? 'brown' : 'pink');
       src.loop = true;
 
       const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = trackId === 'rain' ? 1100 : trackId === 'brown' ? 420 : 650;
+      if (trackId === 'cafe') {
+        filter.type = 'bandpass';
+        filter.frequency.value = 720;
+        filter.Q.value = 0.7;
+      } else {
+        filter.type = 'lowpass';
+        filter.frequency.value =
+          trackId === 'rain' ? 1100
+          : trackId === 'fireplace' ? 520
+          : trackId === 'brown' ? 420
+          : 650;
+      }
 
       const gain = ctx.createGain();
-      gain.gain.value = trackId === 'brown' ? 0.55 : 0.45;
-
+      gain.gain.value = trackId === 'brown' ? 0.55 : trackId === 'fireplace' ? 0.5 : 0.45;
       src.connect(filter).connect(gain).connect(out);
 
-      if (trackId === 'waves') {
+      if (trackId === 'waves' || trackId === 'fireplace') {
         const lfo = ctx.createOscillator();
         const lfoGain = ctx.createGain();
-        lfo.frequency.value = 0.12;
-        lfoGain.gain.value = 0.22;
+        lfo.frequency.value = trackId === 'fireplace' ? 1.8 : 0.12;
+        lfoGain.gain.value = trackId === 'fireplace' ? 0.14 : 0.22;
         lfo.connect(lfoGain).connect(gain.gain);
         lfo.start();
-        this.nodes.push(lfo, lfoGain);
+        created.push(lfo, lfoGain);
       }
 
       src.start();
-      this.nodes.push(src, filter, gain);
-      return;
+      created.push(src, filter, gain);
+      return created;
     }
 
     if (trackId === 'lofi') {
-      // Warm Cmaj9 soft ambient chord pad
       const freqs = [130.81, 196.0, 246.94, 293.66];
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
       filter.frequency.value = 520;
       filter.connect(out);
-      this.nodes.push(filter);
+      created.push(filter);
 
       freqs.forEach((f, idx) => {
         const osc = ctx.createOscillator();
@@ -174,9 +199,67 @@ class FocusAudioEngine {
         g.gain.value = 0.09;
         osc.connect(g).connect(filter);
         osc.start();
-        this.nodes.push(osc, g);
+        created.push(osc, g);
       });
     }
+    return created;
+  }
+
+  /** Bật/tắt 1 lớp âm thanh riêng lẻ (Moodist Multi-Layer Mixer) */
+  toggleLayer(trackId, layerVolume = 0.45) {
+    if (!trackId || trackId === 'none') {
+      this.stop();
+      return false;
+    }
+    if (this.layers.has(trackId)) {
+      const existing = this.layers.get(trackId);
+      existing.nodes.forEach((n) => {
+        try { n.stop?.(); } catch { /* ignore */ }
+        try { n.disconnect?.(); } catch { /* ignore */ }
+      });
+      try { existing.gain?.disconnect?.(); } catch { /* ignore */ }
+      this.layers.delete(trackId);
+      this.activeId = this.layers.size > 0 ? [...this.layers.keys()][0] : 'none';
+      return false;
+    }
+
+    const ctx = this._ensureContext();
+    if (!ctx || !this.masterGain) return false;
+    const layerGain = ctx.createGain();
+    layerGain.gain.value = Math.max(0, Math.min(1, Number(layerVolume) || 0.45));
+    layerGain.connect(this.masterGain);
+    const created = this._buildTrackNodes(ctx, trackId, layerGain);
+    this.layers.set(trackId, { gain: layerGain, nodes: created, volume: layerGain.gain.value });
+    this.activeId = trackId;
+    return true;
+  }
+
+  setLayerVolume(trackId, vol) {
+    const layer = this.layers.get(trackId);
+    if (!layer || !this.ctx) return;
+    const v = Math.max(0, Math.min(1, Number(vol) || 0));
+    layer.volume = v;
+    layer.gain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.06);
+  }
+
+  applyPreset(presetId) {
+    const preset = FOCUS_MIX_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return [];
+    this.stop();
+    Object.entries(preset.layers).forEach(([tid, vol]) => {
+      this.toggleLayer(tid, vol);
+    });
+    return this.getActiveLayers();
+  }
+
+  getActiveLayers() {
+    return [...this.layers.entries()].map(([id, l]) => ({ id, volume: l.volume }));
+  }
+
+  play(trackId) {
+    this.stop();
+    if (!trackId || trackId === 'none') return;
+    this.toggleLayer(trackId, 0.7);
   }
 }
 

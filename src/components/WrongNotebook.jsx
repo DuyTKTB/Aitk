@@ -19,6 +19,7 @@ import {
 } from '../lib/studentAnalytics.js';
 import { topicName, UNCLASSIFIED } from '../data/chemTopics.js';
 import { useCurrentSubject } from './SubjectSwitcher.jsx';
+import { exportToAnkiDeckTsv } from '../lib/lmsQuizFormats.js';
 
 // Import CSS chuan xac
 import './notebook-v2.css';
@@ -493,6 +494,39 @@ export default function WrongNotebook() {
     showToast('Đã tải backup');
   };
 
+  const exportAnki = () => {
+    if (!filtered.length) {
+      showToast('Chưa có câu nào để xuất sang Anki', 'err');
+      return;
+    }
+    const questions = filtered.map((item, idx) => {
+      const q = item.question || {};
+      const ans = Array.isArray(q.answers) ? q.answers : [];
+      const correctIdx = ans.findIndex((a) => a.is_correct);
+      return {
+        num: idx + 1,
+        type: ans.length >= 2 ? 'single_choice' : 'short_answer',
+        q: q.content || '',
+        options: ans.map((a) => a.content || ''),
+        correct: correctIdx >= 0 ? correctIdx : 0,
+        answer: ans[correctIdx]?.content || '',
+        explain: q.explanation || '',
+        topic: q.topic || '',
+      };
+    });
+    const tsv = exportToAnkiDeckTsv({ title: 'So-tay-loi-sai-ELEC-AI', subject: filterSubject === 'all' ? 'KHTN' : filterSubject, questions });
+    const blob = new Blob([tsv], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `So-tay-loi-sai-Anki-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`Đã xuất ${questions.length} thẻ ôn tập chuẩn Anki (.txt)!`);
+  };
+
   /* ============ QUIZ MODE ============ */
   const startQuiz = () => {
     const pool = filtered.filter((x) => x.question?.answers?.length > 0);
@@ -601,6 +635,9 @@ export default function WrongNotebook() {
           </button>
           <button type="button" className="nb-btn nb-btn-ghost" onClick={exportJSON} title="Tải backup JSON">
             <IcoDownload size={16} /><span>Backup</span>
+          </button>
+          <button type="button" className="nb-btn nb-btn-ghost" onClick={exportAnki} disabled={filtered.length === 0} title="Xuất câu sai sang thẻ nhớ Anki / AnkiDroid (FSRS)">
+            <IcoDownload size={16} /><span>Xuất Anki</span>
           </button>
           <button type="button" className="nb-btn nb-btn-primary" onClick={start5MinGapSprint} disabled={filtered.length === 0} title="Tạo nhanh đề 5 câu từ các lỗi sai nhiều nhất trong 5 phút" style={{ background: 'linear-gradient(135deg, #e11d48, #f59e0b)', borderColor: 'transparent', color: '#fff' }}>
             <IcoFire size={16} /><span>Đề Vá Lỗi 5 Phút</span>

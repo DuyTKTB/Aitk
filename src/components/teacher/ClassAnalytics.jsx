@@ -15,11 +15,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildClassAnalytics, masteryLabel, rateTone, MASTERY_PARTS } from '../../lib/teacherAnalytics.js';
+import { analyzeExamPsychometrics } from '../../lib/examPsychometrics.js';
+import { detectExamCollusion } from '../../lib/examCollusionDetector.js';
 import { getExamsByClass, getSubmissionsByExam } from '../../lib/classroom.js';
 import { computeStudentPeriodGrades, classifyExamGradeColumn, exportStyledWorkbook } from '../../lib/excelExport.js';
 import { ElecFlaskBrandSvg, ElecMascot } from './ElecBrandMark.jsx';
 import { IconClose } from '../Icons.jsx';
 import '../../styles/teacher-analytics.css';
+import '../../styles/teacher-pro-studio.css';
 
 /* Cache 5 phút: đổi lớp qua lại không phải tải lại toàn bộ đề + bài nộp */
 const FEED_TTL = 5 * 60 * 1000;
@@ -375,7 +378,9 @@ function TrendChart({ series = [], compareSeries = [], chartType = 'bar', primar
   );
 }
 
-function StudentDrawer({ student, onClose }) {
+function StudentDrawer({ student, classNameLabel = '', onClose }) {
+  const [copiedSlip, setCopiedSlip] = useState(false);
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -384,6 +389,51 @@ function StudentDrawer({ student, onClose }) {
 
   if (!student) return null;
   const meta = masteryLabel(student.mastery);
+  const avg10 = student.count > 0 ? Math.round((student.accuracy || 0) / 10 * 10) / 10 : null;
+  const weakList = (student.topics || []).filter((t) => t.rate < 60).slice(0, 3);
+  const strongList = [...(student.topics || [])].sort((a, b) => b.rate - a.rate).filter((t) => t.rate >= 75).slice(0, 2);
+
+  const buildParentSlipText = () => {
+    const lines = [
+      `PHIẾU BÁO TÌNH HÌNH HỌC TẬP — ${classNameLabel ? `LỚP ${classNameLabel.toUpperCase()}` : 'ELEC AI'}`,
+      `Học sinh: ${student.name}`,
+      `Số bài đã hoàn thành: ${student.count} bài`,
+      `Điểm trung bình: ${avg10 !== null ? `${avg10}/10 (${student.accuracy}%)` : 'Chưa có bài nộp'}`,
+      `Chỉ số năng lực (Mastery): ${student.mastery !== null ? `${student.mastery}/100 — ${meta.label}` : 'Đang cập nhật'}`,
+      strongList.length ? `Điểm mạnh: ${strongList.map((t) => `${t.topic} (${t.rate}%)`).join(', ')}` : '',
+      weakList.length ? `Kiến thức cần ôn thêm: ${weakList.map((t) => `${t.topic} (${t.rate}%)`).join(', ')}` : 'Không có lỗ hổng kiến thức nổi bật.',
+      `Nhận xét GV: ${avg10 === null ? 'Kính mong quý phụ huynh nhắc em hoàn thành bài tập đúng hạn.' : avg10 >= 8 ? 'Em học tập rất tốt, nắm chắc kiến thức, tiếp tục phát huy.' : avg10 >= 6.5 ? 'Em có tiến bộ tốt, cần luyện thêm câu vận dụng để bứt phá.' : 'Kính mong quý phụ huynh đồng hành nhắc em ôn kỹ các chuyên đề còn yếu trên.'}`,
+    ].filter(Boolean);
+    return lines.join('\n');
+  };
+
+  const handleCopyParentZalo = async () => {
+    try {
+      await navigator.clipboard.writeText(buildParentSlipText());
+      setCopiedSlip(true);
+      setTimeout(() => setCopiedSlip(false), 2200);
+    } catch { /* ignore */ }
+  };
+
+  const handlePrintParentSlip = () => {
+    const win = window.open('', '_blank', 'width=760,height=640');
+    if (!win) return;
+    const textHtml = buildParentSlipText().replace(/\n/g, '<br/>');
+    win.document.write(`<!doctype html><html><head><title>Phiếu báo học tập - ${student.name}</title></head><body style="font-family:system-ui,sans-serif;padding:32px;line-height:1.7;color:#0f172a;">
+      <div style="max-width:620px;margin:0 auto;border:2px solid #2563eb;border-radius:16px;padding:26px 28px;">
+        <div style="font-size:12px;font-weight:800;color:#2563eb;letter-spacing:.06em;text-transform:uppercase;">ELEC AI · BÁO CÁO KẾT QUẢ HỌC TẬP</div>
+        <h2 style="margin:6px 0 14px;">${student.name}</h2>
+        <div style="font-size:14.5px;">${textHtml}</div>
+        <div style="margin-top:26px;display:flex;justify-content:space-between;font-size:13px;color:#64748b;">
+          <span>Ngày in: ${new Date().toLocaleDateString('vi-VN')}</span>
+          <span>Giáo viên phụ trách ký tên</span>
+        </div>
+      </div>
+    </body></html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => win.print(), 250);
+  };
 
   return (
     <div className="ta-drawer-backdrop" onClick={onClose} role="presentation">
@@ -407,6 +457,15 @@ function StudentDrawer({ student, onClose }) {
         <div className={`ta-drawer-score tone-${meta.tone}`}>
           <strong>{student.mastery === null ? '—' : student.mastery}</strong>
           <span>{meta.label}</span>
+        </div>
+
+        <div className="tps-parent-actions">
+          <button type="button" className="ta-btn primary" style={{ flex: 1 }} onClick={handleCopyParentZalo}>
+            {copiedSlip ? 'Đã copy gửi Zalo PH!' : 'Copy phiếu gửi Zalo PH'}
+          </button>
+          <button type="button" className="ta-btn" onClick={handlePrintParentSlip}>
+            In phiếu A4
+          </button>
         </div>
 
         {student.mastery === null && (
@@ -550,6 +609,7 @@ export default function ClassAnalytics({
   const [studentFilter, setStudentFilter] = useState('all'); // 'all' | 'risk' | 'nosub' | 'good'
   const [studentSort, setStudentSort] = useState('mastery-asc'); // 'mastery-asc' | 'mastery-desc' | 'acc-desc' | 'subs-desc'
   const [studentView, setStudentView] = useState('list'); // 'list' | 'grid'
+  const [psychoExamId, setPsychoExamId] = useState('');
 
   useEffect(() => {
     if (!classId && classes.length) setClassId(classes[0].id);
@@ -788,6 +848,66 @@ export default function ClassAnalytics({
   );
 
   const heatTopics = useMemo(() => (data ? data.classTopics.slice(0, 10) : []), [data]);
+
+  /* Phân tích câu hỏi chuẩn Khảo thí CTT (Cronbach's Alpha, p, D, r_pb, Distractor) */
+  const psychoExams = useMemo(() => {
+    const base = feedExams.length ? feedExams : exams.filter((e) => e.classId === classId);
+    return base.filter((e) => Array.isArray(e?.questions) && e.questions.length > 0);
+  }, [feedExams, exams, classId]);
+
+  const activePsychoExam = useMemo(() => {
+    if (!psychoExams.length) return null;
+    return psychoExams.find((e) => e.id === psychoExamId) || psychoExams[0];
+  }, [psychoExams, psychoExamId]);
+
+  const psychoReport = useMemo(() => {
+    if (!activePsychoExam) return null;
+    const subs = filteredSubsMap[activePsychoExam.id] || [];
+    return analyzeExamPsychometrics(activePsychoExam, subs);
+  }, [activePsychoExam, filteredSubsMap]);
+
+  const collusionReport = useMemo(() => {
+    if (!activePsychoExam) return null;
+    const subs = filteredSubsMap[activePsychoExam.id] || [];
+    return detectExamCollusion(activePsychoExam, subs);
+  }, [activePsychoExam, filteredSubsMap]);
+
+  const handleExportPsychometricsExcel = useCallback(async () => {
+    if (!psychoReport || !psychoReport.items.length) return;
+    try {
+      await exportStyledWorkbook({
+        fileName: `phan-tich-khao-thi-CTT-${(psychoReport.examTitle || 'de-thi').replace(/[^a-zA-Z0-9\u00C0-\u1EF9_-]+/g, '_')}.xlsx`,
+        sheets: [{
+          name: 'Phân tích CTT',
+          mascot: 'think',
+          title: `PHÂN TÍCH KHẢO THÍ CHUẨN CTT — ${(psychoReport.examTitle || '').toUpperCase()}`,
+          subtitle: `N = ${psychoReport.submissionCount} bài nộp · K = ${psychoReport.questionCount} câu · Cronbach's α = ${psychoReport.cronbachAlpha ?? 'N/A'} (${psychoReport.alphaMeta.label})`,
+          columns: [
+            { header: 'Câu', key: 'num', align: 'center', width: 8 },
+            { header: 'Nội dung câu hỏi', key: 'question', align: 'left', width: 42, wrapText: true },
+            { header: 'Độ khó (p)', key: 'difficulty', align: 'center', width: 12 },
+            { header: '% Đúng', key: 'difficultyPct', align: 'center', width: 10 },
+            { header: 'Phân biệt (D)', key: 'discrimination', align: 'center', width: 14 },
+            { header: 'Tương quan r_pb', key: 'rpb', align: 'center', width: 15 },
+            { header: 'Nhóm cao/thấp', key: 'hl', align: 'center', width: 16 },
+            { header: 'Đánh giá khảo thí', key: 'quality', align: 'center', isScoreBand: true, width: 24 },
+          ],
+          rows: psychoReport.items.map((it) => ({
+            num: it.number,
+            question: it.question,
+            difficulty: it.difficulty,
+            difficultyPct: `${it.difficultyPct}%`,
+            discrimination: it.discrimination ?? '—',
+            rpb: it.pointBiserial ?? '—',
+            hl: `${it.upperPct}% / ${it.lowerPct}%`,
+            quality: it.quality.label,
+          })),
+        }],
+      });
+    } catch (err) {
+      setExportError(err?.message || 'Không xuất được báo cáo phân tích câu hỏi.');
+    }
+  }, [psychoReport]);
 
   /* Phổ điểm 4 mức độ chuẩn Bộ GD&ĐT (Thang điểm 10, tính theo từng học sinh) */
   const scoreDist = useMemo(() => {
@@ -1577,6 +1697,15 @@ export default function ClassAnalytics({
         >
           Bản đồ nhiệt &amp; Ma trận ({heatTopics.length} chương)
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'psychometrics'}
+          className={`ta-subtab${activeTab === 'psychometrics' ? ' active' : ''}`}
+          onClick={() => setActiveTab('psychometrics')}
+        >
+          Phân tích đề (CTT){psychoReport?.suspectKeyCount ? ` · ${psychoReport.suspectKeyCount} nghi lỗi` : ''}
+        </button>
       </div>
 
       {/* TAB 1: BIỂU ĐỒ & TỔNG QUAN (GỌN 2 CỘT) */}
@@ -1998,7 +2127,323 @@ export default function ClassAnalytics({
         </>
       )}
 
-      {drawerStudent && <StudentDrawer student={drawerStudent} onClose={() => setDrawerId(null)} />}
+      {/* TAB 4: PHÂN TÍCH KHẢO THÍ CHUẨN CTT (CRONBACH'S ALPHA, ĐỘ KHÓ p, ĐỘ PHÂN BIỆT D, PHƯƠNG ÁN NHIỄU) */}
+      {activeTab === 'psychometrics' && (
+        <div className="ta-card">
+          <div className="ta-card-head" style={{ flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h3>Phân tích chất lượng đề chuẩn Khảo thí (CTT · Moodle Standard)</h3>
+              <span className="ta-card-sub">
+                Đo độ tin cậy Cronbach&apos;s α, chỉ số độ khó (p), độ phân biệt (D / r_pb) và hiệu quả phương án nhiễu A/B/C/D
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {psychoExams.length > 0 && (
+                <select
+                  className="ta-select"
+                  value={activePsychoExam?.id || ''}
+                  onChange={(e) => setPsychoExamId(e.target.value)}
+                  aria-label="Chọn đề thi để phân tích CTT"
+                  style={{ maxWidth: 280 }}
+                >
+                  {psychoExams.map((ex) => {
+                    const cnt = (filteredSubsMap[ex.id] || []).length;
+                    return (
+                      <option key={ex.id} value={ex.id}>
+                        {ex.title || 'Đề kiểm tra'} ({cnt} bài nộp)
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
+              {psychoReport?.items?.length > 0 && (
+                <button type="button" className="ta-btn" onClick={handleExportPsychometricsExcel}>
+                  <IcoDownload /> Xuất Excel CTT
+                </button>
+              )}
+            </div>
+          </div>
+
+          {!psychoReport || psychoReport.submissionCount === 0 ? (
+            <p className="ta-note">
+              Đề này chưa có bài nộp nào trong khoảng thời gian đã chọn. Khi học sinh nộp bài, hệ thống tự động tính Cronbach&apos;s α, độ khó p và độ phân biệt D cho từng câu.
+            </p>
+          ) : (
+            <>
+              <div className="ta-kpis" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', marginBottom: 16 }}>
+                <Kpi
+                  label="Độ tin cậy Cronbach's α"
+                  value={psychoReport.cronbachAlpha !== null ? psychoReport.cronbachAlpha.toFixed(2) : '—'}
+                  hint={`${psychoReport.alphaMeta.label} · ${psychoReport.submissionCount} bài nộp`}
+                  tone={psychoReport.alphaMeta.tone === 'na' ? undefined : psychoReport.alphaMeta.tone}
+                />
+                <Kpi
+                  label="Độ khó trung bình (p)"
+                  value={psychoReport.meanDifficulty !== null ? psychoReport.meanDifficulty.toFixed(2) : '—'}
+                  hint="Chuẩn tốt: 0.30 – 0.80"
+                  tone={psychoReport.meanDifficulty >= 0.3 && psychoReport.meanDifficulty <= 0.8 ? 'good' : 'mid'}
+                />
+                <Kpi
+                  label="Độ phân biệt TB (D)"
+                  value={psychoReport.meanDiscrimination !== null ? psychoReport.meanDiscrimination.toFixed(2) : '—'}
+                  hint="Nhóm cao 27% − thấp 27% (≥0.30 tốt)"
+                  tone={psychoReport.meanDiscrimination !== null ? (psychoReport.meanDiscrimination >= 0.3 ? 'ex' : psychoReport.meanDiscrimination >= 0.15 ? 'good' : 'mid') : undefined}
+                />
+                <Kpi
+                  label="Câu cần rà soát"
+                  value={psychoReport.flaggedCount}
+                  unit={`/${psychoReport.questionCount}`}
+                  hint={psychoReport.suspectKeyCount > 0 ? `${psychoReport.suspectKeyCount} câu phân biệt âm (nghi sai đáp án!)` : 'Không có câu phân biệt âm'}
+                  tone={psychoReport.suspectKeyCount > 0 ? 'bad' : psychoReport.flaggedCount > 0 ? 'mid' : 'ex'}
+                />
+              </div>
+
+              {/* BIỂU ĐỒ TỌA ĐỘ 4 VÙNG KHẢO THÍ: ĐỘ KHÓ (p) × ĐỘ PHÂN BIỆT (D) */}
+              {psychoReport.items.some((it) => it.discrimination !== null) && (
+                <div className="tps-ctt-scatter-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+                    <strong style={{ fontSize: '0.86rem' }}>Biểu đồ 4 vùng Khảo thí: Độ khó (p) × Độ phân biệt (D)</strong>
+                    <div style={{ display: 'flex', gap: 10, fontSize: '0.72rem', fontWeight: 700, flexWrap: 'wrap' }}>
+                      <span style={{ color: '#059669' }}>● Câu chuẩn tốt</span>
+                      <span style={{ color: '#2563eb' }}>● Đạt yêu cầu</span>
+                      <span style={{ color: '#d97706' }}>● Quá dễ / Quá khó / Kém</span>
+                      <span style={{ color: '#dc2626' }}>● Nghi sai đáp án (D &lt; 0)</span>
+                    </div>
+                  </div>
+                  <svg viewBox="0 0 640 210" style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="Biểu đồ Độ khó và Độ phân biệt câu hỏi">
+                    {/* Vùng chuẩn khảo thí (p: 0.25..0.85, D: 0.30..1.0) */}
+                    <rect x={48 + 0.25 * 560} y={16} width={0.6 * 560} height={Math.round(((1 - 0.3) / 1.5) * 162)} fill="rgba(16,185,129,0.1)" rx="4" />
+                    {/* Vùng báo động đỏ (D < 0) */}
+                    <rect x={48} y={16 + Math.round((1 / 1.5) * 162)} width={560} height={Math.round((0.5 / 1.5) * 162)} fill="rgba(239,68,68,0.08)" rx="4" />
+                    {/* Đường D = 0 */}
+                    <line x1={48} y1={16 + Math.round((1 / 1.5) * 162)} x2={608} y2={16 + Math.round((1 / 1.5) * 162)} stroke="#ef4444" strokeDasharray="4 4" strokeWidth="1.2" />
+                    {/* Đường D = 0.30 */}
+                    <line x1={48} y1={16 + Math.round((0.7 / 1.5) * 162)} x2={608} y2={16 + Math.round((0.7 / 1.5) * 162)} stroke="#10b981" strokeDasharray="4 4" strokeWidth="1" />
+                    {/* Khung trục */}
+                    <line x1={48} y1={16} x2={48} y2={178} stroke="currentColor" opacity="0.25" />
+                    <line x1={48} y1={178} x2={608} y2={178} stroke="currentColor" opacity="0.25" />
+                    {/* Nhãn trục Y */}
+                    <text x="42" y="22" textAnchor="end" fontSize="10" fill="currentColor" opacity="0.65">+1.0</text>
+                    <text x="42" y={16 + Math.round((0.7 / 1.5) * 162) + 3} textAnchor="end" fontSize="10" fill="#059669" fontWeight="700">+0.3</text>
+                    <text x="42" y={16 + Math.round((1 / 1.5) * 162) + 3} textAnchor="end" fontSize="10" fill="#dc2626" fontWeight="700">0.0</text>
+                    <text x="42" y="178" textAnchor="end" fontSize="10" fill="currentColor" opacity="0.65">-0.5</text>
+                    {/* Nhãn trục X */}
+                    <text x="48" y="196" fontSize="10" fill="currentColor" opacity="0.65">0.0 (Rất khó)</text>
+                    <text x="328" y="196" textAnchor="middle" fontSize="10" fill="currentColor" opacity="0.7" fontWeight="700">Độ khó p = 0.50</text>
+                    <text x="608" y="196" textAnchor="end" fontSize="10" fill="currentColor" opacity="0.65">1.0 (Rất dễ)</text>
+                    {/* Các chấm câu hỏi */}
+                    {psychoReport.items.map((it) => {
+                      if (it.discrimination === null) return null;
+                      const cx = 48 + Math.max(0, Math.min(1, it.difficulty)) * 560;
+                      const clampedD = Math.max(-0.5, Math.min(1, it.discrimination));
+                      const cy = 16 + ((1 - clampedD) / 1.5) * 162;
+                      const fill = it.quality.tone === 'ex' ? '#10b981' : it.quality.tone === 'good' ? '#2563eb' : it.quality.tone === 'bad' ? '#ef4444' : '#f59e0b';
+                      return (
+                        <g key={it.index}>
+                          <circle cx={cx} cy={cy} r="6.5" fill={fill} fillOpacity="0.88" stroke="#ffffff" strokeWidth="1.6">
+                            <title>{`Câu #${it.number}: p=${it.difficulty.toFixed(2)} (${it.difficultyPct}% đúng), D=${it.discrimination.toFixed(2)} — ${it.quality.label}\n${it.question}`}</title>
+                          </circle>
+                          <text x={cx} y={cy + 3} textAnchor="middle" fontSize="8" fontWeight="800" fill="#ffffff" pointerEvents="none">
+                            {it.number}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+              )}
+
+              <div className="ta-scroll">
+                <table className="ta-compare-table" style={{ minWidth: 780 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 54 }}>Câu</th>
+                      <th>Nội dung câu hỏi</th>
+                      <th className="num" style={{ width: 120 }}>Độ khó (p)</th>
+                      <th className="num" style={{ width: 115 }}>Phân biệt (D)</th>
+                      <th className="num" style={{ width: 92 }}>r_pb</th>
+                      <th style={{ width: 210 }}>Phân bố phương án</th>
+                      <th style={{ width: 170 }}>Đánh giá</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {psychoReport.items.map((it) => (
+                      <tr key={it.index}>
+                        <td><strong>#{it.number}</strong></td>
+                        <td style={{ maxWidth: 280 }}>
+                          <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600 }} title={it.question}>
+                            {it.question}
+                          </div>
+                          <small style={{ color: 'var(--mut, #64748b)', fontSize: '0.72rem' }}>
+                            Cao 27%: {it.upperPct}% đúng · Thấp 27%: {it.lowerPct}% đúng
+                          </small>
+                        </td>
+                        <td className="num">
+                          <b>{it.difficulty.toFixed(2)}</b> <small>({it.difficultyPct}%)</small>
+                        </td>
+                        <td className="num" style={{ color: it.discrimination !== null && it.discrimination < 0 ? '#dc2626' : it.discrimination >= 0.3 ? '#059669' : undefined, fontWeight: 700 }}>
+                          {it.discrimination !== null ? (it.discrimination >= 0 ? `+${it.discrimination.toFixed(2)}` : it.discrimination.toFixed(2)) : '—'}
+                        </td>
+                        <td className="num" style={{ color: it.pointBiserial !== null && it.pointBiserial < 0 ? '#dc2626' : undefined }}>
+                          {it.pointBiserial !== null ? it.pointBiserial.toFixed(2) : '—'}
+                        </td>
+                        <td>
+                          {it.distractors ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                              {it.distractors.options.map((op) => (
+                                <span
+                                  key={op.index}
+                                  title={op.isCorrect ? 'Đáp án đúng' : op.isStrongTrap ? 'Nhiễu bẫy mạnh (> đáp án đúng)' : op.isDead ? 'Nhiễu chết (0% chọn)' : 'Phương án nhiễu'}
+                                  style={{
+                                    fontSize: '0.71rem',
+                                    fontWeight: op.isCorrect ? 800 : 600,
+                                    padding: '2px 6px',
+                                    borderRadius: 6,
+                                    background: op.isCorrect
+                                      ? 'rgba(16,185,129,0.16)'
+                                      : op.isStrongTrap
+                                      ? 'rgba(239,68,68,0.14)'
+                                      : 'rgba(148,163,184,0.14)',
+                                    color: op.isCorrect
+                                      ? '#059669'
+                                      : op.isStrongTrap
+                                      ? '#dc2626'
+                                      : op.isDead
+                                      ? '#94a3b8'
+                                      : 'inherit',
+                                    border: op.isCorrect ? '1px solid rgba(16,185,129,0.35)' : '1px solid transparent',
+                                  }}
+                                >
+                                  {op.letter}:{op.pct}%
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <small style={{ color: 'var(--mut, #64748b)' }}>
+                              {it.type === 'true_false' ? 'Đúng/Sai 4 ý' : it.type === 'short_answer' ? 'Trả lời ngắn' : 'Tự luận'}
+                            </small>
+                          )}
+                        </td>
+                        <td>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '3px 8px',
+                              borderRadius: 999,
+                              fontSize: '0.73rem',
+                              fontWeight: 750,
+                              background:
+                                it.quality.tone === 'ex'
+                                  ? 'rgba(16,185,129,0.14)'
+                                  : it.quality.tone === 'good'
+                                  ? 'rgba(37,99,235,0.12)'
+                                  : it.quality.tone === 'bad'
+                                  ? 'rgba(239,68,68,0.14)'
+                                  : 'rgba(245,158,11,0.14)',
+                              color:
+                                it.quality.tone === 'ex'
+                                  ? '#059669'
+                                  : it.quality.tone === 'good'
+                                  ? '#2563eb'
+                                  : it.quality.tone === 'bad'
+                                  ? '#dc2626'
+                                  : '#b45309',
+                            }}
+                          >
+                            {it.quality.label}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* RÀ SOÁT CHÉP BÀI & THÔNG ĐỒNG (HARPP-HOGAN INDEX + TF-IDF TỰ LUẬN) */}
+              {collusionReport && collusionReport.totalPairsChecked > 0 && (
+                <div
+                  style={{
+                    marginTop: 18,
+                    padding: '14px 16px',
+                    borderRadius: 14,
+                    background: 'var(--ta-bg2, rgba(15,23,42,0.03))',
+                    border: collusionReport.highRiskCount > 0 ? '1px solid rgba(239,68,68,0.32)' : '1px solid var(--ta-border, rgba(15,23,42,0.09))',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+                    <div>
+                      <strong style={{ fontSize: '0.92rem' }}>
+                        Rà soát nghi vấn chép bài &amp; trùng lặp bài làm (Harpp-Hogan Index &amp; TF-IDF)
+                      </strong>
+                      <div style={{ fontSize: '0.76rem', color: 'var(--mut, #64748b)', marginTop: 2 }}>
+                        Đã đối chiếu {collusionReport.totalPairsChecked} cặp bài nộp — chỉ cảnh báo khi 2 học sinh trùng nhiều câu sai giống hệt nhau hoặc bài tự luận sao chép cao
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 999,
+                        fontSize: '0.75rem',
+                        fontWeight: 800,
+                        background: collusionReport.flaggedPairs.length > 0 ? 'rgba(239,68,68,0.14)' : 'rgba(16,185,129,0.14)',
+                        color: collusionReport.flaggedPairs.length > 0 ? '#dc2626' : '#059669',
+                      }}
+                    >
+                      {collusionReport.flaggedPairs.length > 0
+                        ? `${collusionReport.flaggedPairs.length} cặp cần rà soát`
+                        : 'An toàn · Không phát hiện bất thường'}
+                    </span>
+                  </div>
+
+                  {collusionReport.flaggedPairs.length > 0 && (
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      {collusionReport.flaggedPairs.slice(0, 8).map((pair, idx) => (
+                        <div
+                          key={`${pair.studentAId}-${pair.studentBId}-${idx}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 10,
+                            flexWrap: 'wrap',
+                            padding: '9px 12px',
+                            borderRadius: 10,
+                            background: 'var(--panel, #ffffff)',
+                            border: '1px solid var(--ta-border, rgba(15,23,42,0.08))',
+                            fontSize: '0.82rem',
+                          }}
+                        >
+                          <div>
+                            <strong>{pair.studentA}</strong> ↔ <strong>{pair.studentB}</strong>
+                            <div style={{ fontSize: '0.76rem', color: 'var(--mut, #64748b)', marginTop: 2 }}>
+                              {pair.reasons.join(' · ')}
+                              {pair.sharedWrongQs.length > 0 ? ` · Câu sai chung: #${pair.sharedWrongQs.join(', #')}` : ''}
+                            </div>
+                          </div>
+                          <span
+                            style={{
+                              padding: '3px 9px',
+                              borderRadius: 999,
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              background: pair.severity === 'high' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.16)',
+                              color: pair.severity === 'high' ? '#dc2626' : '#b45309',
+                            }}
+                          >
+                            {pair.severity === 'high' ? 'Nguy cơ cao' : 'Cần xem xét'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {drawerStudent && <StudentDrawer student={drawerStudent} classNameLabel={cls?.name || ''} onClose={() => setDrawerId(null)} />}
     </section>
   );
 }

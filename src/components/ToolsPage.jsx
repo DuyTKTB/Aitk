@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 // 🎨 Import CSS cho trang Công cụ
 import './tools-neo.css';
 import '../styles/apple-cobalt-polish.css';
@@ -33,7 +33,19 @@ import { useAuth } from '../hooks/useAuth.jsx';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { resolveEntitlements } from '../lib/entitlements.js';
 
+const StudentSuperStudioModal = lazy(() => import('./StudentSuperStudioModal.jsx'));
+const StudentAdvancedToolsModal = lazy(() => import('./StudentAdvancedToolsModal.jsx'));
+
 const STUDY_TOOLS = [
+  { id: 'feynman-studio', studioTab: 'feynman', name: 'Feynman & Cloze Anki', desc: 'Tự giảng chấm hiểu bản chất & đục lỗ điền khuyết', Icon: IconBook, tag: 'new' },
+  { id: 'function-grapher', studioTab: 'graph', name: 'Đồ thị Hàm số 60fps', desc: 'Vẽ đồ thị, tự tìm nghiệm, cực trị & tiếp tuyến', Icon: IconChart, tag: 'new' },
+  { id: 'moodist-mixer', studioTab: 'moodist', name: 'Âm thanh Moodist 8 lớp', desc: 'Trộn 40Hz Binaural, 10Hz Alpha, Mưa, Lò sưởi, Cà phê', Icon: IconTimer, tag: 'hot' },
+  { id: 'image-occlusion', advTab: 'occlusion', name: 'Che nhãn Hình ảnh Anki', desc: 'Tải sơ đồ Sinh/Lý/Địa, vẽ ô che nhãn & bấm lật ôn thi', Icon: IconMicroscope, tag: 'new' },
+  { id: 'cornell-notes', advTab: 'cornell', name: 'Ghi chú Cornell & In A4', desc: 'Ghi chép 3 vùng chuẩn Đại học Ivy League, in phiếu A4', Icon: IconNote, tag: 'new' },
+  { id: 'rsvp-reader', advTab: 'rsvp', name: 'Đọc siêu tốc RSVP + ORP', desc: 'Luyện đọc nhanh 150–600 WPM cho đề Đọc hiểu Văn/Anh', Icon: IconBook, tag: 'new' },
+  { id: 'english-shadowing', advTab: 'english', name: 'Nghe-Chép & Shadowing EN', desc: 'Phát âm bản xứ, chấm từng từ Word-Diff & nói Micro', Icon: IconQuiz, tag: 'new' },
+  { id: 'si-converter', advTab: 'units', name: 'Đổi đơn vị SI Lý–Hóa', desc: 'Quy đổi tức thì eV/J, atm/Pa, °C/K, Å/nm, amu/kg', Icon: IconScale, tag: 'new' },
+  { id: 'dna-codon', advTab: 'dna', name: 'Giải mã Gen ADN & Đột biến', desc: 'Phiên mã mARN, dịch mã 64 bộ ba & đột biến điểm trực quan', Icon: IconAtom, tag: 'new' },
   { id: 'casio', name: 'Máy tính fx-580VN X', desc: 'Mô phỏng Casio 50 phím · 8 chế độ', Icon: IconCalc, tag: 'hot' },
   { id: 'table', name: 'Bảng tuần hoàn', desc: 'Bảng tuần hoàn tương tác', Icon: IconAtom, tag: 'hot' },
   { id: 'formulas', name: 'Công thức nhanh', desc: 'Tra cứu công thức Hóa học', Icon: IconCalc, tag: 'hot' },
@@ -460,6 +472,8 @@ export default function ToolsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [superStudioTab, setSuperStudioTab] = useState(null);
+  const [advStudioTab, setAdvStudioTab] = useState(null);
   const searchRef = useRef(null);
 
   const { user, tier } = useAuth();
@@ -756,8 +770,12 @@ export default function ToolsPage() {
             </button>
           ))}
           <p className="tn-side-label">Công cụ học tập</p>
-          {STUDY_TOOLS.map(({ id, name, Icon }) => (
-            <a key={id} href={'#' + id} className="tn-side-item"><Icon /><span>{name}</span></a>
+          {STUDY_TOOLS.map(({ id, studioTab, advTab, name, Icon }) => (
+            studioTab
+              ? <button key={id} type="button" className="tn-side-item" onClick={() => setSuperStudioTab(studioTab)}><Icon /><span>{name}</span></button>
+              : advTab
+                ? <button key={id} type="button" className="tn-side-item" onClick={() => setAdvStudioTab(advTab)}><Icon /><span>{name}</span></button>
+                : <a key={id} href={'#' + id} className="tn-side-item"><Icon /><span>{name}</span></a>
           ))}
         </aside>
 
@@ -913,14 +931,14 @@ export default function ToolsPage() {
             <>
               <p className="tools-count">Hiển thị <b>{filteredStudy.length}</b> công cụ</p>
               <div className="tc-grid">
-                {filteredStudy.map(({ id, name, desc, Icon, tag }, i) => (
+                {filteredStudy.map(({ id, studioTab, advTab, name, desc, Icon, tag }, i) => (
                   <article key={id} data-cat="study" className="tc-cell">
                     <div className="tc-tile" aria-hidden="true">
                       <span className="tc-no">{String(i + 1).padStart(3, '0')}</span>
                       <span className="tc-sym">{Array.from(name).slice(0, 2).join('')}</span>
                     </div>
                     {tag && <span className={'tc-tag ' + tag}>{TAG_LABEL[tag]}</span>}
-                    <a href={'#' + id} className="tc-link" aria-label={name}>
+                    <a href={'#' + id} className="tc-link" aria-label={name} onClick={(e) => { if (studioTab) { e.preventDefault(); setSuperStudioTab(studioTab); } else if (advTab) { e.preventDefault(); setAdvStudioTab(advTab); } }}>
                       <span className="tc-ico"><Icon /></span>
                       <span className="tc-name">{name}</span>
                       <span className="tc-desc">{desc}</span>
@@ -1001,6 +1019,16 @@ export default function ToolsPage() {
             }}
           />
 
+          {superStudioTab && (
+            <Suspense fallback={null}>
+              <StudentSuperStudioModal initialTab={superStudioTab} onClose={() => setSuperStudioTab(null)} />
+            </Suspense>
+          )}
+          {advStudioTab && (
+            <Suspense fallback={null}>
+              <StudentAdvancedToolsModal initialTab={advStudioTab} onClose={() => setAdvStudioTab(null)} />
+            </Suspense>
+          )}
           {toastNode}
 
           {/* BOTTOM SHEET 13 mục — chỉ hiện mobile */}

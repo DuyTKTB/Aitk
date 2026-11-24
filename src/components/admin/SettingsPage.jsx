@@ -3,6 +3,19 @@ import { supabase } from '../../lib/supabase.js';
 import { useSettings } from '../../contexts/SettingsContext.jsx';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { adminResetTeacherTrialQuota } from '../../lib/proKeyApi.js';
+import { logAdminAction } from '../../lib/adminAuditService.js';
+import {
+  ANNOUNCEMENT_THEMES,
+  ANNOUNCEMENT_AUDIENCES,
+  ANNOUNCEMENT_QUICK_LINKS,
+  ANNOUNCEMENT_PRESETS,
+  ANNOUNCEMENT_MASCOT_IMAGES,
+  resolveAnnouncementTheme,
+  formatCountdownLabel,
+  isWithinAnnouncementSchedule,
+  sanitizeAnnouncementImage,
+} from '../../lib/announcementEngine.js';
+import { fileToCompressedDataUrl } from '../../lib/imageUtils.js';
 import {
   FREE_TEACHER_LIMITS,
   STUDENT_VIP_ANNUAL_PRICE,
@@ -11,6 +24,7 @@ import {
 } from '../../lib/entitlements.js';
 import AdminShell, { Topbar } from './AdminShell.jsx';
 import { ConfirmDialog } from './AdminUI.jsx';
+import SystemAnnouncementBanner from '../SystemAnnouncementBanner.jsx';
 import {
   IconSettings, IconTrash, IconSave, IconRefresh, IconDownload, IconUpload,
   IconDatabase, IconShield, IconWarning, IconInfo, IconCheck, IconCrown, IconKey,
@@ -49,6 +63,17 @@ export default function SettingsPage() {
     announcementText: settings.announcementText ?? '',
     announcementLink: settings.announcementLink ?? '',
     announcementBadge: settings.announcementBadge ?? '🔥 Nổi bật',
+    announcementTheme: settings.announcementTheme ?? 'cobalt',
+    announcementDisplay: settings.announcementDisplay ?? 'banner',
+    announcementAudience: settings.announcementAudience ?? 'all',
+    announcementCtaText: settings.announcementCtaText ?? 'Khám phá ngay',
+    announcementStartAt: settings.announcementStartAt ?? '',
+    announcementEndAt: settings.announcementEndAt ?? '',
+    announcementShowCountdown: !!settings.announcementShowCountdown,
+    announcementDismissible: settings.announcementDismissible !== false,
+    announcementVersion: Number(settings.announcementVersion) || 1,
+    announcementImage: settings.announcementImage ?? '',
+    announcementImageFit: settings.announcementImageFit ?? 'cover',
   }), [settings]);
 
   const [form, setForm] = useState(initial);
@@ -60,6 +85,7 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(null);
   const [progress, setProgress] = useState('');
   const [restoreMode, setRestoreMode] = useState('merge');
+  const [livePreviewAnn, setLivePreviewAnn] = useState(false);
   const fileRef = useRef(null);
 
   const [toast, setToast] = useState(null);
@@ -75,29 +101,36 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     if (!form.siteName.trim()) return say('Tên website không được để trống.');
+    const commitSave = async () => {
+      const payload = { ...form, siteName: form.siteName.trim(), siteDesc: form.siteDesc.trim() };
+      try {
+        await updateSettings(payload);
+        logAdminAction({
+          actor: user,
+          action: payload.maintenanceMode !== initial.maintenanceMode ? 'toggle_maintenance' : 'update_settings',
+          target: 'siteConfig/global',
+          targetLabel: 'Cấu hình hệ thống',
+          summary: payload.maintenanceMode !== initial.maintenanceMode
+            ? `${payload.maintenanceMode ? 'BẬT' : 'TẮT'} Chế độ bảo trì toàn hệ thống`
+            : `Cập nhật cấu hình website & thông báo (${payload.siteName})`,
+        });
+        say('Đã lưu lên Cloud và áp dụng toàn hệ thống!');
+      } catch (e) {
+        say('Không lưu được lên Cloud: ' + friendlyError(e));
+      }
+    };
+
     if (form.maintenanceMode && !initial.maintenanceMode) {
       setConfirm({
         title: 'Bật chế độ bảo trì',
-        body: 'Toàn bộ học sinh sẽ không vào được web cho đến khi bạn tắt chế độ này.',
+        body: 'Toàn bộ học sinh & giáo viên sẽ thấy màn hình bảo trì cho đến khi bạn tắt chế độ này (Admin vẫn truy cập bình thường).',
         okLabel: 'Bật bảo trì',
         danger: true,
-        onOk: () => {
-          try {
-            updateSettings({ ...form, siteName: form.siteName.trim(), siteDesc: form.siteDesc.trim() });
-            say('Đã lưu và áp dụng ngay');
-          } catch (e) {
-            say('Không lưu được cấu hình: ' + e.message);
-          }
-        },
+        onOk: commitSave,
       });
       return;
     }
-    try {
-      updateSettings({ ...form, siteName: form.siteName.trim(), siteDesc: form.siteDesc.trim() });
-      say('Đã lưu và áp dụng ngay');
-    } catch (e) {
-      say('Không lưu được cấu hình: ' + e.message);
-    }
+    await commitSave();
   };
 
   const handleReset = () => {
@@ -232,6 +265,7 @@ export default function SettingsPage() {
       body: 'Toàn bộ lịch sử làm bài và chi tiết đáp án của học sinh sẽ bị xóa vĩnh viễn.',
       okLabel: 'Xóa lượt làm bài',
       danger: true,
+      requireText: 'XOA TAT CA',
       onOk: async () => {
         setBusy('attempts');
         try {
@@ -240,6 +274,13 @@ export default function SettingsPage() {
           const r2 = await ALL_ROWS(supabase.from('exam_attempts').delete());
           if (r2.error) throw r2.error;
           await ALL_ROWS(supabase.from('exams').update({ attempt_count: 0 }));
+          logAdminAction({
+            actor: user,
+            action: 'wipe_data',
+            target: 'exam_attempts',
+            targetLabel: 'Toàn bộ lượt làm bài',
+            summary: 'Đã xóa vĩnh viễn toàn bộ exam_attempts & user_answers',
+          });
           say('Đã xóa toàn bộ lượt làm bài');
         } catch (e) {
           say('Không xóa được: ' + friendlyError(e));
@@ -256,11 +297,19 @@ export default function SettingsPage() {
       body: 'Toàn bộ đề, câu hỏi và đáp án sẽ bị xóa vĩnh viễn. Hãy tải bản sao lưu trước.',
       okLabel: 'Xóa tất cả đề',
       danger: true,
+      requireText: 'XOA TAT CA',
       onOk: async () => {
         setBusy('exams');
         try {
           const { error } = await ALL_ROWS(supabase.from('exams').delete());
           if (error) throw error;
+          logAdminAction({
+            actor: user,
+            action: 'wipe_data',
+            target: 'exams',
+            targetLabel: 'Toàn bộ kho đề thi',
+            summary: 'Đã xóa vĩnh viễn toàn bộ bảng exams',
+          });
           say('Đã xóa toàn bộ đề thi');
           setTimeout(() => window.location.reload(), 1200);
         } catch (e) {
@@ -310,83 +359,588 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* ===== THÔNG BÁO TOÀN HỆ THỐNG ===== */}
-      <div className="vt-card">
-        <header className="vt-card-head">
-          <h3 className="vt-card-title">
-            <IconInfo size={16} className="vt-title-ico" />
-            Banner Thông báo Toàn hệ thống
-          </h3>
-          <span className="vt-chip" style={{ background: form.announcementEnabled ? 'rgba(34, 197, 94, 0.12)' : 'rgba(148, 163, 184, 0.15)', color: form.announcementEnabled ? '#16a34a' : 'var(--mut)' }}>
-            {form.announcementEnabled ? 'Đang bật' : 'Đang tắt'}
-          </span>
-        </header>
-        <p className="vt-muted" style={{ fontSize: '.84rem', marginTop: '-.3rem', marginBottom: '1rem' }}>
-          Hiển thị dải băng thông báo nổi bật trên đầu trang của mọi học sinh và giáo viên khi truy cập website.
-        </p>
+      {/* ===== TRUNG TÂM PHÁT SÓNG THÔNG BÁO TOÀN HỆ THỐNG PRO ===== */}
+      {(() => {
+        const activeTheme = resolveAnnouncementTheme(form.announcementTheme);
+        const schedStatus = isWithinAnnouncementSchedule({
+          startAt: form.announcementStartAt,
+          endAt: form.announcementEndAt,
+        });
+        const previewTimer = form.announcementShowCountdown && schedStatus.remainingMs > 0
+          ? formatCountdownLabel(schedStatus.remainingMs)
+          : form.announcementShowCountdown
+            ? '02:15:30'
+            : '';
 
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          <ToggleRow
-            label="Bật dải băng thông báo trên web"
-            desc="Khi bật, dải băng thông báo sẽ xuất hiện trên đầu trang chính của toàn bộ người dùng"
-            checked={form.announcementEnabled}
-            onChange={(v) => set('announcementEnabled', v)}
-          />
+        const applyPreset = (p) => {
+          setForm((f) => ({
+            ...f,
+            announcementEnabled: true,
+            announcementBadge: p.badge,
+            announcementTheme: p.theme,
+            announcementDisplay: p.display,
+            announcementAudience: p.audience,
+            announcementText: p.text,
+            announcementCtaText: p.ctaText || 'Khám phá ngay',
+            announcementLink: p.link,
+            announcementShowCountdown: p.showCountdown,
+            announcementDismissible: p.dismissible,
+          }));
+          say(`Đã áp dụng mẫu "${p.label}" — bấm Phát sóng ngay để gửi!`);
+        };
 
-          {form.announcementEnabled && (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                <label className="vt-field">
-                  <span>Huy hiệu</span>
-                  <select
-                    value={form.announcementBadge}
-                    onChange={(e) => set('announcementBadge', e.target.value)}
-                    className="vt-select-pill"
-                    style={{ width: '100%', height: 42 }}
+        const publishAnnouncementNow = async ({ bumpVersion = false } = {}) => {
+          const nextVer = bumpVersion ? (Number(form.announcementVersion) || 1) + 1 : (Number(form.announcementVersion) || 1);
+          const payload = {
+            ...form,
+            siteName: (form.siteName || 'ELEC AI').trim(),
+            siteDesc: (form.siteDesc || '').trim(),
+            announcementImage: sanitizeAnnouncementImage(form.announcementImage),
+            announcementVersion: nextVer,
+          };
+          setBusy('announce');
+          try {
+            await updateSettings(payload);
+            setForm(payload);
+            logAdminAction({
+              actor: user,
+              action: 'update_settings',
+              target: 'siteConfig/global',
+              targetLabel: 'Phát sóng Thông báo',
+              summary: payload.announcementEnabled
+                ? `${bumpVersion ? 'Phát lại (v' + nextVer + ')' : 'Phát sóng'} thông báo [${payload.announcementAudience}/${payload.announcementDisplay}]: "${payload.announcementText.slice(0, 80)}"`
+                : 'Tắt Banner Thông báo toàn hệ thống',
+            });
+            say(bumpVersion
+              ? `Đã phát lại thông báo phiên bản v${nextVer} tới toàn bộ thiết bị!`
+              : payload.announcementEnabled
+                ? 'Đã phát sóng thông báo lên toàn hệ thống!'
+                : 'Đã tắt thông báo toàn hệ thống.');
+          } catch (e) {
+            say('Lỗi phát sóng lên Cloud: ' + friendlyError(e));
+          } finally {
+            setBusy(null);
+          }
+        };
+
+        return (
+          <div className="vt-card">
+            <header className="vt-card-head">
+              <h3 className="vt-card-title">
+                <IconInfo size={16} className="vt-title-ico" />
+                Trung tâm Phát sóng Thông báo Toàn hệ thống
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {form.announcementEnabled && schedStatus.reason === 'scheduled' && (
+                  <span className="vt-chip" style={{ background: 'rgba(37,99,235,0.12)', color: '#2563eb' }}>Hẹn giờ phát</span>
+                )}
+                {form.announcementEnabled && schedStatus.reason === 'expired' && (
+                  <span className="vt-chip" style={{ background: 'rgba(239,68,68,0.12)', color: '#dc2626' }}>Đã hết lịch</span>
+                )}
+                <span className="vt-chip" style={{ background: form.announcementEnabled ? 'rgba(34, 197, 94, 0.14)' : 'rgba(148, 163, 184, 0.15)', color: form.announcementEnabled ? '#16a34a' : 'var(--mut)' }}>
+                  {form.announcementEnabled ? `Đang phát · v${form.announcementVersion}` : 'Đang tắt'}
+                </span>
+              </div>
+            </header>
+            <p className="vt-muted" style={{ fontSize: '.84rem', marginTop: '-.3rem', marginBottom: '1rem' }}>
+              Phát dải băng thông báo hoặc Popup nổi bật realtime tới đúng nhóm người dùng, hỗ trợ 6 chủ đề màu, lịch tự động &amp; đồng hồ đếm ngược.
+            </p>
+
+            <div style={{ display: 'grid', gap: '1rem' }}>
+              <ToggleRow
+                label="Bật phát sóng thông báo trên web"
+                desc="Đồng bộ realtime qua Firestore tới mọi học sinh & giáo viên thuộc đối tượng đã chọn"
+                checked={form.announcementEnabled}
+                onChange={(v) => set('announcementEnabled', v)}
+              />
+
+              {/* 5 Mẫu thông báo 1 chạm */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span className="vt-muted" style={{ fontSize: '.74rem', fontWeight: 700 }}>Mẫu nhanh:</span>
+                {ANNOUNCEMENT_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="vt-btn"
+                    style={{ padding: '5px 11px', fontSize: '.75rem' }}
+                    onClick={() => applyPreset(p)}
                   >
-                    <option value="🔥 Nổi bật">🔥 Nổi bật</option>
-                    <option value="📢 Thông báo">📢 Thông báo</option>
-                    <option value="⚡ Cập nhật">⚡ Cập nhật</option>
-                    <option value="⭐ Kỳ thi mới">⭐ Kỳ thi mới</option>
-                    <option value="⚠️ Lưu ý">⚠️ Lưu ý</option>
-                  </select>
-                </label>
-
-                <label className="vt-field">
-                  <span>Nội dung thông báo hiển thị</span>
-                  <input
-                    type="text"
-                    value={form.announcementText}
-                    onChange={(e) => set('announcementText', e.target.value)}
-                    placeholder="VD: Phòng thi ảo đã cập nhật 10 đề thi thử THPTQG & HSA mới nhất 2026!"
-                    maxLength={160}
-                  />
-                </label>
+                    {p.label}
+                  </button>
+                ))}
               </div>
 
-              <label className="vt-field">
-                <span>Liên kết hành động (tùy chọn)</span>
-                <input
-                  type="text"
-                  value={form.announcementLink}
-                  onChange={(e) => set('announcementLink', e.target.value)}
-                  placeholder="VD: #virtual-exams hoặc #roadmap hoặc để trống"
-                />
-              </label>
+              {form.announcementEnabled && (
+                <>
+                  {/* 6 Chủ đề màu sắc */}
+                  <div>
+                    <span style={{ display: 'block', fontSize: '.76rem', fontWeight: 700, color: 'var(--mut)', marginBottom: 6 }}>
+                      Chủ đề giao diện Banner
+                    </span>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {Object.values(ANNOUNCEMENT_THEMES).map((th) => {
+                        const on = form.announcementTheme === th.id;
+                        return (
+                          <button
+                            key={th.id}
+                            type="button"
+                            onClick={() => set('announcementTheme', th.id)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 7,
+                              padding: '6px 12px',
+                              borderRadius: 999,
+                              border: on ? '2px solid var(--acc, #2563eb)' : '1px solid var(--line, #cbd5e1)',
+                              background: 'var(--panel, #fff)',
+                              color: 'var(--ink)',
+                              fontSize: '.76rem',
+                              fontWeight: on ? 800 : 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <span style={{ width: 16, height: 16, borderRadius: '50%', background: th.bg, flex: 'none' }} />
+                            {th.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              {form.announcementText && (
-                <div style={{ padding: '10px 14px', borderRadius: 12, background: 'linear-gradient(90deg, #1d4ed8, #4338ca 50%, #6d28d9)', color: '#fff', fontSize: '.84rem', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ padding: '2px 8px', borderRadius: 99, background: 'rgba(255,255,255,0.22)', fontSize: '.72rem', fontWeight: 800 }}>
-                    {form.announcementBadge}
-                  </span>
-                  <span style={{ flex: 1 }}>{form.announcementText}</span>
-                  {form.announcementLink && <span style={{ textDecoration: 'underline', fontWeight: 700 }}>Khám phá ngay →</span>}
-                </div>
+                  {/* Kiểu hiển thị + Đối tượng nhận + Huy hiệu */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '.85rem' }}>
+                    <label className="vt-field">
+                      <span>Kiểu hiển thị</span>
+                      <select
+                        value={form.announcementDisplay}
+                        onChange={(e) => set('announcementDisplay', e.target.value)}
+                        className="vt-select-pill"
+                        style={{ width: '100%', height: 42 }}
+                      >
+                        <option value="poster">Popup Poster Ảnh Full Bo Tròn (Sự kiện / Kỳ thi)</option>
+                        <option value="banner">Dải băng cố định đầu trang (Banner)</option>
+                        <option value="floating">Thẻ Banner nổi góc dưới trái (kèm Poster)</option>
+                        <option value="modal">Dải băng + Popup có hộp chữ (Spotlight)</option>
+                      </select>
+                    </label>
+
+                    <label className="vt-field">
+                      <span>Đối tượng nhận thông báo</span>
+                      <select
+                        value={form.announcementAudience}
+                        onChange={(e) => set('announcementAudience', e.target.value)}
+                        className="vt-select-pill"
+                        style={{ width: '100%', height: 42 }}
+                      >
+                        {ANNOUNCEMENT_AUDIENCES.map((a) => (
+                          <option key={a.id} value={a.id}>{a.label}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="vt-field">
+                      <span>Huy hiệu nổi bật</span>
+                      <input
+                        type="text"
+                        value={form.announcementBadge}
+                        onChange={(e) => set('announcementBadge', e.target.value)}
+                        placeholder="VD: 🔥 Ưu đãi giới hạn"
+                        maxLength={32}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Nội dung thông báo */}
+                  <label className="vt-field">
+                    <span>Nội dung thông báo ({form.announcementText.length}/220 ký tự)</span>
+                    <input
+                      type="text"
+                      value={form.announcementText}
+                      onChange={(e) => set('announcementText', e.target.value)}
+                      placeholder="VD: Phòng thi ảo đã cập nhật 10 đề thi thử THPTQG & HSA mới nhất 2026!"
+                      maxLength={220}
+                    />
+                  </label>
+
+                  {/* Nút CTA & Liên kết nhanh */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '.85rem' }}>
+                    <label className="vt-field">
+                      <span>Chữ trên nút hành động (CTA)</span>
+                      <input
+                        type="text"
+                        value={form.announcementCtaText}
+                        onChange={(e) => set('announcementCtaText', e.target.value)}
+                        placeholder="VD: Vào thi ngay"
+                        maxLength={32}
+                      />
+                    </label>
+
+                    <label className="vt-field">
+                      <span>Đường dẫn đích (tùy chọn)</span>
+                      <input
+                        type="text"
+                        value={form.announcementLink}
+                        onChange={(e) => set('announcementLink', e.target.value)}
+                        placeholder="VD: #virtual-exams, #doc-studio hoặc https://..."
+                      />
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: '-.35rem' }}>
+                    <span className="vt-muted" style={{ fontSize: '.72rem', fontWeight: 700 }}>Chọn nhanh trang:</span>
+                    {ANNOUNCEMENT_QUICK_LINKS.map((ql) => (
+                      <button
+                        key={ql.href}
+                        type="button"
+                        className="vt-btn"
+                        style={{ padding: '3px 9px', fontSize: '.72rem' }}
+                        onClick={() => set('announcementLink', ql.href)}
+                      >
+                        {ql.label}
+                      </button>
+                    ))}
+                    {form.announcementLink && (
+                      <button type="button" className="vt-btn" style={{ padding: '3px 9px', fontSize: '.72rem' }} onClick={() => set('announcementLink', '')}>
+                        Xóa link
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Hẹn lịch phát tự động & Tùy chọn nâng cao */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '.85rem' }}>
+                    <label className="vt-field">
+                      <span>Tự động bật từ (để trống = ngay lập tức)</span>
+                      <input
+                        type="datetime-local"
+                        value={form.announcementStartAt}
+                        onChange={(e) => set('announcementStartAt', e.target.value)}
+                      />
+                    </label>
+                    <label className="vt-field">
+                      <span>Tự động tắt lúc (dùng cho đồng hồ đếm ngược)</span>
+                      <input
+                        type="datetime-local"
+                        value={form.announcementEndAt}
+                        onChange={(e) => set('announcementEndAt', e.target.value)}
+                      />
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '.75rem' }}>
+                    <ToggleRow
+                      label="Hiện đồng hồ đếm ngược live"
+                      desc="Hiển thị số ngày/giờ/phút còn lại (cần chọn mốc Tự động tắt)"
+                      checked={form.announcementShowCountdown}
+                      onChange={(v) => set('announcementShowCountdown', v)}
+                    />
+                    <ToggleRow
+                      label="Cho phép người dùng bấm đóng (X)"
+                      desc="Tắt công tắc này nếu là thông báo khẩn bắt buộc giữ trên đầu trang"
+                      checked={form.announcementDismissible}
+                      onChange={(v) => set('announcementDismissible', v)}
+                    />
+                  </div>
+
+                  {/* HÌNH ẢNH / POSTER THÔNG BÁO */}
+                  <div style={{ padding: '14px 16px', borderRadius: 16, border: '1px solid var(--line, #e2e8f0)', background: 'var(--vt-tint, rgba(15,23,42,0.03))', display: 'grid', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <div>
+                        <b style={{ fontSize: '.86rem' }}>Hình ảnh / Poster thông báo (tùy chọn)</b>
+                        <div className="vt-muted" style={{ fontSize: '.74rem' }}>
+                          Hiển thị ảnh đại diện trên Banner và Poster lớn sắc nét trên Popup nổi bật (tự động nén nhẹ chuẩn Cloud).
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <label className="vt-btn primary" style={{ padding: '6px 12px', fontSize: '.76rem', cursor: 'pointer' }}>
+                          <IconUpload size={13} /> Tải ảnh từ máy
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp,image/gif"
+                            hidden
+                            onChange={async (e) => {
+                              const f = e.target.files?.[0];
+                              e.target.value = '';
+                              if (!f) return;
+                              try {
+                                const dataUrl = await fileToCompressedDataUrl(f, { maxW: 1280, quality: 0.82 });
+                                const safe = sanitizeAnnouncementImage(dataUrl);
+                                if (!safe) {
+                                  say('Ảnh sau khi nén vẫn quá lớn (>450KB), hãy chọn ảnh nhỏ hơn nhé.');
+                                  return;
+                                }
+                                setForm((prev) => ({ ...prev, announcementImage: safe, announcementImageFit: 'cover' }));
+                                say(`Đã nạp ảnh "${f.name}" — bấm Xem thử thực tế hoặc Lưu & Phát sóng ngay!`);
+                              } catch (err) {
+                                say('Lỗi đọc ảnh: ' + friendlyError(err));
+                              }
+                            }}
+                          />
+                        </label>
+                        {form.announcementImage && (
+                          <button
+                            type="button"
+                            className="vt-btn"
+                            style={{ padding: '6px 11px', fontSize: '.76rem', color: '#dc2626' }}
+                            onClick={() => set('announcementImage', '')}
+                          >
+                            <IconTrash size={13} /> Gỡ ảnh
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
+                      <label className="vt-field" style={{ margin: 0 }}>
+                        <span>Hoặc dán link ảnh (https://… hoặc /img/…)</span>
+                        <input
+                          type="text"
+                          value={form.announcementImage.startsWith('data:image/') ? '[Ảnh đã tải lên từ máy]' : form.announcementImage}
+                          readOnly={form.announcementImage.startsWith('data:image/')}
+                          onChange={(e) => set('announcementImage', e.target.value)}
+                          placeholder="https://example.com/poster-su-kien.jpg"
+                        />
+                      </label>
+                      <label className="vt-field" style={{ margin: 0 }}>
+                        <span>Khung ảnh</span>
+                        <select
+                          value={form.announcementImageFit}
+                          onChange={(e) => set('announcementImageFit', e.target.value)}
+                          className="vt-select-pill"
+                          style={{ height: 42 }}
+                        >
+                          <option value="cover">Phủ kín (Poster)</option>
+                          <option value="contain">Nguyên ảnh (Icon/Mascot)</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    {/* Chọn nhanh Mascot ELEC AI */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span className="vt-muted" style={{ fontSize: '.72rem', fontWeight: 700 }}>Chọn nhanh Mascot:</span>
+                      {ANNOUNCEMENT_MASCOT_IMAGES.map((m) => {
+                        const on = form.announcementImage === m.src;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setForm((prev) => ({ ...prev, announcementImage: m.src, announcementImageFit: 'contain' }))}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              padding: '3px 9px 3px 4px',
+                              borderRadius: 999,
+                              border: on ? '1.8px solid var(--acc, #2563eb)' : '1px solid var(--line, #cbd5e1)',
+                              background: 'var(--panel, #fff)',
+                              color: 'var(--ink)',
+                              fontSize: '.72rem',
+                              fontWeight: on ? 800 : 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <img src={m.src} alt="" style={{ width: 20, height: 20, objectFit: 'contain', borderRadius: 6 }} />
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* XEM TRƯỚC TRỰC TIẾP (LIVE PREVIEW) */}
+                  {(() => {
+                    const previewImg = sanitizeAnnouncementImage(form.announcementImage);
+                    const previewContain = form.announcementImageFit === 'contain' || previewImg.startsWith('/img/elec/');
+                    const displayLabel =
+                      form.announcementDisplay === 'poster' ? 'Popup Poster Ảnh Full Bo Tròn 28px'
+                      : form.announcementDisplay === 'modal' ? 'Dải băng + Popup nổi bật'
+                      : form.announcementDisplay === 'floating' ? 'Thẻ Banner nổi góc dưới trái'
+                      : 'Dải băng cố định đầu trang';
+                    return (
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        <span style={{ fontSize: '.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--mut)' }}>
+                          Xem trước trực tiếp trên máy người dùng ({displayLabel})
+                        </span>
+
+                        {form.announcementDisplay === 'poster' ? (
+                          <div style={{
+                            position: 'relative',
+                            maxWidth: 460,
+                            borderRadius: 24,
+                            overflow: 'hidden',
+                            border: '1.5px solid rgba(255,255,255,0.34)',
+                            boxShadow: '0 22px 48px -16px rgba(15,23,42,0.42)',
+                            background: '#0f172a',
+                          }}>
+                            {form.announcementDismissible && (
+                              <span style={{
+                                position: 'absolute', top: 10, right: 10, zIndex: 2,
+                                width: 28, height: 28, borderRadius: '50%',
+                                background: 'rgba(255,255,255,0.9)', color: '#0f172a',
+                                display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: '.85rem',
+                              }}>×</span>
+                            )}
+                            {previewTimer && (
+                              <span style={{
+                                position: 'absolute', top: 10, left: 10, zIndex: 2,
+                                padding: '3px 10px', borderRadius: 99,
+                                background: 'rgba(15,23,42,0.72)', color: '#fff',
+                                fontFamily: 'var(--mono)', fontSize: '.7rem', fontWeight: 800,
+                              }}>⏱ Còn {previewTimer}</span>
+                            )}
+                            {previewImg ? (
+                              <img src={previewImg} alt="Xem trước Poster" style={{ display: 'block', width: '100%', maxHeight: 280, objectFit: 'contain' }} />
+                            ) : (
+                              <div style={{ padding: '32px 24px', background: activeTheme.bg, color: '#fff', textAlign: 'center', display: 'grid', gap: 10, justifyItems: 'center' }}>
+                                <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(255,255,255,0.22)', fontSize: '.74rem', fontWeight: 800 }}>{form.announcementBadge || '🔥 Sự kiện'}</span>
+                                <b style={{ fontSize: '1rem' }}>{form.announcementText || 'Tải ảnh Poster ở ô trên để hiển thị full bo tròn đẹp mắt!'}</b>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              padding: '10px 14px',
+                              borderRadius: 14,
+                              background: activeTheme.bg,
+                              color: '#fff',
+                              fontSize: '.84rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 10,
+                              flexWrap: 'wrap',
+                              boxShadow: '0 8px 22px -10px rgba(15,23,42,0.4)',
+                            }}
+                          >
+                            {previewImg && (
+                              <img
+                                src={previewImg}
+                                alt=""
+                                style={{
+                                  width: 28, height: 28, borderRadius: 8,
+                                  objectFit: previewContain ? 'contain' : 'cover',
+                                  background: 'rgba(255,255,255,0.16)',
+                                  border: '1px solid rgba(255,255,255,0.35)',
+                                  padding: previewContain ? 2 : 0,
+                                }}
+                              />
+                            )}
+                            <span style={{ padding: '2px 10px', borderRadius: 99, background: 'rgba(255,255,255,0.22)', border: '1px solid rgba(255,255,255,0.25)', fontSize: '.72rem', fontWeight: 800 }}>
+                              {form.announcementBadge || '📢 Thông báo'}
+                            </span>
+                            <span style={{ fontWeight: 600 }}>
+                              {form.announcementText || 'Nhập nội dung thông báo của bạn ở ô phía trên để xem trước…'}
+                            </span>
+                            {previewTimer && (
+                              <span style={{ padding: '2px 9px', borderRadius: 99, background: 'rgba(15,23,42,0.34)', fontFamily: 'var(--mono)', fontSize: '.73rem', fontWeight: 800 }}>
+                                ⏱ {previewTimer}
+                              </span>
+                            )}
+                            {form.announcementLink && (
+                              <span style={{ padding: '4px 12px', borderRadius: 99, background: '#fff', color: '#0f172a', fontWeight: 800, fontSize: '.75rem' }}>
+                                {form.announcementCtaText || 'Khám phá ngay'} →
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {form.announcementDisplay === 'modal' && (
+                          <div style={{
+                            maxWidth: 420,
+                            borderRadius: 20,
+                            overflow: 'hidden',
+                            border: '1px solid var(--line, #cbd5e1)',
+                            background: 'var(--panel, #fff)',
+                            boxShadow: '0 14px 32px -14px rgba(15,23,42,0.35)',
+                          }}>
+                            <div style={{ padding: '14px 16px', background: activeTheme.bg, color: '#fff', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              <span style={{ padding: '3px 10px', borderRadius: 99, background: 'rgba(255,255,255,0.22)', fontSize: '.74rem', fontWeight: 800 }}>
+                                {form.announcementBadge || '🔥 Nổi bật'}
+                              </span>
+                              {previewTimer && (
+                                <span style={{ padding: '2px 9px', borderRadius: 99, background: 'rgba(15,23,42,0.34)', fontFamily: 'var(--mono)', fontSize: '.72rem', fontWeight: 800 }}>
+                                  Còn {previewTimer}
+                                </span>
+                              )}
+                            </div>
+                            {previewImg && (
+                              <div style={{ width: '100%', maxHeight: 170, overflow: 'hidden', background: 'var(--vt-tint, rgba(15,23,42,0.05))', display: 'grid', placeItems: 'center' }}>
+                                <img
+                                  src={previewImg}
+                                  alt="Xem trước poster"
+                                  style={{ width: '100%', maxHeight: 170, objectFit: previewContain ? 'contain' : 'cover', padding: previewContain ? 10 : 0 }}
+                                />
+                              </div>
+                            )}
+                            <div style={{ padding: '14px 16px', display: 'grid', gap: 10 }}>
+                              <p style={{ margin: 0, fontSize: '.86rem', fontWeight: 600, lineHeight: 1.5 }}>
+                                {form.announcementText || 'Nội dung Popup nổi bật sẽ hiển thị tại đây…'}
+                              </p>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                {form.announcementLink && (
+                                  <span style={{ padding: '7px 14px', borderRadius: 99, background: activeTheme.bg, color: '#fff', fontSize: '.76rem', fontWeight: 700 }}>
+                                    {form.announcementCtaText || 'Khám phá ngay'} →
+                                  </span>
+                                )}
+                                <span style={{ padding: '7px 14px', borderRadius: 99, background: 'var(--vt-tint, rgba(15,23,42,0.08))', fontSize: '.76rem', fontWeight: 700 }}>
+                                  Đã hiểu
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
               )}
-            </>
-          )}
-        </div>
-      </div>
+
+              {/* Thanh nút Phát sóng trực tiếp */}
+              {(() => {
+                const hasAnyPayload = Boolean(form.announcementText.trim() || sanitizeAnnouncementImage(form.announcementImage));
+                return (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4 }}>
+                    <button
+                      type="button"
+                      className="vt-btn primary"
+                      disabled={working || (form.announcementEnabled && !hasAnyPayload)}
+                      onClick={() => publishAnnouncementNow({ bumpVersion: false })}
+                    >
+                      <IconSave size={14} /> {busy === 'announce' ? 'Đang phát sóng…' : form.announcementEnabled ? 'Lưu & Phát sóng ngay' : 'Lưu trạng thái tắt'}
+                    </button>
+                    {form.announcementEnabled && hasAnyPayload && (
+                      <>
+                        <button
+                          type="button"
+                          className="vt-btn"
+                          onClick={() => setLivePreviewAnn((v) => !v)}
+                        >
+                          {livePreviewAnn ? 'Đóng xem thử thực tế' : 'Xem thử thực tế toàn màn hình'}
+                        </button>
+                        <button
+                          type="button"
+                          className="vt-btn"
+                          disabled={working}
+                          onClick={() => publishAnnouncementNow({ bumpVersion: true })}
+                          title="Tăng phiên bản phát sóng để hiện lại cả trên các máy đã bấm nút X đóng trước đó"
+                        >
+                          <IconRefresh size={14} /> Phát lại cho cả người đã tắt (→ v{(Number(form.announcementVersion) || 1) + 1})
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
+              {livePreviewAnn && (
+                <SystemAnnouncementBanner
+                  previewOverride={form}
+                  onPreviewClose={() => setLivePreviewAnn(false)}
+                />
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="vt-card">
         <header className="vt-card-head">
@@ -557,6 +1111,7 @@ export default function SettingsPage() {
         body={confirm?.body}
         okLabel={confirm?.okLabel}
         danger={confirm?.danger}
+        requireText={confirm?.requireText}
         onCancel={() => setConfirm(null)}
         onConfirm={() => {
           const fn = confirm?.onOk;

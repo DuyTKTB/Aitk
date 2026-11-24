@@ -492,7 +492,111 @@ export async function callModel({ system, parts, temperature = 0.7, signal, cred
   }
 }
 
-/* ============ ĐỌC JSON "LỎNG" ============ */
+/* ============ ĐỌC JSON "LỎNG" + PHỤC HỒI TRUNCATED/LATEX JSON ============ */
+function fixJsonStringEscapesAndControls(str) {
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (ch === '"') {
+      // Đếm số dấu \ liên tiếp ngay trước dấu "
+      let bs = 0;
+      for (let k = i - 1; k >= 0 && str[k] === '\\'; k--) bs++;
+      if (bs % 2 === 0) inString = !inString;
+      out += ch;
+      continue;
+    }
+    if (!inString) {
+      out += ch;
+      continue;
+    }
+    // Ký tự xuống dòng/tab trần trong chuỗi JSON
+    if (ch === '\n') { out += '\\n'; continue; }
+    if (ch === '\r') { out += '\\r'; continue; }
+    if (ch === '\t') { out += '\\t'; continue; }
+    if (ch === '\\') {
+      const next = str[i + 1];
+      if (next === undefined) { out += '\\\\'; continue; }
+      // Giữ nguyên escape JSON hợp lệ, NHƯNG bảo vệ lệnh LaTeX hay gặp (\frac, \text, \beta, \rho, \theta, \nu, \neq, \rightarrow, \binom, \tau, \nabla)
+      if (next === '\\' || next === '"' || next === '/') {
+        out += ch + next;
+        i++;
+        continue;
+      }
+      if (next === 'u' && /^[0-9a-fA-F]{4}/.test(str.slice(i + 2, i + 6))) {
+        out += str.slice(i, i + 6);
+        i += 5;
+        continue;
+      }
+      if ((next === 'n' || next === 'r' || next === 't' || next === 'b' || next === 'f')) {
+        const restWord = str.slice(i + 1).match(/^[a-zA-Z]+/)?.[0] || '';
+        const isLatexCmd =
+          /^(?:frac|forall|flat|text|times|theta|tan|to|tau|triangle|beta|binom|bar|begin|big|right|rightarrow|rho|nabla|neq|ne|nu|notin|natural)$/i.test(restWord);
+        if (isLatexCmd) {
+          out += '\\\\' + next;
+          i++;
+          continue;
+        }
+        out += ch + next;
+        i++;
+        continue;
+      }
+      // Escape lạ (vd: \sqrt, \alpha, \ce, \left, \cdot...) → double backslash để JSON.parse giữ nguyên LaTeX
+      out += '\\\\' + next;
+      i++;
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+function stripTrailingCommas(str) {
+  return str.replace(/,\s*([}\]])/g, '$1');
+}
+
+function salvageTruncatedQuestionsJson(str) {
+  const qKeyIdx = str.search(/"questions"\s*:\s*\[/);
+  if (qKeyIdx < 0) return undefined;
+  const arrStart = str.indexOf('[', qKeyIdx);
+  if (arrStart < 0) return undefined;
+
+  // Quét từng object {...} hoàn chỉnh ở cấp phần tử của mảng questions
+  const recovered = [];
+  let inStr = false;
+  let depth = 0;
+  let objStart = -1;
+
+  for (let i = arrStart + 1; i < str.length; i++) {
+    const ch = str[i];
+    if (ch === '"') {
+      let bs = 0;
+      for (let k = i - 1; k >= 0 && str[k] === '\\'; k--) bs++;
+      if (bs % 2 === 0) inStr = !inStr;
+      continue;
+    }
+    if (inStr) continue;
+    if (ch === '{') {
+      if (depth === 0) objStart = i;
+      depth++;
+    } else if (ch === '}') {
+      depth--;
+      if (depth === 0 && objStart >= 0) {
+        const slice = stripTrailingCommas(fixJsonStringEscapesAndControls(str.slice(objStart, i + 1)));
+        try {
+          const obj = JSON.parse(slice);
+          if (obj && typeof obj === 'object') recovered.push(obj);
+        } catch { /* bỏ qua object hỏng cuối cùng */ }
+        objStart = -1;
+      }
+    } else if (ch === ']' && depth === 0) {
+      break;
+    }
+  }
+
+  return recovered.length > 0 ? { questions: recovered, __salvaged: true } : undefined;
+}
+
 export function parseJsonLoose(text) {
   const s = String(text || '')
     .trim()
@@ -501,10 +605,6 @@ export function parseJsonLoose(text) {
   const attempt = (str) => {
     try { return JSON.parse(str); } catch { return undefined; }
   };
-  const repair = (str) =>
-    str.replace(/\\(\\|"|\/|u[0-9a-fA-F]{4}|[\s\S])/g, (m, g) =>
-      g === '\\' || g === '"' || g === '/' || /^u[0-9a-fA-F]{4}$/.test(g) ? m : '\\\\' + g
-    );
 
   const candidates = [s];
   const a = s.search(/[[{]/);
@@ -517,9 +617,15 @@ export function parseJsonLoose(text) {
   for (const c of candidates) {
     let v = attempt(c);
     if (v !== undefined) return v;
-    v = attempt(repair(c));
+    const fixed = stripTrailingCommas(fixJsonStringEscapesAndControls(c));
+    v = attempt(fixed);
     if (v !== undefined) return v;
   }
+
+  // Fallback cuối: cứu các câu hỏi đã hoàn chỉnh khi AI bị cắt cụt do chạm MAX_TOKENS
+  const salvaged = salvageTruncatedQuestionsJson(s);
+  if (salvaged) return salvaged;
+
   throw new Error('Không đọc được phản hồi của AI (có thể đề quá dài). Hãy giảm số câu hoặc thử lại.');
 }
 
@@ -961,7 +1067,8 @@ const JSON_FORMAT = `ĐỊNH DẠNG TRẢ VỀ: chỉ MỘT đối tượng JSON
 2. TUYỆT ĐỐI KHÔNG gộp nhiều câu vào 1 phần tử.
 3. TUYỆT ĐỐI KHÔNG chèn tiêu đề "PHẦN I/II/III", "Câu 1:", "Câu 2:" vào trong "q" hoặc "options".
 4. "correct" là SỐ NGUYÊN 0-3 (0=A, 1=B, 2=C, 3=D). KHÔNG để null/undefined/-1.
-5. Mỗi câu có ĐÚNG 4 phương án (options).
+5. Mỗi câu có ĐÚNG 4 phương án (options) đồng nhất ngữ pháp và độ dài tương đương (không để đáp án đúng dài vượt trội).
+6. Phân bổ đều vị trí "correct" giữa 0, 1, 2, 3 (~25% mỗi vị trí) và tạo phương án nhiễu dựa trên lỗi sai tư duy phổ biến của học sinh (chuẩn Bloom).
 
 - "type" có thể là: single_choice | true_false | short_answer.
 - Với "true_false": dùng "statements": [{"text":"...","answer":true|false}, ...] đúng 4 ý.
@@ -1287,6 +1394,57 @@ export function suggestExamFromClass({ insights, exams = [], subject = 'Hóa h�
     });
   }
   return out.slice(0, 4);
+}
+
+/* ============================================================
+   7) AI CRITIC RUBRIC REVIEW (OpenHands/critic-rubrics + BloomTutor)
+   LLM-as-a-Judge chấm điểm đề thi trên 5 tiêu chí sư phạm & gợi ý câu cần sửa
+   ============================================================ */
+export async function criticReviewExamWithAI({ questions = [], subject = 'Khoa học tự nhiên', grade = '12', signal } = {}) {
+  const sample = (Array.isArray(questions) ? questions : []).slice(0, 25).map((q, i) => ({
+    i: i + 1,
+    type: q?.type || 'single_choice',
+    level: q?.level || '',
+    q: String(q?.q || '').slice(0, 240),
+    options: Array.isArray(q?.options) ? q.options.slice(0, 4).map((o) => String(o || '').slice(0, 120)) : undefined,
+    correct: q?.correct,
+  }));
+
+  if (!sample.length) {
+    return { overallScore: 0, criteria: [], flaggedQuestions: [], summary: 'Chưa có câu hỏi để thẩm định.' };
+  }
+
+  const system = [
+    `Bạn là Hội đồng thẩm định đề thi ${subject} ${gradeLabel(grade)} chuẩn GDPT 2018 & CV 7991/BGDĐT.`,
+    'Chấm đề theo 5 tiêu chí (thang 0-20 mỗi tiêu chí, tổng 100):',
+    '1. accuracy (Độ chính xác khoa học & đáp án)',
+    '2. clarity (Độ rõ ràng ngôn ngữ, không tối nghĩa)',
+    '3. distractors (Chất lượng phương án nhiễu theo lỗi tư duy học sinh)',
+    '4. bloomAlignment (Độ phân hóa nhận thức NB/TH/VD/VDC)',
+    '5. formatting (Chuẩn công thức, ký hiệu, đơn vị SI)',
+    'CHỈ TRẢ JSON:',
+    '{"overallScore":88,"summary":"...","criteria":[{"key":"accuracy","label":"Chính xác khoa học","score":18,"note":"..."}],"flaggedQuestions":[{"i":3,"issue":"...","suggestion":"..."}]}',
+  ].join('\n');
+
+  const p = await callAndParse({
+    system,
+    parts: [{ text: `Đề cần thẩm định (${sample.length} câu):\n${JSON.stringify(sample)}` }],
+    temperature: 0.15,
+    signal,
+    reason: 'AI Critic thẩm định đề thi 5 tiêu chí',
+  });
+
+  const criteria = Array.isArray(p?.criteria) ? p.criteria : [];
+  const overallScore = Number.isFinite(Number(p?.overallScore))
+    ? Math.max(0, Math.min(100, Math.round(Number(p.overallScore))))
+    : criteria.reduce((sum, c) => sum + (Number(c?.score) || 0), 0);
+
+  return {
+    overallScore,
+    summary: String(p?.summary || 'Đã hoàn tất thẩm định 5 tiêu chí sư phạm.').trim(),
+    criteria,
+    flaggedQuestions: Array.isArray(p?.flaggedQuestions) ? p.flaggedQuestions : [],
+  };
 }
 
 export { callAndParse as _callAndParse };

@@ -681,161 +681,172 @@ export default function LinkedClassesPanel({
                         </button>
                       </div>
                     ) : (
-                      <div className="st-scroll">
-                        <table className="st-table mobile-cards">
-                          <thead>
-                            <tr>
-                              <th>Đề kiểm tra</th>
-                              <th className="num">Trạng thái</th>
-                              <th className="num">Bài nộp</th>
-                              <th className="num">Điểm TB</th>
-                              <th />
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {mine.map((ex) => {
-                              const subs = d?.subs?.[ex.id] || [];
-                              const session = d?.sessions?.[ex.id];
-                              const isLive = Boolean(session && session.status === 'live');
-                              const st = examStatus(ex);
-                              const statusKey = isLive ? 'live' : st.code;
-                              const statusLabel = isLive ? 'Đang thi' : st.label;
-                              const scored = subs
-                                .map((s) => {
-                                  const p = pct(s);
-                                  return p === null ? null : { p };
-                                })
-                                .filter(Boolean);
-                              const avg = scored.length
-                                ? Math.round(scored.reduce((a, s) => a + s.p, 0) / scored.length)
-                                : null;
+                      <div className="gvbm-exam-list">
+                        <div className="gvbm-exam-list-head">
+                          <span>Danh sách đề đã giao ({mine.length})</span>
+                          <span>Thao tác nhanh</span>
+                        </div>
+                        {mine.map((ex) => {
+                          const subs = d?.subs?.[ex.id] || [];
+                          const session = d?.sessions?.[ex.id];
+                          const isLive = Boolean(session && session.status === 'live');
+                          const st = examStatus(ex);
+                          const statusKey = isLive ? 'live' : st.code;
+                          const statusLabel = isLive ? 'Đang thi' : st.label;
+                          const scored = subs
+                            .map((s) => {
+                              const p = pct(s);
+                              return p === null ? null : { p };
+                            })
+                            .filter(Boolean);
+                          const avg = scored.length
+                            ? Math.round(scored.reduce((a, s) => a + s.p, 0) / scored.length)
+                            : null;
+                          const showingRes = resultsOf === ex.id;
 
-                              return (
-                                <tr key={ex.id}>
-                                  <td data-label="Đề kiểm tra">
-                                    <b>{ex.title || 'Đề'}</b>
-                                    <small className="st-mail">{ex.subject || item.subject || '—'}</small>
-                                  </td>
-                                  <td className="num" data-label="Trạng thái">
+                          return (
+                            <div key={ex.id} className={`gvbm-exam-item${showingRes ? ' is-open' : ''}`}>
+                              <div className="gvbm-exam-top">
+                                <div className="gvbm-exam-info">
+                                  <div className="gvbm-exam-title-row">
+                                    <b className="gvbm-exam-name" title={ex.title || 'Đề'}>{ex.title || 'Đề kiểm tra'}</b>
                                     <span className={`st-badge tone-${STATUS_TONE[statusKey] || 'na'}`}>
                                       {statusLabel}
                                     </span>
-                                  </td>
-                                  <td className="num" data-label="Bài nộp">{subs.length}</td>
-                                  <td className="num" data-label="Điểm TB">{avg === null ? '—' : `${avg}%`}</td>
-                                  <td>
-                                    <div className="gvbm-row-actions">
-                                      {isLive ? (
-                                        <button type="button" className="st-btn primary" onClick={() => onMonitor?.(session)}>
-                                          Giám sát LIVE
-                                        </button>
-                                      ) : confirmId === ex.id ? (
-                                        <>
-                                          <span className="st-keymeta">Mở phòng thi?</span>
-                                          <button
-                                            type="button"
-                                            className="st-btn primary"
-                                            disabled={busy === ex.id}
-                                            onClick={() => monitor(item, ex)}
-                                          >
-                                            {busy === ex.id ? 'Đang mở…' : 'Đồng ý'}
-                                          </button>
-                                          <button type="button" className="st-btn ghost" onClick={() => setConfirmId('')}>
-                                            Hủy
-                                          </button>
-                                        </>
-                                      ) : (
-                                        <button type="button" className="st-btn" onClick={() => setConfirmId(ex.id)}>
-                                          Giám sát
-                                        </button>
-                                      )}
-                                      <button
-                                        type="button"
-                                        className="st-btn"
-                                        onClick={() => setEditCtx({ exam: ex, item })}
-                                        title="Sửa câu hỏi, thời gian, cấu hình giám sát"
-                                      >
-                                        Sửa
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="st-btn"
-                                        onClick={() => setManageCtx({ exam: ex, item })}
-                                        title="Gia hạn, đóng/mở đề, nhân bản, phân tích, chấm lại"
-                                      >
-                                        Quản lý
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="st-btn ghost"
-                                        onClick={() => exportLinkedExamXlsx(item, ex, subs)}
-                                        title="Xuất kết quả bài kiểm tra ra file Excel (.xlsx)"
-                                      >
-                                        Excel
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="st-btn ghost"
-                                        onClick={() => setResultsOf(resultsOf === ex.id ? '' : ex.id)}
-                                      >
-                                        {resultsOf === ex.id ? 'Ẩn KQ' : 'Kết quả'}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="st-btn ghost gvbm-del-btn"
-                                        title="Xoá đề khỏi lớp"
-                                        onClick={() => removeExam(item, ex)}
-                                      >
-                                        Xoá
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                  </div>
+                                  <div className="gvbm-exam-meta">
+                                    <span>{ex.subject || item.subject || 'Bộ môn'}</span>
+                                    {ex.duration ? <><span>·</span><span>{ex.duration} phút</span></> : null}
+                                    {ex.questions?.length ? <><span>·</span><span>{ex.questions.length} câu</span></> : null}
+                                  </div>
+                                </div>
 
-                        {resultsOf && (() => {
-                          const subs = (d?.subs?.[resultsOf] || []).slice().sort((a, b) => {
-                            const pa = pct(a); const pb = pct(b);
-                            if (pa === null && pb === null) return 0;
-                            if (pa === null) return 1;
-                            if (pb === null) return -1;
-                            return pb - pa;
-                          });
-                          return (
-                            <div className="gvbm-results-box">
-                              <div className="st-sub" style={{ marginBottom: '0.35rem' }}>
-                                Kết quả đề “{mine.find((e) => e.id === resultsOf)?.title || 'Đề'}” · {subs.length} bài nộp
+                                <div className="gvbm-exam-metrics">
+                                  <div className="gvbm-metric-pill">
+                                    <small>Bài nộp</small>
+                                    <b>{subs.length}</b>
+                                  </div>
+                                  <div className="gvbm-metric-pill">
+                                    <small>Điểm TB</small>
+                                    <b>{avg === null ? '—' : `${avg}%`}</b>
+                                  </div>
+                                </div>
                               </div>
-                              {subs.length === 0 ? (
-                                <p className="st-empty sm">Chưa có học sinh nào nộp bài.</p>
-                              ) : (
-                                <table className="st-exams">
-                                  <thead>
-                                    <tr>
-                                      <th>Học sinh</th>
-                                      <th className="num">Điểm</th>
-                                      <th className="num">%</th>
-                                      <th className="num">Nộp lúc</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {subs.map((s) => (
-                                      <tr key={s.id}>
-                                        <td>{s.studentName || s.studentEmail || s.studentId}</td>
-                                        <td className="num">{Number(s.score)}/{Number(s.totalPoints)}</td>
-                                        <td className="num">{pct(s) === null ? '—' : `${pct(s)}%`}</td>
-                                        <td className="num">{fmtDateTime(toMs(s.submittedAt))}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              )}
+
+                              <div className="gvbm-exam-foot">
+                                <div className="gvbm-row-actions">
+                                  {isLive ? (
+                                    <button type="button" className="st-btn primary" onClick={() => onMonitor?.(session)}>
+                                      Giám sát LIVE
+                                    </button>
+                                  ) : confirmId === ex.id ? (
+                                    <span className="gvbm-inline-confirm">
+                                      <span className="st-keymeta">Mở phòng thi?</span>
+                                      <button
+                                        type="button"
+                                        className="st-btn primary"
+                                        disabled={busy === ex.id}
+                                        onClick={() => monitor(item, ex)}
+                                      >
+                                        {busy === ex.id ? 'Đang mở…' : 'Đồng ý'}
+                                      </button>
+                                      <button type="button" className="st-btn ghost" onClick={() => setConfirmId('')}>
+                                        Hủy
+                                      </button>
+                                    </span>
+                                  ) : (
+                                    <button type="button" className="st-btn" onClick={() => setConfirmId(ex.id)}>
+                                      Giám sát
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="st-btn"
+                                    onClick={() => setEditCtx({ exam: ex, item })}
+                                    title="Sửa câu hỏi, thời gian, cấu hình giám sát"
+                                  >
+                                    Sửa
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="st-btn"
+                                    onClick={() => setManageCtx({ exam: ex, item })}
+                                    title="Gia hạn, đóng/mở đề, nhân bản, phân tích, chấm lại"
+                                  >
+                                    Quản lý
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="st-btn ghost"
+                                    onClick={() => exportLinkedExamXlsx(item, ex, subs)}
+                                    title="Xuất kết quả bài kiểm tra ra file Excel (.xlsx)"
+                                  >
+                                    Excel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`st-btn ghost${showingRes ? ' is-active' : ''}`}
+                                    onClick={() => setResultsOf(showingRes ? '' : ex.id)}
+                                  >
+                                    {showingRes ? 'Ẩn KQ' : 'Kết quả'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="st-btn ghost gvbm-del-btn"
+                                    title="Xoá đề khỏi lớp"
+                                    onClick={() => removeExam(item, ex)}
+                                  >
+                                    Xoá
+                                  </button>
+                                </div>
+                              </div>
+
+                              {showingRes && (() => {
+                                const sortedSubs = subs.slice().sort((a, b) => {
+                                  const pa = pct(a); const pb = pct(b);
+                                  if (pa === null && pb === null) return 0;
+                                  if (pa === null) return 1;
+                                  if (pb === null) return -1;
+                                  return pb - pa;
+                                });
+                                return (
+                                  <div className="gvbm-results-box">
+                                    <div className="gvbm-results-head">
+                                      <span>Kết quả đề “{ex.title || 'Đề'}”</span>
+                                      <b>{sortedSubs.length} bài nộp</b>
+                                    </div>
+                                    {sortedSubs.length === 0 ? (
+                                      <p className="st-empty sm">Chưa có học sinh nào nộp bài.</p>
+                                    ) : (
+                                      <div className="st-scroll">
+                                        <table className="st-exams">
+                                          <thead>
+                                            <tr>
+                                              <th>Học sinh</th>
+                                              <th className="num">Điểm</th>
+                                              <th className="num">%</th>
+                                              <th className="num">Nộp lúc</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {sortedSubs.map((s) => (
+                                              <tr key={s.id}>
+                                                <td>{s.studentName || s.studentEmail || s.studentId}</td>
+                                                <td className="num">{Number(s.score)}/{Number(s.totalPoints)}</td>
+                                                <td className="num">{pct(s) === null ? '—' : `${pct(s)}%`}</td>
+                                                <td className="num">{fmtDateTime(toMs(s.submittedAt))}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           );
-                        })()}
+                        })}
                       </div>
                     )}
                   </div>

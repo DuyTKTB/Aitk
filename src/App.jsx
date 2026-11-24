@@ -91,6 +91,7 @@ const AuthActionPage = lazy(() => import('./components/AuthActionPage.jsx'));
 
 /* ============ HOOKS + LIB ============ */
 import { useAuth } from './hooks/useAuth.jsx';
+import { useSettings } from './contexts/SettingsContext.jsx';
 import { useTeacherPro } from './hooks/useTeacherPro.js';
 import { useSeoHead, ROUTE_SEO } from './hooks/useSeoHead.js';
 import {
@@ -318,6 +319,7 @@ const pageMeta = (page) => {
 /* ============ MAIN APP ============ */
 export default function App() {
   const { ready, profileReady, isLoggedIn, user, logout } = useAuth();
+  const { settings } = useSettings();
   const pro = useTeacherPro();
   const [hashTick, setHashTick] = useState(0);
   const [surveyOpen, setSurveyOpen] = useState(false);
@@ -686,6 +688,7 @@ export default function App() {
       }
       return (
         <div className="public-guest-wrap" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <SystemAnnouncementBanner />
           <div className="guest-banner" style={{
             background: 'linear-gradient(90deg, #1d4ed8, #6d28d9)',
             color: '#fff',
@@ -750,6 +753,7 @@ export default function App() {
 
     return (
       <Suspense fallback={<PageLoader />}>
+        <SystemAnnouncementBanner />
         <ElecIntroLoader />
         <Landing
           theme={theme}
@@ -904,10 +908,39 @@ export default function App() {
     );
   }
 
+  /* ============ CHẾ ĐỘ BẢO TRÌ TOÀN HỆ THỐNG (CHỈ ADMIN ĐI QUA) ============ */
+  if (settings?.maintenanceMode && !isAdmin(user)) {
+    return (
+      <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--bg, #0b1120)', color: 'var(--ink, #f8fafc)', textAlign: 'center' }}>
+        <div style={{ maxWidth: 460, padding: '32px 28px', borderRadius: 24, background: 'var(--panel, rgba(255,255,255,0.06))', border: '1px solid var(--line, rgba(255,255,255,0.14))', display: 'grid', gap: 14, justifyItems: 'center' }}>
+          <img src="/img/elec/elec-wink.png" alt="ELEC AI" style={{ width: 84, height: 84, objectFit: 'contain' }} />
+          <h1 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 800 }}>Hệ thống đang bảo trì nâng cấp</h1>
+          <p style={{ margin: 0, opacity: 0.8, lineHeight: 1.6, fontSize: '0.92rem' }}>
+            {settings.siteName || 'ELEC AI'} đang cập nhật dữ liệu và cải thiện hiệu năng. Vui lòng quay lại sau ít phút nhé!
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{ padding: '10px 22px', borderRadius: 999, border: 0, background: '#2563eb', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Kiểm tra lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const featureDisabledLabel = !isAdmin(user)
+    ? (page === 'ai' && settings?.enableAI === false ? 'Trợ lý AI (ELEC AI)'
+      : (page === 'games' || page.startsWith('games/')) && settings?.enableGames === false ? 'Trò chơi Khoa học'
+      : page === 'quiz' && settings?.enableQuiz === false ? 'Ôn tập (Quiz)'
+      : null)
+    : null;
+
   /* ============ LAYOUT CHÍNH ============ */
   /* Trang AI Chat chạy toàn màn hình: ẩn nav trên/dưới, mascot, nút chat nổi, footer.
      AIChat đã có sẵn nút "Về trang chủ" (ds-exit-btn) nên không bị kẹt trong trang. */
-  const isAiPage = page === 'ai';
+  const isAiPage = page === 'ai' && !featureDisabledLabel;
   /* Khu giáo viên (Lớp học + AutoExam Studio...) cũng chạy toàn màn hình, không có nav chính.
      Học sinh vào #classroom vẫn thấy giao diện thường. */
   const isTeacherPage = page === 'classroom' && isTeacherAccount;
@@ -926,8 +959,8 @@ export default function App() {
       )}
       {!isVirtualExamRoom && <div className="scroll-progress" ref={progRef} aria-hidden="true" />}
 
-      {!isFullPage && <PetWidget />}
-      {!isVirtualExamRoom && <ChatWidget />}
+      {!isFullPage && settings?.enablePet !== false && <PetWidget />}
+      {!isVirtualExamRoom && settings?.enableChat !== false && <ChatWidget />}
       <OutOfCreditsModal />
       <FeedbackModal />
       <CreditTopUp userId={user?.uid} onCreditUpdate={(newBal) => setCredits(newBal)} />
@@ -990,7 +1023,17 @@ export default function App() {
       <main id="main" tabIndex={-1}>
         <ErrorBoundary resetKey={hashTick}>
           <Suspense fallback={<PageLoader />}>
-            {renderPage()}
+            {featureDisabledLabel ? (
+              <section className="wrap" style={{ padding: '48px 16px', textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
+                <h2 style={{ marginBottom: 8 }}>{featureDisabledLabel} đang tạm bảo trì</h2>
+                <p style={{ opacity: 0.78, marginBottom: 18 }}>
+                  Quản trị viên đang tạm khóa tính năng này để nâng cấp. Vui lòng quay lại sau!
+                </p>
+                <a href="#home" style={{ display: 'inline-block', padding: '10px 20px', borderRadius: 999, background: '#2563eb', color: '#fff', fontWeight: 700, textDecoration: 'none' }}>
+                  Về trang chủ
+                </a>
+              </section>
+            ) : renderPage()}
           </Suspense>
         </ErrorBoundary>
       </main>

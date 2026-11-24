@@ -621,8 +621,8 @@
    ============================================================ */
 .gvbm-hub-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.48fr) minmax(320px, 0.92fr);
-  gap: 1.1rem;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 1.15rem;
   align-items: start;
 }
 
@@ -990,22 +990,162 @@
 
 .gvbm-row-actions {
   display: flex;
-  gap: 0.35rem;
-  justify-content: flex-end;
+  gap: 0.4rem;
+  justify-content: flex-start;
   flex-wrap: wrap;
   align-items: center;
 }
 
+.gvbm-exam-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.gvbm-exam-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.2rem;
+  font: 700 0.72rem var(--sans, inherit);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--t-ink-3, var(--mut, #64748b));
+}
+
+.gvbm-exam-item {
+  border-radius: 14px;
+  border: 1px solid var(--t-border, rgba(15, 23, 42, 0.09));
+  background: var(--t-surface-1, #f8fafc);
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.72rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.gvbm-exam-item:hover {
+  border-color: color-mix(in srgb, var(--t-accent-2, #7c3aed) 32%, var(--t-border, transparent));
+  background: var(--t-surface-0, #ffffff);
+  box-shadow: 0 4px 14px -8px rgba(15, 23, 42, 0.1);
+}
+
+.gvbm-exam-item.is-open {
+  border-color: color-mix(in srgb, var(--t-accent-2, #7c3aed) 45%, var(--t-border, transparent));
+  background: var(--t-surface-0, #ffffff);
+}
+
+.gvbm-exam-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem 1rem;
+}
+
+.gvbm-exam-info {
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.gvbm-exam-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.gvbm-exam-name {
+  font: 750 0.9rem/1.4 var(--sans, inherit);
+  color: var(--t-ink, var(--ink, #0f172a));
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.gvbm-exam-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  font: 500 0.75rem var(--sans, inherit);
+  color: var(--t-ink-3, var(--mut, #64748b));
+}
+
+.gvbm-exam-metrics {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.gvbm-metric-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--t-border, rgba(15, 23, 42, 0.08));
+  background: var(--t-surface-0, #ffffff);
+}
+
+.gvbm-metric-pill small {
+  font: 600 0.7rem var(--sans, inherit);
+  color: var(--t-ink-3, var(--mut, #64748b));
+}
+
+.gvbm-metric-pill b {
+  font: 800 0.84rem var(--sans, inherit);
+  font-variant-numeric: tabular-nums;
+  color: var(--t-ink, var(--ink, #0f172a));
+}
+
+.gvbm-exam-foot {
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--t-border, rgba(15, 23, 42, 0.09));
+}
+
+.gvbm-inline-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(37, 99, 235, 0.22);
+}
+
+.gvbm-row-actions .st-btn.is-active {
+  background: rgba(124, 58, 237, 0.12);
+  color: var(--t-accent-2, #7c3aed);
+}
+
 .gvbm-del-btn {
   color: #dc2626 !important;
+  margin-left: auto;
 }
 
 .gvbm-results-box {
-  margin-top: 0.75rem;
+  margin-top: 0.2rem;
   padding: 0.75rem 0.85rem;
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--t-surface-1, #fafaf8);
   border: 1px solid var(--t-border, rgba(15, 23, 42, 0.08));
+}
+
+.gvbm-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+  font: 600 0.78rem var(--sans, inherit);
+  color: var(--t-ink-2, var(--mut, #64748b));
+}
+
+.gvbm-results-head b {
+  color: var(--t-ink, var(--ink, #0f172a));
+  font-weight: 800;
 }
 
 /* ---------- Right Sticky Connect Card ---------- */
@@ -1259,7 +1399,7 @@
   color: #f87171 !important;
 }
 
-@media (max-width: 1020px) {
+@media (max-width: 1180px) {
   .gvbm-hub-grid {
     grid-template-columns: 1fr;
   }
@@ -1281,5 +1421,15 @@
   .gvbm-card-actions .vt-btn {
     flex: 1;
     justify-content: center;
+  }
+  .gvbm-exam-metrics {
+    width: 100%;
+  }
+  .gvbm-metric-pill {
+    flex: 1;
+    justify-content: space-between;
+  }
+  .gvbm-del-btn {
+    margin-left: 0;
   }
 }

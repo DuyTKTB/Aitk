@@ -10,6 +10,8 @@
    Không đụng tới điểm XP / điểm thành thạo của Lộ trình.
    ============================================================ */
 
+import { fsrsSchedule, predictCardRetentionPct } from './fsrsEngine.js';
+
 export const DAY = 86400000;
 const VERSION = 1;
 const MAX_CARDS = 600;
@@ -69,12 +71,13 @@ export function nextInterval(prev, level) {
   return Math.min(60, Math.max(7, Math.round(base * 2.2)));
 }
 
-/** Ghi 1 lượt tự đánh giá cho 1 câu */
+/** Ghi 1 lượt tự đánh giá cho 1 câu (kèm siêu dữ liệu FSRS v4.5) */
 export function rateCard(uid, qid, level, now = Date.now(), topicId = null) {
   if (!qid || !LEVELS[level]) return null;
   const all = readCards(uid);
   const prev = all.cards[qid] || { interval: 0, seen: 0 };
   const interval = nextInterval(prev.interval, level);
+  const fsrs = fsrsSchedule(prev, level === 1 ? 1 : level === 2 ? 2 : 3, now);
   const rec = {
     qid: String(qid),
     topicId: topicId || prev.topicId || null,
@@ -83,10 +86,49 @@ export function rateCard(uid, qid, level, now = Date.now(), topicId = null) {
     seen: (prev.seen || 0) + 1,
     lastAt: now,
     dueAt: now + interval * DAY,
+    stability: fsrs.stability,
+    difficulty: fsrs.difficulty,
+    lapses: fsrs.lapses,
+    fsrsDueAt: fsrs.dueAt,
   };
   all.cards[qid] = rec;
   write(uid, all.cards);
   return rec;
+}
+
+/** Ghi 1 lượt ôn tập theo chuẩn FSRS v4.5 4 mức (1=Again, 2=Hard, 3=Good, 4=Easy) */
+export function rateCardFsrs(uid, qid, rating, now = Date.now(), topicId = null, desiredRetention = 0.9) {
+  const g = Math.round(Number(rating));
+  if (!qid || g < 1 || g > 4) return null;
+  const all = readCards(uid);
+  const prev = all.cards[qid] || { interval: 0, seen: 0 };
+  const fsrs = fsrsSchedule(prev, g, now, desiredRetention);
+  const rec = {
+    qid: String(qid),
+    topicId: topicId || prev.topicId || null,
+    level: g === 1 ? 1 : g === 2 ? 2 : 3,
+    interval: fsrs.interval,
+    seen: (prev.seen || 0) + 1,
+    lastAt: now,
+    dueAt: fsrs.dueAt,
+    stability: fsrs.stability,
+    difficulty: fsrs.difficulty,
+    lapses: fsrs.lapses,
+    fsrsDueAt: fsrs.dueAt,
+  };
+  all.cards[qid] = rec;
+  write(uid, all.cards);
+  return rec;
+}
+
+/** Lấy danh sách thẻ sắp quên nhất theo xác suất nhớ FSRS R(t) tăng dần */
+export function dueCardsByRetention(uid, { now = Date.now(), thresholdPct = 90, limit = 50 } = {}) {
+  const all = readCards(uid);
+  return Object.values(all.cards)
+    .map((c) => ({ ...c, retentionPct: predictCardRetentionPct(c, now) }))
+    .filter((c) => c.retentionPct <= thresholdPct)
+    .sort((a, b) => a.retentionPct - b.retentionPct)
+    .slice(0, limit);
 }
 
 /** Ghi cả phiên một lần (ít ghi localStorage hơn) */

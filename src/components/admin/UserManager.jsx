@@ -17,6 +17,7 @@ import {
   daysLeft,
 } from '../../lib/proKeyApi.js';
 import { getCredits, adminAdjustCredits } from '../../lib/creditService.js';
+import { logAdminAction } from '../../lib/adminAuditService.js';
 import AdminShell, { Topbar, Avatar, downloadCsv } from './AdminShell.jsx';
 import { Modal, ConfirmDialog } from './AdminUI.jsx';
 import {
@@ -782,7 +783,7 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
         <div className="vt-detail-stat">
           <small>Credit AI</small>
           <b style={{ color: '#0284c7' }}>
-            {credits !== null ? `${credits.toLocaleString('vi-VN')}đ` : '…'}
+            {credits !== null ? `${credits.toLocaleString('vi-VN')} Credit` : '…'}
           </b>
         </div>
         <div className="vt-detail-stat">
@@ -823,11 +824,13 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
    MODAL: ĐIỀU CHỈNH CREDIT AI THỦ CÔNG
    ============================================================ */
 function AdjustCreditModal({ user, onClose, onUpdated }) {
+  const { user: adminUser } = useAuth();
   const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [delta, setDelta] = useState(500);
   const [reason, setReason] = useState('Thưởng nạp điểm từ Admin');
   const [saving, setSaving] = useState(false);
+  const [submitErr, setSubmitErr] = useState('');
 
   useEffect(() => {
     let alive = true;
@@ -845,11 +848,23 @@ function AdjustCreditModal({ user, onClose, onUpdated }) {
     const num = Number(delta);
     if (!num || Number.isNaN(num)) return;
     setSaving(true);
+    setSubmitErr('');
     try {
       const res = await adminAdjustCredits(user.id, num, reason);
-      if (res.ok) {
-        onUpdated(res.balance, num);
+      if (!res?.ok) {
+        setSubmitErr(res?.error || 'Không thể cập nhật Credit AI (kiểm tra quyền RPC Supabase).');
+        return;
       }
+      logAdminAction({
+        actor: adminUser,
+        action: 'adjust_credits',
+        target: user.id,
+        targetLabel: `${user.display_name || 'Người dùng'} (${user.email || user.id})`,
+        summary: `${num > 0 ? '+' : ''}${num.toLocaleString('vi-VN')} Credit AI (${reason || 'Điều chỉnh thủ công'})`,
+      });
+      onUpdated(res.balance, num);
+    } catch (err) {
+      setSubmitErr(friendlyError(err));
     } finally {
       setSaving(false);
     }
@@ -879,6 +894,11 @@ function AdjustCreditModal({ user, onClose, onUpdated }) {
       }
     >
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {submitErr && (
+          <div style={{ padding: '8px 12px', borderRadius: 10, background: 'rgba(220,38,38,0.1)', color: '#dc2626', fontSize: 12.5, fontWeight: 700 }}>
+            {submitErr}
+          </div>
+        )}
         <div style={{ background: 'var(--vt-soft)', padding: 12, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <small style={{ color: 'var(--mut)', display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>Số dư hiện tại</small>
