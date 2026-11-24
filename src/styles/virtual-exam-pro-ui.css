@@ -15,9 +15,9 @@
 }
 
 .ns9-vex-container {
-  max-width: 1260px !important;
+  max-width: 1320px !important;
   margin: 0 auto;
-  padding: 0 22px;
+  padding: 0 20px;
 }
 
 /* ── 1. HEADER BENTO COMPACT (SÁNG SỦA, HIỆN ĐẠI, ĐẨY KHO ĐỀ LÊN NGAY TRÊN MÀN HÌNH ĐẦU) ── */
@@ -442,29 +442,56 @@
 /* ── 2. BỐ CỤC 2 CỘT: ĐỀ THI BÊN TRÁI · TÌM KIẾM & BỘ LỌC BÊN PHẢI ── */
 .vex-split-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 316px;
-  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) 292px;
+  gap: 20px;
   align-items: start;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .vex-left-exams {
   min-width: 0;
+  width: 100%;
 }
 
 .vex-right-sidebar {
   position: sticky;
   top: 76px;
-  border-radius: 22px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border-radius: 20px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
-  padding: 18px 18px 20px;
+  padding: 16px 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 14px;
   max-height: calc(100vh - 96px);
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
+}
+
+.vex-right-sidebar *,
+.vex-right-sidebar *::before,
+.vex-right-sidebar *::after {
+  box-sizing: border-box;
+}
+
+.vex-side-block .vex-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.vex-side-block .vex-mini-chip {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.25;
 }
 
 .vex-side-head {
@@ -543,7 +570,7 @@
 
 .ns9-vex-cards-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+  grid-template-columns: repeat(auto-fill, minmax(295px, 1fr)) !important;
   gap: 16px !important;
 }
 
@@ -556,6 +583,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .ns9-vex-card:hover {
@@ -573,6 +601,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .ns9-vex-title {
@@ -583,16 +612,53 @@
   margin: 8px 0 8px !important;
 }
 
+.ns9-vex-stats {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 4px 6px !important;
+  font-size: 12px !important;
+}
+
+.ns9-vex-stats > span {
+  white-space: nowrap !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
 .ns9-vex-foot {
   margin-top: auto !important;
   padding-top: 12px !important;
   border-top: 1px solid #f1f5f9 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+
+.s9-vex-foot-left {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0;
+}
+
+.s9-vex-preview-btn {
+  white-space: nowrap !important;
+  padding: 7px 11px !important;
+  font-size: 12px !important;
 }
 
 .ns9-vex-start-btn {
   border-radius: 11px !important;
   font-weight: 700 !important;
-  padding: 8px 15px !important;
+  padding: 8px 13px !important;
+  font-size: 12.5px !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  line-height: 1.2 !important;
+  height: auto !important;
 }
 
 @media (max-width: 1020px) {
