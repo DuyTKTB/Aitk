@@ -60,7 +60,10 @@ export default function SystemAnnouncementBanner({ previewOverride = null, onPre
 
   const dismissKey = useMemo(() => getAnnouncementDismissKey(settings), [settings]);
   const theme = resolveAnnouncementTheme(settings.announcementTheme);
-  const dismissible = settings.announcementDismissible !== false;
+  const isViewerAdmin = !isPreview && isAdmin(user);
+  const rawDismissible = settings.announcementDismissible !== false;
+  // Admin thật KHÔNG BAO GIỜ bị khóa chết bởi thông báo bắt buộc của chính mình
+  const dismissible = rawDismissible || isViewerAdmin;
   const showCountdown = Boolean(settings.announcementShowCountdown && evalRes.remainingMs > 0);
   const displayMode = settings.announcementDisplay || 'banner';
   const isPosterMode = displayMode === 'poster';
@@ -418,6 +421,46 @@ export default function SystemAnnouncementBanner({ previewOverride = null, onPre
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Thanh ghi chú nhỏ cho Admin khi thông báo đang khóa nút X với người dùng thường */}
+      {isViewerAdmin && !rawDismissible && modalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            left: '50%',
+            bottom: 20,
+            transform: 'translateX(-50%)',
+            zIndex: 10099,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '8px 16px',
+            borderRadius: 999,
+            border: '1px solid rgba(255,255,255,0.28)',
+            background: 'rgba(15,23,42,0.9)',
+            color: '#fff',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            boxShadow: '0 10px 28px rgba(0,0,0,0.4)',
+          }}
+        >
+          <span>Chế độ Admin: Người dùng thường bị khóa nút X</span>
+          <button
+            type="button"
+            onClick={handleCloseModal}
+            style={{ padding: '4px 12px', borderRadius: 999, border: 0, background: '#2563eb', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.78rem' }}
+          >
+            Đóng (Admin)
+          </button>
+          <a
+            href="#admin/settings"
+            onClick={handleCloseModal}
+            style={{ color: '#93c5fd', textDecoration: 'underline', fontSize: '0.78rem' }}
+          >
+            Tắt ở Cài đặt
+          </a>
         </div>
       )}
 
