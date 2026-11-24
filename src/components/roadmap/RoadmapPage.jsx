@@ -672,9 +672,10 @@ export default function RoadmapPage() {
         </div>
       )}
 
-      {/* ── VÙNG 2: UNIFIED STUDIO TOOLBAR (1 THANH ĐIỀU KHIỂN DUY NHẤT) ── */}
-      <div className="rm-pro-toolbar" role="region" aria-label="Thanh điều khiển lộ trình">
-        <div className="rm-pro-tb-group">
+      {/* ── VÙNG 2: UNIFIED STUDIO TOOLBAR (2 HÀNG CÂN ĐỐI · TRÁI CHỌN CHẾ ĐỘ · PHẢI TÌM & LỌC) ── */}
+      <div className="rm-pro-toolbar rm-pro-toolbar-v2" role="region" aria-label="Thanh điều khiển lộ trình">
+        {/* Hàng 1: Chọn Môn KHTN (trái) · Lọc Khối lớp + Cẩm nang (phải) */}
+        <div className="rm-pro-tb-row">
           <div className="rm-pro-sub-tabs" role="tablist" aria-label="Chọn môn Khoa học Tự nhiên">
             {SUBJECT_ORDER.map((sub) => {
               const meta = SUBJECT_META[sub];
@@ -701,28 +702,41 @@ export default function RoadmapPage() {
             })}
           </div>
 
-          {(activeTab === 'trail' || activeTab === 'dag') && (
-            <div className="rm-pro-grade-pills" role="group" aria-label="Lọc khối lớp">
-              {[
-                ['all', 'Cả 3 lớp'],
-                ['10', 'Lớp 10'],
-                ['11', 'Lớp 11'],
-                ['12', 'Lớp 12'],
-              ].map(([val, label]) => (
-                <button
-                  key={val}
-                  type="button"
-                  className={`rm-pro-grade-btn ${gradeFilter === val ? 'is-active' : ''}`}
-                  onClick={() => pickGrade(val)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="rm-pro-tb-right">
+            {(activeTab === 'trail' || activeTab === 'dag') && (
+              <div className="rm-pro-grade-pills" role="group" aria-label="Lọc khối lớp">
+                {[
+                  ['all', 'Cả 3 lớp'],
+                  ['10', 'Lớp 10'],
+                  ['11', 'Lớp 11'],
+                  ['12', 'Lớp 12'],
+                ].map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    className={`rm-pro-grade-btn ${gradeFilter === val ? 'is-active' : ''}`}
+                    onClick={() => pickGrade(val)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="rm-pro-ghost-btn"
+              onClick={() => setGuideOpen(true)}
+              title="Cẩm nang phương pháp ôn thi 2025–2026"
+            >
+              <IcoCompass />
+              <span>Cẩm nang</span>
+            </button>
+          </div>
         </div>
 
-        <div className="rm-pro-tb-group">
+        {/* Hàng 2: 5 Chế độ xem (trái) · Tìm chuyên đề + Lọc trạng thái (phải) */}
+        <div className="rm-pro-tb-row rm-pro-tb-row-bottom">
           <div className="rm-pro-mode-tabs" role="tablist" aria-label="Chế độ xem lộ trình">
             <button
               type="button"
@@ -775,7 +789,7 @@ export default function RoadmapPage() {
               aria-selected={activeTab === 'bookshelf'}
               className={`rm-pro-mode-btn ${activeTab === 'bookshelf' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('bookshelf')}
-              title="Thư viện Kệ sách & Giáo trình tương tác (8 tầng kệ · 14 chương trình · 89 đầu sách)"
+              title="Thư viện Kệ sách 3D KHTN (16 giáo trình Hoá · Vật lí · Sinh học)"
             >
               <IcoBookshelf />
               <span>Kệ sách</span>
@@ -783,7 +797,7 @@ export default function RoadmapPage() {
           </div>
 
           {(activeTab === 'trail' || activeTab === 'dag') && (
-            <>
+            <div className="rm-pro-tb-right">
               <div className="rm-pro-search-box">
                 <IcoSearch />
                 <input
@@ -807,18 +821,8 @@ export default function RoadmapPage() {
                 <option value="learning">Đang luyện ({autoRoadmap.learningChapters.length})</option>
                 <option value="mastered">Đã vững ({autoRoadmap.masteredChapters.length})</option>
               </select>
-            </>
+            </div>
           )}
-
-          <button
-            type="button"
-            className="rm-pro-ghost-btn"
-            onClick={() => setGuideOpen(true)}
-            title="Cẩm nang phương pháp ôn thi 2025–2026"
-          >
-            <IcoCompass />
-            <span>Cẩm nang</span>
-          </button>
         </div>
       </div>
 
