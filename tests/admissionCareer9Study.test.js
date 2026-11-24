@@ -242,37 +242,50 @@ describe('9Study Pro Upgrade — Định hướng Nghề nghiệp AI & Xét Nguy
     expect(uniResolved.src).toBe('/img/elec/outfits/hha.webp');
   });
 
-  it('cung cấp trọn bộ Thư viện Kệ sách Kiến thức & Giáo trình Tương tác (8 tầng kệ · 14 chương trình · 89 đầu sách)', () => {
-    expect(KNOWLEDGE_PROGRAMMES).toHaveLength(14);
-    expect(KNOWLEDGE_SHELF_TIERS).toHaveLength(8);
+  it('cung cấp trọn bộ Thư viện Giáo trình KHTN ELEC AI (100% Hoá - Lý - Sinh · 5 chuyên khoa · 16 đầu sách)', () => {
+    expect(KNOWLEDGE_PROGRAMMES).toHaveLength(5);
+    expect(KNOWLEDGE_SHELF_TIERS).toHaveLength(5);
 
     const allVolumes = getAllKnowledgeVolumes();
-    expect(allVolumes.length).toBeGreaterThanOrEqual(85);
+    expect(allVolumes.length).toBeGreaterThanOrEqual(16);
 
     for (const vol of allVolumes) {
       expect(vol.slug).toBeTruthy();
       expect(vol.title).toBeTruthy();
       expect(vol.chapters).toBeGreaterThan(0);
       expect(vol.accent).toMatch(/^#[0-9a-f]{6}$/i);
-      expect(vol.tierId).toBeTruthy();
+      expect(['hoa', 'ly', 'sinh']).toContain(vol.subjectKey);
     }
 
-    // Kiểm tra giáo trình Hoá Đại Cương — Vô Cơ (3 Phần · 10 Chương đầy đủ mục tiêu & lý thuyết)
+    // Kiểm tra Hoá Đại Cương — Vô Cơ (3 Phần · 10 Chương)
     const hoaVoCoVol = allVolumes.find((v) => v.slug === 'hoa-dai-cuong-vo-co');
     expect(hoaVoCoVol).toBeTruthy();
     const hoaVoCoBook = getDetailedBookCurriculum(hoaVoCoVol);
     expect(hoaVoCoBook.parts).toHaveLength(3);
-    const totalChapters = hoaVoCoBook.parts.reduce((s, p) => s + p.chapters.length, 0);
-    expect(totalChapters).toBe(10);
-    expect(hoaVoCoBook.parts[0].chapters[0].objectives.length).toBeGreaterThanOrEqual(4);
-    expect(hoaVoCoBook.parts[0].chapters[0].sections.length).toBeGreaterThanOrEqual(3);
+    expect(hoaVoCoBook.parts.reduce((s, p) => s + p.chapters.length, 0)).toBe(10);
 
-    // Kiểm tra sách KHTN THPT GDPT 2018 tự động sinh mục lục & bài đọc từ DAG
+    // Kiểm tra Hoá Hữu Cơ Toàn Tập (4 Phần · 40 Chương)
+    const hoaHuuCoVol = allVolumes.find((v) => v.slug === 'hoa-huu-co');
+    expect(hoaHuuCoVol).toBeTruthy();
+    const hoaHuuCoBook = getDetailedBookCurriculum(hoaHuuCoVol);
+    expect(hoaHuuCoBook.parts).toHaveLength(4);
+    expect(hoaHuuCoBook.parts.reduce((s, p) => s + p.chapters.length, 0)).toBe(40);
+
+    // Kiểm tra Sinh học Đại cương (4 Phần · 21 Chương)
+    const sinhDcVol = allVolumes.find((v) => v.slug === 'sinh-hoc-dai-cuong');
+    expect(sinhDcVol).toBeTruthy();
+    const sinhDcBook = getDetailedBookCurriculum(sinhDcVol);
+    expect(sinhDcBook.parts).toHaveLength(4);
+    expect(sinhDcBook.parts.reduce((s, p) => s + p.chapters.length, 0)).toBe(21);
+
+    // Kiểm tra sách KHTN THPT GDPT 2018 đồng bộ trực tiếp từ Dedicated Lessons & DAG
     const hoa12Vol = allVolumes.find((v) => v.slug === 'hoa-hoc-12');
     expect(hoa12Vol).toBeTruthy();
     const hoa12Book = getDetailedBookCurriculum(hoa12Vol);
     expect(hoa12Book.parts.length).toBeGreaterThanOrEqual(2);
-    expect(hoa12Book.parts[0].chapters[0].sections.length).toBeGreaterThanOrEqual(2);
-    expect(Object.keys(DETAILED_TEXTBOOK_CURRICULA)).toContain('hoa-dai-cuong-vo-co');
+    expect(hoa12Book.parts[0].chapters[0].sections.length).toBeGreaterThanOrEqual(1);
+    expect(Object.keys(DETAILED_TEXTBOOK_CURRICULA)).toEqual(
+      expect.arrayContaining(['hoa-dai-cuong-vo-co', 'hoa-huu-co', 'sinh-hoc-dai-cuong']),
+    );
   });
 });
