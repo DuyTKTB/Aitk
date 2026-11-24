@@ -2718,86 +2718,82 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   return (
     <div className="ns9-vex-page">
       <div className="ns9-vex-container">
-        {/* ── 0. HERO ĐẤU TRƯỜNG THỰC CHIẾN KHTN TOÀN QUỐC PRO ARENA ── */}
-        <section
-          className="ns9-vex-struct-banner ns9-vex-arena-hero"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 24,
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 260 }}>
-            <div className="ns9-vex-arena-badge-row">
-              <span className="ns9-vex-live-pill">
-                <span className="ns9-vex-live-dot" />
-                <span>LIVE ARENA · 20:00 CHỦ NHẬT HÀNG TUẦN</span>
-              </span>
-              <span className="ns9-vex-meta-chip"><SvgClock size={13} /> 50 phút · 3 phần chuẩn 2026</span>
-              <span className="ns9-vex-meta-chip"><SvgSparkle size={13} /> Xếp hạng Phổ điểm Toàn quốc</span>
-            </div>
-
-            <div className="ns9-vex-struct-title">
-              <strong>Đấu Trường Thực Chiến Khoa Học Tự Nhiên Toàn Quốc</strong>
-            </div>
-
-            <p className="ns9-vex-struct-desc">
-              Thi thử trực tuyến chuẩn cấu trúc Bộ GD&amp;ĐT 2026 (Trắc nghiệm 4 lựa chọn · Đúng/Sai lũy tiến · Trả lời ngắn), AI chấm điểm &amp; bắt bệnh lỗ hổng ngay lập tức và xuất <b>Thẻ Thành Tích PNG</b> vinh danh Top % toàn quốc.
-            </p>
-
-            <div className="ns9-vex-hero-stats">
-              <div className="ns9-vex-stat-pill">
-                <small>KHO ĐỀ KHTN</small>
-                <b>{vipExams.length + proExams.length + freeExams.length} đề chuẩn</b>
+        {/* ── 0. STUDIO HEADER BENTO GỌN GÀNG (KHÔNG CÒN 2 BANNER CHỒNG CHÉO) ── */}
+        <section className="vex-studio-top" aria-label="Tổng quan Phòng thi ảo ELEC AI">
+          <div className="vex-studio-hero">
+            <div className="vex-studio-hero-body">
+              <div className="vex-studio-eyebrow">
+                <span className="vex-studio-live-dot" />
+                <span>ĐẤU TRƯỜNG KHTN · 20:00 CHỦ NHẬT HÀNG TUẦN</span>
               </div>
-              <div className="ns9-vex-stat-pill">
-                <small>ĐÃ HOÀN THÀNH</small>
-                <b>{doneMap.size} bài thi</b>
-              </div>
-              <div className="ns9-vex-stat-pill">
-                <small>ĐIỂM CAO NHẤT</small>
-                <b>{latestBestAttempt?.score10 != null ? `${latestBestAttempt.score10}đ` : 'Chưa thi'}</b>
-              </div>
-            </div>
-
-            <div className="ns9-vex-hero-actions">
-              {(freeExams[0] || vipExams[0]) && (
+              <h1>Phòng Thi Ảo Khoa Học Tự Nhiên 2026</h1>
+              <p>
+                Làm bài bấm giờ thực chiến chuẩn cấu trúc 3 phần Bộ GD&amp;ĐT, AI chấm điểm tức thì, lưu sổ lỗi sai tự động và vinh danh phổ điểm toàn quốc.
+              </p>
+              <div className="vex-studio-cta-row">
+                {(freeExams[0] || vipExams[0]) && (
+                  <button
+                    type="button"
+                    className="vex-btn-primary"
+                    onClick={() => handleStartExam(freeExams[0] || vipExams[0])}
+                  >
+                    <SvgPlay size={13} />
+                    <span>Thi Ngay Đề Tiêu Điểm</span>
+                  </button>
+                )}
                 <button
                   type="button"
-                  className="ns9-vex-btn-spotlight"
-                  onClick={() => handleStartExam(freeExams[0] || vipExams[0])}
+                  className="vex-btn-outline"
+                  onClick={() => setShareCardOpen(true)}
                 >
-                  <SvgPlay size={14} />
-                  <span>Thi Ngay Đề Tiêu Điểm</span>
+                  <SvgAward size={14} />
+                  <span>Thẻ Thành Tích PNG</span>
                 </button>
-              )}
-              <button
-                type="button"
-                className="ns9-vex-btn-award"
-                onClick={() => setShareCardOpen(true)}
-              >
-                <SvgAward size={15} />
-                <span>Xuất Thẻ Thành Tích (PNG)</span>
-              </button>
+                {onSwitchToLegacyQuiz && (
+                  <button
+                    type="button"
+                    className="vex-btn-outline"
+                    onClick={onSwitchToLegacyQuiz}
+                    title="Chuyển sang chế độ Phản xạ Bảng tuần hoàn & AI Tạo đề"
+                  >
+                    <SvgSparkle size={14} />
+                    <span>AI Tạo đề nhanh</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="vex-studio-mascot" title="Bé Elec Chinh Phục Phòng Thi">
+              <img src="/img/elec/elec-celebrate.png" alt="Bé Elec Phòng Thi Ảo" />
             </div>
           </div>
 
-          <div
-            className="ns9-vex-banner-mascot"
-            title="Bé Elec Vinh Danh Đấu Trường KHTN"
-            style={{ flexShrink: 0, width: 126, height: 126 }}
-          >
-            <img
-              src="/img/elec/elec-celebrate.png"
-              alt="Bé Elec Đấu Trường KHTN"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                filter: 'drop-shadow(0 14px 28px rgba(56, 189, 248, 0.45))',
-              }}
-            />
+          <div className="vex-studio-metrics">
+            <div className="vex-metrics-head">
+              <strong>Hồ sơ luyện đề của bạn</strong>
+              <span>{selectedExamType} · GDPT 2018</span>
+            </div>
+
+            <div className="vex-metrics-grid">
+              <div className="vex-metric-box">
+                <small>Đề hiện có</small>
+                <b>{vipExams.length + proExams.length + freeExams.length}</b>
+              </div>
+              <div className="vex-metric-box">
+                <small>Đã làm</small>
+                <b>{doneMap.size}</b>
+              </div>
+              <div className="vex-metric-box">
+                <small>Cao nhất</small>
+                <b>{latestBestAttempt?.score10 != null ? `${latestBestAttempt.score10}đ` : '—'}</b>
+              </div>
+            </div>
+
+            <div className="vex-metrics-foot">
+              <span className="vex-spec-tag">50 phút chuẩn thi thật</span>
+              <span className="vex-spec-tag">18 TN · 4 Đ/S · 6 TLN</span>
+              <span className="vex-spec-tag">Lời giải chi tiết AI</span>
+            </div>
           </div>
         </section>
 
@@ -2819,252 +2815,171 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
           subjectLabel="Khoa học Tự nhiên (Vật lí · Hóa học · Sinh học)"
         />
 
-        {/* ── 1. THANH TÌM KIẾM & SẮP XẾP ── */}
-        <div className="ns9-vex-search-row">
-          <div className="ns9-vex-search-box">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="M20 20l-3.5-3.5" />
-            </svg>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm đề thi KHTN (Vật lí, Hóa học, Sinh học)..."
-              aria-label="Tìm kiếm đề thi Khoa học Tự nhiên"
-            />
+        {/* ── 1. THANH ĐIỀU KHIỂN STICKY 1 DÒNG (SẠCH SẼ, HIỆN ĐẠI) ── */}
+        <div className="vex-command-bar">
+          <div className="vex-cmd-row">
+            {/* Segmented Control Phân môn KHTN */}
+            <div className="vex-segmented" role="tablist" aria-label="Chọn phân môn KHTN">
+              {SUBJECT_FILTERS.map((s) => {
+                const active = selectedSubject === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    className={'vex-seg-btn' + (active ? ' on' : '')}
+                    onClick={() => {
+                      setSelectedSubject(s.id);
+                      setGlobalSubject(s.id);
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Tìm kiếm + Nút mở Bộ lọc nâng cao + Sắp xếp */}
+            <div className="vex-cmd-right">
+              <div className="vex-search-input-wrap">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-3.5-3.5" />
+                </svg>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tìm đề thi, trường chuyên, Sở GD..."
+                  aria-label="Tìm kiếm đề thi Khoa học Tự nhiên"
+                />
+              </div>
+
+              <button
+                type="button"
+                className={'vex-filter-drawer-btn' + (mobileFiltersOpen || activeFilterCount > 0 ? ' active' : '')}
+                onClick={() => setMobileFiltersOpen((v) => !v)}
+                aria-expanded={mobileFiltersOpen}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="4" y1="6" x2="20" y2="6" />
+                  <line x1="7" y1="12" x2="17" y2="12" />
+                  <line x1="10" y1="18" x2="14" y2="18" />
+                </svg>
+                <span>Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}</span>
+              </button>
+
+              <select
+                id="ns9-vex-sort"
+                className="vex-sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                aria-label="Sắp xếp đề thi"
+              >
+                <option value="priority">Ưu tiên</option>
+                <option value="popular">Nhiều lượt thi</option>
+                <option value="newest">Mới nhất (2027)</option>
+              </select>
+            </div>
           </div>
 
-          <div className="ns9-vex-sort-wrap">
-            <label htmlFor="ns9-vex-sort">Sắp xếp:</label>
-            <select
-              id="ns9-vex-sort"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="priority">Ưu tiên</option>
-              <option value="popular">Nhiều lượt làm nhất</option>
-              <option value="newest">Mới nhất (2027)</option>
-            </select>
-          </div>
-        </div>
+          {/* Hàng lọc nhanh Kỳ thi & Hạng đề */}
+          <div className="vex-quick-strip">
+            <div className="vex-chip-group" role="group" aria-label="Kỳ thi">
+              {EXAM_TYPES.map((exId) => (
+                <button
+                  key={exId}
+                  type="button"
+                  className={'vex-mini-chip' + (selectedExamType === exId ? ' on' : '')}
+                  onClick={() => setSelectedExamType(exId)}
+                >
+                  {exId}
+                </button>
+              ))}
+            </div>
 
-        {/* ── 2. THANH LỌC NHANH TRÊN MOBILE + NÚT MỞ BỘ LỌC NÂNG CAO ── */}
-        <div className="ns9-vex-mobile-quickbar">
-          <div className="ns9-vex-mq-pills">
-            {TIER_FILTERS.map((t) => {
-              const active = selectedTier === t.id;
-              return (
+            <div className="vex-chip-group" role="group" aria-label="Hạng đề">
+              {TIER_FILTERS.map((t) => (
                 <button
                   key={t.id}
                   type="button"
-                  className={'ns9-vex-mq-pill' + (active ? ' on' : '')}
+                  className={'vex-mini-chip' + (selectedTier === t.id ? ' is-accent' : '')}
                   onClick={() => setSelectedTier(t.id)}
                 >
                   {t.label}
                 </button>
-              );
-            })}
+              ))}
+            </div>
           </div>
-          <button
-            type="button"
-            className={'ns9-vex-mq-toggle' + (mobileFiltersOpen || activeFilterCount > 0 ? ' active' : '')}
-            onClick={() => setMobileFiltersOpen((v) => !v)}
-            aria-expanded={mobileFiltersOpen}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <line x1="4" y1="6" x2="20" y2="6" />
-              <line x1="7" y1="12" x2="17" y2="12" />
-              <line x1="10" y1="18" x2="14" y2="18" />
-            </svg>
-            <span>Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}</span>
-          </button>
         </div>
 
-        {/* ── 3. BẢNG BỘ LỌC 2 CỘT CHUẨN ── */}
-        <section className={'ns9-vex-filter-grid' + (mobileFiltersOpen ? ' is-mobile-open' : '')} aria-label="Bộ lọc đề thi">
-          <div className="ns9-vex-filter-col">
-            <div className="ns9-vex-filter-line">
-              <span className="ns9-vex-flabel">KỲ THI</span>
-              <div className="ns9-vex-fpills">
-                {EXAM_TYPES.map((exId) => {
-                  const active = selectedExamType === exId;
-                  return (
-                    <button
-                      key={exId}
-                      type="button"
-                      className={'ns9-vex-fpill' + (active ? ' on' : '')}
-                      onClick={() => setSelectedExamType(exId)}
-                    >
-                      {active && <SvgCheck size={11} />}
-                      <span>{exId}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="ns9-vex-filter-line">
-              <span className="ns9-vex-flabel">HẠNG ĐỀ</span>
-              <div className="ns9-vex-fpills">
-                {TIER_FILTERS.map((t) => {
-                  const active = selectedTier === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className={'ns9-vex-fpill' + (active ? ' on' : '')}
-                      onClick={() => setSelectedTier(t.id)}
-                    >
-                      {active && <SvgCheck size={11} />}
-                      <span>{t.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="ns9-vex-filter-line">
-              <span className="ns9-vex-flabel">PHÂN MÔN</span>
-              <div className="ns9-vex-fpills">
-                {SUBJECT_FILTERS.map((s) => {
-                  const active = selectedSubject === s.id;
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={'ns9-vex-fpill' + (active ? ' on' : '')}
-                      onClick={() => {
-                        setSelectedSubject(s.id);
-                        setGlobalSubject(s.id);
-                      }}
-                    >
-                      {active && <SvgCheck size={11} />}
-                      <span>{s.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="ns9-vex-filter-line">
-              <span className="ns9-vex-flabel">KHỐI LỚP</span>
-              <div className="ns9-vex-fpills">
-                {GRADE_FILTERS.map((g) => {
-                  const active = selectedGrade === g.id;
-                  return (
-                    <button
-                      key={g.id}
-                      type="button"
-                      className={'ns9-vex-fpill' + (active ? ' on' : '')}
-                      onClick={() => setSelectedGrade(g.id)}
-                    >
-                      {active && <SvgCheck size={11} />}
-                      <span>{g.label}</span>
-                    </button>
-                  );
-                })}
-                {onSwitchToLegacyQuiz && (
+        {/* ── 2. NGĂN KÉO BỘ LỌC NÂNG CAO (CHỈ MỞ KHI CẦN) ── */}
+        {mobileFiltersOpen && (
+          <section className="vex-advanced-drawer" aria-label="Bộ lọc nâng cao">
+            <div className="vex-adv-group">
+              <label>Khối lớp</label>
+              <div className="vex-chip-group">
+                {GRADE_FILTERS.map((g) => (
                   <button
+                    key={g.id}
                     type="button"
-                    className="ns9-vex-fpill is-special"
-                    onClick={onSwitchToLegacyQuiz}
-                    title="Chuyển sang chế độ Phản xạ Bảng tuần hoàn & AI Tạo đề"
+                    className={'vex-mini-chip' + (selectedGrade === g.id ? ' on' : '')}
+                    onClick={() => setSelectedGrade(g.id)}
                   >
-                    <SvgSparkle size={12} />
-                    <span>Phản xạ Nguyên tố &amp; AI Tạo đề</span>
+                    {g.label}
                   </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="ns9-vex-filter-col is-right">
-            <div className="ns9-vex-filter-line">
-              <span className="ns9-vex-flabel">TRẠNG THÁI</span>
-              <div className="ns9-vex-fpills">
-                {STATUS_FILTERS.map((st) => {
-                  const active = selectedStatus === st.id;
-                  return (
-                    <button
-                      key={st.id}
-                      type="button"
-                      className={'ns9-vex-fpill' + (active ? ' on' : '')}
-                      onClick={() => setSelectedStatus(st.id)}
-                    >
-                      {active && <SvgCheck size={11} />}
-                      <span>{st.label}</span>
-                    </button>
-                  );
-                })}
+                ))}
               </div>
             </div>
 
-            <div className="ns9-vex-filter-line">
-              <span className="ns9-vex-flabel">NGUỒN ĐỀ</span>
-              <div className="ns9-vex-fpills">
-                {SOURCE_FILTERS.map((src) => {
-                  const active = selectedSource === src.id;
-                  return (
-                    <button
-                      key={src.id}
-                      type="button"
-                      className={'ns9-vex-fpill' + (active ? ' on' : '')}
-                      onClick={() => setSelectedSource(src.id)}
-                    >
-                      {active && <SvgCheck size={11} />}
-                      <span>{src.label}</span>
-                    </button>
-                  );
-                })}
+            <div className="vex-adv-group">
+              <label>Trạng thái làm bài</label>
+              <div className="vex-chip-group">
+                {STATUS_FILTERS.map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    className={'vex-mini-chip' + (selectedStatus === st.id ? ' on' : '')}
+                    onClick={() => setSelectedStatus(st.id)}
+                  >
+                    {st.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="ns9-vex-filter-line">
-              <span className="ns9-vex-flabel">NĂM</span>
-              <div className="ns9-vex-fpills">
-                <select
-                  className="ns9-vex-year-select"
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  aria-label="Chọn năm đề thi"
-                >
-                  <option value="all">Tất cả</option>
-                  <option value="2027">2027</option>
-                  <option value="2026">2026</option>
-                </select>
+            <div className="vex-adv-group">
+              <label>Nguồn đề</label>
+              <div className="vex-chip-group">
+                {SOURCE_FILTERS.map((src) => (
+                  <button
+                    key={src.id}
+                    type="button"
+                    className={'vex-mini-chip' + (selectedSource === src.id ? ' on' : '')}
+                    onClick={() => setSelectedSource(src.id)}
+                  >
+                    {src.label}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* ── 4. BANNER CẤU TRÚC ĐỀ THI KHTN (100% SVG) ── */}
-        <section className="ns9-vex-struct-banner ns9-vex-secondary-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ flex: 1 }}>
-            <div className="ns9-vex-struct-top">
-              <div className="ns9-vex-struct-title">
-                <SvgShieldCheck size={17} />
-                <strong>Cấu trúc đề thi {subjectTitleLabel} ({selectedExamType === 'THPTQG' ? 'Thi Tốt nghiệp THPT' : `Kỳ thi ${selectedExamType}`})</strong>
-              </div>
-
-              <div className="ns9-vex-struct-pills">
-                <span><SvgClock size={13} /> Bấm giờ thi thật</span>
-                <span><SvgSparkle size={13} /> AI chấm điểm &amp; lưu sổ lỗi sai</span>
-                <span><SvgAward size={13} /> Đáp án &amp; lời giải chi tiết</span>
-              </div>
+            <div className="vex-adv-group">
+              <label>Năm thi</label>
+              <select
+                className="vex-sort-select"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                aria-label="Chọn năm đề thi"
+              >
+                <option value="all">Tất cả năm</option>
+                <option value="2027">2027</option>
+                <option value="2026">2026</option>
+              </select>
             </div>
-            <p className="ns9-vex-struct-desc">
-              Hệ thống đề thi thử và đề thi chính thức {subjectTitleLabel} tại <b>ELEC AI</b> được biên soạn bám sát cấu trúc mới nhất của Bộ GD&amp;ĐT theo định dạng <b>Chương trình GDPT mới</b>. Học sinh có thể làm bài thi trắc nghiệm trực tuyến có bấm giờ, nhận kết quả chấm điểm tức thì và được AI phân tích chi tiết từng dạng bài để tối ưu hóa điểm số.
-            </p>
-          </div>
-          <div className="ns9-vex-banner-mascot" title="Elec Chinh Phục Phòng Thi" style={{ flexShrink: 0, width: 88, height: 88 }}>
-            <img
-              src="/img/elec/elec-fighting.png"
-              alt="Elec Fighting"
-              style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 8px 18px rgba(37, 99, 235, 0.3))' }}
-            />
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* ── 5. BA PHÂN KHU BỘ ĐỀ: VIP · PRO · FREE ── */}
         {vipExams.length > 0 && (

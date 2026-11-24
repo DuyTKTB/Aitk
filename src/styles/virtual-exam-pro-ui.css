@@ -1,316 +1,465 @@
 /* ============================================================
-   virtual-exam-pro-ui.css — PHÒNG THI ẢO ELEC AI PRO ARENA UI
+   virtual-exam-pro-ui.css — PHÒNG THI ẢO ELEC AI STUDIO 2026
    ------------------------------------------------------------
-   Nâng cấp toàn diện giao diện sảnh Phòng thi ảo (#quiz / #virtual-exams):
-     • Hero Đấu trường KHTN đậm chất điện ảnh (Deep Cobalt Glass + Live Pulse)
-     • Thanh tìm kiếm & bộ lọc 2 cột gọn gàng, sạch sẽ, tinh tế kiểu Apple/Linear
-     • Banner cấu trúc đề thi 2026 tối giản, nhường đất cho kho đề hiển thị ngay
-     • Thẻ đề thi (VirtualExamCard) nổi khối sang trọng, hiệu ứng hover mượt
+   Kiến trúc giao diện tinh gọn chuẩn Apple/Linear · Bố cục 2 cột:
+     • Sảnh chính thoáng đãng, nền sáng tinh khiết (#F8FAFC)
+     • Header gọn nhẹ 1 dòng (không còn 2 banner to chồng nhau)
+     • Thanh điều khiển nhanh 1 dòng (Kỳ thi · Môn KHTN · Tìm kiếm · Bộ lọc nâng cao)
+     • Thẻ đề thi 3 cột sắc nét, tỉ lệ chuẩn editorial, hover nổi khối mượt
    ============================================================ */
 
 .ns9-vex-page {
-  background: radial-gradient(circle at 12% 0%, rgba(56, 189, 248, 0.11) 0%, transparent 40%),
-              radial-gradient(circle at 88% 8%, rgba(37, 99, 235, 0.09) 0%, transparent 42%),
-              #f4f7fb;
+  background: #f8fafc !important;
   min-height: calc(100vh - 64px);
-  padding: 20px 0 64px !important;
+  padding: 20px 0 72px !important;
 }
 
 .ns9-vex-container {
-  max-width: 1240px !important;
+  max-width: 1260px !important;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 22px;
 }
 
-/* ── 1. HERO ĐẤU TRƯỜNG THỰC CHIẾN KHTN TOÀN QUỐC ── */
-.ns9-vex-arena-hero {
+/* ── 1. HEADER BENTO COMPACT (SÁNG SỦA, HIỆN ĐẠI, ĐẨY KHO ĐỀ LÊN NGAY TRÊN MÀN HÌNH ĐẦU) ── */
+.vex-studio-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.95fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.vex-studio-hero {
   position: relative;
   overflow: hidden;
-  border-radius: 26px !important;
-  padding: 26px 30px !important;
-  margin-bottom: 20px !important;
-  background: linear-gradient(135deg, #0b1530 0%, #17337a 52%, #0369a1 100%) !important;
-  border: 1px solid rgba(125, 211, 252, 0.28) !important;
-  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
-  color: #ffffff !important;
-}
-
-.ns9-vex-arena-hero::before {
-  content: '';
-  position: absolute;
-  top: -80px;
-  right: 110px;
-  width: 280px;
-  height: 280px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.34) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.ns9-vex-arena-hero::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(186, 230, 253, 0.12) 1px, transparent 1px);
-  background-size: 22px 22px;
-  opacity: 0.45;
-  pointer-events: none;
-}
-
-.ns9-vex-arena-hero > * {
-  position: relative;
-  z-index: 2;
-}
-
-.ns9-vex-arena-badge-row {
+  border-radius: 22px;
+  padding: 22px 26px;
+  background: linear-gradient(135deg, #ffffff 0%, #eff6ff 58%, #e0f2fe 100%);
+  border: 1px solid #dbeafe;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
+  justify-content: space-between;
+  gap: 20px;
 }
 
-.ns9-vex-live-pill {
+.vex-studio-hero-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.vex-studio-eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   padding: 4px 11px;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.18);
-  border: 1px solid rgba(52, 211, 153, 0.45);
-  color: #6ee7b7;
+  background: #ffffff;
+  border: 1px solid #bae6fd;
+  color: #0369a1;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.08);
 }
 
-.ns9-vex-live-dot {
+.vex-studio-live-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #34d399;
-  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.28);
-  animation: ns9-live-pulse 1.8s infinite;
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
 }
 
-@keyframes ns9-live-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.25); opacity: 0.65; }
-}
-
-.ns9-vex-meta-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 11px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #e0f2fe;
-  font-size: 11.5px;
-  font-weight: 700;
-}
-
-.ns9-vex-arena-hero .ns9-vex-struct-title {
-  color: #ffffff !important;
-  font-size: 22px !important;
-  line-height: 1.28;
-  margin-bottom: 6px;
-}
-
-.ns9-vex-arena-hero .ns9-vex-struct-desc {
-  color: rgba(226, 232, 240, 0.9) !important;
-  font-size: 13.8px !important;
-  max-width: 720px;
-}
-
-.ns9-vex-hero-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.ns9-vex-stat-pill {
-  padding: 9px 14px;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.36);
-  border: 1px solid rgba(186, 230, 253, 0.18);
-  backdrop-filter: blur(8px);
-  min-width: 108px;
-}
-
-.ns9-vex-stat-pill small {
-  display: block;
-  font-size: 10.5px;
-  font-weight: 700;
-  color: #93c5fd;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.ns9-vex-stat-pill b {
-  display: block;
-  font-size: 17px;
+.vex-studio-hero h1 {
+  margin: 0 0 6px;
+  font-size: 24px;
   font-weight: 800;
-  color: #ffffff;
-  margin-top: 2px;
+  color: #0f172a;
+  letter-spacing: -0.025em;
+  line-height: 1.22;
 }
 
-.ns9-vex-hero-actions {
+.vex-studio-hero p {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  color: #475569;
+  line-height: 1.55;
+  max-width: 560px;
+}
+
+.vex-studio-cta-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
-  margin-top: 16px;
 }
 
-.ns9-vex-btn-spotlight {
-  padding: 10px 20px !important;
-  border-radius: 12px !important;
-  border: none !important;
-  background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%) !important;
-  color: #ffffff !important;
-  font-weight: 800 !important;
-  font-size: 13.5px !important;
+.vex-btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.38) !important;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.24);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
-.ns9-vex-btn-spotlight:hover {
+.vex-btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 14px 28px rgba(14, 165, 233, 0.5) !important;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.34);
 }
 
-.ns9-vex-btn-award {
-  padding: 10px 18px !important;
-  border-radius: 12px !important;
-  border: 1px solid rgba(253, 224, 71, 0.42) !important;
-  background: rgba(250, 204, 21, 0.14) !important;
-  color: #fef08a !important;
-  font-weight: 700 !important;
-  font-size: 13.5px !important;
+.vex-btn-outline {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  padding: 9.5px 15px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
-  backdrop-filter: blur(8px);
-  transition: background 0.18s ease, transform 0.18s ease;
+  transition: border-color 0.16s ease, background 0.16s ease;
 }
 
-.ns9-vex-btn-award:hover {
-  background: rgba(250, 204, 21, 0.24) !important;
-  transform: translateY(-1px);
+.vex-btn-outline:hover {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  color: #0369a1;
 }
 
-/* ── 2. THANH TÌM KIẾM & BỘ LỌC GLASS PANEL ── */
-.ns9-vex-search-row {
-  gap: 12px !important;
-  margin-bottom: 14px !important;
+.vex-studio-mascot {
+  width: 108px;
+  height: 108px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.ns9-vex-search-box {
-  background: #ffffff !important;
-  border: 1px solid #dbeafe !important;
-  border-radius: 15px !important;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04) !important;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+.vex-studio-mascot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 22px rgba(2, 132, 199, 0.22));
 }
 
-.ns9-vex-search-box:focus-within {
-  border-color: #0284c7 !important;
-  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.14) !important;
+/* Cột phải Hero: Thẻ Thống kê & Ma trận 2026 gọn gàng */
+.vex-studio-metrics {
+  border-radius: 22px;
+  padding: 18px 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-.ns9-vex-sort-wrap {
-  background: #ffffff !important;
-  border: 1px solid #dbeafe !important;
-  border-radius: 15px !important;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04) !important;
+.vex-metrics-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.ns9-vex-filter-grid {
-  background: rgba(255, 255, 255, 0.92) !important;
-  backdrop-filter: blur(12px);
-  border: 1px solid #e2e8f0 !important;
-  border-radius: 22px !important;
-  padding: 18px 22px !important;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04) !important;
-  margin-bottom: 18px !important;
+.vex-metrics-head strong {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #0f172a;
 }
 
-.ns9-vex-flabel {
-  font-size: 11px !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.06em !important;
-  color: #64748b !important;
+.vex-metrics-head span {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #f0f9ff;
+  color: #0284c7;
 }
 
-.ns9-vex-fpill {
-  border-radius: 999px !important;
-  padding: 6px 13px !important;
-  font-size: 12.5px !important;
-  font-weight: 700 !important;
-  border: 1px solid #e2e8f0 !important;
-  background: #f8fafc !important;
-  color: #334155 !important;
-  transition: all 0.16s ease !important;
+.vex-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.ns9-vex-fpill:hover {
-  border-color: #7dd3fc !important;
-  background: #f0f9ff !important;
-  color: #0369a1 !important;
+.vex-metric-box {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
 }
 
-.ns9-vex-fpill.on {
-  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
-  border-color: transparent !important;
-  color: #ffffff !important;
-  box-shadow: 0 6px 14px rgba(2, 132, 199, 0.28) !important;
+.vex-metric-box small {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
-.ns9-vex-fpill.is-special {
-  background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%) !important;
-  border-color: #c4b5fd !important;
-  color: #5b21b6 !important;
+.vex-metric-box b {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 2px;
 }
 
-/* ── 3. BANNER CẤU TRÚC ĐỀ THI TỐI GIẢN (COMPACT STRIP) ── */
-.ns9-vex-secondary-banner {
-  border-radius: 18px !important;
-  padding: 14px 20px !important;
-  margin-bottom: 22px !important;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;
-  border: 1px solid #bae6fd !important;
-  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.06) !important;
+.vex-metrics-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.ns9-vex-secondary-banner .ns9-vex-struct-desc {
-  font-size: 13px !important;
-  margin-bottom: 0 !important;
-  color: #475569 !important;
+.vex-spec-tag {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 8px;
 }
 
-/* ── 4. TIÊU ĐỀ PHÂN KHU & THẺ ĐỀ THI CAO CẤP ── */
+/* ── 2. THANH ĐIỀU KHIỂN 1 DÒNG (STICKY TOOLBAR) ── */
+.vex-command-bar {
+  position: sticky;
+  top: 72px;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vex-cmd-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vex-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 13px;
+  background: #f1f5f9;
+}
+
+.vex-seg-btn {
+  padding: 7px 13px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+.vex-seg-btn:hover {
+  color: #0f172a;
+}
+
+.vex-seg-btn.on {
+  background: #ffffff;
+  color: #0284c7;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.vex-cmd-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 260px;
+}
+
+.vex-search-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  max-width: 340px;
+}
+
+.vex-search-input-wrap svg {
+  position: absolute;
+  left: 12px;
+  color: #64748b;
+  pointer-events: none;
+}
+
+.vex-search-input-wrap input {
+  width: 100%;
+  padding: 8.5px 12px 8.5px 36px;
+  border-radius: 11px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  font-size: 13px;
+  color: #0f172a;
+  outline: none;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.vex-search-input-wrap input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.vex-filter-drawer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8.5px 13px;
+  border-radius: 11px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.vex-filter-drawer-btn.active {
+  border-color: #0284c7;
+  background: #f0f9ff;
+  color: #0284c7;
+}
+
+.vex-sort-select {
+  padding: 8.5px 12px;
+  border-radius: 11px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12.5px;
+  font-weight: 700;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Hàng pill phụ (Hạng đề · Kỳ thi nhanh) */
+.vex-quick-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.vex-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.vex-mini-chip {
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vex-mini-chip:hover {
+  border-color: #7dd3fc;
+  color: #0369a1;
+}
+
+.vex-mini-chip.on {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+.vex-mini-chip.is-accent {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+  color: #0284c7;
+}
+
+/* Ngăn kéo Bộ lọc nâng cao (ẩn gọn mặc định, bấm "Bộ lọc" mới xổ ra) */
+.vex-advanced-drawer {
+  margin-bottom: 18px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.vex-adv-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vex-adv-group label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── 3. PHÂN KHU & THẺ ĐỀ THI CAO CẤP ── */
+.ns9-vex-section {
+  margin-bottom: 30px !important;
+}
+
 .ns9-vex-sec-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 14px !important;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0 !important;
+  border-bottom: none !important;
 }
 
 .ns9-vex-sec-head h3 {
-  font-size: 19px !important;
+  font-size: 18.5px !important;
   font-weight: 800 !important;
   color: #0f172a !important;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
+  margin: 0 !important;
 }
 
 .ns9-vex-sec-head span {
@@ -320,31 +469,84 @@
   color: #0369a1;
   font-size: 12px;
   font-weight: 800;
+  white-space: nowrap;
+}
+
+.ns9-vex-cards-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)) !important;
+  gap: 18px !important;
 }
 
 .ns9-vex-card {
   border-radius: 20px !important;
   border: 1px solid #e2e8f0 !important;
   background: #ffffff !important;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05) !important;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04) !important;
   transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease, border-color 0.22s ease !important;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .ns9-vex-card:hover {
-  transform: translateY(-5px) !important;
+  transform: translateY(-4px) !important;
   border-color: #7dd3fc !important;
-  box-shadow: 0 18px 36px rgba(2, 132, 199, 0.14) !important;
+  box-shadow: 0 18px 34px rgba(2, 132, 199, 0.12) !important;
+}
+
+.ns9-vex-banner {
+  height: 128px !important;
+}
+
+.ns9-vex-body {
+  padding: 15px 17px 16px !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.ns9-vex-title {
+  font-size: 15.5px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  line-height: 1.4 !important;
+  margin: 8px 0 8px !important;
+}
+
+.ns9-vex-foot {
+  margin-top: auto !important;
+  padding-top: 12px !important;
+  border-top: 1px solid #f1f5f9 !important;
+}
+
+.ns9-vex-start-btn {
+  border-radius: 11px !important;
+  font-weight: 700 !important;
+  padding: 8px 15px !important;
+}
+
+@media (max-width: 960px) {
+  .vex-studio-top {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
-  .ns9-vex-arena-hero {
-    padding: 20px 18px !important;
+  .vex-studio-hero {
+    padding: 18px;
   }
-  .ns9-vex-arena-hero .ns9-vex-struct-title {
-    font-size: 18px !important;
-  }
-  .ns9-vex-banner-mascot {
+  .vex-studio-mascot {
     display: none;
+  }
+  .vex-command-bar {
+    position: static;
+  }
+  .vex-cmd-right {
+    width: 100%;
+    min-width: 0;
+  }
+  .vex-search-input-wrap {
+    max-width: none;
   }
 }
