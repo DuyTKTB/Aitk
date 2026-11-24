@@ -675,7 +675,7 @@ export default function DiagnosticTestModal({
         <DialogBackdrop />
         <DialogPopup
           from="top"
-          size="lg"
+          size="xl"
           className="ns9-diag-animate-popup"
           aria-label={isCheckpoint ? `Checkpoint ${checkpointStage.title}` : `Đánh giá năng lực môn ${subMeta.name}`}
         >

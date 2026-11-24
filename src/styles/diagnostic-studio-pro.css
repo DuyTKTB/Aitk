@@ -5,26 +5,41 @@
    (#2f6bff → #1d4ed8) · Kiến trúc 3 giai đoạn (Briefing · Testing 2-Col · Report)
    ============================================================================ */
 
+.ns9-diag-animate-popup {
+  max-width: min(1140px, 96vw) !important;
+  width: 100% !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
 .dsp-modal {
-  --dsp-accent: #2f6bff;
-  --dsp-accent-2: #1d4ed8;
-  --dsp-accent-soft: rgba(47, 107, 255, 0.1);
-  --dsp-accent-border: rgba(47, 107, 255, 0.26);
+  --dsp-accent: #0284c7;
+  --dsp-accent-2: #2563eb;
+  --dsp-accent-soft: rgba(2, 132, 199, 0.1);
+  --dsp-accent-border: rgba(2, 132, 199, 0.24);
   --dsp-bg: #ffffff;
-  --dsp-surface: #f7f9ff;
-  --dsp-border: #dce5f9;
+  --dsp-surface: #f8fafc;
+  --dsp-border: #e2e8f0;
   --dsp-text: #0f172a;
   --dsp-muted: #526288;
   display: flex;
   flex-direction: column;
-  width: min(1060px, 96vw);
+  width: 100%;
+  max-width: 100%;
   max-height: 90vh;
   background: var(--dsp-bg);
   color: var(--dsp-text);
   border-radius: 22px;
-  border: 1.5px solid var(--dsp-accent-border);
-  box-shadow: 0 28px 80px -18px rgba(15, 23, 42, 0.34);
+  border: none;
+  box-shadow: none;
   overflow: hidden;
+  box-sizing: border-box;
+}
+
+.dsp-modal *,
+.dsp-modal *::before,
+.dsp-modal *::after {
+  box-sizing: border-box;
 }
 
 .dsp-modal.tone-ly,
@@ -201,9 +216,17 @@
    ============================================================ */
 .dsp-brief-grid {
   display: grid;
-  grid-template-columns: 1.25fr 1fr;
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.92fr);
   gap: 18px;
   align-items: start;
+  width: 100%;
+}
+
+.dsp-brief-config,
+.dsp-blueprint-card {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .dsp-brief-config {
