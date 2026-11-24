@@ -2815,20 +2815,183 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
           subjectLabel="Khoa học Tự nhiên (Vật lí · Hóa học · Sinh học)"
         />
 
-        {/* ── 1. THANH ĐIỀU KHIỂN STICKY 1 DÒNG (SẠCH SẼ, HIỆN ĐẠI) ── */}
-        <div className="vex-command-bar">
-          <div className="vex-cmd-row">
-            {/* Segmented Control Phân môn KHTN */}
-            <div className="vex-segmented" role="tablist" aria-label="Chọn phân môn KHTN">
-              {SUBJECT_FILTERS.map((s) => {
-                const active = selectedSubject === s.id;
-                return (
+        {/* ── BỐ CỤC 2 CỘT: ĐỀ THI BÊN TRÁI · TÌM KIẾM & BỘ LỌC STICKY BÊN PHẢI ── */}
+        <div className="vex-split-layout">
+          {/* CỘT TRÁI: DANH SÁCH ĐỀ THI (VIP · PRO · FREE) */}
+          <div className="vex-left-exams">
+            {vipExams.length > 0 && (
+              <section className="ns9-vex-section">
+                <div className="ns9-vex-sec-head">
+                  <h3>Bộ đề VIP {subjectTitleLabel} (Trường Chuyên, Sở GD&amp;ĐT &amp; Độc quyền ELEC AI)</h3>
+                  <span>{vipExams.length} đề thi</span>
+                </div>
+                <div className="ns9-vex-cards-grid">
+                  {vipExams.map((exam) => (
+                    <VirtualExamCard
+                      key={exam.id}
+                      exam={exam}
+                      isFav={favIds.includes(exam.id)}
+                      isDone={doneMap.has(exam.id)}
+                      lastScore={doneMap.get(exam.id)}
+                      draftInfo={examDrafts[exam.id] || null}
+                      inTargetBlock={targetComboSubjects.has(exam.subject || 'hoa')}
+                      canAccess={canAccessVirtualExam(userPlan, exam.tier)}
+                      onStart={handleStartExam}
+                      onPreview={setPreviewExam}
+                      onRequireUpgrade={setUpgradeModalExam}
+                      onToggleFav={handleToggleFav}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {proExams.length > 0 && (
+              <section className="ns9-vex-section">
+                <div className="ns9-vex-sec-head">
+                  <h3>Bộ đề PRO {subjectTitleLabel} (Thi thử các Trường, Cụm trường &amp; Trọng điểm)</h3>
+                  <span>{proExams.length} đề thi</span>
+                </div>
+                <div className="ns9-vex-cards-grid">
+                  {proExams.map((exam) => (
+                    <VirtualExamCard
+                      key={exam.id}
+                      exam={exam}
+                      isFav={favIds.includes(exam.id)}
+                      isDone={doneMap.has(exam.id)}
+                      lastScore={doneMap.get(exam.id)}
+                      draftInfo={examDrafts[exam.id] || null}
+                      inTargetBlock={targetComboSubjects.has(exam.subject || 'hoa')}
+                      canAccess={canAccessVirtualExam(userPlan, exam.tier)}
+                      onStart={handleStartExam}
+                      onPreview={setPreviewExam}
+                      onRequireUpgrade={setUpgradeModalExam}
+                      onToggleFav={handleToggleFav}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {freeExams.length > 0 && (
+              <section className="ns9-vex-section">
+                <div className="ns9-vex-sec-head">
+                  <h3>Ngân hàng đề luyện {selectedExamType} {subjectTitleLabel} Miễn phí (FREE)</h3>
+                  <span>{freeExams.length} đề thi</span>
+                </div>
+                <div className="ns9-vex-cards-grid">
+                  {freeExams.map((exam) => (
+                    <VirtualExamCard
+                      key={exam.id}
+                      exam={exam}
+                      isFav={favIds.includes(exam.id)}
+                      isDone={doneMap.has(exam.id)}
+                      lastScore={doneMap.get(exam.id)}
+                      draftInfo={examDrafts[exam.id] || null}
+                      inTargetBlock={targetComboSubjects.has(exam.subject || 'hoa')}
+                      canAccess={canAccessVirtualExam(userPlan, exam.tier)}
+                      onStart={handleStartExam}
+                      onPreview={setPreviewExam}
+                      onRequireUpgrade={setUpgradeModalExam}
+                      onToggleFav={handleToggleFav}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {filteredExams.length === 0 && (
+              <div className="ns9-empty-state" style={{ textAlign: 'center', padding: '44px 20px', background: '#fff', borderRadius: 20, border: '1px solid #e2e8f0' }}>
+                <img
+                  src="/img/elec/elec-shy.png"
+                  alt="Elec Ngại Ngùng"
+                  style={{ width: 96, height: 96, objectFit: 'contain', filter: 'drop-shadow(0 8px 20px rgba(37, 99, 235, 0.25))', marginBottom: 12 }}
+                />
+                <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--ink)' }}>Không tìm thấy đề thi nào khớp với bộ lọc hiện tại.</p>
+                <button
+                  type="button"
+                  className="ns9-ch-btn-primary"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedExamType('THPTQG');
+                    setSelectedTier('ALL');
+                    setSelectedGrade('all');
+                    setSelectedStatus('all');
+                    setSelectedSource('all');
+                    setSelectedYear('all');
+                  }}
+                >
+                  Đặt lại bộ lọc mặc định
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* CỘT PHẢI: SIDEBAR TÌM KIẾM & BỘ LỌC CỐ ĐỊNH */}
+          <aside className="vex-right-sidebar" aria-label="Tìm kiếm và Bộ lọc đề thi">
+            <div className="vex-side-head">
+              <strong>Tìm kiếm &amp; Bộ lọc</strong>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  className="vex-side-reset"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedExamType('THPTQG');
+                    setSelectedTier('ALL');
+                    setSelectedSubject('all');
+                    setGlobalSubject('all');
+                    setSelectedGrade('all');
+                    setSelectedStatus('all');
+                    setSelectedSource('all');
+                    setSelectedYear('all');
+                  }}
+                >
+                  Đặt lại ({activeFilterCount})
+                </button>
+              )}
+            </div>
+
+            <div className="vex-side-block">
+              <label htmlFor="vex-side-search">TÌM ĐỀ THI</label>
+              <div className="vex-search-input-wrap" style={{ maxWidth: 'none' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-3.5-3.5" />
+                </svg>
+                <input
+                  id="vex-side-search"
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tên đề, trường chuyên, Sở GD..."
+                />
+              </div>
+            </div>
+
+            <div className="vex-side-block">
+              <label htmlFor="ns9-vex-sort">SẮP XẾP</label>
+              <select
+                id="ns9-vex-sort"
+                className="vex-sort-select"
+                style={{ width: '100%' }}
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="priority">Ưu tiên đề xuất</option>
+                <option value="popular">Nhiều lượt thi nhất</option>
+                <option value="newest">Mới nhất (2027)</option>
+              </select>
+            </div>
+
+            <div className="vex-side-block">
+              <label>PHÂN MÔN KHTN</label>
+              <div className="vex-chip-group">
+                {SUBJECT_FILTERS.map((s) => (
                   <button
                     key={s.id}
                     type="button"
-                    role="tab"
-                    aria-selected={active}
-                    className={'vex-seg-btn' + (active ? ' on' : '')}
+                    className={'vex-mini-chip' + (selectedSubject === s.id ? ' is-accent' : '')}
                     onClick={() => {
                       setSelectedSubject(s.id);
                       setGlobalSubject(s.id);
@@ -2836,89 +2999,44 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                   >
                     {s.label}
                   </button>
-                );
-              })}
-            </div>
-
-            {/* Tìm kiếm + Nút mở Bộ lọc nâng cao + Sắp xếp */}
-            <div className="vex-cmd-right">
-              <div className="vex-search-input-wrap">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="M20 20l-3.5-3.5" />
-                </svg>
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm đề thi, trường chuyên, Sở GD..."
-                  aria-label="Tìm kiếm đề thi Khoa học Tự nhiên"
-                />
+                ))}
               </div>
-
-              <button
-                type="button"
-                className={'vex-filter-drawer-btn' + (mobileFiltersOpen || activeFilterCount > 0 ? ' active' : '')}
-                onClick={() => setMobileFiltersOpen((v) => !v)}
-                aria-expanded={mobileFiltersOpen}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <line x1="4" y1="6" x2="20" y2="6" />
-                  <line x1="7" y1="12" x2="17" y2="12" />
-                  <line x1="10" y1="18" x2="14" y2="18" />
-                </svg>
-                <span>Bộ lọc{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}</span>
-              </button>
-
-              <select
-                id="ns9-vex-sort"
-                className="vex-sort-select"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                aria-label="Sắp xếp đề thi"
-              >
-                <option value="priority">Ưu tiên</option>
-                <option value="popular">Nhiều lượt thi</option>
-                <option value="newest">Mới nhất (2027)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Hàng lọc nhanh Kỳ thi & Hạng đề */}
-          <div className="vex-quick-strip">
-            <div className="vex-chip-group" role="group" aria-label="Kỳ thi">
-              {EXAM_TYPES.map((exId) => (
-                <button
-                  key={exId}
-                  type="button"
-                  className={'vex-mini-chip' + (selectedExamType === exId ? ' on' : '')}
-                  onClick={() => setSelectedExamType(exId)}
-                >
-                  {exId}
-                </button>
-              ))}
             </div>
 
-            <div className="vex-chip-group" role="group" aria-label="Hạng đề">
-              {TIER_FILTERS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={'vex-mini-chip' + (selectedTier === t.id ? ' is-accent' : '')}
-                  onClick={() => setSelectedTier(t.id)}
-                >
-                  {t.label}
-                </button>
-              ))}
+            <div className="vex-side-block">
+              <label>KỲ THI</label>
+              <div className="vex-chip-group">
+                {EXAM_TYPES.map((exId) => (
+                  <button
+                    key={exId}
+                    type="button"
+                    className={'vex-mini-chip' + (selectedExamType === exId ? ' on' : '')}
+                    onClick={() => setSelectedExamType(exId)}
+                  >
+                    {exId}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
 
-        {/* ── 2. NGĂN KÉO BỘ LỌC NÂNG CAO (CHỈ MỞ KHI CẦN) ── */}
-        {mobileFiltersOpen && (
-          <section className="vex-advanced-drawer" aria-label="Bộ lọc nâng cao">
-            <div className="vex-adv-group">
-              <label>Khối lớp</label>
+            <div className="vex-side-block">
+              <label>HẠNG ĐỀ</label>
+              <div className="vex-chip-group">
+                {TIER_FILTERS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={'vex-mini-chip' + (selectedTier === t.id ? ' is-accent' : '')}
+                    onClick={() => setSelectedTier(t.id)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="vex-side-block">
+              <label>KHỐI LỚP</label>
               <div className="vex-chip-group">
                 {GRADE_FILTERS.map((g) => (
                   <button
@@ -2933,8 +3051,8 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
               </div>
             </div>
 
-            <div className="vex-adv-group">
-              <label>Trạng thái làm bài</label>
+            <div className="vex-side-block">
+              <label>TRẠNG THÁI</label>
               <div className="vex-chip-group">
                 {STATUS_FILTERS.map((st) => (
                   <button
@@ -2949,9 +3067,9 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
               </div>
             </div>
 
-            <div className="vex-adv-group">
-              <label>Nguồn đề</label>
-              <div className="vex-chip-group">
+            <div className="vex-side-block">
+              <label>NGUỒN ĐỀ &amp; NĂM THI</label>
+              <div className="vex-chip-group" style={{ marginBottom: 8 }}>
                 {SOURCE_FILTERS.map((src) => (
                   <button
                     key={src.id}
@@ -2963,131 +3081,20 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                   </button>
                 ))}
               </div>
-            </div>
-
-            <div className="vex-adv-group">
-              <label>Năm thi</label>
               <select
                 className="vex-sort-select"
+                style={{ width: '100%' }}
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
                 aria-label="Chọn năm đề thi"
               >
                 <option value="all">Tất cả năm</option>
-                <option value="2027">2027</option>
-                <option value="2026">2026</option>
+                <option value="2027">Năm 2027</option>
+                <option value="2026">Năm 2026</option>
               </select>
             </div>
-          </section>
-        )}
-
-        {/* ── 5. BA PHÂN KHU BỘ ĐỀ: VIP · PRO · FREE ── */}
-        {vipExams.length > 0 && (
-          <section className="ns9-vex-section">
-            <div className="ns9-vex-sec-head">
-              <h3>Bộ đề VIP {subjectTitleLabel} (Trường Chuyên, Sở GD&amp;ĐT &amp; Độc quyền ELEC AI)</h3>
-              <span>{vipExams.length} đề thi</span>
-            </div>
-            <div className="ns9-vex-cards-grid">
-              {vipExams.map((exam) => (
-                <VirtualExamCard
-                  key={exam.id}
-                  exam={exam}
-                  isFav={favIds.includes(exam.id)}
-                  isDone={doneMap.has(exam.id)}
-                  lastScore={doneMap.get(exam.id)}
-                  draftInfo={examDrafts[exam.id] || null}
-                  inTargetBlock={targetComboSubjects.has(exam.subject || 'hoa')}
-                  canAccess={canAccessVirtualExam(userPlan, exam.tier)}
-                  onStart={handleStartExam}
-                  onPreview={setPreviewExam}
-                  onRequireUpgrade={setUpgradeModalExam}
-                  onToggleFav={handleToggleFav}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {proExams.length > 0 && (
-          <section className="ns9-vex-section">
-            <div className="ns9-vex-sec-head">
-              <h3>Bộ đề PRO {subjectTitleLabel} (Thi thử các Trường, Cụm trường &amp; Trọng điểm)</h3>
-              <span>{proExams.length} đề thi</span>
-            </div>
-            <div className="ns9-vex-cards-grid">
-              {proExams.map((exam) => (
-                <VirtualExamCard
-                  key={exam.id}
-                  exam={exam}
-                  isFav={favIds.includes(exam.id)}
-                  isDone={doneMap.has(exam.id)}
-                  lastScore={doneMap.get(exam.id)}
-                  draftInfo={examDrafts[exam.id] || null}
-                  inTargetBlock={targetComboSubjects.has(exam.subject || 'hoa')}
-                  canAccess={canAccessVirtualExam(userPlan, exam.tier)}
-                  onStart={handleStartExam}
-                  onPreview={setPreviewExam}
-                  onRequireUpgrade={setUpgradeModalExam}
-                  onToggleFav={handleToggleFav}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {freeExams.length > 0 && (
-          <section className="ns9-vex-section">
-            <div className="ns9-vex-sec-head">
-              <h3>Ngân hàng đề luyện {selectedExamType} {subjectTitleLabel} Miễn phí (FREE)</h3>
-              <span>{freeExams.length} đề thi</span>
-            </div>
-            <div className="ns9-vex-cards-grid">
-              {freeExams.map((exam) => (
-                <VirtualExamCard
-                  key={exam.id}
-                  exam={exam}
-                  isFav={favIds.includes(exam.id)}
-                  isDone={doneMap.has(exam.id)}
-                  lastScore={doneMap.get(exam.id)}
-                  draftInfo={examDrafts[exam.id] || null}
-                  inTargetBlock={targetComboSubjects.has(exam.subject || 'hoa')}
-                  canAccess={canAccessVirtualExam(userPlan, exam.tier)}
-                  onStart={handleStartExam}
-                  onPreview={setPreviewExam}
-                  onRequireUpgrade={setUpgradeModalExam}
-                  onToggleFav={handleToggleFav}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {filteredExams.length === 0 && (
-          <div className="ns9-empty-state" style={{ textAlign: 'center', padding: '40px 20px' }}>
-            <img
-              src="/img/elec/elec-shy.png"
-              alt="Elec Ngại Ngùng"
-              style={{ width: 100, height: 100, objectFit: 'contain', filter: 'drop-shadow(0 8px 20px rgba(37, 99, 235, 0.25))', marginBottom: 12 }}
-            />
-            <p style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--ink)' }}>Không tìm thấy đề thi nào khớp với bộ lọc hiện tại.</p>
-            <button
-              type="button"
-              className="ns9-ch-btn-primary"
-              onClick={() => {
-                setSearchQuery('');
-                setSelectedExamType('THPTQG');
-                setSelectedTier('ALL');
-                setSelectedGrade('all');
-                setSelectedStatus('all');
-                setSelectedSource('all');
-                setSelectedYear('all');
-              }}
-            >
-              Đặt lại bộ lọc mặc định
-            </button>
-          </div>
-        )}
+          </aside>
+        </div>
       </div>
 
       {/* ── 6. MODAL NÂNG CẤP GÓI KHI BẤM ĐỀ BỊ KHÓA (CHUẨN BENTO 3 CỘT 9STUDY) ── */}

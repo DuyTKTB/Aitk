@@ -439,6 +439,75 @@
   text-transform: uppercase;
 }
 
+/* ── 2. BỐ CỤC 2 CỘT: ĐỀ THI BÊN TRÁI · TÌM KIẾM & BỘ LỌC BÊN PHẢI ── */
+.vex-split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 316px;
+  gap: 22px;
+  align-items: start;
+}
+
+.vex-left-exams {
+  min-width: 0;
+}
+
+.vex-right-sidebar {
+  position: sticky;
+  top: 76px;
+  border-radius: 22px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+  padding: 18px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.vex-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.vex-side-head strong {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.vex-side-reset {
+  border: none;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.vex-side-block {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.vex-side-block label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 /* ── 3. PHÂN KHU & THẺ ĐỀ THI CAO CẤP ── */
 .ns9-vex-section {
   margin-bottom: 30px !important;
@@ -455,7 +524,7 @@
 }
 
 .ns9-vex-sec-head h3 {
-  font-size: 18.5px !important;
+  font-size: 18px !important;
   font-weight: 800 !important;
   color: #0f172a !important;
   letter-spacing: -0.02em;
@@ -474,8 +543,8 @@
 
 .ns9-vex-cards-grid {
   display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)) !important;
-  gap: 18px !important;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+  gap: 16px !important;
 }
 
 .ns9-vex-card {
@@ -496,18 +565,18 @@
 }
 
 .ns9-vex-banner {
-  height: 128px !important;
+  height: 126px !important;
 }
 
 .ns9-vex-body {
-  padding: 15px 17px 16px !important;
+  padding: 15px 16px 16px !important;
   flex: 1;
   display: flex;
   flex-direction: column;
 }
 
 .ns9-vex-title {
-  font-size: 15.5px !important;
+  font-size: 15px !important;
   font-weight: 800 !important;
   color: #0f172a !important;
   line-height: 1.4 !important;
@@ -526,9 +595,17 @@
   padding: 8px 15px !important;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1020px) {
   .vex-studio-top {
     grid-template-columns: 1fr;
+  }
+  .vex-split-layout {
+    grid-template-columns: 1fr;
+  }
+  .vex-right-sidebar {
+    position: static;
+    order: -1;
+    max-height: none;
   }
 }
 
@@ -538,15 +615,5 @@
   }
   .vex-studio-mascot {
     display: none;
-  }
-  .vex-command-bar {
-    position: static;
-  }
-  .vex-cmd-right {
-    width: 100%;
-    min-width: 0;
-  }
-  .vex-search-input-wrap {
-    max-width: none;
   }
 }
