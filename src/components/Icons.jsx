@@ -1,4 +1,65 @@
 
+import {
+  Home as JiggHome,
+  Book as JiggBook,
+  Bookmark as JiggBookmark,
+  Bot as JiggBot,
+  Briefcase as JiggBriefcase,
+  Calculator as JiggCalculator,
+  Calendar as JiggCalendar,
+  Camera as JiggCamera,
+  Clock as JiggClock,
+  Cube as JiggCube,
+  Diamond as JiggDiamond,
+  Download as JiggDownload,
+  Eye as JiggEye,
+  Feather as JiggFeather,
+  Flash as JiggFlash,
+  Folder as JiggFolder,
+  Globe as JiggGlobe,
+  Key as JiggKey,
+  Laptop as JiggLaptop,
+  Lightbulb as JiggLightbulb,
+  Lock as JiggLock,
+  Mail as JiggMail,
+  Message as JiggMessage,
+  Palette as JiggPalette,
+  Pin as JiggPin,
+  PuzzlePiece as JiggPuzzle,
+  Rocket as JiggRocket,
+  Saved as JiggSaved,
+  Send as JiggSend,
+  Star as JiggStar,
+  Trophy as JiggTrophy,
+  Upload as JiggUpload,
+  WeatherMoon as JiggMoon,
+  Bell as JiggBell,
+  Handshake as JiggHandshake,
+} from './jiggicons';
+
+const JiggGlass = ({ Icon, size = 18, className = '', style, ...rest }) => {
+  const px = Math.round(Number(size) || 18);
+  return (
+    <span
+      className={`jigg-ocean-glass ${className}`.trim()}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: px,
+        height: px,
+        flexShrink: 0,
+        verticalAlign: 'middle',
+        lineHeight: 0,
+        ...style,
+      }}
+      aria-hidden="true"
+    >
+      <Icon variant="glass" size={px} animate="hover" {...rest} />
+    </span>
+  );
+};
+
 const duo = { fill: 'currentColor', fillOpacity: 0.14 };
 const dot = { fill: 'currentColor', stroke: 'none' };
 
@@ -13,12 +74,7 @@ export const Svg = ({ size = 18, children, className = '', ...p }) => (
     {children}
   </svg>
 );
-export const IconHome = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-home ${className}`} {...p}>
-    <path d="M4 10.8 12 4l8 6.8V19a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z" {...duo} />
-    <path d="M9.5 20.5v-5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v5" />
-  </Svg>
-);
+export const IconHome = (p) => <JiggGlass Icon={JiggHome} {...p} />;
 
 export const IconAtom = ({ className = '', ...p }) => (
   <Svg className={`anim-ico-atom ${className}`} {...p}>
@@ -38,13 +94,7 @@ export const IconFlask = ({ className = '', ...p }) => (
   </Svg>
 );
 
-export const IconCalc = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-calc ${className}`} {...p}>
-    <rect x="4" y="3" width="16" height="18" rx="2.5" />
-    <rect x="7.5" y="6.5" width="9" height="3.5" rx="1" {...duo} />
-    <path d="M8 14h.01M12 14h.01M16 14h.01M8 17.5h.01M12 17.5h.01M16 17.5h.01" strokeWidth={2.2} />
-  </Svg>
-);
+export const IconCalc = (p) => <JiggGlass Icon={JiggCalculator} {...p} />;
 
 export const IconElecBrand = ({ size = 18, className = '', style, ...p }) => {
   const px = Math.round(Number(size) || 18);
@@ -103,61 +153,19 @@ export const IconScale = ({ className = '', ...p }) => (
   </Svg>
 );
 
-export const IconTimer = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-timer anim-ico-clock ${className}`} {...p}>
-    <circle cx="12" cy="13.5" r="7.5" {...duo} />
-    <path d="M12 9.5v4l2.5 1.5M9.5 2.5h5M18.6 6.4l1.3-1.3" />
-  </Svg>
-);
+export const IconTimer = (p) => <JiggGlass Icon={JiggClock} {...p} />;
 
-export const IconCalendar = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-calendar ${className}`} {...p}>
-    <path d="M3.5 10V7.5A2.5 2.5 0 0 1 6 5h12a2.5 2.5 0 0 1 2.5 2.5V10z" {...duo} stroke="none" />
-    <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
-    <path d="M3.5 10h17M8 3v4M16 3v4" />
-    <circle cx="8.5" cy="14.5" r="1" {...dot} />
-    <circle cx="12" cy="14.5" r="1" {...dot} />
-    <circle cx="15.5" cy="14.5" r="1" {...dot} />
-  </Svg>
-);
+export const IconCalendar = (p) => <JiggGlass Icon={JiggCalendar} {...p} />;
 
-export const IconNote = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-notebook ${className}`} {...p}>
-    <path d="M7 3h7.5L19 7.5V19a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" {...duo} />
-    <path d="M14.5 3v3.5a1 1 0 0 0 1 1H19M8.5 12.5h7M8.5 16h4.5" />
-  </Svg>
-);
+export const IconNote = (p) => <JiggGlass Icon={JiggFeather} {...p} />;
 
-export const IconTarget = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-target ${className}`} {...p}>
-    <circle cx="12" cy="12" r="9" {...duo} />
-    <circle cx="12" cy="12" r="5" />
-    <circle cx="12" cy="12" r="1.6" {...dot} />
-  </Svg>
-);
+export const IconTarget = (p) => <JiggGlass Icon={JiggRocket} {...p} />;
 
-export const IconQuiz = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-quiz anim-ico-cap ${className}`} {...p}>
-    <circle cx="12" cy="12" r="9" {...duo} />
-    <path d="M9.5 9.2a2.6 2.6 0 1 1 3.9 2.2c-.9.5-1.4 1-1.4 2" />
-    <circle cx="12" cy="16.8" r="1" {...dot} />
-  </Svg>
-);
+export const IconQuiz = (p) => <JiggGlass Icon={JiggSaved} {...p} />;
 
-export const IconGamepad = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-gamepad ${className}`} {...p}>
-    <path d="M6.5 8h11a5 5 0 0 1 4.7 6.6l-.9 2.7a2.6 2.6 0 0 1-4.5.9L15 16.5H9l-1.8 1.7a2.6 2.6 0 0 1-4.5-.9l-.9-2.7A5 5 0 0 1 6.5 8Z" {...duo} />
-    <path d="M8 11v3.5M6.25 12.75h3.5" />
-    <circle cx="16" cy="12" r=".9" {...dot} />
-    <circle cx="18" cy="14" r=".9" {...dot} />
-  </Svg>
-);
+export const IconGamepad = (p) => <JiggGlass Icon={JiggPuzzle} {...p} />;
 
-export const IconTools = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-tools ${className}`} {...p}>
-    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" {...duo} />
-  </Svg>
-);
+export const IconTools = (p) => <JiggGlass Icon={JiggCube} {...p} />;
 
 export const IconSun = ({ className = '', ...p }) => (
   <Svg className={`anim-ico-sun ${className}`} {...p}>
@@ -166,11 +174,7 @@ export const IconSun = ({ className = '', ...p }) => (
   </Svg>
 );
 
-export const IconMoon = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-moon ${className}`} {...p}>
-    <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" {...duo} />
-  </Svg>
-);
+export const IconMoon = (p) => <JiggGlass Icon={JiggMoon} {...p} />;
 
 export const IconMenu = (p) => (<Svg {...p}><path d="M4 7h16M4 12h11M4 17h16" /></Svg>);
 export const IconClose = ({ className = '', ...p }) => (
@@ -236,22 +240,10 @@ export const IcoCheck = IconCheck;
 export const IconX = IconClose;
 export const IcoX = IconClose;
 
-export const IconStar = ({ size = 18, on, ...p }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24"
-    fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.75}
-    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...p}>
-    <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z" />
-  </svg>
-);
+export const IconStar = ({ on, ...p }) => <JiggGlass Icon={JiggStar} {...p} />;
 export const IcoStar = IconStar;
 
-export const IconBookmark = ({ size = 18, on, ...p }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24"
-    fill={on ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.75}
-    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...p}>
-    <path d="M6 3h12v18l-6-4-6 4z" />
-  </svg>
-);
+export const IconBookmark = ({ on, ...p }) => <JiggGlass Icon={JiggBookmark} {...p} />;
 export const IcoBookmark = IconBookmark;
 
 export const IconCopy = (p) => (
@@ -272,20 +264,10 @@ export const IconShare = (p) => (
 );
 export const IcoShare = IconShare;
 
-export const IconBell = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-bell ${className}`} {...p}>
-    <path d="M6 8a6 6 0 0 1 12 0v5l1.5 3H4.5L6 13z" {...duo} />
-    <path d="M10 19a2 2 0 0 0 4 0" />
-  </Svg>
-);
+export const IconBell = (p) => <JiggGlass Icon={JiggBell} {...p} />;
 export const IcoBell = IconBell;
 
-export const IconMail = (p) => (
-  <Svg {...p}>
-    <rect x="3" y="5" width="18" height="14" rx="2" {...duo} />
-    <path d="M3 7l9 6 9-6" />
-  </Svg>
-);
+export const IconMail = (p) => <JiggGlass Icon={JiggMail} {...p} />;
 export const IcoMail = IconMail;
 
 export const IconSettings = ({ className = '', ...p }) => (
@@ -336,12 +318,7 @@ export const IcoTrendUp = IconTrendUp;
 export const IconTrendDown = (p) => (<Svg {...p}><path d="M3 7l6 6 4-4 8 8M14 17h7v-7" /></Svg>);
 export const IcoTrendDown = IconTrendDown;
 
-export const IconEye = (p) => (
-  <Svg {...p}>
-    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" {...duo} />
-    <circle cx="12" cy="12" r="3" />
-  </Svg>
-);
+export const IconEye = (p) => <JiggGlass Icon={JiggEye} {...p} />;
 export const IcoEye = IconEye;
 
 export const IconTrash = ({ className = '', ...p }) => (
@@ -353,32 +330,16 @@ export const IconTrash = ({ className = '', ...p }) => (
 );
 export const IcoTrash = IconTrash;
 
-export const IconEdit = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-edit anim-ico-pencil ${className}`} {...p}>
-    <path d="M4 20h4L20 8l-4-4L4 16z" {...duo} />
-    <path d="M14 6l4 4" />
-  </Svg>
-);
+export const IconEdit = (p) => <JiggGlass Icon={JiggFeather} {...p} />;
 export const IcoEdit = IconEdit;
 
-export const IconTrophy = (p) => (
-  <Svg {...p}>
-    <path d="M7 5h10v4a5 5 0 0 1-10 0z" {...duo} />
-    <path d="M7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3" />
-    <path d="M9 18h6M12 14v4" />
-  </Svg>
-);
+export const IconTrophy = (p) => <JiggGlass Icon={JiggTrophy} {...p} />;
 export const IcoTrophy = IconTrophy;
 
 export const IconClock = IconTimer;
 export const IcoClock = IconTimer;
 
-export const IconBook = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-book anim-ico-roadmap ${className}`} {...p}>
-    <path d="M4 5a2 2 0 0 1 2-2h5v18H6a2 2 0 0 1-2-2z" {...duo} />
-    <path d="M20 5a2 2 0 0 0-2-2h-5v18h5a2 2 0 0 0 2-2z" />
-  </Svg>
-);
+export const IconBook = (p) => <JiggGlass Icon={JiggBook} {...p} />;
 export const IcoBook = IconBook;
 
 export const IconChart = ({ className = '', ...p }) => (
@@ -421,56 +382,19 @@ export const IcoGrid = IconGrid;
 
 export const IconPlay = (p) => (<Svg {...p}><path d="M8 5v14l11-7z" fill="currentColor" /></Svg>);
 export const IcoPlay = IconPlay;
-export const IconSend = (p) => (
-  <Svg {...p}>
-    <path d="M22 2 11 13" />
-    <path d="M22 2 15 22l-4-9-9-4z" {...duo} />
-  </Svg>
-);
+export const IconSend = (p) => <JiggGlass Icon={JiggSend} {...p} />;
 export const IcoSend = IconSend;
 
-export const IconSparkle = ({ size = 18, className = '', ...p }) => (
-  <svg
-    width={size} height={size} viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth={1.75}
-    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-    className={`anim-ico-svg anim-ico-sparkle ${className}`.trim()}
-    {...p}
-  >
-    <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" />
-    <path d="M12 8.5 13.2 11l2.5 1-2.5 1L12 15.5 10.8 13l-2.5-1 2.5-1z" fill="currentColor" stroke="none" />
-  </svg>
-);
+export const IconSparkle = (p) => <JiggGlass Icon={JiggDiamond} {...p} />;
 export const IcoSparkle = IconSparkle;
 
-export const IcoBrain = (p) => (
-  <Svg {...p}>
-    <path d="M9.5 3.5A3 3 0 0 0 6.6 6a3.2 3.2 0 0 0-1.9 4.6A3.3 3.3 0 0 0 6 16.8 3 3 0 0 0 9.5 20.5V3.5Z" {...duo} />
-    <path d="M14.5 3.5A3 3 0 0 1 17.4 6a3.2 3.2 0 0 1 1.9 4.6 3.3 3.3 0 0 1-1.3 6.2 3 3 0 0 1-3.5 3.7V3.5Z" {...duo} />
-    <path d="M9.5 9H8M9.5 14H8.2M14.5 9H16M14.5 14h1.3" />
-  </Svg>
-);
+export const IcoBrain = (p) => <JiggGlass Icon={JiggBot} {...p} />;
 
-export const IcoCamera = (p) => (
-  <Svg {...p}>
-    <path d="M4 8h3l1.6-2.5h6.8L17 8h3a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" {...duo} />
-    <circle cx="12" cy="13.5" r="3.5" />
-  </Svg>
-);
+export const IcoCamera = (p) => <JiggGlass Icon={JiggCamera} {...p} />;
 
-export const IcoChat = (p) => (
-  <Svg {...p}>
-    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5Z" {...duo} />
-    <path d="M8.5 8.5h7M8.5 11.5h4.5" />
-  </Svg>
-);
+export const IcoChat = (p) => <JiggGlass Icon={JiggMessage} {...p} />;
 
-export const IcoCrown = (p) => (
-  <Svg {...p}>
-    <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5Z" {...duo} />
-    <path d="M5.5 19h13" />
-  </Svg>
-);
+export const IcoCrown = (p) => <JiggGlass Icon={JiggTrophy} {...p} />;
 
 export const IcoRefresh = (p) => (
   <Svg {...p}>
@@ -498,35 +422,16 @@ export const IconAlert = (p) => (
 );
 export const IcoAlert = IconAlert;
 
-export const IconZap = ({ className = '', ...p }) => (
-  <Svg className={`anim-ico-zap ${className}`} {...p}>
-    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" {...duo} />
-  </Svg>
-);
+export const IconZap = (p) => <JiggGlass Icon={JiggFlash} {...p} />;
 export const IcoZap = IconZap;
 
-export const IconPin = (p) => (
-  <Svg {...p}>
-    <path d="M16 3l5 5L15 14l-2-2-4 4-2-2 4-4-2-2 5-5Z" {...duo} />
-    <path d="m9 15-6 6" />
-  </Svg>
-);
+export const IconPin = (p) => <JiggGlass Icon={JiggPin} {...p} />;
 export const IcoPin = IconPin;
 
-export const IconBulb = (p) => (
-  <Svg {...p}>
-    <path d="M9 18h6M10 22h4" />
-    <path d="M12 2a7 7 0 0 0-4.5 12.4c.9.8 1.5 2 1.5 3.2h6c0-1.2.6-2.4 1.5-3.2A7 7 0 0 0 12 2Z" {...duo} />
-  </Svg>
-);
+export const IconBulb = (p) => <JiggGlass Icon={JiggLightbulb} {...p} />;
 export const IcoBulb = IconBulb;
 
-export const IconLock = (p) => (
-  <Svg {...p}>
-    <rect x="5" y="11" width="14" height="10" rx="2" {...duo} />
-    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-  </Svg>
-);
+export const IconLock = (p) => <JiggGlass Icon={JiggLock} {...p} />;
 export const IcoLock = IconLock;
 
 export const IconFile = (p) => (
@@ -537,11 +442,7 @@ export const IconFile = (p) => (
 );
 export const IcoFile = IconFile;
 
-export const IconFolder = (p) => (
-  <Svg {...p}>
-    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" {...duo} />
-  </Svg>
-);
+export const IconFolder = (p) => <JiggGlass Icon={JiggFolder} {...p} />;
 export const IcoFolder = IconFolder;
 
 export const IconShield = (p) => (
@@ -551,31 +452,13 @@ export const IconShield = (p) => (
 );
 export const IcoShield = IconShield;
 
-export const IconSave = (p) => (
-  <Svg {...p}>
-    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" {...duo} />
-    <polyline points="17 21 17 13 7 13 7 21" />
-    <polyline points="7 3 7 8 15 8" />
-  </Svg>
-);
+export const IconSave = (p) => <JiggGlass Icon={JiggSaved} {...p} />;
 export const IcoSave = IconSave;
 
-export const IconDownload = (p) => (
-  <Svg {...p}>
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-    <polyline points="7 10 12 15 17 10" />
-    <line x1="12" y1="15" x2="12" y2="3" />
-  </Svg>
-);
+export const IconDownload = (p) => <JiggGlass Icon={JiggDownload} {...p} />;
 export const IcoDownload = IconDownload;
 
-export const IconUpload = (p) => (
-  <Svg {...p}>
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-    <polyline points="17 8 12 3 7 8" />
-    <line x1="12" y1="3" x2="12" y2="15" />
-  </Svg>
-);
+export const IconUpload = (p) => <JiggGlass Icon={JiggUpload} {...p} />;
 export const IcoUpload = IconUpload;
 
 export const IconInfinity = (p) => (

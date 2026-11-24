@@ -125,7 +125,25 @@ button[style*="background: #0F172A"] svg {
   fill-opacity: 0.72 !important;
 }
 
-/* 3. Không can thiệp vào công thức toán KaTeX, biểu đồ Recharts/SVG canvas lớn hoặc logo riêng */
+/* 3. Không can thiệp vào công thức toán KaTeX, biểu đồ Recharts/SVG canvas lớn, logo riêng, và giữ nguyên 100% lớp kính 3D nguyên bản của Jiggicons Glass đã nhuộm Xanh Biển */
+.jigg-ocean-glass svg,
+.jigg-ocean-glass svg * {
+  stroke: revert !important;
+  fill: revert !important;
+}
+
+.jigg-ocean-glass {
+  filter: drop-shadow(0 2px 4px rgba(2, 132, 199, 0.28));
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
+}
+
+.jigg-ocean-glass:hover,
+button:hover > .jigg-ocean-glass,
+a:hover > .jigg-ocean-glass {
+  filter: drop-shadow(0 3px 7px rgba(14, 165, 233, 0.42)) brightness(1.06);
+  transform: scale(1.06);
+}
+
 .katex svg,
 .recharts-surface,
 .recharts-surface *,
