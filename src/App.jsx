@@ -83,6 +83,7 @@ import OutOfCreditsModal from './components/OutOfCreditsModal.jsx';
 import FeedbackModal from './components/FeedbackModal.jsx';
 import CreditTopUp from './components/CreditTopUp.jsx';
 import StreakModal from './components/StreakModal.jsx';
+import OceanGlassIconDefs from './components/OceanGlassIconDefs.jsx';
 import './styles/apple-cobalt-polish.css';
 import ElecIntroLoader, { PageLoader } from './components/ElecIntroLoader.jsx';
 const OnboardingSurveyModal = lazy(() => import('./components/OnboardingSurveyModal.jsx'));
@@ -950,6 +951,7 @@ export default function App() {
 
   return (
     <div data-page={page} className={isVirtualExamRoom ? 'is-virtual-exam-fullscreen' : undefined}>
+      <OceanGlassIconDefs />
       {!isVirtualExamRoom && (
         <a
           className="skip-link"
