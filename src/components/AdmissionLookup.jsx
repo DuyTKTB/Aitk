@@ -37,6 +37,7 @@ import {
   pinMajorToAspirationSlot,
 } from '../lib/admissionCareerEngine.js';
 import { IconAlert, IconTarget, IconRobot, IconArrowUpRight } from './Icons.jsx';
+import { getUniversityCover, getUniversityInfo } from '../data/universityCovers.js';
 import { askAI } from './HomePlus.jsx';
 import CareerFitModal from './CareerFitModal.jsx';
 import UniversityDetailModal from './aspiration/UniversityDetailModal.jsx';
@@ -851,17 +852,53 @@ export default function AdmissionLookup() {
           unis.map((u) => {
             const uniRows = rows.filter((r) => r.uni === u);
             const firstRow = uniRows[0];
+            const schKey = firstRow?.schoolId || firstRow?.code;
+            const uniInfo = getUniversityInfo(schKey);
+            const uniCover = getUniversityCover(schKey);
             return (
               <div key={u} className="ns9-adm-unicard s9c-card" style={{ padding: 0, marginBottom: '0.9rem', overflow: 'hidden' }}>
-                <div className="ns9-adm-unihead" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div className="s9-adm-uni-title">
-                    {firstRow?.code && <span className="s9-adm-unicode">{firstRow.code}</span>}
-                    <b>{u}</b>
-                    {firstRow?.type && (
-                      <small style={{ fontSize: '0.72rem', color: 'var(--mut)', fontWeight: 600 }}>
-                        · {firstRow.type}
-                      </small>
-                    )}
+                <div className="ns9-adm-unihead" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.85rem', flexWrap: 'wrap' }}>
+                  <div className="s9-adm-uni-title" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <img
+                      src={uniCover}
+                      alt={u}
+                      loading="lazy"
+                      onClick={() => setDetailSchoolId(schKey)}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/img/universities/neu.webp';
+                      }}
+                      style={{
+                        width: 64,
+                        height: 44,
+                        objectFit: 'cover',
+                        borderRadius: 10,
+                        border: '1px solid var(--line, rgba(100,120,180,0.2))',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                        {firstRow?.code && <span className="s9-adm-unicode">{firstRow.code}</span>}
+                        <b
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setDetailSchoolId(schKey)}
+                        >
+                          {u}
+                        </b>
+                        {firstRow?.type && (
+                          <small style={{ fontSize: '0.72rem', color: 'var(--mut)', fontWeight: 600 }}>
+                            · {firstRow.type}
+                          </small>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--mut, #64748b)', marginTop: 2 }}>
+                        {uniInfo?.location || firstRow?.city}
+                        {uniInfo?.foundedYear ? ` · Thành lập ${uniInfo.foundedYear}` : ''}
+                        {uniInfo?.studentScale ? ` · ${uniInfo.studentScale}` : ''}
+                      </div>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
@@ -870,9 +907,9 @@ export default function AdmissionLookup() {
                       type="button"
                       className="s9c-nv-btn"
                       style={{ color: '#2563eb', borderColor: 'rgba(37,99,235,0.28)' }}
-                      onClick={() => setDetailSchoolId(firstRow?.schoolId || firstRow?.code)}
+                      onClick={() => setDetailSchoolId(schKey)}
                     >
-                      Đề án 2026 &amp; Học phí ↗
+                      Đề án 2026 &amp; Hồ sơ trường ↗
                     </button>
                   </div>
                 </div>

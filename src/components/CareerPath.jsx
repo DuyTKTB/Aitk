@@ -34,6 +34,7 @@ import {
   pinMajorToAspirationSlot,
 } from '../lib/admissionCareerEngine.js';
 import UniversityDetailModal from './aspiration/UniversityDetailModal.jsx';
+import { getUniversityCover } from '../data/universityCovers.js';
 import { IconTarget, IconRobot, IconArrowUpRight } from './Icons.jsx';
 import '../styles/student-v9-upgrades.css';
 import '../styles/career-admission-9study.css';
@@ -1754,24 +1755,43 @@ export default function CareerPath() {
                     <article key={m.id} className="s9c-major-card">
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              <span
-                                style={{
-                                  padding: '0.16rem 0.5rem',
-                                  borderRadius: 6,
-                                  background: 'rgba(37,99,235,0.12)',
-                                  color: '#2563eb',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 800,
-                                }}
-                              >
-                                {m.code}
-                              </span>
-                              <b style={{ fontSize: '0.92rem', color: 'var(--ink)' }}>{m.major}</b>
-                            </div>
-                            <div style={{ fontSize: '0.79rem', color: 'var(--mut)', marginTop: '0.15rem' }}>
-                              {m.uni} ({m.city})
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                            <img
+                              src={getUniversityCover(m.schoolId || m.code)}
+                              alt={m.uni}
+                              loading="lazy"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = '/img/universities/neu.webp';
+                              }}
+                              style={{
+                                width: 48,
+                                height: 34,
+                                objectFit: 'cover',
+                                borderRadius: 8,
+                                border: '1px solid rgba(148,163,184,0.28)',
+                                flexShrink: 0,
+                              }}
+                            />
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                <span
+                                  style={{
+                                    padding: '0.16rem 0.5rem',
+                                    borderRadius: 6,
+                                    background: 'rgba(37,99,235,0.12)',
+                                    color: '#2563eb',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 800,
+                                  }}
+                                >
+                                  {m.code}
+                                </span>
+                                <b style={{ fontSize: '0.92rem', color: 'var(--ink)' }}>{m.major}</b>
+                              </div>
+                              <div style={{ fontSize: '0.79rem', color: 'var(--mut)', marginTop: '0.15rem' }}>
+                                {m.uni} ({m.city})
+                              </div>
                             </div>
                           </div>
 

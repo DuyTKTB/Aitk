@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   getSchools,
@@ -5,7 +7,9 @@ import {
   getMajorById,
   getUnifiedAdmissionCatalog,
   getUserAspirationsState,
+  getDetailedAdmissionScheme,
 } from '../src/lib/aspirationService.js';
+import { getUniversityCover, getUniversityInfo } from '../src/data/universityCovers.js';
 import {
   calculateMoetPriorityScore,
   convertExamScoreEquivalence,
@@ -151,5 +155,43 @@ describe('9Study Pro Upgrade — Định hướng Nghề nghiệp AI & Xét Nguy
     expect(health.hasInversion).toBe(false);
     expect(health.hasSafetyNet).toBe(true);
     expect(health.healthScore).toBeGreaterThanOrEqual(80);
+  });
+
+  it('100% trong 105 trường Đại học đều có ảnh khuôn viên WebP thật trong public/img/universities/ và đầy đủ hồ sơ 6 tab tuyển sinh 2026', () => {
+    const schools = getSchools();
+    expect(schools.length).toBe(105);
+
+    const publicDir = path.resolve(process.cwd(), 'public');
+    const distinctCovers = new Set();
+
+    for (const s of schools) {
+      const cover = getUniversityCover(s.id);
+      expect(cover).toMatch(/^\/img\/universities\/[a-z0-9_-]+\.webp$/i);
+      distinctCovers.add(cover);
+
+      const diskPath = path.join(publicDir, cover.replace(/^\//, ''));
+      expect(fs.existsSync(diskPath), `Missing image on disk for ${s.id}: ${diskPath}`).toBe(true);
+      const stat = fs.statSync(diskPath);
+      expect(stat.size).toBeGreaterThan(5000);
+
+      const info = getUniversityInfo(s.id);
+      expect(info.location.length).toBeGreaterThan(5);
+      expect(info.foundedYear).toBeGreaterThanOrEqual(1898);
+      expect(info.studentScale).toBeTruthy();
+      expect(info.employmentRate).toMatch(/%/);
+      expect(info.highlights.length).toBeGreaterThanOrEqual(3);
+
+      const scheme = getDetailedAdmissionScheme(s.id);
+      expect(scheme).toBeTruthy();
+      expect(scheme.contact.address.length).toBeGreaterThan(5);
+      expect(scheme.contact.website).toMatch(/^https?:\/\//);
+      expect(scheme.contact.hotline).toBeTruthy();
+      expect(scheme.contact.email).toMatch(/@/);
+      expect(scheme.tuition.standard).toBeTruthy();
+      expect(scheme.tuition.dormitory).toBeTruthy();
+    }
+
+    // Toàn bộ 105 trường có 105 ảnh riêng biệt, không dùng chung ảnh fallback
+    expect(distinctCovers.size).toBe(105);
   });
 });
