@@ -173,6 +173,8 @@ export default function KnowledgeBookshelfView({
   const [openBookVolume, setOpenBookVolume] = useState(null);
   const [activeChapterSlug, setActiveChapterSlug] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [flippedCards, setFlippedCards] = useState({});
+  const [revealedExamples, setRevealedExamples] = useState({});
   const [readSlugs, setReadSlugs] = useState(() => {
     try {
       const raw = localStorage.getItem('elec-khtn-read-chapters-v1');
@@ -1124,25 +1126,45 @@ export default function KnowledgeBookshelfView({
 
             {activeChapter.mentorQuote && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderRadius: 16, background: 'linear-gradient(135deg, #EFF6FF 0%, #F0FDF4 100%)', border: '1px solid #BFDBFE' }}>
-                <img src="/img/elec/elec-teacher.png" alt="ELEC AI Mentor" style={{ width: 56, height: 56, objectFit: 'contain', flexShrink: 0 }} />
-                <div>
+                <img
+                  src="/img/elec/elec-think.png"
+                  alt="ELEC AI Mentor"
+                  style={{ width: 64, height: 64, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 6px 12px rgba(2, 132, 199, 0.24))' }}
+                />
+                <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 11, fontWeight: 800, color: '#1D4ED8', letterSpacing: '0.06em', marginBottom: 4 }}>GÓC NHÌN BẢN CHẤT · ELEC AI MENTOR</div>
                   <p style={{ margin: 0, fontSize: 14, color: '#1E293B', fontStyle: 'italic', lineHeight: 1.6 }}>{activeChapter.mentorQuote}</p>
                 </div>
               </div>
             )}
 
+            {/* PHẦN 1: LÝ THUYẾT CHUYÊN SÂU THEO TỪNG CHỦ ĐỀ */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
               {(activeChapter.sections || []).map((sec, sIdx) => (
-                <section key={sIdx} id={`elec-sec-${sIdx}`} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                <section key={sIdx} id={`elec-sec-${sIdx}`} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, paddingBottom: 8, borderBottom: '1px solid #F1F5F9' }}>
                     <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: '#0F172A' }}>{sec.heading}</h2>
-                    {sec.slideRef && <span style={{ fontSize: 11.5, fontWeight: 700, color: '#64748B', background: '#F1F5F9', padding: '3px 9px', borderRadius: 8 }}>{sec.slideRef}</span>}
+                    {sec.slideRef && <span style={{ fontSize: 11.5, fontWeight: 700, color: '#0369A1', background: '#E0F2FE', padding: '3px 10px', borderRadius: 999 }}>{sec.slideRef}</span>}
                   </div>
-                  <div style={{ fontSize: 15, color: '#334155', lineHeight: 1.75, whiteSpace: 'pre-line' }}>
-                    <MathText text={sec.body} />
-                  </div>
-                  {sec.formula && (
+
+                  {sec.concepts && sec.concepts.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+                      {sec.concepts.map((c, cIdx) => (
+                        <div key={cIdx} style={{ padding: '16px 18px', borderRadius: 14, background: '#F8FAFC', borderLeft: `4px solid ${openBookVolume.accent}`, borderTop: '1px solid #E2E8F0', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', marginBottom: 6 }}>{c.title}</div>
+                          <div style={{ fontSize: 14.5, color: '#334155', lineHeight: 1.72 }}>
+                            <MathText text={c.desc} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 15, color: '#334155', lineHeight: 1.78, whiteSpace: 'pre-line' }}>
+                      <MathText text={sec.body} />
+                    </div>
+                  )}
+
+                  {sec.formula && (!activeChapter.formulas || activeChapter.formulas.length === 0) && (
                     <div style={{ padding: '16px 20px', borderRadius: 14, background: '#0F172A', color: '#F8FAFC', fontSize: 16, overflowX: 'auto', textAlign: 'center' }}>
                       <MathText text={`$$${sec.formula}$$`} />
                     </div>
@@ -1150,6 +1172,181 @@ export default function KnowledgeBookshelfView({
                 </section>
               ))}
             </div>
+
+            {/* PHẦN 2: HỆ THỐNG CÔNG THỨC CỐT LÕI (KATEX) */}
+            {activeChapter.formulas?.length > 0 && (
+              <section id="elec-sec-formulas" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: '#0F172A' }}>
+                  Hệ thống Công thức Trọng tâm ({activeChapter.formulas.length} công thức)
+                </h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+                  {activeChapter.formulas.map((f, fIdx) => (
+                    <div key={fIdx} style={{ padding: 16, borderRadius: 16, background: '#0F172A', color: '#F8FAFC', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#7DD3FC', letterSpacing: '0.03em' }}>{f.label}</div>
+                      <div style={{ fontSize: 16, overflowX: 'auto', padding: '6px 0', textAlign: 'center' }}>
+                        <MathText text={`$$${f.latex}$$`} />
+                      </div>
+                      {f.notes && <div style={{ fontSize: 12.5, color: '#CBD5E1', lineHeight: 1.5, borderTop: '1px solid rgba(148,163,184,0.2)', paddingTop: 8 }}>{f.notes}</div>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* PHẦN 3: QUY TRÌNH GIẢI BÀI TẬP CHUẨN TỪNG BƯỚC */}
+            {activeChapter.algorithms?.length > 0 && (
+              <section id="elec-sec-algorithms" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: '#0F172A' }}>
+                  Phương pháp &amp; Quy trình Giải nhanh
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {activeChapter.algorithms.map((a, aIdx) => (
+                    <div key={aIdx} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '14px 16px', borderRadius: 14, background: '#F0F9FF', border: '1px solid #BAE6FD' }}>
+                      <span style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 8, background: '#0284C7', color: '#FFFFFF', fontSize: 12, fontWeight: 800 }}>
+                        Bước {a.step || aIdx + 1}
+                      </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>{a.title}</div>
+                        <div style={{ fontSize: 14, color: '#334155', lineHeight: 1.65 }}>
+                          <MathText text={a.instruction} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* PHẦN 4: BẪY ĐỀ THI & CÁCH NÉ CHUẨN GDPT 2026 */}
+            {activeChapter.traps?.length > 0 && (
+              <section id="elec-sec-traps" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: '#0F172A' }}>
+                  Bẫy đề thi thường gặp &amp; Cách phòng tránh
+                </h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+                  {activeChapter.traps.map((t, tIdx) => (
+                    <div key={tIdx} style={{ padding: 16, borderRadius: 14, background: '#FFFBEB', border: '1px solid #FDE68A', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 800, color: '#B45309' }}>BẪY HAY MẮC #{tIdx + 1}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#78350F', lineHeight: 1.5 }}>
+                        <MathText text={t.trap} />
+                      </div>
+                      <div style={{ fontSize: 13.5, color: '#065F46', background: '#ECFDF5', padding: '8px 10px', borderRadius: 10, marginTop: 4, lineHeight: 1.55 }}>
+                        <b>Cách né:</b> <MathText text={t.avoid} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* PHẦN 5: THẺ LẬT FLASHCARD GHI NHỚ NHANH */}
+            {activeChapter.flashcards?.length > 0 && (
+              <section id="elec-sec-flashcards" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: '#0F172A' }}>
+                  Thẻ Flashcard Phản xạ Nhanh (Bấm để lật đáp án)
+                </h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                  {activeChapter.flashcards.map((fc, fcIdx) => {
+                    const key = `${activeChapter.slug}-fc-${fcIdx}`;
+                    const flipped = !!flippedCards[key];
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setFlippedCards((prev) => ({ ...prev, [key]: !prev[key] }))}
+                        style={{
+                          textAlign: 'left',
+                          padding: 18,
+                          borderRadius: 16,
+                          border: flipped ? '1.5px solid #059669' : '1.5px solid #BAE6FD',
+                          background: flipped ? '#ECFDF5' : '#F8FAFC',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 8,
+                          minHeight: 120,
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <span style={{ fontSize: 11, fontWeight: 800, color: flipped ? '#059669' : '#0284C7', letterSpacing: '0.06em' }}>
+                          {flipped ? 'ĐÁP ÁN CHUẨN' : `CÂU HỎI PHẢN XẠ #${fcIdx + 1}`}
+                        </span>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', lineHeight: 1.55 }}>
+                          <MathText text={flipped ? fc.back : fc.front} />
+                        </div>
+                        <span style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600 }}>
+                          {flipped ? 'Bấm để lật lại câu hỏi' : 'Bấm để xem đáp án →'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* PHẦN 6: VÍ DỤ MINH HOẠ & BÀI TẬP MẪU CÓ LỜI GIẢI CHI TIẾT */}
+            {activeChapter.workedExamples?.length > 0 && (
+              <section id="elec-sec-examples" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: '#0F172A' }}>
+                  Ví dụ Minh hoạ &amp; Câu hỏi Chuẩn Đề 2026 ({activeChapter.workedExamples.length} ví dụ)
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {activeChapter.workedExamples.slice(0, 6).map((ex, exIdx) => {
+                    const exKey = `${activeChapter.slug}-ex-${exIdx}`;
+                    const open = !!revealedExamples[exKey];
+                    return (
+                      <div key={exKey} style={{ padding: 18, borderRadius: 16, background: '#FFFFFF', border: '1px solid #CBD5E1', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#0284C7', background: '#E0F2FE', padding: '3px 10px', borderRadius: 999 }}>
+                            Ví dụ {exIdx + 1} · {ex.level}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setRevealedExamples((prev) => ({ ...prev, [exKey]: !prev[exKey] }))}
+                            style={{ padding: '5px 12px', borderRadius: 9, border: '1px solid #CBD5E1', background: open ? '#0F172A' : '#F8FAFC', color: open ? '#FFFFFF' : '#0F172A', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            {open ? 'Ẩn lời giải' : 'Xem đáp án & lời giải'}
+                          </button>
+                        </div>
+                        <div style={{ fontSize: 14.5, color: '#0F172A', fontWeight: 600, lineHeight: 1.65 }}>
+                          <MathText text={ex.prompt} />
+                        </div>
+                        {Array.isArray(ex.options) && (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+                            {ex.options.map((opt, oi) => {
+                              const isRight = open && oi === ex.correctIndex;
+                              return (
+                                <div key={oi} style={{ padding: '8px 12px', borderRadius: 10, border: isRight ? '1.5px solid #059669' : '1px solid #E2E8F0', background: isRight ? '#ECFDF5' : '#F8FAFC', fontSize: 13.5, color: '#1E293B' }}>
+                                  <b>{String.fromCharCode(65 + oi)}.</b> <MathText text={opt} />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {Array.isArray(ex.statements) && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {ex.statements.map((st, si) => (
+                              <div key={si} style={{ padding: '7px 12px', borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0', fontSize: 13.5, color: '#1E293B', display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                                <span><b>{String.fromCharCode(97 + si)})</b> <MathText text={st.text || st} /></span>
+                                {open && typeof st.isTrue === 'boolean' && (
+                                  <b style={{ color: st.isTrue ? '#059669' : '#DC2626', flexShrink: 0 }}>{st.isTrue ? 'ĐÚNG' : 'SAI'}</b>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {open && (
+                          <div style={{ padding: '12px 14px', borderRadius: 12, background: '#F0FDF4', border: '1px solid #BBF7D0', fontSize: 13.5, color: '#14532D', lineHeight: 1.65 }}>
+                            {ex.answer != null && <div style={{ marginBottom: 4 }}><b>Đáp án chuẩn:</b> {String(ex.answer)}</div>}
+                            {ex.explain && <div><b>Lời giải chi tiết:</b> <MathText text={ex.explain} /></div>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
 
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 20, borderTop: '1px solid #E2E8F0' }}>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -1206,6 +1403,31 @@ export default function KnowledgeBookshelfView({
                   {sec.heading}
                 </a>
               ))}
+              {activeChapter.formulas?.length > 0 && (
+                <a href="#elec-sec-formulas" onClick={(e) => { e.preventDefault(); document.getElementById('elec-sec-formulas')?.scrollIntoView({ behavior: 'smooth' }); }} style={{ fontSize: 12.5, color: '#0284C7', textDecoration: 'none', fontWeight: 700 }}>
+                  Công thức Trọng tâm ({activeChapter.formulas.length})
+                </a>
+              )}
+              {activeChapter.algorithms?.length > 0 && (
+                <a href="#elec-sec-algorithms" onClick={(e) => { e.preventDefault(); document.getElementById('elec-sec-algorithms')?.scrollIntoView({ behavior: 'smooth' }); }} style={{ fontSize: 12.5, color: '#0284C7', textDecoration: 'none', fontWeight: 700 }}>
+                  Quy trình Giải nhanh
+                </a>
+              )}
+              {activeChapter.traps?.length > 0 && (
+                <a href="#elec-sec-traps" onClick={(e) => { e.preventDefault(); document.getElementById('elec-sec-traps')?.scrollIntoView({ behavior: 'smooth' }); }} style={{ fontSize: 12.5, color: '#B45309', textDecoration: 'none', fontWeight: 700 }}>
+                  Bẫy đề thi ({activeChapter.traps.length})
+                </a>
+              )}
+              {activeChapter.flashcards?.length > 0 && (
+                <a href="#elec-sec-flashcards" onClick={(e) => { e.preventDefault(); document.getElementById('elec-sec-flashcards')?.scrollIntoView({ behavior: 'smooth' }); }} style={{ fontSize: 12.5, color: '#059669', textDecoration: 'none', fontWeight: 700 }}>
+                  Thẻ Flashcard ({activeChapter.flashcards.length})
+                </a>
+              )}
+              {activeChapter.workedExamples?.length > 0 && (
+                <a href="#elec-sec-examples" onClick={(e) => { e.preventDefault(); document.getElementById('elec-sec-examples')?.scrollIntoView({ behavior: 'smooth' }); }} style={{ fontSize: 12.5, color: '#4F46E5', textDecoration: 'none', fontWeight: 700 }}>
+                  Ví dụ &amp; Lời giải ({activeChapter.workedExamples.length})
+                </a>
+              )}
             </div>
           </aside>
         </div>

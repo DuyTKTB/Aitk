@@ -822,40 +822,89 @@ export function getDetailedBookCurriculum(volume) {
             const numStr = String(counter++).padStart(2, '0');
             const dedicatedLessons = findLessonsByChapter(node.dedicatedChapterId || node.id);
 
-            // Gom toàn bộ concepts, formulas, traps thực tế từ dedicatedLessonsData.js
+            // Gom toàn bộ kiến thức chuyên sâu từ dedicatedLessonsData.js (concepts, formulas, algorithms, traps, flashcards, sampleQuestions, exam2026Questions)
             const sections = [];
             const objectives = [];
+            const allFormulas = [];
+            const allAlgorithms = [];
+            const allTraps = [];
+            const allFlashcards = [];
+            const allWorkedExamples = [];
+            let audioScriptText = '';
 
             if (dedicatedLessons.length > 0) {
-              dedicatedLessons.slice(0, 4).forEach((les, lIdx) => {
+              dedicatedLessons.forEach((les, lIdx) => {
                 objectives.push(`Làm chủ chuyên đề "${les.title}" (${les.questionsCount || 25} câu luyện tập chuẩn 2026).`);
 
-                const conceptBody = (les.concepts || [])
-                  .map((c) => `• ${c.title}: ${c.desc}`)
-                  .join('\n');
-                const algoBody = (les.algorithms || [])
-                  .map((a) => `Bước ${a.step} — ${a.title}: ${a.instruction}`)
-                  .join('\n');
-                const trapBody = (les.traps || [])
-                  .map((t) => `⚠ Bẫy: ${t.trap} → Cách né: ${t.avoid}`)
-                  .join('\n');
-                const mainFormula = (les.formulas || [])
-                  .map((f) => f.displayLatex || f.formula)
-                  .filter(Boolean)
-                  .slice(0, 2)
-                  .join(' \\quad ; \\quad ');
+                if (les.podcast?.audioScript && !audioScriptText) {
+                  audioScriptText = les.podcast.audioScript;
+                }
 
-                const combinedBody = [
-                  conceptBody,
-                  algoBody ? `\nQuy trình giải chuẩn:\n${algoBody}` : '',
-                  trapBody ? `\nCảnh báo bẫy đề thi:\n${trapBody}` : '',
-                ].filter(Boolean).join('\n');
+                // Tách từng khái niệm thành thẻ lý thuyết rõ ràng
+                const concepts = (les.concepts || []).map((c) => ({
+                  title: c.title,
+                  desc: c.desc,
+                }));
+
+                // Gom toàn bộ công thức kèm ghi chú
+                (les.formulas || []).forEach((f) => {
+                  allFormulas.push({
+                    label: f.label || les.title,
+                    latex: f.displayLatex || f.formula || '',
+                    notes: f.notes || '',
+                  });
+                });
+
+                // Gom toàn bộ quy trình giải bài tập theo bước
+                (les.algorithms || []).forEach((a) => {
+                  allAlgorithms.push({
+                    lessonTitle: les.title,
+                    step: a.step,
+                    title: a.title,
+                    instruction: a.instruction,
+                  });
+                });
+
+                // Gom toàn bộ cảnh báo bẫy đề thi
+                (les.traps || []).forEach((t) => {
+                  allTraps.push({
+                    trap: t.trap,
+                    avoid: t.avoid,
+                  });
+                });
+
+                // Gom thẻ Flashcard ghi nhớ nhanh
+                (les.flashcards || []).forEach((fc) => {
+                  allFlashcards.push({
+                    front: fc.front,
+                    back: fc.back,
+                  });
+                });
+
+                // Gom các ví dụ minh hoạ có lời giải chi tiết từ sampleQuestions & exam2026Questions
+                const qPool = [...(les.sampleQuestions || []), ...(les.exam2026Questions || [])];
+                qPool.forEach((sq) => {
+                  if (!sq?.prompt) return;
+                  allWorkedExamples.push({
+                    type: sq.type || 'mcq',
+                    level: sq.level || 'Thông hiểu',
+                    prompt: sq.prompt,
+                    options: sq.options || null,
+                    statements: sq.statements || null,
+                    correctIndex: sq.correctIndex,
+                    answer: sq.answer ?? sq.correctAnswer ?? null,
+                    explain: sq.explain || sq.explanation || '',
+                  });
+                });
+
+                const fallbackText = concepts.map((c) => `${c.title}: ${c.desc}`).join('\n\n');
 
                 sections.push({
-                  heading: `${lIdx + 1}. ${les.title}`,
+                  heading: `${lIdx + 1}. Lý thuyết trọng tâm: ${les.title}`,
                   slideRef: `Bài ${lIdx + 1} · ${les.durationMinutes || 25} phút`,
-                  body: combinedBody || node.desc || `Chuyên đề ${les.title} trong chương trình ${volume.title}.`,
-                  formula: mainFormula,
+                  body: fallbackText || node.desc || `Chuyên đề ${les.title} trong chương trình ${volume.title}.`,
+                  concepts,
+                  formula: (les.formulas?.[0]?.displayLatex || les.formulas?.[0]?.formula || ''),
                 });
               });
             }
@@ -866,22 +915,24 @@ export function getDetailedBookCurriculum(volume) {
                   heading: `1. Khái niệm cốt lõi — ${node.name}`,
                   slideRef: `Chương ${numStr} · Lý thuyết`,
                   body: node.desc || `Hệ thống kiến thức nền tảng và bản chất hiện tượng của chương ${node.name} trong chương trình ${volume.title} GDPT 2018.`,
+                  concepts: [],
                   formula: '',
                 },
                 {
                   heading: `2. Phương pháp giải & Ứng dụng ma trận đề 2026`,
                   slideRef: `Chương ${numStr} · Vận dụng`,
                   body: `Phân tích các dạng câu hỏi trắc nghiệm nhiều lựa chọn, câu hỏi Đúng/Sai 4 ý và bài toán Trả lời ngắn thường xuất hiện ở chương ${node.name}.`,
+                  concepts: [],
                   formula: '',
                 },
               );
             }
 
-            if (objectives.length === 0) {
+            if (objectives.length < 3) {
               objectives.push(
-                `Nắm vững toàn bộ định nghĩa, định luật và công thức của chương ${node.name}.`,
-                `Nhận diện và tránh các bẫy định tính thường gặp trong câu hỏi Đúng/Sai.`,
-                `Giải nhanh bài tập định lượng theo cấu trúc đề thi THPTQG 2026.`,
+                `Nắm vững toàn bộ định nghĩa, định luật và công thức KaTeX của chương ${node.name}.`,
+                `Nhận diện chính xác các bẫy định tính thường gặp trong câu hỏi Đúng/Sai 4 ý.`,
+                `Vận dụng thành thạo quy trình giải nhanh cho bài toán định lượng và Trả lời ngắn.`,
               );
             }
 
@@ -894,8 +945,15 @@ export function getDetailedBookCurriculum(volume) {
               enTitle: `${volume.title.toUpperCase()} · CHƯƠNG ${numStr}`,
               desc: node.desc || `Chuyên đề trọng tâm ${node.name} trong chương trình ${volume.title}.`,
               objectives: objectives.slice(0, 4),
-              mentorQuote: `“Hoàn thành vững chắc chương ${node.name} giúp bạn ghi trọn điểm phần Thông hiểu và tự tin chinh phục câu phân loại 8.5+ của môn ${volume.subjectKey === 'hoa' ? 'Hoá học' : volume.subjectKey === 'ly' ? 'Vật lí' : 'Sinh học'}.”`,
+              mentorQuote: audioScriptText
+                ? `“${audioScriptText}”`
+                : `“Hoàn thành vững chắc chương ${node.name} giúp bạn ghi trọn điểm phần Thông hiểu và tự tin chinh phục câu phân loại 8.5+ của môn ${volume.subjectKey === 'hoa' ? 'Hoá học' : volume.subjectKey === 'ly' ? 'Vật lí' : 'Sinh học'}.”`,
               sections,
+              formulas: allFormulas,
+              algorithms: allAlgorithms,
+              traps: allTraps,
+              flashcards: allFlashcards,
+              workedExamples: allWorkedExamples,
             };
           }),
         })),
