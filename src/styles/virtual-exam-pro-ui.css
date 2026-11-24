@@ -617,3 +617,86 @@
     display: none;
   }
 }
+
+/* ============================================================
+   4. FULL DARK MODE SUPPORT CHO PHÒNG THI ẢO STUDIO 2026
+   ============================================================ */
+[data-theme='dark'] .vex-studio-hero {
+  background: linear-gradient(135deg, #0d1934 0%, #142b5c 62%, #0c4a6e 100%) !important;
+  border-color: rgba(56, 189, 248, 0.28) !important;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.42) !important;
+}
+
+[data-theme='dark'] .vex-studio-eyebrow {
+  background: rgba(15, 23, 42, 0.65) !important;
+  border-color: rgba(125, 211, 252, 0.35) !important;
+  color: #7dd3fc !important;
+}
+
+[data-theme='dark'] .vex-studio-hero h1,
+[data-theme='dark'] .vex-metrics-head strong,
+[data-theme='dark'] .vex-metric-box b,
+[data-theme='dark'] .vex-side-head strong,
+[data-theme='dark'] .ns9-vex-sec-head h3,
+[data-theme='dark'] .ns9-vex-title {
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .vex-studio-hero p,
+[data-theme='dark'] .vex-metric-box small,
+[data-theme='dark'] .vex-side-block label {
+  color: #cbd5e1 !important;
+}
+
+[data-theme='dark'] .vex-btn-outline {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+[data-theme='dark'] .vex-btn-outline:hover {
+  background: #0284c7 !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .vex-studio-metrics,
+[data-theme='dark'] .vex-right-sidebar,
+[data-theme='dark'] .ns9-vex-card {
+  background: #0e1a34 !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.36) !important;
+}
+
+[data-theme='dark'] .vex-metric-box,
+[data-theme='dark'] .vex-spec-tag,
+[data-theme='dark'] .vex-mini-chip {
+  background: #081024 !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme='dark'] .vex-mini-chip.on,
+[data-theme='dark'] .vex-mini-chip.is-accent {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .vex-search-input-wrap input,
+[data-theme='dark'] .vex-sort-select {
+  background: #081024 !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .vex-side-head,
+[data-theme='dark'] .ns9-vex-foot {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+[data-theme='dark'] .ns9-vex-sec-head span,
+[data-theme='dark'] .vex-metrics-head span {
+  background: rgba(56, 189, 248, 0.16) !important;
+  color: #7dd3fc !important;
+}

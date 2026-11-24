@@ -190,3 +190,63 @@ body::after {
     height: 110px !important;
   }
 }
+
+/* ============================================================
+   4. GLOBAL DARK MODE POLISH (KỆ SÁCH 3D · TRÌNH ĐỌC · DIALOG)
+   Đảm bảo toàn bộ các khối inline-light trong Kệ sách & Giáo trình
+   tự động đồng bộ nền tối Deep Navy sắc nét khi bật Dark Mode
+   ============================================================ */
+[data-theme='dark'] .ns9-bookshelf-section > div > div,
+[data-theme='dark'] .ns9-bookshelf-section article,
+[data-theme='dark'] .ns9-bookshelf-section aside,
+[data-theme='dark'] .ns9-bookshelf-section section {
+  background-color: #0e1a34 !important;
+  background-image: none !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme='dark'] .ns9-bookshelf-section h1,
+[data-theme='dark'] .ns9-bookshelf-section h2,
+[data-theme='dark'] .ns9-bookshelf-section h3,
+[data-theme='dark'] .ns9-bookshelf-section strong {
+  color: #ffffff !important;
+}
+
+[data-theme='dark'] .ns9-bookshelf-section p,
+[data-theme='dark'] .ns9-bookshelf-section span,
+[data-theme='dark'] .ns9-bookshelf-section a {
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .ns9-bookshelf-section input {
+  background: #081024 !important;
+  color: #f8fafc !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+}
+
+/* Bảo vệ các nút gáy sách & bìa sách 3D giữ nguyên màu bìa đẹp trong Dark Mode */
+[data-theme='dark'] .ns9-bookshelf-section button[title*="chương"],
+[data-theme='dark'] .ns9-bookshelf-section button[title*="Mở giáo trình"] {
+  color: #ffffff !important;
+}
+
+/* Hộp Đánh giá Năng lực (Diagnostic Studio Pro) đồng bộ Dark Mode */
+[data-theme='dark'] .dsp-modal .dsp-choice-card,
+[data-theme='dark'] .dsp-modal .dsp-bp-tier,
+[data-theme='dark'] .dsp-modal .dsp-close {
+  background: #0e1a34 !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme='dark'] .dsp-modal .dsp-choice-card.is-selected {
+  background: rgba(2, 132, 199, 0.22) !important;
+  border-color: #38bdf8 !important;
+}
+
+[data-theme='dark'] .dsp-modal .dsp-config-block,
+[data-theme='dark'] .dsp-modal .dsp-blueprint-card {
+  background: #091226 !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
