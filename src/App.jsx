@@ -963,7 +963,15 @@ export default function App() {
 
       {!isFullPage && settings?.enablePet !== false && <PetWidget />}
       {!isVirtualExamRoom && settings?.enableChat !== false && <ChatWidget />}
-      {!isFullPage && <div className="elec-global-bottom-blur" aria-hidden="true" />}
+      {!isFullPage && (
+        <div className="elec-global-bottom-blur" aria-hidden="true">
+          <div className="elec-blur-layer l1" />
+          <div className="elec-blur-layer l2" />
+          <div className="elec-blur-layer l3" />
+          <div className="elec-blur-layer l4" />
+          <div className="elec-blur-fade" />
+        </div>
+      )}
       <OutOfCreditsModal />
       <FeedbackModal />
       <CreditTopUp userId={user?.uid} onCreditUpdate={(newBal) => setCredits(newBal)} />

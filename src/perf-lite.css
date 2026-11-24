@@ -9,7 +9,7 @@
 /* 1) Blur nền (backdrop-filter) — tốn GPU nhất trên máy cũ.
       Toàn bộ app có ~2.000 khai báo loại này, mỗi panel kính mờ buộc
       Safari render lại từng frame khi cuộn. */
-html.perf-lite *,
+html.perf-lite *:not(.elec-blur-layer),
 html.perf-lite *::before,
 html.perf-lite *::after {
   -webkit-backdrop-filter: none !important;

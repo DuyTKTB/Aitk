@@ -102,56 +102,83 @@ svg.anim-ico-svg polygon[fill-opacity] {
 }
 
 /* ============================================================
-   3. GLOBAL PROGRESSIVE BOTTOM BLUR (APPLE VISIONOS FADE)
-   Áp dụng hiệu ứng mờ sương lũy tiến ở mép đáy cho TOÀN BỘ WEB
-   với z-index cao (85) và độ mờ đậm rõ rệt giống hệt Trang Công cụ & Trang chủ
+   3. GLOBAL PROGRESSIVE BOTTOM BLUR (4-LAYER APPLE VISIONOS BLUR)
+   Xếp 4 lớp kính mờ tăng dần (2px → 5px → 10px → 18px) + lớp sương trắng
+   ở đáy viewport, chống hoàn toàn perf-lite.css để luôn rõ nét ở mọi trang!
    ============================================================ */
 .elec-global-bottom-blur {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 155px;
-  pointer-events: none;
-  z-index: 85;
-  background: linear-gradient(
-    to top,
-    rgba(244, 247, 251, 0.96) 0%,
-    rgba(244, 247, 251, 0.72) 45%,
-    rgba(244, 247, 251, 0) 100%
-  );
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-mask-image: linear-gradient(
-    to top,
-    black 0%,
-    black 45%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to top,
-    black 0%,
-    black 45%,
-    transparent 100%
-  );
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 150px !important;
+  pointer-events: none !important;
+  z-index: 95 !important;
+  overflow: hidden;
 }
 
-[data-theme='dark'] .elec-global-bottom-blur,
-.dark .elec-global-bottom-blur {
+.elec-global-bottom-blur .elec-blur-layer,
+.elec-global-bottom-blur .elec-blur-fade {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+}
+
+.elec-global-bottom-blur .elec-blur-layer.l1 {
+  -webkit-backdrop-filter: blur(2px) !important;
+  backdrop-filter: blur(2px) !important;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 25%, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 25%, black 100%);
+}
+
+.elec-global-bottom-blur .elec-blur-layer.l2 {
+  -webkit-backdrop-filter: blur(5px) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 22%, black 52%, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 22%, black 52%, black 100%);
+}
+
+.elec-global-bottom-blur .elec-blur-layer.l3 {
+  -webkit-backdrop-filter: blur(10px) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 48%, black 78%, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 48%, black 78%, black 100%);
+}
+
+.elec-global-bottom-blur .elec-blur-layer.l4 {
+  -webkit-backdrop-filter: blur(18px) saturate(140%) !important;
+  backdrop-filter: blur(18px) saturate(140%) !important;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 70%, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 70%, black 100%);
+}
+
+.elec-global-bottom-blur .elec-blur-fade {
+  background: linear-gradient(
+    to top,
+    rgba(241, 245, 252, 0.96) 0%,
+    rgba(241, 245, 252, 0.72) 38%,
+    rgba(241, 245, 252, 0.25) 70%,
+    rgba(241, 245, 252, 0) 100%
+  ) !important;
+}
+
+[data-theme='dark'] .elec-global-bottom-blur .elec-blur-fade,
+.dark .elec-global-bottom-blur .elec-blur-fade {
   background: linear-gradient(
     to top,
     rgba(11, 18, 36, 0.96) 0%,
-    rgba(11, 18, 36, 0.72) 45%,
+    rgba(11, 18, 36, 0.72) 38%,
+    rgba(11, 18, 36, 0.25) 70%,
     rgba(11, 18, 36, 0) 100%
-  );
+  ) !important;
 }
 
-/* Cho nền toàn web hiển thị lớp nền mờ thoáng giống trang Công cụ */
+/* Cho nền phòng thi ảo hòa quyện mượt với nền chung */
 .ns9-vex-page {
   background: transparent !important;
 }
 
-/* Tránh chồng 2 lớp blur trên các trang đã tự có ::after blur riêng */
+/* Tránh chồng 2 lớp blur trên các trang cũ */
 .tools-page::after,
 .home-page::after,
 body::after {
@@ -160,8 +187,6 @@ body::after {
 
 @media (max-width: 720px) {
   .elec-global-bottom-blur {
-    height: 110px;
-    -webkit-backdrop-filter: blur(10px) saturate(130%);
-    backdrop-filter: blur(10px) saturate(130%);
+    height: 110px !important;
   }
 }
