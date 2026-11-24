@@ -1,154 +1,42 @@
 /* ============================================================
-   ocean-glass-icons.css — Jiggicons-Inspired Ocean Blue Glass Icons
+   ocean-glass-icons.css — Jiggicons Ocean Blue Glass Icons
    ------------------------------------------------------------
-   Biến toàn bộ hệ thống icon SVG của ELEC AI thành phong cách
-   Thuỷ Tinh Trong Suốt Xanh Biển (Frosted Translucent Ocean Blue):
-     • Lớp nền gradient xanh biển trong mờ (#BAE6FD → #38BDF8 → #0284C7)
-     • Viền bắt sáng pha lê xanh biển (#7DD3FC → #0EA5E9 → #0369A1)
-     • Bóng đổ mềm tạo chiều sâu khối thuỷ tinh 3D
-     • Tự động chuyển sang thuỷ tinh trắng-băng khi nằm trên nút xanh đậm
+   • Icon Jiggicons Glass (.jigg-ocean-glass): giữ nguyên 100% lớp
+     gradient thuỷ tinh xanh biển 3D nội tại, không bao giờ bị ghi đè
+     stroke/fill làm mất hình!
+   • Các icon SVG còn lại (nét khoa học đặc thù): nhuộm xanh biển
+     trong suốt an toàn (không dùng fill: revert gây mất màu đen/ẩn).
    ============================================================ */
 
-/* 1. Áp dụng lớp thuỷ tinh xanh biển cho toàn bộ icon SVG UI (loại trừ biểu đồ, KaTeX, hình minh hoạ lớn) */
-svg.anim-ico-svg,
-svg.lucide,
-.nav-ico svg,
-.nav-tool-icon svg,
-.nav-action-icon-btn svg,
-.bnav-ico svg,
-.sg-icon-btn svg,
-.rm-pro-sub-btn svg,
-.rm-pro-mode-btn svg,
-.rm-pro-ghost-btn svg,
-.tool-icon svg,
-.home-card-ico svg,
-.card-ico svg,
-button > svg[viewBox="0 0 24 24"],
-a > svg[viewBox="0 0 24 24"],
-span > svg[viewBox="0 0 24 24"] {
-  stroke: url(#elec-ocean-glass-stroke) !important;
-  filter: drop-shadow(0 2px 3.5px rgba(2, 132, 199, 0.24)) drop-shadow(0 0.5px 0.8px rgba(186, 230, 253, 0.72));
-  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.22s ease;
-}
-
-/* Các khối hình bên trong SVG nhận lớp fill thuỷ tinh trong suốt xanh biển */
-svg.anim-ico-svg path:not([fill="none"]),
-svg.anim-ico-svg rect:not([fill="none"]),
-svg.anim-ico-svg circle:not([fill="none"]),
-svg.anim-ico-svg polygon:not([fill="none"]),
-svg.anim-ico-svg ellipse:not([fill="none"]),
-svg.anim-ico-svg path[fill-opacity],
-svg.anim-ico-svg rect[fill-opacity],
-svg.anim-ico-svg circle[fill-opacity],
-svg.anim-ico-svg polygon[fill-opacity] {
-  fill: url(#elec-ocean-glass-fill) !important;
-  fill-opacity: 0.9 !important;
-}
-
-/* Cho các icon nét đơn (stroke-only, ví dụ Lucide hoặc inline 24x24) có thêm lớp mờ thuỷ tinh xanh biển bên trong hình khép kín */
-svg.lucide path,
-svg.lucide rect,
-svg.lucide circle,
-svg.lucide polygon,
-svg.lucide ellipse,
-.rm-pro-mode-btn svg path,
-.rm-pro-mode-btn svg rect,
-.rm-pro-mode-btn svg circle,
-.rm-pro-mode-btn svg polygon,
-.rm-pro-sub-btn svg path,
-.rm-pro-sub-btn svg polygon,
-.nav-ico svg path,
-.nav-ico svg rect,
-.nav-ico svg circle,
-.nav-ico svg polygon,
-button > svg[viewBox="0 0 24 24"] rect,
-button > svg[viewBox="0 0 24 24"] circle,
-button > svg[viewBox="0 0 24 24"] polygon {
-  fill: url(#elec-ocean-glass-fill);
-  fill-opacity: 0.42;
-}
-
-/* Giữ nét line / polyline không bị đổ nền đặc gây lem nét */
-svg line,
-svg polyline {
-  fill: none !important;
-}
-
-/* Các chấm tròn đặc (dot) trong Icons.jsx thành hạt ngọc xanh biển */
-svg.anim-ico-svg circle[stroke="none"] {
-  fill: url(#elec-ocean-glass-dot) !important;
-  fill-opacity: 1 !important;
-  stroke: none !important;
-}
-
-/* Hiệu ứng khi hover: sáng bóng như viên pha lê xanh biển */
-button:hover > svg.anim-ico-svg,
-button:hover > svg[viewBox="0 0 24 24"],
-a:hover > svg.anim-ico-svg,
-.nav-item:hover .nav-ico svg,
-.bnav-btn:hover .bnav-ico svg,
-.rm-pro-mode-btn:hover svg {
-  filter: drop-shadow(0 3px 6px rgba(14, 165, 233, 0.38)) brightness(1.06);
-  transform: translateY(-0.5px) scale(1.04);
-}
-
-/* 2. Tự động thích nghi thuỷ tinh băng trắng-xanh khi nằm trên nút nền xanh đậm / dark active */
-.nav-item.active .nav-ico svg,
-.nav-tools-btn.is-open svg,
-.nav-tools-btn.active svg,
-.rm-pro-mode-btn.is-active svg,
-.rm-pro-sub-btn.is-active svg,
-.btn-primary svg,
-.ns9-primary-cta-btn svg,
-.ns9-ch-btn-primary svg,
-button[style*="background: rgb(37, 99, 235)"] svg,
-button[style*="background: rgb(15, 23, 42)"] svg,
-button[style*="background: #2563EB"] svg,
-button[style*="background: #0F172A"] svg {
-  stroke: url(#elec-ocean-glass-on-dark-stroke) !important;
-  filter: drop-shadow(0 1.5px 3px rgba(125, 211, 252, 0.45));
-}
-
-.nav-item.active .nav-ico svg path,
-.nav-item.active .nav-ico svg rect,
-.nav-item.active .nav-ico svg circle,
-.nav-item.active .nav-ico svg polygon,
-.rm-pro-mode-btn.is-active svg path,
-.rm-pro-mode-btn.is-active svg rect,
-.rm-pro-mode-btn.is-active svg circle,
-.rm-pro-mode-btn.is-active svg polygon,
-.btn-primary svg path,
-.btn-primary svg rect,
-.btn-primary svg circle,
-.ns9-primary-cta-btn svg path {
-  fill: url(#elec-ocean-glass-on-dark-fill) !important;
-  fill-opacity: 0.72 !important;
-}
-
-/* 3. Giữ nguyên lớp kính 3D nguyên bản của Jiggicons Glass (mặc định là Xanh Biển trong suốt) */
-.jigg-ocean-glass svg,
-.jigg-ocean-glass svg * {
-  stroke: revert !important;
-  fill: revert !important;
-}
-
+/* 1. Bảo vệ & tô bóng cho bộ icon Jiggicons Glass 3D Xanh Biển */
 .jigg-ocean-glass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   filter: drop-shadow(0 2px 4px rgba(2, 132, 199, 0.28));
   transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.24s ease;
 }
 
-/* Khi di chuột (hover): phát sáng ánh pha lê xanh biển rực rỡ */
+.jigg-ocean-glass svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Hover: phát quang ánh pha lê xanh biển */
 .jigg-ocean-glass:hover,
 button:hover > .jigg-ocean-glass,
 a:hover > .jigg-ocean-glass,
 .nav-item:hover .jigg-ocean-glass,
 .bnav-btn:hover .jigg-ocean-glass {
-  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.72)) brightness(1.16) saturate(1.22);
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.72)) brightness(1.14) saturate(1.2);
   transform: scale(1.08);
 }
 
-/* Khi BẬT SÁNG / ĐANG CHỌN (active / is-active / nút nền xanh đậm):
-   Đổi hẳn sang màu thuỷ tinh pha lê TRẮNG-BĂNG phát sáng (Ice Crystal Glow) để nổi bật sắc nét! */
+/* Khi BẬT SÁNG / ĐANG CHỌN (active / is-active / nút xanh đậm):
+   Đổi sang màu pha lê trắng-băng phát sáng để nổi bật hoàn hảo */
 .nav-item.active .jigg-ocean-glass,
 .nav-tools-btn.active .jigg-ocean-glass,
 .nav-tools-btn.is-open .jigg-ocean-glass,
@@ -160,28 +48,55 @@ a:hover > .jigg-ocean-glass,
 .ns9-ch-btn-primary .jigg-ocean-glass,
 button[aria-selected="true"] .jigg-ocean-glass,
 button[aria-pressed="true"] .jigg-ocean-glass {
-  filter: brightness(1.85) saturate(0.35) contrast(1.08) drop-shadow(0 0 8px rgba(224, 242, 254, 0.92)) !important;
+  filter: brightness(1.82) saturate(0.35) contrast(1.06) drop-shadow(0 0 7px rgba(224, 242, 254, 0.92));
 }
 
-/* Chế độ nền tối (Dark Mode): pha lê xanh biển phát quang rực hơn để rõ nét trên nền tối */
 [data-theme="dark"] .jigg-ocean-glass,
 .dark .jigg-ocean-glass {
-  filter: brightness(1.24) saturate(1.18) drop-shadow(0 2px 7px rgba(56, 189, 248, 0.48));
+  filter: brightness(1.22) saturate(1.18) drop-shadow(0 2px 7px rgba(56, 189, 248, 0.48));
 }
 
-[data-theme="dark"] .nav-item.active .jigg-ocean-glass,
-[data-theme="dark"] .bnav-btn.active .jigg-ocean-glass,
-[data-theme="dark"] .rm-pro-mode-btn.is-active .jigg-ocean-glass {
-  filter: hue-rotate(36deg) brightness(1.38) saturate(1.45) drop-shadow(0 0 10px rgba(125, 211, 252, 0.85)) !important;
+/* 2. Áp dụng hiệu ứng thuỷ tinh xanh biển cho các icon SVG thông thường (trừ Jiggicons, KaTeX, biểu đồ) */
+svg.anim-ico-svg,
+svg.lucide,
+.nav-ico > svg,
+.nav-tool-icon > svg,
+.nav-action-icon-btn > svg,
+.bnav-ico > svg,
+.rm-pro-sub-btn > svg,
+.rm-pro-mode-btn > svg,
+.rm-pro-ghost-btn > svg {
+  color: #0284c7;
+  stroke: #0284c7;
+  filter: drop-shadow(0 2px 3.5px rgba(2, 132, 199, 0.24));
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.22s ease;
 }
 
-.katex svg,
-.recharts-surface,
-.recharts-surface *,
-.dag-canvas svg,
-.dag-canvas svg *,
-svg[width="0"] {
-  stroke: revert !important;
-  fill: revert !important;
-  filter: none !important;
+svg.anim-ico-svg path[fill-opacity],
+svg.anim-ico-svg rect[fill-opacity],
+svg.anim-ico-svg circle[fill-opacity],
+svg.anim-ico-svg polygon[fill-opacity] {
+  fill: #38bdf8;
+  fill-opacity: 0.32;
+}
+
+/* Trạng thái active/nút xanh đậm cho các icon SVG thường */
+.nav-item.active .nav-ico > svg,
+.nav-tools-btn.is-open > svg,
+.nav-tools-btn.active > svg,
+.rm-pro-mode-btn.is-active > svg,
+.rm-pro-sub-btn.is-active > svg,
+.btn-primary > svg,
+.ns9-primary-cta-btn > svg,
+.ns9-ch-btn-primary > svg {
+  color: #ffffff;
+  stroke: #ffffff;
+  filter: drop-shadow(0 1.5px 3px rgba(186, 230, 253, 0.6));
+}
+
+.nav-item.active .nav-ico > svg path[fill-opacity],
+.rm-pro-mode-btn.is-active > svg path[fill-opacity],
+.btn-primary > svg path[fill-opacity] {
+  fill: #e0f2fe;
+  fill-opacity: 0.45;
 }
