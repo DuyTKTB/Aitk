@@ -125,7 +125,7 @@ button[style*="background: #0F172A"] svg {
   fill-opacity: 0.72 !important;
 }
 
-/* 3. Không can thiệp vào công thức toán KaTeX, biểu đồ Recharts/SVG canvas lớn, logo riêng, và giữ nguyên 100% lớp kính 3D nguyên bản của Jiggicons Glass đã nhuộm Xanh Biển */
+/* 3. Giữ nguyên lớp kính 3D nguyên bản của Jiggicons Glass (mặc định là Xanh Biển trong suốt) */
 .jigg-ocean-glass svg,
 .jigg-ocean-glass svg * {
   stroke: revert !important;
@@ -134,14 +134,45 @@ button[style*="background: #0F172A"] svg {
 
 .jigg-ocean-glass {
   filter: drop-shadow(0 2px 4px rgba(2, 132, 199, 0.28));
-  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.24s ease;
 }
 
+/* Khi di chuột (hover): phát sáng ánh pha lê xanh biển rực rỡ */
 .jigg-ocean-glass:hover,
 button:hover > .jigg-ocean-glass,
-a:hover > .jigg-ocean-glass {
-  filter: drop-shadow(0 3px 7px rgba(14, 165, 233, 0.42)) brightness(1.06);
-  transform: scale(1.06);
+a:hover > .jigg-ocean-glass,
+.nav-item:hover .jigg-ocean-glass,
+.bnav-btn:hover .jigg-ocean-glass {
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.72)) brightness(1.16) saturate(1.22);
+  transform: scale(1.08);
+}
+
+/* Khi BẬT SÁNG / ĐANG CHỌN (active / is-active / nút nền xanh đậm):
+   Đổi hẳn sang màu thuỷ tinh pha lê TRẮNG-BĂNG phát sáng (Ice Crystal Glow) để nổi bật sắc nét! */
+.nav-item.active .jigg-ocean-glass,
+.nav-tools-btn.active .jigg-ocean-glass,
+.nav-tools-btn.is-open .jigg-ocean-glass,
+.bnav-btn.active .jigg-ocean-glass,
+.rm-pro-mode-btn.is-active .jigg-ocean-glass,
+.rm-pro-sub-btn.is-active .jigg-ocean-glass,
+.btn-primary .jigg-ocean-glass,
+.ns9-primary-cta-btn .jigg-ocean-glass,
+.ns9-ch-btn-primary .jigg-ocean-glass,
+button[aria-selected="true"] .jigg-ocean-glass,
+button[aria-pressed="true"] .jigg-ocean-glass {
+  filter: brightness(1.85) saturate(0.35) contrast(1.08) drop-shadow(0 0 8px rgba(224, 242, 254, 0.92)) !important;
+}
+
+/* Chế độ nền tối (Dark Mode): pha lê xanh biển phát quang rực hơn để rõ nét trên nền tối */
+[data-theme="dark"] .jigg-ocean-glass,
+.dark .jigg-ocean-glass {
+  filter: brightness(1.24) saturate(1.18) drop-shadow(0 2px 7px rgba(56, 189, 248, 0.48));
+}
+
+[data-theme="dark"] .nav-item.active .jigg-ocean-glass,
+[data-theme="dark"] .bnav-btn.active .jigg-ocean-glass,
+[data-theme="dark"] .rm-pro-mode-btn.is-active .jigg-ocean-glass {
+  filter: hue-rotate(36deg) brightness(1.38) saturate(1.45) drop-shadow(0 0 10px rgba(125, 211, 252, 0.85)) !important;
 }
 
 .katex svg,
