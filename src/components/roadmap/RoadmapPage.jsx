@@ -59,6 +59,7 @@ import '../../styles/roadmap-page-v2.css';
 import '../../styles/roadmap-upgrade.css';
 import '../../styles/roadmap-studio-pro.css';
 import '../../styles/apple-cobalt-polish.css';
+import '../../styles/roadmap-polish-2026.css';
 
 const GRADE_KEY = 'cs-roadmap-grade-v2';
 

@@ -1,0 +1,272 @@
+/* ============================================================
+   roadmap-polish-2026.css — ELEC AI ROADMAP STUDIO 2026 REDESIGN
+   ------------------------------------------------------------
+   Thiết kế lại toàn diện thẩm mỹ trang Lộ trình (#roadmap):
+     • Xoá cảm giác dày đặc, nhiều khung xám nhạt thiếu tương phản
+     • Cân đối hệ thống màu: Trắng tinh khiết + Xanh Biển Deep Ocean
+     • Bàn điều khiển Thủ khoa (Command Deck): Cột trái Deep Ocean Glass
+       nổi bật điểm số & 3 thanh phần I·II·III; Cột phải Mission Card sạch sắc nét
+     • Thanh điều khiển 2 hàng thẳng tắp, không bao giờ vỡ dòng
+     • Đường lộ trình 5 Chặng (Trail) thoáng, thẻ chuyên đề có điểm nhấn rõ ràng
+     • Cột Thanh tra (Inspector) bên phải thanh lịch, có đệm đáy không bị Mascot che
+   ============================================================ */
+
+.rm-page.rm-studio-pro {
+  max-width: 1260px !important;
+  margin: 0 auto !important;
+  padding: 18px 22px 110px !important;
+  gap: 18px !important;
+}
+
+/* ── 1. COMMAND DECK (BENTO 2 CỘT CAO CẤP) ── */
+.rm-pro-deck {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.38fr) minmax(320px, 0.92fr) !important;
+  gap: 16px !important;
+  margin-bottom: 2px !important;
+}
+
+/* Cột trái: Thẻ Điểm Dự Đoán Deep Ocean Cobalt */
+.rm-pro-deck-left {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px !important;
+  padding: 22px 24px !important;
+  background: linear-gradient(135deg, #0b1938 0%, #163b8c 55%, #0284c7 100%) !important;
+  border: 1px solid rgba(125, 211, 252, 0.25) !important;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.rm-pro-deck-left::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -40px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.32) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.rm-pro-deck-left > * {
+  position: relative;
+  z-index: 1;
+}
+
+.rm-pro-deck-left .rm-pro-asp-pill {
+  background: rgba(255, 255, 255, 0.14) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #e0f2fe !important;
+  backdrop-filter: blur(8px);
+}
+
+.rm-pro-deck-left .rm-pro-countdown {
+  color: #bae6fd !important;
+  font-weight: 700 !important;
+}
+
+.rm-pro-deck-left .rm-pro-score-num strong {
+  color: #ffffff !important;
+  font-size: 38px !important;
+  letter-spacing: -0.03em;
+}
+
+.rm-pro-deck-left .rm-pro-score-num span {
+  color: #bae6fd !important;
+  font-weight: 700 !important;
+}
+
+.rm-pro-deck-left .rm-pro-score-sub {
+  color: rgba(226, 232, 240, 0.88) !important;
+}
+
+.rm-pro-deck-left .rm-pro-score-sub b {
+  color: #ffffff !important;
+}
+
+.rm-pro-deck-left .rm-pro-pace.tone-warn {
+  color: #fde047 !important;
+}
+
+.rm-pro-deck-left .rm-pro-pace.tone-ok {
+  color: #6ee7b7 !important;
+}
+
+.rm-pro-deck-left .rm-pro-ghost-btn {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(8px);
+  border-radius: 11px !important;
+}
+
+.rm-pro-deck-left .rm-pro-ghost-btn:hover,
+.rm-pro-deck-left .rm-pro-ghost-btn.is-on {
+  background: rgba(255, 255, 255, 0.24) !important;
+  border-color: rgba(186, 230, 253, 0.65) !important;
+  color: #ffffff !important;
+}
+
+.rm-pro-deck-left .rm-pro-part-chip {
+  background: rgba(15, 23, 42, 0.32) !important;
+  border: 1px solid rgba(186, 230, 253, 0.18) !important;
+  border-radius: 14px !important;
+  padding: 10px 12px !important;
+}
+
+.rm-pro-deck-left .rm-pro-part-head {
+  color: #bae6fd !important;
+}
+
+.rm-pro-deck-left .rm-pro-part-head b {
+  color: #ffffff !important;
+}
+
+.rm-pro-deck-left .rm-pro-part-bar {
+  height: 6px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+
+/* Cột phải: Mission Card Trắng Tinh Khiết & Nổi Bật */
+.rm-pro-mission-card {
+  border-radius: 24px !important;
+  padding: 22px 24px !important;
+  background: #ffffff !important;
+  border: 1px solid #dbeafe !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06) !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rm-pro-mission-title {
+  font-size: 21px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.02em;
+}
+
+.rm-pro-cta-primary {
+  padding: 12px 18px !important;
+  border-radius: 13px !important;
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  box-shadow: 0 10px 22px rgba(2, 132, 199, 0.30) !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+}
+
+/* ── 2. THANH ĐIỀU KHIỂN STUDIO (GỌN GÀNG, CHỐNG VỠ DÒNG TUYỆT ĐỐI) ── */
+.rm-pro-toolbar-v2 {
+  position: sticky;
+  top: 70px;
+  z-index: 28;
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(14px);
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 20px !important;
+  padding: 12px 16px !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05) !important;
+}
+
+.rm-pro-toolbar-v2 .rm-pro-tb-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+}
+
+.rm-pro-toolbar-v2 .rm-pro-search-box {
+  width: 220px !important;
+  flex-shrink: 0;
+}
+
+.rm-pro-toolbar-v2 .rm-pro-filter-select {
+  width: 156px !important;
+  flex-shrink: 0;
+}
+
+/* ── 3. DÂY LỘ TRÌNH 5 CHẶNG (THOÁNG ĐÃNG, SANG TRỌNG) ── */
+.rm-pro-workspace {
+  grid-template-columns: minmax(0, 1fr) 365px !important;
+  gap: 20px !important;
+}
+
+.rm-pro-stage-pills {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-bottom: 4px;
+}
+
+.rm-pro-stage-pill {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  padding: 7px 13px !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  transition: all 0.16s ease !important;
+}
+
+.rm-pro-stage-pill:hover {
+  border-color: #7dd3fc !important;
+  background: #f0f9ff !important;
+  transform: translateY(-1px);
+}
+
+.rm-pro-stage-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 22px !important;
+  padding: 20px 22px !important;
+  box-shadow: 0 8px 26px rgba(15, 23, 42, 0.04) !important;
+}
+
+.rm-pro-node-card {
+  border-radius: 16px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+  transition: all 0.18s ease !important;
+}
+
+.rm-pro-node-card:hover {
+  background: #ffffff !important;
+  border-color: #7dd3fc !important;
+  box-shadow: 0 10px 24px rgba(2, 132, 199, 0.10) !important;
+  transform: translateY(-2px);
+}
+
+.rm-pro-node-card.is-selected {
+  background: #ffffff !important;
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.16), 0 12px 26px rgba(2, 132, 199, 0.12) !important;
+}
+
+/* ── 4. CỘT THANH TRA CHUYÊN ĐỀ (STICKY INSPECTOR BÊN PHẢI) ── */
+.rm-pro-inspector {
+  border-radius: 22px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06) !important;
+  top: 196px !important;
+  padding-bottom: 24px !important;
+}
+
+@media (max-width: 1024px) {
+  .rm-pro-deck {
+    grid-template-columns: 1fr !important;
+  }
+  .rm-pro-workspace {
+    grid-template-columns: 1fr !important;
+  }
+  .rm-pro-toolbar-v2 {
+    position: static;
+  }
+}
