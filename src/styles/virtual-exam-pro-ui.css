@@ -1,0 +1,350 @@
+/* ============================================================
+   virtual-exam-pro-ui.css — PHÒNG THI ẢO ELEC AI PRO ARENA UI
+   ------------------------------------------------------------
+   Nâng cấp toàn diện giao diện sảnh Phòng thi ảo (#quiz / #virtual-exams):
+     • Hero Đấu trường KHTN đậm chất điện ảnh (Deep Cobalt Glass + Live Pulse)
+     • Thanh tìm kiếm & bộ lọc 2 cột gọn gàng, sạch sẽ, tinh tế kiểu Apple/Linear
+     • Banner cấu trúc đề thi 2026 tối giản, nhường đất cho kho đề hiển thị ngay
+     • Thẻ đề thi (VirtualExamCard) nổi khối sang trọng, hiệu ứng hover mượt
+   ============================================================ */
+
+.ns9-vex-page {
+  background: radial-gradient(circle at 12% 0%, rgba(56, 189, 248, 0.11) 0%, transparent 40%),
+              radial-gradient(circle at 88% 8%, rgba(37, 99, 235, 0.09) 0%, transparent 42%),
+              #f4f7fb;
+  min-height: calc(100vh - 64px);
+  padding: 20px 0 64px !important;
+}
+
+.ns9-vex-container {
+  max-width: 1240px !important;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ── 1. HERO ĐẤU TRƯỜNG THỰC CHIẾN KHTN TOÀN QUỐC ── */
+.ns9-vex-arena-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px !important;
+  padding: 26px 30px !important;
+  margin-bottom: 20px !important;
+  background: linear-gradient(135deg, #0b1530 0%, #17337a 52%, #0369a1 100%) !important;
+  border: 1px solid rgba(125, 211, 252, 0.28) !important;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.ns9-vex-arena-hero::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: 110px;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.34) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.ns9-vex-arena-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(186, 230, 253, 0.12) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.ns9-vex-arena-hero > * {
+  position: relative;
+  z-index: 2;
+}
+
+.ns9-vex-arena-badge-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ns9-vex-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  color: #6ee7b7;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ns9-vex-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.28);
+  animation: ns9-live-pulse 1.8s infinite;
+}
+
+@keyframes ns9-live-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 0.65; }
+}
+
+.ns9-vex-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #e0f2fe;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.ns9-vex-arena-hero .ns9-vex-struct-title {
+  color: #ffffff !important;
+  font-size: 22px !important;
+  line-height: 1.28;
+  margin-bottom: 6px;
+}
+
+.ns9-vex-arena-hero .ns9-vex-struct-desc {
+  color: rgba(226, 232, 240, 0.9) !important;
+  font-size: 13.8px !important;
+  max-width: 720px;
+}
+
+.ns9-vex-hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.ns9-vex-stat-pill {
+  padding: 9px 14px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.36);
+  border: 1px solid rgba(186, 230, 253, 0.18);
+  backdrop-filter: blur(8px);
+  min-width: 108px;
+}
+
+.ns9-vex-stat-pill small {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #93c5fd;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ns9-vex-stat-pill b {
+  display: block;
+  font-size: 17px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 2px;
+}
+
+.ns9-vex-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.ns9-vex-btn-spotlight {
+  padding: 10px 20px !important;
+  border-radius: 12px !important;
+  border: none !important;
+  background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  font-size: 13.5px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.38) !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ns9-vex-btn-spotlight:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(14, 165, 233, 0.5) !important;
+}
+
+.ns9-vex-btn-award {
+  padding: 10px 18px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(253, 224, 71, 0.42) !important;
+  background: rgba(250, 204, 21, 0.14) !important;
+  color: #fef08a !important;
+  font-weight: 700 !important;
+  font-size: 13.5px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.ns9-vex-btn-award:hover {
+  background: rgba(250, 204, 21, 0.24) !important;
+  transform: translateY(-1px);
+}
+
+/* ── 2. THANH TÌM KIẾM & BỘ LỌC GLASS PANEL ── */
+.ns9-vex-search-row {
+  gap: 12px !important;
+  margin-bottom: 14px !important;
+}
+
+.ns9-vex-search-box {
+  background: #ffffff !important;
+  border: 1px solid #dbeafe !important;
+  border-radius: 15px !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04) !important;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ns9-vex-search-box:focus-within {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.14) !important;
+}
+
+.ns9-vex-sort-wrap {
+  background: #ffffff !important;
+  border: 1px solid #dbeafe !important;
+  border-radius: 15px !important;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04) !important;
+}
+
+.ns9-vex-filter-grid {
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 22px !important;
+  padding: 18px 22px !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04) !important;
+  margin-bottom: 18px !important;
+}
+
+.ns9-vex-flabel {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.06em !important;
+  color: #64748b !important;
+}
+
+.ns9-vex-fpill {
+  border-radius: 999px !important;
+  padding: 6px 13px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+  color: #334155 !important;
+  transition: all 0.16s ease !important;
+}
+
+.ns9-vex-fpill:hover {
+  border-color: #7dd3fc !important;
+  background: #f0f9ff !important;
+  color: #0369a1 !important;
+}
+
+.ns9-vex-fpill.on {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 14px rgba(2, 132, 199, 0.28) !important;
+}
+
+.ns9-vex-fpill.is-special {
+  background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%) !important;
+  border-color: #c4b5fd !important;
+  color: #5b21b6 !important;
+}
+
+/* ── 3. BANNER CẤU TRÚC ĐỀ THI TỐI GIẢN (COMPACT STRIP) ── */
+.ns9-vex-secondary-banner {
+  border-radius: 18px !important;
+  padding: 14px 20px !important;
+  margin-bottom: 22px !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;
+  border: 1px solid #bae6fd !important;
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.06) !important;
+}
+
+.ns9-vex-secondary-banner .ns9-vex-struct-desc {
+  font-size: 13px !important;
+  margin-bottom: 0 !important;
+  color: #475569 !important;
+}
+
+/* ── 4. TIÊU ĐỀ PHÂN KHU & THẺ ĐỀ THI CAO CẤP ── */
+.ns9-vex-sec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px !important;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.ns9-vex-sec-head h3 {
+  font-size: 19px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.015em;
+}
+
+.ns9-vex-sec-head span {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ns9-vex-card {
+  border-radius: 20px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05) !important;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease, border-color 0.22s ease !important;
+  overflow: hidden;
+}
+
+.ns9-vex-card:hover {
+  transform: translateY(-5px) !important;
+  border-color: #7dd3fc !important;
+  box-shadow: 0 18px 36px rgba(2, 132, 199, 0.14) !important;
+}
+
+@media (max-width: 720px) {
+  .ns9-vex-arena-hero {
+    padding: 20px 18px !important;
+  }
+  .ns9-vex-arena-hero .ns9-vex-struct-title {
+    font-size: 18px !important;
+  }
+  .ns9-vex-banner-mascot {
+    display: none;
+  }
+}

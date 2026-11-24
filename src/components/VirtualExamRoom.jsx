@@ -62,6 +62,7 @@ import '../styles/exam-mode-upgrade.css';
 import '../styles/student-v9-upgrades.css';
 import '../styles/exam-studio.css';
 import '../styles/apple-cobalt-polish.css';
+import '../styles/virtual-exam-pro-ui.css';
 
 /* ============================================================
    VirtualExamRoom.jsx — PHÒNG THI ẢO ELEC AI (100% SVG, KHÔNG EMOJI)
@@ -2717,55 +2718,55 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   return (
     <div className="ns9-vex-page">
       <div className="ns9-vex-container">
-        {/* ── 0. BANNER CA THI THỬ THỰC CHIẾN TOÀN QUỐC HÀNG TUẦN & XUẤT THẺ THÀNH TÍCH (100% SVG + MASCOT) ── */}
+        {/* ── 0. HERO ĐẤU TRƯỜNG THỰC CHIẾN KHTN TOÀN QUỐC PRO ARENA ── */}
         <section
-          className="ns9-vex-struct-banner"
+          className="ns9-vex-struct-banner ns9-vex-arena-hero"
           style={{
-            marginBottom: 16,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: 20,
-            position: 'relative',
-            overflow: 'hidden',
+            gap: 24,
           }}
         >
           <div style={{ flex: 1, minWidth: 260 }}>
-            <div className="ns9-vex-struct-top">
-              <div className="ns9-vex-struct-title">
-                <SvgAward size={18} />
-                <strong>Đấu Trường Thực Chiến KHTN Toàn Quốc · 20:00 Chủ Nhật Hàng Tuần</strong>
-              </div>
+            <div className="ns9-vex-arena-badge-row">
+              <span className="ns9-vex-live-pill">
+                <span className="ns9-vex-live-dot" />
+                <span>LIVE ARENA · 20:00 CHỦ NHẬT HÀNG TUẦN</span>
+              </span>
+              <span className="ns9-vex-meta-chip"><SvgClock size={13} /> 50 phút · 3 phần chuẩn 2026</span>
+              <span className="ns9-vex-meta-chip"><SvgSparkle size={13} /> Xếp hạng Phổ điểm Toàn quốc</span>
+            </div>
 
-              <div className="ns9-vex-struct-pills">
-                <span><SvgClock size={13} /> 50 phút · 3 phần chuẩn 2026</span>
-                <span><SvgSparkle size={13} /> Xếp hạng Phổ điểm Toàn quốc</span>
+            <div className="ns9-vex-struct-title">
+              <strong>Đấu Trường Thực Chiến Khoa Học Tự Nhiên Toàn Quốc</strong>
+            </div>
+
+            <p className="ns9-vex-struct-desc">
+              Thi thử trực tuyến chuẩn cấu trúc Bộ GD&amp;ĐT 2026 (Trắc nghiệm 4 lựa chọn · Đúng/Sai lũy tiến · Trả lời ngắn), AI chấm điểm &amp; bắt bệnh lỗ hổng ngay lập tức và xuất <b>Thẻ Thành Tích PNG</b> vinh danh Top % toàn quốc.
+            </p>
+
+            <div className="ns9-vex-hero-stats">
+              <div className="ns9-vex-stat-pill">
+                <small>KHO ĐỀ KHTN</small>
+                <b>{vipExams.length + proExams.length + freeExams.length} đề chuẩn</b>
+              </div>
+              <div className="ns9-vex-stat-pill">
+                <small>ĐÃ HOÀN THÀNH</small>
+                <b>{doneMap.size} bài thi</b>
+              </div>
+              <div className="ns9-vex-stat-pill">
+                <small>ĐIỂM CAO NHẤT</small>
+                <b>{latestBestAttempt?.score10 != null ? `${latestBestAttempt.score10}đ` : 'Chưa thi'}</b>
               </div>
             </div>
 
-            <p className="ns9-vex-struct-desc" style={{ marginBottom: 12 }}>
-              Tham gia ca thi thử trực tuyến chuẩn cấu trúc Bộ GD&amp;ĐT 2026 (Trắc nghiệm 4 lựa chọn · Đúng/Sai lũy tiến · Trả lời ngắn) cùng <b>Bé Elec</b> và xuất <b>Thẻ Thành Tích PNG</b> vinh danh Top % toàn quốc.
-            </p>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {freeExams.length > 0 && (
+            <div className="ns9-vex-hero-actions">
+              {(freeExams[0] || vipExams[0]) && (
                 <button
                   type="button"
-                  onClick={() => handleStartExam(freeExams[0])}
-                  style={{
-                    padding: '9px 16px',
-                    borderRadius: 10,
-                    border: 'none',
-                    background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
-                    color: '#fff',
-                    fontWeight: 700,
-                    fontSize: 13,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 7,
-                    cursor: 'pointer',
-                    boxShadow: '0 6px 16px rgba(37, 99, 235, 0.28)',
-                  }}
+                  className="ns9-vex-btn-spotlight"
+                  onClick={() => handleStartExam(freeExams[0] || vipExams[0])}
                 >
                   <SvgPlay size={14} />
                   <span>Thi Ngay Đề Tiêu Điểm</span>
@@ -2773,20 +2774,8 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
               )}
               <button
                 type="button"
+                className="ns9-vex-btn-award"
                 onClick={() => setShareCardOpen(true)}
-                style={{
-                  padding: '9px 16px',
-                  borderRadius: 10,
-                  border: '1px solid rgba(245, 158, 11, 0.45)',
-                  background: 'rgba(245, 158, 11, 0.14)',
-                  color: '#d97706',
-                  fontWeight: 700,
-                  fontSize: 13,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 7,
-                  cursor: 'pointer',
-                }}
               >
                 <SvgAward size={15} />
                 <span>Xuất Thẻ Thành Tích (PNG)</span>
@@ -2797,7 +2786,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
           <div
             className="ns9-vex-banner-mascot"
             title="Bé Elec Vinh Danh Đấu Trường KHTN"
-            style={{ flexShrink: 0, width: 92, height: 92 }}
+            style={{ flexShrink: 0, width: 126, height: 126 }}
           >
             <img
               src="/img/elec/elec-celebrate.png"
@@ -2806,7 +2795,7 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
                 width: '100%',
                 height: '100%',
                 objectFit: 'contain',
-                filter: 'drop-shadow(0 8px 18px rgba(37, 99, 235, 0.32))',
+                filter: 'drop-shadow(0 14px 28px rgba(56, 189, 248, 0.45))',
               }}
             />
           </div>
