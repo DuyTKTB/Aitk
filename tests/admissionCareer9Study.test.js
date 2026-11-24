@@ -11,6 +11,12 @@ import {
 } from '../src/lib/aspirationService.js';
 import { getUniversityCover, getUniversityInfo } from '../src/data/universityCovers.js';
 import {
+  getUniversityMascotOutfits,
+  getSavedMascotOutfit,
+  saveMascotOutfit,
+  resolveCornerMascotOutfit,
+} from '../src/components/PetSkins.jsx';
+import {
   calculateMoetPriorityScore,
   convertExamScoreEquivalence,
   computeMajorAdmissionChance,
@@ -193,5 +199,39 @@ describe('9Study Pro Upgrade — Định hướng Nghề nghiệp AI & Xét Nguy
 
     // Toàn bộ 105 trường có 105 ảnh riêng biệt, không dùng chung ảnh fallback
     expect(distinctCovers.size).toBe(105);
+  });
+
+  it('Tủ đồ Linh vật ELEC AI có đầy đủ 105 trang phục đồng phục trường ĐH tách nền sạch và đồng bộ Auto-NV1', () => {
+    const outfits = getUniversityMascotOutfits();
+    expect(outfits).toHaveLength(105);
+
+    const publicDir = path.resolve(process.cwd(), 'public');
+    for (const o of outfits) {
+      expect(o.src).toMatch(/^\/img\/elec\/outfits\/[a-z0-9_-]+\.webp$/i);
+      const diskPath = path.join(publicDir, o.src.replace(/^\//, ''));
+      expect(fs.existsSync(diskPath), `Missing mascot outfit for ${o.schoolId}: ${diskPath}`).toBe(true);
+      const stat = fs.statSync(diskPath);
+      expect(stat.size).toBeGreaterThan(2000);
+    }
+
+    // Kiểm tra chế độ Auto NV1
+    const autoResolved = resolveCornerMascotOutfit({
+      outfitConfig: { mode: 'auto_nv1', value: 'hello' },
+      nv1SchoolCode: 'BKA',
+    });
+    expect(autoResolved.schoolId).toBe('BKA');
+    expect(autoResolved.src).toBe('/img/elec/outfits/bka.webp');
+
+    // Kiểm tra lưu và đọc trang phục trường tự chọn (VD: Học viện Hàng Hải HHA)
+    saveMascotOutfit('student-9study', { mode: 'uni', value: 'HHA' });
+    const saved = getSavedMascotOutfit('student-9study');
+    expect(saved).toEqual({ mode: 'uni', value: 'HHA' });
+
+    const uniResolved = resolveCornerMascotOutfit({
+      outfitConfig: saved,
+      nv1SchoolCode: 'NEU',
+    });
+    expect(uniResolved.schoolId).toBe('HHA');
+    expect(uniResolved.src).toBe('/img/elec/outfits/hha.webp');
   });
 });

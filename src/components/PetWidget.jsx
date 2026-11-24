@@ -34,7 +34,15 @@ import {
   getWeekDates,
   getCurrentDayIndex,
 } from '../lib/weeklyPlanService.js';
-import { ELEC_SRC } from './PetSkins.jsx';
+import {
+  ELEC_SRC,
+  getSavedMascotOutfit,
+  saveMascotOutfit,
+  resolveCornerMascotOutfit,
+  MASCOT_OUTFIT_CHANGE_EVENT,
+} from './PetSkins.jsx';
+import { loadTargetUniversity } from '../lib/studentAnalytics.js';
+import MascotWardrobeModal from './MascotWardrobeModal.jsx';
 import UserAvatar from './UserAvatar.jsx';
 import './pet-widget.css';
 
@@ -132,6 +140,9 @@ export default function PetWidget() {
 
   // Modal open state
   const [isOpen, setIsOpen] = useState(false);
+  const [wardrobeOpen, setWardrobeOpen] = useState(false);
+  const [outfitConfig, setOutfitConfig] = useState(() => getSavedMascotOutfit(uid));
+  const [pinnedTargetUni, setPinnedTargetUni] = useState(() => loadTargetUniversity(uid));
   const [mobileTab, setMobileTab] = useState('plan'); // 'stats' | 'plan' | 'chat'
   const [persona, setPersona] = useState('gentle');
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
@@ -292,11 +303,33 @@ export default function PetWidget() {
     setAttachedImage(null);
   };
 
-  // Sync aspirations state
+  // Sync aspirations state & mascot outfit
   useEffect(() => {
-    const onAspUpdate = () => setAspState(getUserAspirationsState(uid));
+    setOutfitConfig(getSavedMascotOutfit(uid));
+    setPinnedTargetUni(loadTargetUniversity(uid));
+  }, [uid]);
+
+  useEffect(() => {
+    const onAspUpdate = () => {
+      setAspState(getUserAspirationsState(uid));
+      setPinnedTargetUni(loadTargetUniversity(uid));
+    };
+    const onOutfitUpdate = () => {
+      setOutfitConfig(getSavedMascotOutfit(uid));
+    };
+    const onOpenWardrobe = () => {
+      setWardrobeOpen(true);
+    };
     window.addEventListener('elec-aspirations-updated', onAspUpdate);
-    return () => window.removeEventListener('elec-aspirations-updated', onAspUpdate);
+    window.addEventListener('cs-study-goal-change', onAspUpdate);
+    window.addEventListener(MASCOT_OUTFIT_CHANGE_EVENT, onOutfitUpdate);
+    window.addEventListener('elec-open-mascot-wardrobe', onOpenWardrobe);
+    return () => {
+      window.removeEventListener('elec-aspirations-updated', onAspUpdate);
+      window.removeEventListener('cs-study-goal-change', onAspUpdate);
+      window.removeEventListener(MASCOT_OUTFIT_CHANGE_EVENT, onOutfitUpdate);
+      window.removeEventListener('elec-open-mascot-wardrobe', onOpenWardrobe);
+    };
   }, [uid]);
 
   // Sync weekly plan
@@ -938,6 +971,31 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
     return Array.isArray(aspState?.aspirations) ? aspState.aspirations : [];
   }, [aspState]);
 
+  const nv1SchoolCode = useMemo(() => {
+    const nv1 = displayAspirations[0];
+    return nv1?.school?.id || nv1?.school?.code || nv1?.schoolId || pinnedTargetUni?.schoolId || pinnedTargetUni?.code || null;
+  }, [displayAspirations, pinnedTargetUni]);
+
+  const nv1SchoolName = useMemo(() => {
+    const nv1 = displayAspirations[0];
+    return nv1?.school?.name || pinnedTargetUni?.uni || null;
+  }, [displayAspirations, pinnedTargetUni]);
+
+  const activeCornerOutfit = useMemo(
+    () =>
+      resolveCornerMascotOutfit({
+        outfitConfig,
+        nv1SchoolCode,
+        isOpen,
+      }),
+    [outfitConfig, nv1SchoolCode, isOpen]
+  );
+
+  const handleSelectMascotOutfit = (nextCfg) => {
+    const saved = saveMascotOutfit(uid, nextCfg);
+    setOutfitConfig(saved);
+  };
+
   return (
     <>
       {/* ============================================================
@@ -949,6 +1007,17 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
             <div className="ns9-fab-note-header">
               <span className="ns9-fab-note-dot" />
               <span className="ns9-fab-note-tag">ELEC AI NOTE</span>
+              <button
+                type="button"
+                className="ns9-fab-note-wardrobe-link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setWardrobeOpen(true);
+                }}
+                title="Đổi đồng phục 105 Trường ĐH cho linh vật"
+              >
+                Thay đồ
+              </button>
               <button
                 type="button"
                 className="ns9-fab-note-close"
@@ -972,24 +1041,46 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
           </div>
         )}
 
-        <button
-          type="button"
-          className="ns9-fab-mascot-button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          title="Mở Trợ lý ELEC AI toàn cảnh"
-          aria-label="Mở Trợ lý ELEC AI"
-        >
-          <div className="ns9-fab-mascot-aura" />
-          <img
-            src={isOpen ? ELEC_SRC.wink : ELEC_SRC.hello}
-            alt="Linh vật ELEC AI"
-            className="ns9-fab-mascot-image"
-            draggable={false}
-          />
-          {pendingToday.length > 0 && (
-            <span className="ns9-fab-badge">{pendingToday.length}</span>
-          )}
-        </button>
+        <div className="ns9-fab-mascot-stage">
+          <button
+            type="button"
+            className="ns9-fab-wardrobe-trigger"
+            onClick={(e) => {
+              e.stopPropagation();
+              setWardrobeOpen(true);
+            }}
+            title="Mở Tủ đồ Linh vật (105 Trường Đại học & 21 Biểu cảm)"
+            aria-label="Thay đồ cho linh vật ELEC AI"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
+            </svg>
+            <span>{activeCornerOutfit.schoolId ? activeCornerOutfit.schoolId : 'Thay đồ'}</span>
+          </button>
+
+          <button
+            type="button"
+            className="ns9-fab-mascot-button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            title={`Mở Trợ lý ELEC AI (${activeCornerOutfit.fullName})`}
+            aria-label="Mở Trợ lý ELEC AI"
+          >
+            <div className="ns9-fab-mascot-aura" />
+            <img
+              src={activeCornerOutfit.src}
+              alt={activeCornerOutfit.fullName}
+              className="ns9-fab-mascot-image"
+              draggable={false}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = ELEC_SRC.hello;
+              }}
+            />
+            {pendingToday.length > 0 && (
+              <span className="ns9-fab-badge">{pendingToday.length}</span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* ============================================================
@@ -1614,6 +1705,16 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                     <button
                       type="button"
                       className="ns9-chat-action-icon"
+                      onClick={() => setWardrobeOpen(true)}
+                      title="Thay đồng phục 105 Trường Đại học cho linh vật ELEC AI"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="ns9-chat-action-icon"
                       onClick={() => {
                         window.location.hash = 'ai';
                         setIsOpen(false);
@@ -1645,7 +1746,14 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                 <div className="ns9-chat-scroll-area" ref={chatScrollRef}>
                   {/* Tin nhắn mở đầu chuẩn ảnh mẫu */}
                   <div className="ns9-chat-ai-row">
-                    <img src={ELEC_SRC.hello} alt="ELEC AI" className="ns9-c-avatar" />
+                    <img
+                      src={activeCornerOutfit.src}
+                      alt="ELEC AI"
+                      className="ns9-c-avatar"
+                      onClick={() => setWardrobeOpen(true)}
+                      title="Bấm để đổi trang phục 105 Trường ĐH cho linh vật"
+                      style={{ cursor: 'pointer' }}
+                    />
                     <div className="ns9-c-bubble-group">
                       <div className="ns9-c-persona-badge">
                         <span className="ns9-c-name">ELEC AI</span>
@@ -2074,6 +2182,18 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
           </div>
         </aside>
       )}
+
+      {/* ============================================================
+          4. TỦ ĐỒ LINH VẬT ELEC AI (105 TRƯỜNG ĐẠI HỌC & 21 BIỂU CẢM)
+          ============================================================ */}
+      <MascotWardrobeModal
+        isOpen={wardrobeOpen}
+        onClose={() => setWardrobeOpen(false)}
+        outfitConfig={outfitConfig}
+        onSelectOutfit={handleSelectMascotOutfit}
+        nv1SchoolCode={nv1SchoolCode}
+        nv1SchoolName={nv1SchoolName}
+      />
     </>
   );
 }
