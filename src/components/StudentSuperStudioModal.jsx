@@ -318,19 +318,24 @@ export default function StudentSuperStudioModal({ initialTab = 'feynman', onClos
     >
       <div className="tps-modal" role="dialog" aria-modal="true" aria-label="Studio Học Tập Chủ Động ELEC AI">
         <header className="tps-head">
-          <div>
-            <h2>Studio Học Tập Chủ Động (Feynman · Cloze · Đồ thị · Moodist)</h2>
-            <p>4 công cụ khoa học ghi nhớ &amp; tư duy STEM mạnh nhất cho học sinh tự học — chạy 100% tức thì</p>
+          <div className="tps-head-l">
+            <div className="emm-hero-mascot sm is-violet" aria-hidden="true">
+              <img src="/img/elec/elec-super-saiyan.png" alt="Bé Elec Studio Học Tập Chủ Động" draggable={false} />
+            </div>
+            <div>
+              <h2>Studio Học Tập Chủ Động (Feynman · Cloze · Đồ thị · Moodist)</h2>
+              <p>4 công cụ khoa học ghi nhớ &amp; tư duy STEM mạnh nhất cho học sinh tự học — chạy 100% tức thì</p>
+            </div>
           </div>
           <button type="button" className="tps-btn" onClick={onClose}>Đóng</button>
         </header>
 
         <div className="tps-tabs" role="tablist">
           {[
-            { id: 'feynman', label: 'Kỹ thuật Feynman' },
-            { id: 'cloze', label: 'Đục lỗ Active Recall' },
-            { id: 'graph', label: 'Đồ thị Hàm số & Tiếp tuyến' },
-            { id: 'moodist', label: `Âm thanh Moodist (${activeLayers.length})` },
+            { id: 'feynman', label: 'Kỹ thuật Feynman', mascot: '/img/elec/elec-think.png' },
+            { id: 'cloze', label: 'Đục lỗ Active Recall', mascot: '/img/elec/elec-fighting.png' },
+            { id: 'graph', label: 'Đồ thị Hàm số & Tiếp tuyến', mascot: '/img/elec/elec-cool.png' },
+            { id: 'moodist', label: `Âm thanh Moodist (${activeLayers.length})`, mascot: '/img/elec/elec-happy.png' },
           ].map((t) => (
             <button
               key={t.id}
@@ -340,7 +345,8 @@ export default function StudentSuperStudioModal({ initialTab = 'feynman', onClos
               className={`tps-tab${tab === t.id ? ' active' : ''}`}
               onClick={() => setTab(t.id)}
             >
-              {t.label}
+              <img src={t.mascot} alt="" className="emm-tab-mascot" aria-hidden="true" />
+              <span>{t.label}</span>
             </button>
           ))}
         </div>

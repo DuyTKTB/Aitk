@@ -184,8 +184,18 @@ export default function WindingRoadmapTrail({
 
       {/* Các Chặng sư phạm nối tiếp */}
       <div className="rm-pro-stages-stack">
-        {groupedStages.map(({ stage, items, masteredCount, pct, checkpoint }) => {
+        {groupedStages.map(({ stage, items, masteredCount, pct, checkpoint }, stageIdx) => {
           const stageChapterIds = items.map((x) => x.chapter.id);
+          const stageMascots = [
+            '/img/elec/elec-hello.png',
+            '/img/elec/elec-think.png',
+            '/img/elec/elec-wink.png',
+            '/img/elec/elec-fighting.png',
+            '/img/elec/elec-super-saiyan.png',
+          ];
+          const stageMascot = checkpoint?.passed
+            ? '/img/elec/elec-celebrate.png'
+            : stageMascots[stageIdx % stageMascots.length];
           return (
             <section
               key={stage.id}
@@ -193,16 +203,21 @@ export default function WindingRoadmapTrail({
               className={`rm-pro-stage tone-${stage.tone}`}
               aria-label={stage.title}
             >
-              {/* Banner Chặng hợp nhất + Nút Checkpoint nhảy cóc */}
+              {/* Banner Chặng hợp nhất + Linh vật Chặng + Nút Checkpoint nhảy cóc */}
               <header className="rm-pro-stage-head">
-                <div className="rm-pro-stage-meta">
-                  <div className="rm-pro-stage-top">
-                    <span className="rm-pro-stage-code">{stage.code}</span>
-                    <span className="rm-pro-stage-label">{stage.stageLabel}</span>
-                    <span className="rm-pro-stage-band">{stage.targetBand}</span>
+                <div className="rm-pro-stage-lead">
+                  <div className="rm-pro-stage-mascot" aria-hidden="true">
+                    <img src={stageMascot} alt="" draggable={false} />
                   </div>
-                  <h3 className="rm-pro-stage-title">{stage.title}</h3>
-                  <p className="rm-pro-stage-focus">{stage.examFocus}</p>
+                  <div className="rm-pro-stage-meta">
+                    <div className="rm-pro-stage-top">
+                      <span className="rm-pro-stage-code">{stage.code}</span>
+                      <span className="rm-pro-stage-label">{stage.stageLabel}</span>
+                      <span className="rm-pro-stage-band">{stage.targetBand}</span>
+                    </div>
+                    <h3 className="rm-pro-stage-title">{stage.title}</h3>
+                    <p className="rm-pro-stage-focus">{stage.examFocus}</p>
+                  </div>
                 </div>
 
                 <div className="rm-pro-stage-right">

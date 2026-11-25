@@ -127,9 +127,18 @@ export default function CareerFitModal({
     <div className="s9-cf-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div className="s9-cf-modal" role="dialog" aria-label="Định hướng ngành và trường AI chuẩn Holland RIASEC">
         <header className="s9-cf-head">
-          <div>
-            <span className="s9-cf-eyebrow">ĐỊNH HƯỚNG NGÀNH NGHỀ KHOA HỌC · HOLLAND RIASEC × AI</span>
-            <h3>Khám phá Ngành &amp; Trường Đại học hợp nhất với bạn</h3>
+          <div className="s9-cf-head-l">
+            <div className={`emm-hero-mascot sm ${result ? 'is-emerald' : 'is-violet'}`} aria-hidden="true">
+              <img
+                src={result ? '/img/elec/elec-celebrate.png' : '/img/elec/elec-think.png'}
+                alt="Bé Elec định hướng ngành nghề"
+                draggable={false}
+              />
+            </div>
+            <div>
+              <span className="s9-cf-eyebrow">ĐỊNH HƯỚNG NGÀNH NGHỀ KHOA HỌC · HOLLAND RIASEC × AI</span>
+              <h3>Khám phá Ngành &amp; Trường Đại học hợp nhất với bạn</h3>
+            </div>
           </div>
           <button type="button" className="s9-cf-close" onClick={onClose} aria-label="Đóng">✕</button>
         </header>
@@ -174,6 +183,7 @@ export default function CareerFitModal({
                 <strong>Nhóm tố chất nổi bật: {RIASEC_META[result.topCodes[0]]?.name}</strong>
                 <p>{RIASEC_META[result.topCodes[0]]?.desc}</p>
               </div>
+              <img src="/img/elec/elec-cool.png" alt="" className="s9-cf-result-mascot" aria-hidden="true" />
             </div>
 
             <div className="s9-cf-matches">

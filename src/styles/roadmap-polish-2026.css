@@ -424,3 +424,315 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ============================================================
+   5. ROADMAP MASCOT & VISUAL ELEVATION PACK (LIGHT + DARK)
+   ============================================================ */
+@keyframes rmMascotFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(-2deg); }
+}
+
+@keyframes rmMascotFloatAlt {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(2deg); }
+}
+
+/* Command Deck Left: Hero Score + Floating Elec Mascot */
+.rm-pro-page .rm-pro-deck-left {
+  background:
+    radial-gradient(circle at 92% 14%, rgba(56, 189, 248, 0.24), transparent 44%),
+    radial-gradient(circle at 12% 88%, rgba(99, 102, 241, 0.14), transparent 46%),
+    linear-gradient(135deg, #ffffff 0%, #f0f8ff 54%, #e0f2fe 100%) !important;
+  border: 1.5px solid rgba(125, 211, 252, 0.7) !important;
+  box-shadow: 0 16px 38px -14px rgba(2, 132, 199, 0.16) !important;
+}
+
+.rm-pro-page .rm-pro-score-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+}
+
+.rm-pro-page .rm-pro-score-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rm-pro-page .rm-pro-deck-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.rm-pro-deck-mascot {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+
+.rm-pro-deck-mascot::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.34) 0%, rgba(37, 99, 235, 0.12) 60%, transparent 76%);
+}
+
+.rm-pro-deck-mascot img {
+  position: relative;
+  z-index: 1;
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 18px rgba(2, 132, 199, 0.28));
+  animation: rmMascotFloat 3.4s ease-in-out infinite;
+  user-select: none;
+}
+
+/* Command Deck Right: Mission Card + Floating Corner Mascot */
+.rm-pro-page .rm-pro-mission-card {
+  position: relative;
+  overflow: visible !important;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(99, 102, 241, 0.12), transparent 46%),
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+  border: 1.5px solid rgba(147, 197, 253, 0.58) !important;
+  box-shadow: 0 16px 38px -14px rgba(37, 99, 235, 0.14) !important;
+}
+
+.rm-pro-mission-mascot {
+  position: absolute;
+  top: -18px;
+  right: 16px;
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(37, 99, 235, 0.28));
+  animation: rmMascotFloatAlt 3.2s ease-in-out infinite;
+  pointer-events: none;
+  user-select: none;
+  z-index: 3;
+}
+
+.rm-pro-page .rm-pro-mission-top {
+  padding-right: 68px;
+}
+
+.rm-pro-mini-sticker {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.16));
+}
+
+.rm-pro-tab-sticker {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(15, 23, 42, 0.16));
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rm-pro-mode-btn.is-active .rm-pro-tab-sticker,
+.rm-pro-guide-btn:hover .rm-pro-tab-sticker {
+  transform: scale(1.16) rotate(-5deg);
+}
+
+.rm-pro-page .rm-pro-toolbar-v2 {
+  border: 1.5px solid rgba(147, 197, 253, 0.42) !important;
+  box-shadow: 0 12px 30px -14px rgba(37, 99, 235, 0.12) !important;
+}
+
+.rm-pro-page .rm-pro-mode-btn,
+.rm-pro-page .rm-pro-guide-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* 5 Stage Pills: Fit cleanly on 1 balanced row! */
+.rm-pro-page .rm-pro-stage-pills {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin-bottom: 14px !important;
+}
+
+.rm-pro-page .rm-pro-stage-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  padding: 8px 8px !important;
+  border-radius: 13px !important;
+  font-size: 0.75rem !important;
+  white-space: nowrap !important;
+  border: 1.5px solid rgba(203, 213, 225, 0.85) !important;
+  transition: all 0.18s ease !important;
+}
+
+.rm-pro-page .rm-pro-stage-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px -8px rgba(37, 99, 235, 0.28) !important;
+}
+
+@media (max-width: 1180px) {
+  .rm-pro-page .rm-pro-stage-pills {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .rm-pro-page .rm-pro-stage-pills {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Stage Header Banner with Progressive Elec Mascot */
+.rm-pro-page .rm-pro-stage-head {
+  padding: 16px 18px !important;
+  border-radius: 18px !important;
+  background:
+    radial-gradient(circle at 8% 20%, rgba(56, 189, 248, 0.16), transparent 46%),
+    linear-gradient(135deg, #f0f9ff 0%, #eff6ff 55%, #ffffff 100%) !important;
+  border: 1.5px solid rgba(147, 197, 253, 0.55) !important;
+  margin-bottom: 14px !important;
+}
+
+.rm-pro-stage-lead {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.rm-pro-stage-mascot {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+
+.rm-pro-stage-mascot::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.26) 0%, transparent 72%);
+}
+
+.rm-pro-stage-mascot img {
+  position: relative;
+  z-index: 1;
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(37, 99, 235, 0.24));
+  animation: rmMascotFloat 3.6s ease-in-out infinite;
+  user-select: none;
+}
+
+/* Sticky Inspector Card with Floating Mascot Mentor */
+.rm-pro-page .rm-pro-inspector {
+  overflow: visible !important;
+  border: 1.5px solid rgba(147, 197, 253, 0.5) !important;
+  box-shadow: 0 16px 36px -14px rgba(37, 99, 235, 0.14) !important;
+}
+
+.rm-pro-insp-card {
+  position: relative;
+}
+
+.rm-pro-insp-mascot {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(37, 99, 235, 0.24));
+  animation: rmMascotFloatAlt 3.3s ease-in-out infinite;
+  pointer-events: none;
+  user-select: none;
+  z-index: 4;
+}
+
+.rm-pro-insp-head.is-with-mascot {
+  padding-right: 64px;
+  min-height: 36px;
+}
+
+.rm-pro-insp-empty-mascot {
+  width: 78px;
+  height: 78px;
+  object-fit: contain;
+  margin-bottom: 6px;
+  animation: rmMascotFloat 3.2s ease-in-out infinite;
+}
+
+/* Dark Mode for New Mascot & Stage Surfaces */
+[data-theme='dark'] .rm-pro-page .rm-pro-mission-card {
+  background:
+    radial-gradient(circle at 92% 10%, rgba(99, 102, 241, 0.22), transparent 48%),
+    linear-gradient(180deg, #101d3b 0%, #0b1429 100%) !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
+}
+
+[data-theme='dark'] .rm-pro-page .rm-pro-stage-head {
+  background:
+    radial-gradient(circle at 8% 20%, rgba(56, 189, 248, 0.2), transparent 48%),
+    linear-gradient(135deg, #0f1d3b 0%, #14264d 58%, #0e1a34 100%) !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
+}
+
+[data-theme='dark'] .rm-pro-page .rm-pro-inspector {
+  border-color: rgba(96, 165, 250, 0.28) !important;
+}
+
+@media (max-width: 640px) {
+  .rm-pro-deck-mascot {
+    width: 72px;
+    height: 72px;
+  }
+  .rm-pro-deck-mascot img {
+    width: 68px;
+    height: 68px;
+  }
+  .rm-pro-mission-mascot {
+    width: 52px;
+    height: 52px;
+    top: -14px;
+  }
+  .rm-pro-stage-mascot {
+    width: 48px;
+    height: 48px;
+  }
+  .rm-pro-stage-mascot img {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rm-pro-deck-mascot img,
+  .rm-pro-mission-mascot,
+  .rm-pro-stage-mascot img,
+  .rm-pro-insp-mascot,
+  .rm-pro-insp-empty-mascot {
+    animation: none !important;
+  }
+}

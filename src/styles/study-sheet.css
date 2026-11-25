@@ -134,22 +134,23 @@
   }
 
   .ss-head-mascot {
-    width: 38px !important;
-    height: 38px !important;
-    max-width: 38px !important;
-    max-height: 38px !important;
-    padding: 3px;
-    border-radius: 12px;
-    background: #eff6ff;
-    border: 1px solid rgba(37, 99, 235, 0.16);
+    width: 40px !important;
+    height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    border: none;
     object-fit: contain;
     flex-shrink: 0;
-    box-shadow: 0 4px 10px -4px rgba(37, 99, 235, 0.25);
+    box-shadow: none;
+    filter: drop-shadow(0 4px 8px rgba(37, 99, 235, 0.22));
   }
 
   [data-theme="dark"] .ss-head-mascot {
-    background: rgba(37, 99, 235, 0.2);
-    border-color: rgba(96, 165, 250, 0.28);
+    background: transparent;
+    border: none;
   }
 
   .ss-head-title-wrap {

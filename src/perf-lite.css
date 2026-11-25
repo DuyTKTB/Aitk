@@ -42,12 +42,5 @@ html.perf-lite * {
   background-attachment: scroll !important;
 }
 
-/* 4) Bóng đổ nhiều lớp → 1 lớp mỏng (vẫn giữ phân cấp thị giác, trừ các phần tử nav/tool) */
-html.perf-lite [class*="card"]:not([class*="nav-tool"]):not([class*="nav-tool"] *):not(.nav-drop-menu *),
-html.perf-lite [class*="modal"],
-html.perf-lite [class*="panel"]:not([class*="nav-"]),
-html.perf-lite [class*="sheet"],
-html.perf-lite [class*="dialog"],
-html.perf-lite [class*="popover"] {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
-}
+/* 4) Không gắn box-shadow cưỡng bức bằng wildcard [class*="card"/"modal"/"panel"...]
+   vì sẽ tạo vệt gạch đen dưới mọi tiêu đề, mô tả, hàng con có chứa từ khóa đó. */

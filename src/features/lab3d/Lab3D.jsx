@@ -6,16 +6,19 @@
    lưu/khôi phục phiên thật & xuất báo cáo thí nghiệm).
    Engine: engine.js · Cảnh: Scene.jsx
    ============================================================ */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { db } from '../../lib/firebase.js';
 import { doc, setDoc, collection, query, limit, getDocs } from 'firebase/firestore';
 import {
-  CHEMS, createContainer, addChemical, transferLiquid, applyHeatReactions,
+  CHEMS, FLAME_IONS, ELECTROLYTES, MOLECULES_3D,
+  createContainer, addChemical, transferLiquid, applyHeatReactions,
   volumeOf, solidMassOf, totalMassOf, dominantColor, computePH,
   logEntry, chemLabel, suggestReactionsFor,
 } from './engine.js';
-import LabScene, { VIEWS } from './Scene.jsx';
+import LabScene from './Scene.jsx';
+import LabHud from './LabHud.jsx';
+import { MicroscopeOverlay, LabAiTutorDrawer } from './LabModals.jsx';
 import './lab3d.css';
 
 const LOCAL_STORAGE_KEY = 'cs-lab3d-session-v2';
@@ -95,6 +98,42 @@ const EXPERIMENTS = [
       { text: 'Thêm chất chỉ thị (Quỳ tím / PPT / Metyl da cam) để kiểm chứng màu', check: (s, log) => log.some((l) => l.act === 'pour' && ['Quy', 'PPT', 'MO'].includes(l.chem)) },
     ],
   },
+  {
+    id: 'ex-golden-rain',
+    name: 'I. Hiệu ứng Mưa Vàng PbI₂ & Phân hủy H₂O₂',
+    steps: [
+      { text: 'Rót dung dịch Pb(NO3)2 vào cốc hoặc ống nghiệm', check: (s, log) => log.some((l) => l.chem === 'PbNO32') },
+      { text: 'Rót thêm dung dịch KI để quan sát kết tủa Mưa Vàng PbI2', check: (s, log) => log.some((l) => l.events?.some((e) => e.eq?.includes('PbI2'))) },
+      { text: 'Thử nghiệm thêm H2O2 + xúc tác rắn MnO2 tạo bọt khí O2 mạnh', check: (s, log) => log.some((l) => l.events?.some((e) => e.eq?.includes('2H2O2'))) },
+    ],
+  },
+  {
+    id: 'ex-burette',
+    name: 'J. Chuẩn độ nhỏ giọt bằng Burette 50 mL',
+    steps: [
+      { text: 'Chọn Bình tam giác, rót 20 mL HCl và nhỏ chỉ thị Phenolphthalein', check: (s) => (s.erlenmeyer1?.indicators || []).includes('PPT') && volumeOf(s.erlenmeyer1) >= 15 },
+      { text: 'Mở van Burette (hoặc bấm Nhỏ giọt) nhỏ NaOH xuống Bình tam giác', check: (s, log) => log.some((l) => l.act === 'burette') },
+      { text: 'Đạt điểm tương đương — dung dịch chuyển hồng (pH > 8.3) trên đồ thị', check: (s) => (s.erlenmeyer1?.pH ?? 7) > 8.3 },
+    ],
+  },
+  {
+    id: 'ex-flame',
+    name: 'K. Quang phổ màu ngọn lửa ion kim loại',
+    steps: [
+      { text: 'Bật đèn Bunsen và chuyển sang chế độ Phòng tối Quang học', check: (s) => Boolean(s._burnerLit) },
+      { text: 'Thử ion Cu²⁺ (xanh lục ngọc 515 nm) hoặc Na⁺ (vàng 589 nm)', check: (s) => s._flameIon && s._flameIon !== 'default' },
+      { text: 'So sánh bước sóng phát xạ của ít nhất 2 ion kim loại', check: (s, log) => log.filter((l) => l.act === 'flame').length >= 2 },
+    ],
+  },
+  {
+    id: 'ex-multi-station',
+    name: 'L. Khám phá Đa trạm: Điện phân · DNA · Lăng kính',
+    steps: [
+      { text: 'Tăng điện áp Trạm Điện phân DC lên > 4V để quan sát mạ đồng / bọt khí', check: (s) => (s._voltage || 0) >= 4 },
+      { text: 'Chiếu mô hình Phân tử 3D hoặc Xoắn kép DNA trên bệ Hologram', check: (s, log) => log.some((l) => l.act === 'molecule') },
+      { text: 'Mở Kính hiển vi quang học hoặc khảo sát Tán sắc 7 màu qua Lăng kính', check: (s, log) => log.some((l) => l.act === 'scope' || l.act === 'optics') },
+    ],
+  },
 ];
 
 const CAT_FILTERS = [
@@ -123,14 +162,36 @@ const newSession = () => ({
   completedSteps: 0,
 });
 
-const initialContainers = () => ({
-  beaker1: { id: 'beaker1', kind: 'beaker', name: 'Cốc thủy tinh 250 mL', shortName: 'Cốc 250mL', maxMl: 250, position: [-0.55, 0.48, -0.32], ...createContainer('beaker1', 250) },
-  cylinder1: { id: 'cylinder1', kind: 'cylinder', name: 'Ống đong 100 mL', shortName: 'Ống đong 100mL', maxMl: 100, position: [0.02, 0.48, -0.36], ...createContainer('cylinder1', 100) },
-  erlenmeyer1: { id: 'erlenmeyer1', kind: 'erlenmeyer', name: 'Bình tam giác 250 mL', shortName: 'Bình tam giác', maxMl: 250, position: [0.58, 0.48, -0.3], ...createContainer('erlenmeyer1', 250) },
-  tube1: { id: 'tube1', kind: 'tube', name: 'Ống nghiệm 1 (30 mL)', shortName: 'Ống nghiệm 1', maxMl: 30, position: [-1.15, 0.48, -0.32], ...createContainer('tube1', 30) },
-  tube2: { id: 'tube2', kind: 'tube', name: 'Ống nghiệm 2 (30 mL)', shortName: 'Ống nghiệm 2', maxMl: 30, position: [-1.05, 0.48, -0.32], ...createContainer('tube2', 30) },
-  tube3: { id: 'tube3', kind: 'tube', name: 'Ống nghiệm 3 (30 mL)', shortName: 'Ống nghiệm 3', maxMl: 30, position: [-0.95, 0.48, -0.32], ...createContainer('tube3', 30) },
-});
+const initialContainers = (empty = false) => {
+  const mk = (id, kind, name, shortName, maxMl, position, preload = []) => {
+    const base = createContainer(id, maxMl);
+    if (!empty) {
+      for (const [cid, qty] of preload) {
+        addChemical(base, cid, qty);
+      }
+    }
+    return {
+      id,
+      kind,
+      name,
+      shortName,
+      maxMl,
+      position,
+      ...base,
+      volume: volumeOf(base),
+      color: dominantColor(base),
+      pH: computePH(base),
+    };
+  };
+  return {
+    beaker1: mk('beaker1', 'beaker', 'Cốc thủy tinh 250 mL', 'Cốc 250mL', 250, [-0.46, 0.528, -0.32], [['H2O', 80]]),
+    cylinder1: mk('cylinder1', 'cylinder', 'Ống đong 100 mL', 'Ống đong 100mL', 100, [0.34, 0.482, -0.35], [['CuSO4', 55]]),
+    erlenmeyer1: mk('erlenmeyer1', 'erlenmeyer', 'Bình tam giác 250 mL', 'Bình tam giác', 250, [0.88, 0.502, -0.3], [['HCl', 25], ['PPT', 1]]),
+    tube1: mk('tube1', 'tube', 'Ống nghiệm 1 (30 mL)', 'Ống nghiệm 1', 30, [-1.26, 0.48, -0.32], [['PbNO32', 15]]),
+    tube2: mk('tube2', 'tube', 'Ống nghiệm 2 (30 mL)', 'Ống nghiệm 2', 30, [-1.16, 0.48, -0.32], [['FeCl3', 15]]),
+    tube3: mk('tube3', 'tube', 'Ống nghiệm 3 (30 mL)', 'Ống nghiệm 3', 30, [-1.06, 0.48, -0.32], [['KMnO4', 12]]),
+  };
+};
 
 const cloneContainers = (cs) => JSON.parse(JSON.stringify(cs));
 
@@ -147,8 +208,7 @@ export default function Lab3D() {
   const [history, setHistory] = useState([]);
   const [session, setSession] = useState(newSession);
   const [experimentId, setExperimentId] = useState('ex-acid-base');
-  const [panelL, setPanelL] = useState(true);
-  const [panelR, setPanelR] = useState(true);
+  const [activeDrawer, setActiveDrawer] = useState(null); // null | 'chems' | 'stations' | 'monitor' | 'guide' | 'log'
   const [view, setView] = useState('bench');
   const [focus, setFocus] = useState(null);
   const [walk, setWalk] = useState(false);
@@ -158,6 +218,31 @@ export default function Lab3D() {
   const [webgl, setWebgl] = useState(true);
   const [saveState, setSaveState] = useState('idle');
   const [burnerLit, setBurnerLit] = useState(false);
+  const [flameIon, setFlameIon] = useState('default');
+  const [lightMode, setLightMode] = useState('day'); // 'day' | 'dark' | 'cyber'
+  const [showcaseOpen, setShowcaseOpen] = useState(false);
+  // Trạm Burette chuẩn độ
+  const [buretteLevel, setBuretteLevel] = useState(50);
+  const [buretteTitrant, setBuretteTitrant] = useState('NaOH');
+  const [buretteDripping, setBuretteDripping] = useState(false);
+  // Trạm Điện phân 3D
+  const [electrolyteId, setElectrolyteId] = useState('CuSO4');
+  const [electrolysisVoltage, setElectrolysisVoltage] = useState(0);
+  // Trạm Phân tử 3D & DNA
+  const [moleculeId, setMoleculeId] = useState('H2O');
+  const [moleculeSpaceFill, setMoleculeSpaceFill] = useState(false);
+  // Trạm Quang học & Con lắc đơn 3D
+  const [laserMode, setLaserMode] = useState('white');
+  const [prismAngle, setPrismAngle] = useState(0);
+  const [pendulumLength, setPendulumLength] = useState(0.42);
+  const [gravity, setGravity] = useState(9.81);
+  const [pendulumRunning, setPendulumRunning] = useState(true);
+  // Kính hiển vi & Gia sư Đa AI & Đồ thị chuẩn độ & Rửa vòi nước & Cinema HUD
+  const [scopeOpen, setScopeOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [washing, setWashing] = useState(false);
+  const [cinema, setCinema] = useState(false);
+  const [telemetry, setTelemetry] = useState([{ idx: 0, pH: 7, temp: 25 }]);
   const [hover, setHover] = useState(null);
   const [locked, setLocked] = useState(false);
   const hoverRef = useRef(null); hoverRef.current = hover;
@@ -213,9 +298,9 @@ export default function Lab3D() {
       }
       const k = e.key.toLowerCase();
       keysRef.current[k] = true;
-      if (e.key === 'Escape') { setPanelL(true); setPanelR(true); setFocus(null); }
+      if (e.key === 'Escape') { setActiveDrawer(null); setShowcaseOpen(false); setFocus(null); }
       if (k === 'f') { setView((v) => (v === 'bench' ? 'room' : 'bench')); setFocus(null); }
-      if (e.key === 'Tab') { e.preventDefault(); setPanelL((p) => !p); }
+      if (e.key === 'Tab') { e.preventDefault(); setActiveDrawer((d) => (d === 'chems' ? null : 'chems')); }
       if (k === 'e' && walk && hoverRef.current && containers[hoverRef.current]) {
         const c = containers[hoverRef.current];
         setSelected(c.id);
@@ -300,10 +385,29 @@ export default function Lab3D() {
   /* Nhiệm vụ: auto check bước */
   const stepDone = useMemo(() => {
     if (!experiment) return [];
+    const ctxState = {
+      ...containers,
+      pH: selectedContainer?.pH,
+      _burnerLit: burnerLit,
+      _flameIon: flameIon,
+      _voltage: electrolysisVoltage,
+    };
     return experiment.steps.map((st) => {
-      try { return !!st.check({ ...containers, pH: selectedContainer?.pH }, log); } catch { return false; }
+      try { return !!st.check(ctxState, log); } catch { return false; }
     });
-  }, [experiment, containers, log, selectedContainer]);
+  }, [experiment, containers, log, selectedContainer, burnerLit, flameIon, electrolysisVoltage]);
+
+  /* Tự động ghi nhận điểm pH & Nhiệt độ cho đồ thị thời gian thực */
+  useEffect(() => {
+    if (!selectedContainer) return;
+    const pH = computePH(selectedContainer);
+    const temp = selectedContainer.temp || 25;
+    setTelemetry((prev) => {
+      const last = prev[prev.length - 1];
+      if (last && Math.abs(last.pH - pH) < 0.05 && Math.abs(last.temp - temp) < 0.5) return prev;
+      return [...prev.slice(-29), { idx: prev.length, pH, temp }];
+    });
+  }, [selectedContainer]);
 
   useEffect(() => {
     if (!experiment) return;
@@ -385,15 +489,18 @@ export default function Lab3D() {
     const res = addChemical(container, chem, qty);
     if (!res.ok) { setToast(res.reason); return; }
     const pourColor = CHEMS[chem]?.color || '#cfe3f2';
+    const nextColor = dominantColor(container);
+    const hasRx = Boolean(res.events?.length && res.events.some((e) => e.type !== 'no-reaction' && e.type !== 'solid-added'));
     updateContainer(selected, {
       ...container,
       volume: volumeOf(container),
-      color: dominantColor(container),
+      color: nextColor,
       pH: computePH(container),
-      pouring: true,
+      pouring: !isSolid,
       pourColor,
+      ...(hasRx ? { reactionFx: { color: nextColor, kind: res.events[0]?.type, ts: Date.now() } } : {}),
     });
-    later(() => updateContainer(selected, { pouring: false }), 900);
+    if (!isSolid) later(() => updateContainer(selected, { pouring: false }), 1350);
     setLog((l) => logEntry(l, {
       act: 'pour',
       chem,
@@ -416,6 +523,8 @@ export default function Lab3D() {
     const res = transferLiquid(srcClone, dstClone, Number(amount));
     if (!res.ok) { setToast(res.reason); return; }
     if (sound) sfx.pour();
+    const dstColor = dominantColor(dstClone);
+    const hasRx = Boolean(res.events?.length && res.events.some((e) => e.type !== 'no-reaction'));
     setContainers((cs) => ({
       ...cs,
       [selected]: {
@@ -427,13 +536,14 @@ export default function Lab3D() {
       [transferTarget]: {
         ...dstClone,
         volume: volumeOf(dstClone),
-        color: dominantColor(dstClone),
+        color: dstColor,
         pH: computePH(dstClone),
         pouring: true,
         pourColor: selectedContainer.color || '#cfe3f2',
+        ...(hasRx ? { reactionFx: { color: dstColor, kind: res.events[0]?.type, ts: Date.now() } } : {}),
       },
     }));
-    later(() => updateContainer(transferTarget, { pouring: false }), 900);
+    later(() => updateContainer(transferTarget, { pouring: false }), 1350);
     setLog((l) => logEntry(l, {
       act: 'transfer',
       from: selected,
@@ -445,7 +555,81 @@ export default function Lab3D() {
     else setToast(`Đã rót ${res.movedMl} mL từ ${selectedContainer.shortName} sang ${dst.shortName}.`);
   };
 
-  /* Rửa sạch riêng dụng cụ đang chọn */
+  /* 1-Click trình diễn các phản ứng hóa học đẹp mắt nhất ngay trên Cốc 250mL / Bình tam giác */
+  const runShowcaseReaction = (preset) => {
+    pushUndo();
+    if (preset === 'titration-pink') {
+      setSelected('erlenmeyer1');
+      setView('titration');
+      setFocus(null);
+      const base = createContainer('erlenmeyer1', 250);
+      addChemical(base, 'HCl', 20);
+      addChemical(base, 'PPT', 1);
+      updateContainer('erlenmeyer1', {
+        ...base,
+        volume: volumeOf(base),
+        color: dominantColor(base),
+        pH: computePH(base),
+      });
+      later(() => dripFromBurette(25), 420);
+      return;
+    }
+
+    const targetId = 'beaker1';
+    setSelected(targetId);
+    setView('bench');
+    setFocus(null);
+    const clean = createContainer(targetId, 250);
+    const steps = {
+      'golden-rain': [['PbNO32', 45], ['KI', 45]],
+      'volcano': [['NaHCO3', 50], ['HCl', 40]],
+      'oxygen-burst': [['H2O2', 65], ['MnO2', 2]],
+      'royal-complex': [['CuSO4', 35], ['NH3', 55]],
+      'copper-no2': [['HNO3', 55], ['Cu_wire', 3]],
+    }[preset];
+    if (!steps) return;
+
+    const [firstChem, firstQty] = steps[0];
+    const [secondChem, secondQty] = steps[1];
+    addChemical(clean, firstChem, firstQty);
+    if (sound) sfx.pour();
+    updateContainer(targetId, {
+      ...clean,
+      volume: volumeOf(clean),
+      color: dominantColor(clean),
+      pH: computePH(clean),
+      pouring: CHEMS[firstChem]?.state !== 'solid',
+      pourColor: CHEMS[firstChem]?.color || '#cfe3f2',
+    });
+
+    later(() => {
+      const stage2 = cloneContainers({ ...containers[targetId], ...clean });
+      const res = addChemical(stage2, secondChem, secondQty);
+      const nextColor = dominantColor(stage2);
+      if (sound) sfx.pour();
+      updateContainer(targetId, {
+        ...stage2,
+        volume: volumeOf(stage2),
+        color: nextColor,
+        pH: computePH(stage2),
+        pouring: CHEMS[secondChem]?.state !== 'solid',
+        pourColor: CHEMS[secondChem]?.color || '#cfe3f2',
+        reactionFx: { color: nextColor, kind: res.events?.[0]?.type || 'kettua', ts: Date.now() },
+      });
+      setLog((l) => logEntry(l, {
+        act: 'pour',
+        chem: secondChem,
+        ml: secondQty,
+        isSolid: CHEMS[secondChem]?.state === 'solid',
+        instrument: targetId,
+        events: res.events,
+      }));
+      if (res.events?.length) setToast(res.events.map((e) => e.text).join(' '));
+      later(() => updateContainer(targetId, { pouring: false }), 1350);
+    }, 850);
+  };
+
+  /* Rửa sạch riêng dụng cụ đang chọn + bật vòi nước chảy thật ở bồn rửa */
   const washSelected = () => {
     if (!selectedContainer) return;
     pushUndo();
@@ -456,7 +640,10 @@ export default function Lab3D() {
       color: '#dfe9f3',
       pH: 7,
       pouring: false,
+      reactionFx: null,
     });
+    setWashing(true);
+    later(() => setWashing(false), 1600);
     setLog((l) => logEntry(l, { act: 'wash', instrument: selected }));
     if (sound) sfx.click();
     setToast(`Đã rửa sạch ${selectedContainer.name}.`);
@@ -610,6 +797,77 @@ export default function Lab3D() {
     else document.exitFullscreen?.();
   };
 
+  /* Nhỏ giọt từ Burette 50mL xuống Bình tam giác (erlenmeyer1) */
+  const dripFromBurette = (dropMl = 2) => {
+    if (buretteLevel <= 0) {
+      setToast('Burette đã cạn — nhấn "Nạp đầy 50 mL" để tiếp tục chuẩn độ.');
+      return;
+    }
+    const actual = Math.min(buretteLevel, dropMl);
+    const flask = containers.erlenmeyer1;
+    if (!flask) return;
+    pushUndo();
+    const cloned = cloneContainers(flask);
+    const res = addChemical(cloned, buretteTitrant, actual);
+    if (!res.ok) { setToast(res.reason); return; }
+    if (sound) sfx.pour();
+    setBuretteLevel((lvl) => Math.max(0, +(lvl - actual).toFixed(1)));
+    setBuretteDripping(true);
+    later(() => setBuretteDripping(false), 750);
+    setSelected('erlenmeyer1');
+    const nextErlenColor = dominantColor(cloned);
+    updateContainer('erlenmeyer1', {
+      ...cloned,
+      volume: volumeOf(cloned),
+      color: nextErlenColor,
+      pH: computePH(cloned),
+      reactionFx: { color: nextErlenColor, kind: 'titration', ts: Date.now() },
+    });
+    setLog((l) => logEntry(l, {
+      act: 'burette',
+      chem: buretteTitrant,
+      ml: actual,
+      instrument: 'erlenmeyer1',
+      events: res.events,
+    }));
+    const newPH = computePH(cloned);
+    setToast(res.events?.length
+      ? `Burette nhỏ ${actual} mL ${CHEMS[buretteTitrant]?.formula}: ${res.events.map((e) => e.text).join(' ')} (pH = ${newPH.toFixed(2)})`
+      : `Burette nhỏ ${actual} mL ${CHEMS[buretteTitrant]?.formula} vào Bình tam giác (pH = ${newPH.toFixed(2)})`);
+  };
+
+  const pickFlameIon = (ionId) => {
+    setFlameIon(ionId);
+    const info = FLAME_IONS.find((f) => f.id === ionId);
+    if (ionId !== 'default') {
+      setBurnerLit(true);
+      setLog((l) => logEntry(l, { act: 'flame', chem: info?.formula, instrument: 'burner', events: [{ text: `Phổ ngọn lửa ${info?.ion}: ${info?.note}` }] }));
+      setToast(`Phổ ngọn lửa ${info?.ion} (${info?.nm}): ${info?.note}`);
+    } else {
+      setToast('Đã rút que thử muối — đèn Bunsen về ngọn lửa chuẩn.');
+    }
+    if (sound) sfx.click();
+  };
+
+  const jumpToStation = (vKey) => {
+    setView(vKey);
+    setFocus(null);
+    if (['titration', 'electrolysis', 'molecules', 'optics'].includes(vKey)) {
+      setActiveDrawer('stations');
+    }
+    if (sound) sfx.click();
+  };
+
+  const toggleDrawer = (id) => {
+    setActiveDrawer((cur) => (cur === id ? null : id));
+    if (sound) sfx.click();
+  };
+
+  const cycleLightMode = () => {
+    setLightMode((m) => (m === 'day' ? 'dark' : m === 'dark' ? 'cyber' : 'day'));
+    if (sound) sfx.click();
+  };
+
   /* ================= RENDER ================= */
   const stepStatus = experiment ? stepDone : [];
   const mainVessels = [containers.beaker1, containers.cylinder1, containers.erlenmeyer1];
@@ -618,24 +876,77 @@ export default function Lab3D() {
   const curVol = volumeOf(selectedContainer);
   const curSolid = solidMassOf(selectedContainer);
   const curTotalMass = totalMassOf(selectedContainer);
+  const curElectrolyte = ELECTROLYTES[electrolyteId] || ELECTROLYTES.CuSO4;
+  const curMolecule = MOLECULES_3D.find((m) => m.id === moleculeId) || MOLECULES_3D[0];
+  const curFlame = FLAME_IONS.find((f) => f.id === flameIon) || FLAME_IONS[0];
+  const latestEqObj = [...log].reverse().flatMap((l) => l.events || []).find((e) => e.eq);
+  const latestEquation = latestEqObj?.eq || '';
+
+  const labAiContextText = [
+    `Góc nhìn / Trạm hiện tại: ${view}`,
+    `Dụng cụ đang chọn: ${selectedContainer?.name} (${curVol.toFixed(0)}/${selectedContainer?.maxMl} mL, pH=${curPH.toFixed(2)}, T=${selectedContainer?.temp || 25}°C)`,
+    `Thành phần trong dụng cụ: ${(selectedContainer?.contents || []).map((c) => `${CHEMS[c.id]?.formula || c.id} (${c.gram ? c.gram + 'g' : Math.round(c.mL || 0) + 'mL'})`).join(', ') || 'Trống'}`,
+    `Kết tủa: ${(selectedContainer?.precipitates || []).map((p) => p.formula).join(', ') || 'Không có'}`,
+    `Đèn Bunsen: ${burnerLit ? `Đang bật (ion ${curFlame.ion}, ${curFlame.nm})` : 'Tắt'}`,
+    `Trạm Điện phân DC: ${curElectrolyte.name} · Điện áp ${electrolysisVoltage.toFixed(1)}V (${curElectrolyte.eq})`,
+    `Phân tử 3D đang chiếu: ${curMolecule.name} (${curMolecule.geometry}, ${curMolecule.hybrid})`,
+    `Phản ứng ghi nhận gần nhất: ${log.flatMap((l) => l.events || []).slice(-4).map((e) => e.eq || e.text).join(' ; ') || 'Chưa có'}`,
+  ].join('\n');
 
   return (
-    <div className={'lab3d-root' + (walk ? ' walking' : '')} id="lab3d-root">
+    <div
+      className={
+        'lab3d-root'
+        + (walk ? ' walking' : '')
+        + (cinema ? ' cinema' : '')
+        + (lightMode !== 'day' ? ' theme-dark' : ' theme-light')
+      }
+      id="lab3d-root"
+    >
       {/* ===== CẢNH 3D ===== */}
       <div className="lab3d-canvas">
         <LabScene
           vessels={mainVessels}
           testTubes={tubeVessels}
           burnerLit={burnerLit}
+          flameIon={flameIon}
+          lightMode={lightMode}
+          washing={washing}
           onToggleBurner={() => {
             setBurnerLit((b) => {
               const next = !b;
-              setToast(next ? 'Đã bật đèn cồn — đang đun nóng các dụng cụ.' : 'Đã tắt đèn cồn.');
+              setToast(next ? 'Đã bật đèn Bunsen — đang đun nóng các dụng cụ.' : 'Đã tắt đèn Bunsen.');
               return next;
             });
           }}
+          buretteLevel={buretteLevel}
+          buretteTitrant={buretteTitrant}
+          buretteDripping={buretteDripping}
+          onBuretteDrip={() => dripFromBurette(2)}
+          beakerStirring={Boolean(containers.beaker1?.stir)}
+          beakerTemp={containers.beaker1?.temp || 25}
+          onToggleStir={() => {
+            setSelected('beaker1');
+            updateContainer('beaker1', { stir: !containers.beaker1?.stir });
+            setToast(containers.beaker1?.stir ? 'Đã tắt máy khuấy từ.' : 'Đã bật máy khuấy từ 600 RPM.');
+          }}
+          electrolyteId={electrolyteId}
+          electrolysisVoltage={electrolysisVoltage}
+          moleculeId={moleculeId}
+          moleculeSpaceFill={moleculeSpaceFill}
+          laserMode={laserMode}
+          prismAngle={prismAngle}
+          pendulumLength={pendulumLength}
+          gravity={gravity}
+          pendulumRunning={pendulumRunning}
+          onOpenMicroscope={() => {
+            setScopeOpen(true);
+            setLog((l) => logEntry(l, { act: 'scope', instrument: 'microscope' }));
+          }}
+          onJumpView={jumpToStation}
           phDisplay={curVol > 0 ? curPH : null}
           scaleMass={curTotalMass}
+          latestEquation={latestEquation}
           onMeasurePH={measurePH}
           onPickChem={(id) => {
             setChem(id);
@@ -659,329 +970,50 @@ export default function Lab3D() {
         {walk && <div className="lab-crosshair" />}
         {walk && hover && !locked && <div className="lab-hover-hint">Nhấn <b>E</b> hoặc click để chọn: <b>{containers[hover]?.name || 'Dụng cụ'}</b></div>}
         {walk && !locked && <div className="lab-lock-hint">Bấm vào cảnh để khóa chuột — WASD di chuyển, chuột xoay nhìn, ESC thoát</div>}
-
-        {/* Thanh chuyển góc nhìn + chọn nhanh 6 dụng cụ */}
-        <div className="lab-view-buttons">
-          {['room', 'bench', 'close'].map((v) => (
-            <button key={v} className={'lab-vbtn' + (view === v && !focus ? ' on' : '')} onClick={() => { setView(v); setFocus(null); }}>
-              {{ room: 'Toàn phòng', bench: 'Bàn thí nghiệm', close: 'Cận cảnh' }[v]}
-            </button>
-          ))}
-          <button className={'lab-vbtn' + (walk ? ' on' : '')} onClick={() => setWalk((w) => !w)} title="Di chuyển góc nhìn thứ nhất bằng WASD">
-            {walk ? 'Dừng đi lại' : 'Đi lại (WASD)'}
-          </button>
-          <span className="lab-vbtn-sep" />
-          {Object.values(containers).map((v) => (
-            <button
-              key={v.id}
-              className={'lab-vbtn vessel-pill' + (selected === v.id ? ' on' : '')}
-              onClick={() => selectVessel(v.id, v.position)}
-              title={`${v.name} (${volumeOf(v).toFixed(0)}/${v.maxMl} mL)`}
-            >
-              <span className="lab-vessel-dot" style={{ background: volumeOf(v) > 0 ? v.color : 'rgba(148,163,184,0.4)' }} />
-              {v.shortName}
-            </button>
-          ))}
-        </div>
       </div>
 
-      {/* ===== HUD TRÊN ===== */}
-      <header className="lab-top">
-        <div className="lab-brand">
-          <span className="lab-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" /></svg></span>
-          <div>
-            <b>ELEC AI Immersive Lab 3D</b>
-            <small>{experiment ? experiment.name : 'Chế độ tự do khám phá'} · Phiên {session.id}</small>
-          </div>
-        </div>
-        <div className="lab-top-right">
-          <span className={'lab-save' + (saveState === 'saved' ? ' ok' : saveState === 'error' ? ' err' : '')}>
-            {saveState === 'saving' ? 'Đang lưu…' : saveState === 'saved' ? 'Đã lưu Cloud' : saveState === 'error' ? 'Đã lưu máy' : 'Tự động lưu'}
-          </span>
-          {experiment && <span className="lab-progress">{session.completedSteps}/{experiment.steps.length} bước</span>}
-          <button className="lab-ib" onClick={undoLast} disabled={!history.length} title="Hoàn tác thao tác trước">
-            Hoàn tác ({history.length})
-          </button>
-          <select className="lab-mini" value={quality} onChange={(e) => setQuality(e.target.value)} title="Chất lượng đồ họa">
-            <option value="high">Đồ họa: Cao</option>
-            <option value="low">Đồ họa: Mượt</option>
-          </select>
-          <button className="lab-ib" onClick={() => setSound((s) => !s)} title={sound ? 'Tắt âm thanh' : 'Bật âm thanh'}>{sound ? 'Âm: Bật' : 'Âm: Tắt'}</button>
-          <button className="lab-ib" onClick={fullscreen}>Toàn màn hình</button>
-          <button className="lab-ib danger" onClick={() => { window.location.hash = 'games'; }}>Thoát</button>
-        </div>
-      </header>
-
-      {/* ===== PANEL TRÁI: KHO HÓA CHẤT + TÌM KIẾM & LỌC ===== */}
-      <aside className={'lab-panel left' + (panelL ? '' : ' collapsed')}>
-        <button className="lab-panel-toggle" onClick={() => setPanelL((p) => !p)}>{panelL ? '‹ Kho hóa chất' : 'Kho ›'}</button>
-        {panelL && (
-          <div className="lab-panel-body">
-            <div className="lab-search-wrap">
-              <input
-                className="lab-search"
-                placeholder="Tìm tên, công thức (VD: CuSO4, KMnO4, NH3)…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <button className="lab-search-clear" onClick={() => setSearchQuery('')} title="Xóa tìm kiếm">×</button>
-              )}
-            </div>
-
-            <div className="lab-cat-chips">
-              {CAT_FILTERS.map((cf) => (
-                <button
-                  key={cf.id}
-                  className={'lab-cat-chip' + (catFilter === cf.id ? ' on' : '')}
-                  onClick={() => setCatFilter(cf.id)}
-                >
-                  {cf.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="lab-chem-list">
-              {filteredChems.map((c) => (
-                <button
-                  key={c.id}
-                  className={'lab-chem' + (chem === c.id ? ' on' : '')}
-                  onClick={() => { setChem(c.id); if (sound) sfx.click(); }}
-                  title={`${c.en}${c.M ? ` — M = ${c.M} g/mol` : ''}`}
-                >
-                  <span className="lab-chem-dot" style={{ background: c.color }} />
-                  <span className="lab-chem-name">{c.vi}</span>
-                  <span className="lab-chem-formula">{c.formula}{c.conc ? ` ${c.conc}M` : ''}</span>
-                  {c.hazard?.map((h) => <em key={h} className={'lab-hz hz-' + h}>{h}</em>)}
-                </button>
-              ))}
-              {filteredChems.length === 0 && (
-                <small className="lab-empty">Không tìm thấy hóa chất phù hợp.</small>
-              )}
-            </div>
-
-            {chem && CHEMS[chem] && (
-              <div className="lab-chem-info">
-                <b>{chemLabel(CHEMS[chem])}</b>
-                <small>
-                  {CHEMS[chem].state === 'solution'
-                    ? (CHEMS[chem].conc ? `Dung dịch ${CHEMS[chem].conc}M` : 'Dung môi tinh khiết')
-                    : CHEMS[chem].state === 'solid'
-                    ? `Chất rắn (${CHEMS[chem].solidGram || 3}g / lần thả)`
-                    : 'Chất chỉ thị pH'}
-                  {CHEMS[chem].M ? ` · M = ${CHEMS[chem].M} g/mol` : ''}
-                </small>
-                {CHEMS[chem].hazard?.length > 0 && (
-                  <small className="lab-warn">An toàn: {CHEMS[chem].hazard.join(', ')} — đeo kính bảo hộ & găng tay.</small>
-                )}
-              </div>
-            )}
-
-            {/* Gợi ý phản ứng thông minh theo chất đang có trong cốc */}
-            {suggestions.length > 0 && (
-              <div className="lab-suggest-box">
-                <b>Gợi ý thử nghiệm với {selectedContainer?.shortName}</b>
-                {suggestions.map((sg) => (
-                  <button
-                    key={sg.chemId}
-                    className="lab-suggest-item"
-                    onClick={() => { setChem(sg.chemId); if (sound) sfx.click(); }}
-                  >
-                    <span className="lab-chem-dot" style={{ background: CHEMS[sg.chemId]?.color || '#ccc' }} />
-                    <span><b>{CHEMS[sg.chemId]?.vi}</b>: {sg.reason}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </aside>
-
-      {/* ===== PANEL PHẢI: CHI TIẾT DỤNG CỤ & SỔ THÍ NGHIỆM ===== */}
-      <aside className={'lab-panel right' + (panelR ? '' : ' collapsed')}>
-        <button className="lab-panel-toggle" onClick={() => setPanelR((p) => !p)}>{panelR ? 'Sổ thí nghiệm ›' : '‹ Sổ'}</button>
-        {panelR && (
-          <div className="lab-panel-body">
-            {/* Khung giám sát trực tiếp dụng cụ đang chọn */}
-            <div className="lab-inspector">
-              <div className="lab-inspector-head">
-                <b>{selectedContainer?.name}</b>
-                <button className="lab-wash-mini" onClick={washSelected} title="Rửa sạch dụng cụ này">Rửa cốc</button>
-              </div>
-              <div className="lab-inspector-metrics">
-                <span>Thể tích: <b>{curVol.toFixed(0)}/{selectedContainer?.maxMl} mL</b></span>
-                <span>Rắn/Tủa: <b>{curSolid.toFixed(1)} g</b></span>
-                <span>Nhiệt độ: <b>{selectedContainer?.temp || 25}°C</b></span>
-              </div>
-              {/* Thang màu pH trực quan 0 -> 14 */}
-              <div className="lab-ph-bar-wrap">
-                <div className="lab-ph-bar-labels">
-                  <span>Axit (0)</span>
-                  <b>pH: {curVol > 0 ? curPH.toFixed(2) : '—'}</b>
-                  <span>Bazơ (14)</span>
-                </div>
-                <div className="lab-ph-bar">
-                  <div
-                    className="lab-ph-pin"
-                    style={{ left: `${Math.max(2, Math.min(98, (curPH / 14) * 100))}%` }}
-                  />
-                </div>
-              </div>
-              {/* Thành phần bên trong cốc */}
-              {(selectedContainer?.contents?.length > 0 || selectedContainer?.precipitates?.length > 0) ? (
-                <div className="lab-contents-tags">
-                  {selectedContainer.contents.map((c, idx) => {
-                    const ch = CHEMS[c.id];
-                    if (!ch) return null;
-                    return (
-                      <span key={idx} className="lab-content-tag">
-                        {ch.formula}: {ch.state === 'solid' ? `${(c.gram || 0).toFixed(1)}g` : `${(c.mL || 0).toFixed(0)}mL`}
-                      </span>
-                    );
-                  })}
-                  {(selectedContainer.precipitates || []).map((p, idx) => (
-                    <span key={'p-' + idx} className="lab-content-tag precip">
-                      ↓ {p.formula || 'Kết tủa'}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <small className="lab-empty">Dụng cụ đang trống.</small>
-              )}
-            </div>
-
-            <div className="lab-section">
-              <b>Bài thực hành có hướng dẫn (8 bài)</b>
-              <select
-                className="lab-mini wide"
-                value={experimentId || ''}
-                onChange={(e) => {
-                  setExperimentId(e.target.value || null);
-                  setSession((s) => ({ ...s, experiment: e.target.value }));
-                }}
-              >
-                <option value="">Tự do khám phá</option>
-                {EXPERIMENTS.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
-              </select>
-              {experiment && (
-                <ol className="lab-steps">
-                  {experiment.steps.map((s, i) => (
-                    <li key={i} className={stepStatus[i] ? 'done' : ''}>{s.text}</li>
-                  ))}
-                </ol>
-              )}
-            </div>
-
-            <div className="lab-section">
-              <b>Hiện tượng & phương trình</b>
-              <div className="lab-eqs">
-                {log.flatMap((l) => l.events || []).slice(-6).map((e, i) => (
-                  <div key={i} className="lab-eq">
-                    {e.eq && <code>{e.eq}</code>}
-                    <small>{e.text}</small>
-                  </div>
-                ))}
-                {log.flatMap((l) => l.events || []).length === 0 && <small className="lab-empty">Chưa quan sát được hiện tượng nào.</small>}
-              </div>
-            </div>
-
-            <div className="lab-section">
-              <b>Nhật ký thao tác ({log.length})</b>
-              <div className="lab-log">
-                {log.length === 0 && <small className="lab-empty">Chưa có thao tác nào.</small>}
-                {log.slice(-14).reverse().map((l, i) => (
-                  <div key={i} className="lab-log-row">
-                    <small>{new Date(l.at).toLocaleTimeString('vi-VN')}</small>
-                    <span>
-                      {l.act === 'pour' && <>Cho <b>{l.ml}{l.isSolid ? 'g' : ' mL'} {chemLabel(CHEMS[l.chem])}</b> vào {containers[l.instrument]?.shortName || l.instrument}</>}
-                      {l.act === 'transfer' && <>San <b>{l.ml} mL</b> từ {containers[l.from]?.shortName} sang <b>{containers[l.instrument]?.shortName}</b></>}
-                      {l.act === 'measure' && <>Đo pH ({containers[l.instrument]?.shortName}) = <b>{l.pH?.toFixed(2)}</b></>}
-                      {l.act === 'stir' && <>Khuấy đều {containers[l.instrument]?.shortName}</>}
-                      {l.act === 'wash' && <>Rửa sạch {containers[l.instrument]?.shortName}</>}
-                      {l.act === 'heat' && <>Đun nóng {containers[l.instrument]?.shortName}</>}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="lab-section row">
-              <button className="lab-btn ghost" onClick={saveCloud}>Lưu phiên</button>
-              <button className="lab-btn ghost" onClick={loadLast}>Khôi phục</button>
-              <button className="lab-btn ghost" onClick={exportLabReport} title="Tải báo cáo thí nghiệm .md">Xuất BC</button>
-            </div>
-          </div>
-        )}
-      </aside>
-
-      {/* ===== HUD DƯỚI: THAO TÁC THEO NGỮ CẢNH ===== */}
-      <footer className="lab-bottom">
-        <div className="lab-pour">
-          <select className="lab-mini" value={chem || ''} onChange={(e) => setChem(e.target.value || null)}>
-            <option value="">— chọn hóa chất —</option>
-            {Object.values(CHEMS).filter((c) => !c.hiddenInList).map((c) => (
-              <option key={c.id} value={c.id}>{c.vi} ({c.formula})</option>
-            ))}
-          </select>
-          <input
-            type="range"
-            min="5"
-            max="50"
-            step="5"
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-            disabled={!CHEMS[chem]?.state || CHEMS[chem]?.state === 'indicator' || CHEMS[chem]?.state === 'solid'}
-            title="Lượng hóa chất thêm vào"
-          />
-          <b className="lab-amount">
-            {CHEMS[chem]?.state === 'solid'
-              ? `${CHEMS[chem].solidGram || 3} g`
-              : CHEMS[chem]?.state === 'indicator'
-              ? '3 giọt'
-              : `${amount} mL`}
-          </b>
-          <button className="lab-btn" onClick={pour} disabled={!chem}>
-            {CHEMS[chem]?.state === 'solid' ? 'Thả rắn' : CHEMS[chem]?.state === 'indicator' ? 'Nhỏ chỉ thị' : 'Rót vào'}
-          </button>
-
-          {/* San dung dịch sang dụng cụ khác */}
-          <span className="lab-bottom-sep" />
-          <select
-            className="lab-mini"
-            value={transferTarget}
-            onChange={(e) => setTransferTarget(e.target.value)}
-            title="Chọn dụng cụ đích để san dung dịch sang"
-          >
-            {Object.values(containers)
-              .filter((v) => v.id !== selected)
-              .map((v) => (
-                <option key={v.id} value={v.id}>→ {v.shortName}</option>
-              ))}
-          </select>
-          <button
-            className="lab-btn ghost"
-            onClick={pourBetweenVessels}
-            disabled={curVol <= 0}
-            title="San dung dịch từ dụng cụ đang chọn sang dụng cụ đích"
-          >
-            San {Math.min(amount, Math.round(curVol || amount))}mL
-          </button>
-
-          <span className="lab-bottom-sep" />
-          <button className="lab-btn ghost" onClick={measurePH}>Đo pH</button>
-          <button className="lab-btn ghost" onClick={stir}>Khuấy</button>
-          <button
-            className={'lab-btn ghost' + (burnerLit ? ' burner-on' : '')}
-            onClick={() => setBurnerLit((b) => !b)}
-          >
-            Đèn cồn: {burnerLit ? 'ĐANG BẬT' : 'TẮT'}
-          </button>
-          <button className="lab-btn ghost" onClick={washSelected} title="Chỉ rửa dụng cụ đang chọn">Rửa cốc</button>
-          <button className="lab-btn ghost danger" onClick={resetSession}>Đặt lại bàn</button>
-        </div>
-      </footer>
+      <LabHud
+        view={view} focus={focus} walk={walk} setWalk={setWalk} jumpToStation={jumpToStation}
+        lightMode={lightMode} cycleLightMode={cycleLightMode} cinema={cinema} setCinema={setCinema}
+        aiOpen={aiOpen} setAiOpen={setAiOpen}
+        onOpenScope={() => { setScopeOpen(true); setLog((l) => logEntry(l, { act: 'scope', instrument: 'microscope' })); }}
+        undoLast={undoLast} historyCount={history.length} fullscreen={fullscreen}
+        activeDrawer={activeDrawer} toggleDrawer={toggleDrawer} setActiveDrawer={setActiveDrawer}
+        containers={containers} selected={selected} selectVessel={selectVessel} selectedContainer={selectedContainer}
+        curVol={curVol} curPH={curPH} curSolid={curSolid} curTotalMass={curTotalMass} telemetry={telemetry}
+        chem={chem} setChem={setChem} searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+        catFilter={catFilter} setCatFilter={setCatFilter} catFilters={CAT_FILTERS}
+        filteredChems={filteredChems} suggestions={suggestions}
+        amount={amount} setAmount={setAmount} pour={pour}
+        transferTarget={transferTarget} setTransferTarget={setTransferTarget} pourBetweenVessels={pourBetweenVessels}
+        measurePH={measurePH} stir={stir} burnerLit={burnerLit} setBurnerLit={setBurnerLit}
+        washSelected={washSelected} resetSession={resetSession}
+        showcaseOpen={showcaseOpen} setShowcaseOpen={setShowcaseOpen} runShowcaseReaction={runShowcaseReaction}
+        buretteTitrant={buretteTitrant} setBuretteTitrant={setBuretteTitrant}
+        buretteLevel={buretteLevel} setBuretteLevel={(v) => { setBuretteLevel(v); setToast('Đã nạp đầy Burette 50 mL.'); }}
+        dripFromBurette={dripFromBurette}
+        flameIon={flameIon} pickFlameIon={pickFlameIon} curFlame={curFlame}
+        electrolyteId={electrolyteId} setElectrolyteId={setElectrolyteId}
+        electrolysisVoltage={electrolysisVoltage} setElectrolysisVoltage={setElectrolysisVoltage}
+        curElectrolyte={curElectrolyte}
+        moleculeId={moleculeId} setMoleculeId={setMoleculeId}
+        moleculeSpaceFill={moleculeSpaceFill} setMoleculeSpaceFill={setMoleculeSpaceFill}
+        curMolecule={curMolecule}
+        onLogMolecule={(id) => setLog((l) => logEntry(l, { act: 'molecule', chem: id, instrument: 'hologram' }))}
+        laserMode={laserMode} setLaserMode={setLaserMode} prismAngle={prismAngle} setPrismAngle={setPrismAngle}
+        gravity={gravity} setGravity={setGravity} pendulumLength={pendulumLength} setPendulumLength={setPendulumLength}
+        pendulumRunning={pendulumRunning} setPendulumRunning={setPendulumRunning}
+        onLogOptics={(id) => setLog((l) => logEntry(l, { act: 'optics', chem: id, instrument: 'prism' }))}
+        experiments={EXPERIMENTS} experiment={experiment} experimentId={experimentId} setExperimentId={setExperimentId}
+        setSession={setSession} session={session} stepStatus={stepStatus}
+        log={log} quality={quality} setQuality={setQuality} sound={sound} setSound={setSound}
+        saveState={saveState} saveCloud={saveCloud} loadLast={loadLast} exportLabReport={exportLabReport}
+        onClickSfx={() => { if (sound) sfx.click(); }}
+      />
 
       {toast && <div className="lab-toast">{toast}</div>}
+      <MicroscopeOverlay open={scopeOpen} onClose={() => setScopeOpen(false)} />
+      <LabAiTutorDrawer open={aiOpen} onClose={() => setAiOpen(false)} labContextText={labAiContextText} />
     </div>
   );
 }

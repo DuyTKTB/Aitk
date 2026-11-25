@@ -1488,26 +1488,26 @@ body.on-ai-page .ds-page.elec-studio .elec-prompt-card:hover .elec-prompt-arrow 
   color: #94a3b8 !important;
 }
 
-/* --- 2F. Active Chat Thread: Crisp AI Medallion & Structured Lab Doc Card --- */
+/* --- 2F. Active Chat Thread: Crisp AI Avatar & Structured Lab Doc Card --- */
 body.on-ai-page .ds-page.elec-studio svg.ds-avatar {
   width: 38px !important;
   height: 38px !important;
-  padding: 5px !important;
+  padding: 0 !important;
   box-sizing: border-box !important;
-  border-radius: 13px !important;
-  background: linear-gradient(145deg, #ffffff 0%, #eff6ff 100%) !important;
-  border: 1px solid rgba(37, 99, 235, 0.2) !important;
-  box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.18) !important;
-  filter: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 3px 8px rgba(37, 99, 235, 0.22)) !important;
   opacity: 1 !important;
   margin-top: 2px !important;
 }
 
 [data-theme='dark'] body.on-ai-page .ds-page.elec-studio svg.ds-avatar {
-  background: linear-gradient(145deg, #111b36 0%, #0b1224 100%) !important;
-  border-color: rgba(96, 165, 250, 0.26) !important;
-  box-shadow: 0 6px 16px -4px rgba(0, 0, 0, 0.55) !important;
-  filter: none !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 3px 10px rgba(96, 165, 250, 0.32)) !important;
 }
 
 body.on-ai-page .ds-page.elec-studio .elec-msg-docs {
@@ -2004,10 +2004,10 @@ body.on-ai-page .ds-page.elec-studio .ds-user-menu-tier .ds-tier-badge {
   }
 
   body.on-ai-page .ds-page.elec-studio svg.ds-avatar {
-    width: 28px !important;
-    height: 28px !important;
-    padding: 4px !important;
-    border-radius: 9px !important;
+    width: 30px !important;
+    height: 30px !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
   }
 
   body.on-ai-page .ds-page.elec-studio .ds-msg-model .ds-msg-content {

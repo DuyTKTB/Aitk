@@ -656,17 +656,25 @@ export default function DesktopNav({
             href="#home"
             className={'nav-item' + (page === 'home' ? ' active' : '')}
           >
-            <span className="nav-ico"><NavIconHome size={15} /></span>
+            <span className="nav-ico"><NavIconHome size={18} /></span>
             <span className="nav-label">Trang chủ</span>
           </a>
 
-          {/* 2. Phòng thi ảo (chấm chỉ báo tinh gọn, bỏ nhãn HOT rối mắt) */}
+          {/* 2. Phòng thi ảo — hiệu ứng icon & chữ lấp lánh + chấm live cam chuẩn 9study */}
           <a
             href="#virtual-exams"
             className={'nav-item ns9-nav-virtual-exam' + (page === 'quiz' || page === 'virtual-exams' ? ' active' : '')}
           >
-            <span className="nav-ico"><NavIconExam size={15} /></span>
-            <span className="nav-label">Phòng thi ảo</span>
+            <span className="nav-ico ns9-vex-nav-ico">
+              <NavIconExam size={18} />
+              <svg className="ns9-vex-glint ns9-vex-glint-1" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 1L14.6 9.4L23 12L14.6 14.6L12 23L9.4 14.6L1 12L9.4 9.4L12 1Z" />
+              </svg>
+              <svg className="ns9-vex-glint ns9-vex-glint-2" width="8" height="8" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 1L14.6 9.4L23 12L14.6 14.6L12 23L9.4 14.6L1 12L9.4 9.4L12 1Z" />
+              </svg>
+            </span>
+            <span className="nav-label ns9-vex-nav-label">Phòng thi ảo</span>
             <span className="nav-live-dot" aria-hidden="true" />
           </a>
 
@@ -676,7 +684,7 @@ export default function DesktopNav({
             className={'nav-item' + (page === 'ai' ? ' active' : '')}
             title="Trợ lý AI giải bài tập Lý - Hóa - Sinh & Chấm nháp viết tay"
           >
-            <span className="nav-ico"><NavIconAi size={15} /></span>
+            <span className="nav-ico"><NavIconAi size={18} /></span>
             <span className="nav-label">ELEC AI</span>
           </a>
 
@@ -685,7 +693,7 @@ export default function DesktopNav({
             href="#roadmap"
             className={'nav-item nav-item-collapsible' + (page === 'roadmap' ? ' active' : '')}
           >
-            <span className="nav-ico"><NavIconRoadmap size={15} /></span>
+            <span className="nav-ico"><NavIconRoadmap size={18} /></span>
             <span className="nav-label">Lộ trình</span>
           </a>
 
@@ -695,7 +703,7 @@ export default function DesktopNav({
               href="#classroom"
               className={'nav-item nav-item-collapsible' + (page === 'classroom' ? ' active' : '')}
             >
-              <span className="nav-ico"><IconClass size={15} /></span>
+              <span className="nav-ico"><IconClass size={18} /></span>
               <span className="nav-label">Quản lý lớp</span>
             </a>
           ) : (
@@ -703,7 +711,7 @@ export default function DesktopNav({
               href="#my-classes"
               className={'nav-item nav-item-collapsible' + (page === 'my-classes' || page === 'classroom' ? ' active' : '')}
             >
-              <span className="nav-ico"><IconClass size={15} /></span>
+              <span className="nav-ico"><IconClass size={18} /></span>
               <span className="nav-label">Lớp học</span>
             </a>
           )}
@@ -753,7 +761,7 @@ export default function DesktopNav({
               aria-expanded={toolOpen}
               aria-label="Mở menu Công cụ theo môn Khoa học Tự nhiên"
             >
-              <span className="nav-ico"><NavIconGridTools size={15} /></span>
+              <span className="nav-ico"><NavIconGridTools size={18} /></span>
               <span className="nav-label">Công cụ</span>
               <svg
                 width="11"
@@ -790,7 +798,7 @@ export default function DesktopNav({
 
                 {/* Ô tìm nhanh công cụ */}
                 <div className="nav-tools-search-row">
-                  <IconSearch size={14} />
+                  <IconSearch size={17} />
                   <input
                     type="text"
                     value={toolSearch}
@@ -826,7 +834,7 @@ export default function DesktopNav({
                           style={{ '--tab-color': tab.color }}
                           onClick={() => setToolFolder(tab.id)}
                         >
-                          <TabIcon size={13} />
+                          <TabIcon size={18} />
                           <span>{tab.label}</span>
                         </button>
                       );
@@ -849,7 +857,7 @@ export default function DesktopNav({
                               onClick={() => setToolOpen(false)}
                             >
                               <span className="nav-tool-bento-icon" style={{ background: tool.tintBg, color: tool.tintText }}>
-                                <ToolIcon size={16} />
+                                <ToolIcon size={26} />
                               </span>
                               <span className="nav-tool-bento-info">
                                 <span className="nav-tool-bento-title">{tool.name}</span>
@@ -885,7 +893,7 @@ export default function DesktopNav({
                                   className="nav-tool-bento-icon"
                                   style={{ background: group.tintBg, color: group.tintText }}
                                 >
-                                  <ToolIcon size={16} />
+                                  <ToolIcon size={26} />
                                 </span>
                                 <span className="nav-tool-bento-info">
                                   <span className="nav-tool-bento-title">{tool.name}</span>
@@ -904,7 +912,7 @@ export default function DesktopNav({
                   <span className="nav-mega-copy">© 2026 ELEC Science AI · Bản quyền Nguyễn Thế Duy (Duy TK)</span>
                   {isAdmin && (
                     <a href="#admin" className="nav-mega-admin" onClick={() => setToolOpen(false)}>
-                      <IconDash size={14} /> Quản trị
+                      <IconDash size={17} /> Quản trị
                     </a>
                   )}
                 </div>

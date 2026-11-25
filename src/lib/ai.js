@@ -58,9 +58,9 @@ const RETRY_DELAY_MS = 900;
 const MAX_RETRIES_PER_MODEL = 2;
 const BACKOFF_DELAYS_MS = [800, 2200];
 
-/** Hedging: bật bằng VITE_AI_HEDGE_MS=1400 hoặc options.hedgeMs */
-const HEDGE_MS = Number(ENV.VITE_AI_HEDGE_MS || 0);
-const MAX_PARALLEL = 2;
+/** Hedging mặc định 2800ms (tắt bằng VITE_AI_HEDGE_MS=0): đua song song tối đa 3 AI (Gemini · Groq · Agnes) */
+const HEDGE_MS = ENV.VITE_AI_HEDGE_MS !== undefined ? Number(ENV.VITE_AI_HEDGE_MS) : 2800;
+const MAX_PARALLEL = 3;
 
 const THINKING_ENABLED = ENV.VITE_AI_THINKING !== '0';
 const SAFETY_LEVEL = ENV.VITE_AI_SAFETY || 'educational';
@@ -859,8 +859,8 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
     }
   }
 
-  /* ---- Cache tức thời (bỏ qua cache khi bật DeepThink để luôn suy luận sâu mới nhất) ---- */
-  if (CACHE_ENABLED && !hasImg && !options.deepThink && options.noCache !== true) {
+  /* ---- Cache tức thời (bỏ qua cache khi bật DeepThink hoặc chọn đích danh 1 AI provider) ---- */
+  if (CACHE_ENABLED && !hasImg && !options.deepThink && options.noCache !== true && (!options.preferredProvider || options.preferredProvider === 'auto')) {
     const cached = getCached(plan.recentHistory, systemPrompt, task.kind);
     if (cached) {
       console.log(`[ELEC AI] ✓ Cache hit (${cached.model})`);
@@ -910,16 +910,32 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
 
     const abortAll = () => { ctrls.forEach((c) => { try { c.abort(); } catch { /* */ } }); };
 
-    /* ---- Chuẩn bị chuỗi provider (đổi được khi phải OCR dự phòng) ---- */
+    /* ---- Chuẩn bị chuỗi provider (đổi được khi phải OCR dự phòng hoặc chọn AI ưu tiên) ---- */
     let effectiveTask = task;
-    const buildChain = () => buildProviderChain({ task: effectiveTask, rings: RINGS }).map((p) => ({
+    const preferredProvider = options.preferredProvider || 'auto';
+    const buildChain = () => buildProviderChain({
+      task: effectiveTask,
+      rings: RINGS,
+      preferredProvider,
+    }).map((p) => ({
       ...p,
       models: p.models.filter((m) => isModelAvailable(p.id, m)),
     })).filter((p) => p.models.length);
     let chain = buildChain();
 
     const buildAttempts = () => {
+      // Đan xen các provider theo từng vòng (round-robin) ở chế độ auto để nếu 1 provider gặp trục trặc
+      // sẽ chuyển ngay sang provider khác (Gemini → Groq → Agnes → Gemini #2 → Groq #2 ...) thay vì kẹt ở 1 AI!
       const list = [];
+      if (preferredProvider === 'auto' && chain.length > 1) {
+        const maxLen = Math.max(...chain.map((p) => p.models.length));
+        for (let r = 0; r < maxLen; r++) {
+          for (const p of chain) {
+            if (p.models[r]) list.push({ id: p.id, model: p.models[r] });
+          }
+        }
+        return list;
+      }
       for (const p of chain) for (const m of p.models) list.push({ id: p.id, model: m });
       return list;
     };
@@ -1057,6 +1073,7 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
       activeCount++;
 
       let gotFirst = false;
+      let hasAnswerChunk = false;
       let hedgeTimer = 0;
       const clearHedge = () => { if (hedgeTimer) { clearTimeout(hedgeTimer); hedgeTimer = 0; } };
 
@@ -1077,8 +1094,16 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
         return winner === i;
       };
 
-      const wrappedChunk = (partial) => { if (claim()) onChunk?.(partial); };
-      const wrappedReason = (partial) => { if (claim()) onReasoning?.(partial); };
+      const wrappedChunk = (partial) => {
+        if (!String(partial || '').trim()) return;
+        hasAnswerChunk = true;
+        if (claim()) onChunk?.(partial);
+      };
+      // Chỉ hiển thị suy luận khi chưa bị model khác chiếm quyền — KHÔNG khóa winner trước khi có chữ trả lời thật!
+      const wrappedReason = (partial) => {
+        if (aborted) return;
+        if (winner === null || winner === i) onReasoning?.(partial);
+      };
 
       const callOnce = () => {
         if (id === 'gemini') {
@@ -1134,8 +1159,9 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
         .then((r) => {
           activeCount--;
           clearHedge();
-          if (aborted) return;
-          if (winner === i && r?.text) {
+          if (finished || aborted || (winner !== null && winner !== i)) return;
+          const cleanText = String(r?.text || '').trim();
+          if (cleanText && claim()) {
             onChunk?.(r.text);
             if (!hasImg) setCache(plan.recentHistory, systemPrompt, task.kind, r.text, `${id}/${model}`);
             finish(resolve, {
@@ -1150,11 +1176,13 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
               toString() { return this.text; },
               valueOf() { return this.text; },
             });
-          } else if (winner === i) {
-            finish(reject, new Error(`${id}/${model} không trả nội dung`));
-          } else if (winner === null) {
+          } else {
+            // Model kết thúc nhưng không trả chữ (vd: chỉ nghĩ rồi cạn token) → nhả quyền & chuyển ngay sang AI kế tiếp!
+            if (winner === i) winner = null;
+            markModelExhausted(id, model, 3 * 60 * 1000);
+            console.warn(`[ELEC AI] ↻ ${id}/${model} không trả nội dung — tự động chuyển sang AI tiếp theo...`);
             lastError = lastError || new Error(`${id}/${model} không trả nội dung`);
-            setTimeout(launchNext, 120);
+            if (winner === null) setTimeout(launchNext, 80);
           }
         })
         .catch((err) => {
@@ -1231,8 +1259,12 @@ export function askAI(history, onChunk, onReasoning, systemPromptOrOptions = nul
             return;
           }
 
-          if (winner === i) finish(reject, err instanceof Error ? err : new Error(String(err)));
-          else if (winner === null) { lastError = lastError || err; setTimeout(launchNext, 120); }
+          if (winner === i && hasAnswerChunk) finish(reject, err instanceof Error ? err : new Error(String(err)));
+          else {
+            if (winner === i) winner = null;
+            lastError = lastError || err;
+            if (winner === null) setTimeout(launchNext, 120);
+          }
         });
     };
 
@@ -1484,6 +1516,13 @@ const AGNES_MODELS = modelsFor('agnes', 'smart');
 
 export const AI_READY = Boolean(RINGS.gemini.size || RINGS.groq.size || RINGS.agnes.size || typeof window !== 'undefined');
 export const VISION_SUPPORTED = Boolean(RINGS.gemini.size || typeof window !== 'undefined');
+export function getActiveAIProviders() {
+  return [
+    { id: 'gemini', label: 'Gemini', ready: RINGS.gemini.size > 0, keys: RINGS.gemini.size },
+    { id: 'groq', label: 'Groq', ready: RINGS.groq.size > 0, keys: RINGS.groq.size },
+    { id: 'agnes', label: 'Agnes', ready: RINGS.agnes.size > 0, keys: RINGS.agnes.size },
+  ];
+}
 export { GEMINI_VISION_MODELS, GEMINI_TEXT_MODELS, GROQ_FAST_MODELS, GROQ_STRONG_MODELS, AGNES_MODELS };
 export const MODELS = GROQ_STRONG_MODELS;
 export { discoveredGemini, warmUpGemini };

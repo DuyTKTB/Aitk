@@ -86,12 +86,13 @@
 .dsp-mascot {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: 0;
   object-fit: contain;
-  background: var(--dsp-bg);
-  border: 1.5px solid var(--dsp-accent-border);
-  padding: 3px;
-  box-shadow: 0 6px 16px -6px rgba(47, 107, 255, 0.25);
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 6px 12px rgba(47, 107, 255, 0.24));
 }
 
 .dsp-eyebrow {

@@ -1,7 +1,9 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { ELEMENTS, CATS, TRENDS, norm } from '../data/elements.js';
+import { getStateAtTemp } from '../data/elementMedia.js';
 import ElementCard from './ElementCard.jsx';
 import ElementModal from './ElementModal.jsx';
+import Periodic3DView from './Periodic3DView.jsx';
 import CompareBar from './CompareBar.jsx';
 import TrendLegend from './TrendLegend.jsx';
 import AiQuiz from './AiQuiz.jsx';
@@ -15,14 +17,25 @@ const loadFavs = () => {
   try { return new Set(JSON.parse(localStorage.getItem('pt-favs') || '[]')); } catch { return new Set(); }
 };
 const goTable = () => { location.hash = 'table'; };
-const initialZoom = () => (innerWidth < 640 ? 0.6 : Math.min(1.15, (innerWidth - 48) / 1060));
-const clampZoom = (z) => Math.min(2, Math.max(0.4, +z.toFixed(2)));
+const clampZoom = (z) => Math.min(1.6, Math.max(0.42, +z.toFixed(2)));
+// Tổng độ rộng bảng 18 cột ở zoom=1: 26 + 18*52 + 18*4 = 1034px
+const BASE_GRID_WIDTH = 1034;
+
+const TEMP_PRESETS = [
+  { label: '0°C (Đóng băng)', k: 273 },
+  { label: '25°C (Phòng)', k: 298 },
+  { label: '100°C (Nước sôi)', k: 373 },
+  { label: '1000°C (Nung đỏ)', k: 1273 },
+  { label: '3500°C (Hồ quang)', k: 3773 },
+];
+
 function readHash() {
   const hash = location.hash;
   const qIdx = hash.indexOf('?');
   if (qIdx < 0) return {};
   return Object.fromEntries(new URLSearchParams(hash.slice(qIdx + 1)));
 }
+
 function writeHash(state) {
   const params = new URLSearchParams();
   if (state.q) params.set('q', state.q);
@@ -39,13 +52,17 @@ export default function PeriodicTable({ preview = false }) {
   const [cat, setCat] = useState(init.cat || 'all');
   const [hl, setHl] = useState(null);
   const [sel, setSel] = useState(null);
-  const [compare, setCompare] = useState([]);       // mảng element, max 2
+  const [hoveredEl, setHoveredEl] = useState(ELEMENTS[25]); // Mặc định hiện Fe (Z=26) cho sinh động
+  const [compare, setCompare] = useState([]);
   const [trend, setTrend] = useState(init.trend || '');
+  const [viewMode, setViewMode] = useState('2d'); // '2d' | '3d' | 'temp' | 'blocks'
+  const [tempK, setTempK] = useState(298); // 25°C
   const [study, setStudy] = useState(false);
   const [studyStats, setStudyStats] = useState({ ok: 0, no: 0 });
-  const [revealed, setRevealed] = useState(new Set()); // z đã lật trong study
-  const [cursor, setCursor] = useState(null);       // { g, p } ô đang focus bàn phím
-  const [zoom, setZoom] = useState(initialZoom);
+  const [revealed, setRevealed] = useState(new Set());
+  const [cursor, setCursor] = useState(null);
+  const [zoom, setZoom] = useState(() => (typeof window !== 'undefined' && window.innerWidth < 640 ? 0.58 : 1));
+  const [userZoomed, setUserZoomed] = useState(false);
   const { vip } = useVip();
   const [favs, setFavs] = useState(loadFavs);
   const [onlyFav, setOnlyFav] = useState(false);
@@ -53,6 +70,29 @@ export default function PeriodicTable({ preview = false }) {
   const [quizOpen, setQuizOpen] = useState(false);
   const gridRef = useRef(null);
   const favSyncReadyRef = useRef(false);
+
+  // Tự động tính zoom vừa khít 18 cột (không bao giờ bị cắt mất cột 18 He/Ne/Ar!)
+  const fitToContainer = useCallback(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const avail = el.clientWidth - 40;
+    if (avail <= 0) return;
+    const ideal = Math.min(1.16, Math.max(0.55, avail / BASE_GRID_WIDTH));
+    setZoom(clampZoom(ideal));
+  }, []);
+
+  useEffect(() => {
+    if (preview || viewMode === '3d') return undefined;
+    if (!userZoomed) fitToContainer();
+    const el = gridRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => {
+      if (!userZoomed) fitToContainer();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [preview, viewMode, userZoomed, fitToContainer]);
+
   useEffect(() => {
     if (!favSyncReadyRef.current) {
       favSyncReadyRef.current = true;
@@ -63,49 +103,68 @@ export default function PeriodicTable({ preview = false }) {
       window.dispatchEvent(new CustomEvent('cs-ls', { detail: 'pt-favs' }));
     } catch { /* bỏ qua */ }
   }, [favs]);
+
   useEffect(() => {
     const onCloudSync = () => setFavs(loadFavs());
     window.addEventListener('cs-cloud-sync-update', onCloudSync);
     return () => window.removeEventListener('cs-cloud-sync-update', onCloudSync);
   }, []);
+
   const toggleFav = (z) => setFavs((f) => { const n = new Set(f); if (n.has(z)) n.delete(z); else n.add(z); return n; });
   const pickRandom = () => setSel(ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)]);
   const close = useCallback(() => setSel(null), []);
+
   useEffect(() => {
-    if (preview) return;
+    if (preview) return undefined;
     const onKey = (e) => {
       if (/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
-      if (e.key === '+' || e.key === '=') setZoom((z) => clampZoom(z + 0.1));
-      if (e.key === '-') setZoom((z) => clampZoom(z - 0.1));
+      if (e.key === '+' || e.key === '=') { setUserZoomed(true); setZoom((z) => clampZoom(z + 0.08)); }
+      if (e.key === '-') { setUserZoomed(true); setZoom((z) => clampZoom(z - 0.08)); }
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, [preview]);
+
   useEffect(() => {
     if (preview) return;
     writeHash({ q, cat, trend });
   }, [q, cat, trend, preview]);
+
   const nq = norm(q);
   const matches = useMemo(() => {
     const isOn = (e) =>
       (cat === 'all' || e.category === cat) &&
-      (!nq || (/^\d+$/.test(nq) ? e.atomicNumber === +nq : e.s.symbol === nq || e.s.name.includes(nq))) &&
+      (!nq || (/^\d+$/.test(nq) ? e.atomicNumber === +nq : e.s.symbol === nq || e.s.name.includes(nq) || (e.uses && norm(e.uses).includes(nq)))) &&
       (!hl || (hl.t === 'g' ? e.group === hl.v : e.period === hl.v)) &&
       (!onlyFav || favs.has(e.atomicNumber)) &&
-      (!stateF || e.stateAtRoomTemp === stateF);
+      (!stateF || (viewMode === 'temp' ? getStateAtTemp(e, tempK) : e.stateAtRoomTemp) === stateF);
     return new Set(ELEMENTS.filter(isOn).map((e) => e.atomicNumber));
-  }, [nq, cat, hl, onlyFav, favs, stateF]);
+  }, [nq, cat, hl, onlyFav, favs, stateF, viewMode, tempK]);
+
   const trendInfo = useMemo(() => {
     if (!trend) return null;
     const vals = ELEMENTS.map((e) => e[trend]).filter((v) => typeof v === 'number');
     return { min: Math.min(...vals), max: Math.max(...vals) };
   }, [trend]);
 
+  const tempStats = useMemo(() => {
+    if (viewMode !== 'temp') return null;
+    let solid = 0; let liquid = 0; let gas = 0;
+    for (const el of ELEMENTS) {
+      const st = getStateAtTemp(el, tempK);
+      if (st === 'Rắn') solid++;
+      else if (st === 'Lỏng') liquid++;
+      else gas++;
+    }
+    return { solid, liquid, gas };
+  }, [viewMode, tempK]);
+
   const toggle = (t, v) => setHl((h) => (h && h.t === t && h.v === v ? null : { t, v }));
   const reset = () => { setQ(''); setCat('all'); setHl(null); setTrend(''); setCompare([]); setOnlyFav(false); setStateF(''); };
   const filtering = !!(q || cat !== 'all' || hl || trend || onlyFav || stateF);
   const active = (t, v) => (hl && hl.t === t && hl.v === v ? ' act' : '');
-  const handleSelect = (e, ev) => {
+
+  const handleSelect = useCallback((e, ev) => {
     if (preview) return goTable();
 
     if (study) {
@@ -132,12 +191,13 @@ export default function PeriodicTable({ preview = false }) {
       return;
     }
     setSel(e);
-  };
+  }, [preview, study]);
+
   useEffect(() => {
-    if (!gridRef.current) return;
+    if (!gridRef.current || viewMode === '3d') return undefined;
     const onKey = (ev) => {
       if (/INPUT|TEXTAREA|SELECT|BUTTON|A/.test(ev.target.tagName) || ev.target?.isContentEditable) return;
-      if (!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Enter',' '].includes(ev.key)) return;
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' '].includes(ev.key)) return;
       if (!cursor) {
         setCursor({ g: 1, p: 1 });
         ev.preventDefault();
@@ -155,17 +215,47 @@ export default function PeriodicTable({ preview = false }) {
     };
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-  }, [cursor, study, preview]);
+  }, [cursor, study, preview, viewMode, handleSelect]);
+
+  const activeHoverState = hoveredEl
+    ? (viewMode === 'temp' ? getStateAtTemp(hoveredEl, tempK) : hoveredEl.stateAtRoomTemp)
+    : '';
 
   return (
     <div className={'pt-root' + (preview ? ' is-preview' : '')}>
       {!preview && (
-        <div className="ns9-pt-banner">
-          <div className="ns9-pt-banner-l">
-            <span className="ns9-pt-pill">IUPAC 2026 · 118 NGUYÊN TỐ</span>
-            <h1>Bảng Tuần Hoàn Tương Tác</h1>
+        <div className="pt-hero-pro">
+          <div className="pt-hero-left">
+            <span className="ns9-pt-pill">IUPAC 2026 · 118 NGUYÊN TỐ · 3D WEBGL &amp; AI PRO</span>
+            <h1>Bảng Tuần Hoàn Tương Tác 3D</h1>
+            <p>Khám phá ảnh thực tế, mô hình nguyên tử – obitan – tinh thể 3D, quang phổ vạch và gia sư ELEC AI.</p>
           </div>
-          <img src="/img/elec/elec-happy.png" alt="Bé Elec Bảng tuần hoàn" className="ns9-pt-mascot" loading="eager" />
+
+          {/* 4 CHẾ ĐỘ XEM CHÍNH */}
+          <div className="pt-mode-tabs" role="tablist" aria-label="Chế độ hiển thị bảng tuần hoàn">
+            {[
+              { id: '2d', label: 'Bảng 2D' },
+              { id: '3d', label: 'Không gian 3D' },
+              { id: 'temp', label: 'Nhiệt độ K/°C' },
+              { id: 'blocks', label: 'Khối s·p·d·f' },
+            ].map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                role="tab"
+                aria-selected={viewMode === m.id}
+                className={`pt-mode-tab ${viewMode === m.id ? 'is-on' : ''}`}
+                onClick={() => {
+                  setViewMode(m.id);
+                  if (m.id !== '2d') setTrend('');
+                }}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          <img src="/img/elec/elec-happy.png" alt="Bé Elec Bảng tuần hoàn" className="ns9-pt-mascot" loading="eager" draggable={false} />
         </div>
       )}
 
@@ -174,8 +264,11 @@ export default function PeriodicTable({ preview = false }) {
           <div className="searchbox">
             <Icon name="search" size={18} />
             <input
-              id="search" type="search" value={q} autoComplete="off"
-              placeholder="Tìm nguyên tố (tên, ký hiệu, Z)..."
+              id="search"
+              type="search"
+              value={q}
+              autoComplete="off"
+              placeholder="Tìm nguyên tố theo tên, ký hiệu, Z hoặc ứng dụng (vd: pin, thép, bóng bay)..."
               aria-label="Tìm kiếm nguyên tố"
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => {
@@ -186,20 +279,36 @@ export default function PeriodicTable({ preview = false }) {
               }}
             />
           </div>
-          <div className="zoom" role="group" aria-label="Thu phóng bảng">
-            <button className="btn" onClick={() => setZoom((z) => clampZoom(z - 0.1))} aria-label="Thu nhỏ"><Icon name="minus" size={16} /></button>
-            <span aria-live="polite">{Math.round(zoom * 100)}%</span>
-            <button className="btn" onClick={() => setZoom((z) => clampZoom(z + 0.1))} aria-label="Phóng to"><Icon name="plus" size={16} /></button>
-          </div>
+
+          {viewMode !== '3d' && (
+            <div className="zoom" role="group" aria-label="Thu phóng bảng">
+              <button className="btn" onClick={() => { setUserZoomed(true); setZoom((z) => clampZoom(z - 0.08)); }} aria-label="Thu nhỏ"><Icon name="minus" size={16} /></button>
+              <span aria-live="polite">{Math.round(zoom * 100)}%</span>
+              <button className="btn" onClick={() => { setUserZoomed(true); setZoom((z) => clampZoom(z + 0.08)); }} aria-label="Phóng to"><Icon name="plus" size={16} /></button>
+              <button
+                className="btn pt-fit-btn"
+                onClick={() => { setUserZoomed(false); fitToContainer(); }}
+                title="Tự động căn vừa màn hình"
+              >
+                Vừa khít
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {!preview && (
         <div className="pt-tools">
           <label className="pt-trend">
-            <span>Trend</span>
-            <select value={trend} onChange={(e) => setTrend(e.target.value)}>
-              <option value="">— Không —</option>
+            <span>Xu hướng</span>
+            <select
+              value={trend}
+              onChange={(e) => {
+                setTrend(e.target.value);
+                if (e.target.value && viewMode !== '2d') setViewMode('2d');
+              }}
+            >
+              <option value="">— Màu nhóm —</option>
               {TRENDS.map((t) => (
                 <option key={t.key} value={t.key}>{t.label}</option>
               ))}
@@ -207,9 +316,14 @@ export default function PeriodicTable({ preview = false }) {
           </label>
           <button
             className={'chip' + (study ? ' on' : '')}
-            onClick={() => { setStudy(!study); setRevealed(new Set()); setStudyStats({ ok: 0, no: 0 }); }}
+            onClick={() => {
+              setStudy(!study);
+              setRevealed(new Set());
+              setStudyStats({ ok: 0, no: 0 });
+              if (viewMode === '3d') setViewMode('2d');
+            }}
           >
-            <Icon name="cap" size={16} /> Chế độ học
+            <Icon name="cap" size={16} /> Chế độ ôn nhớ
           </button>
           <label className="pt-trend">
             <span>Trạng thái</span>
@@ -225,17 +339,66 @@ export default function PeriodicTable({ preview = false }) {
           </button>
           <button className="chip" onClick={pickRandom}><Icon name="dice" size={16} /> Ngẫu nhiên</button>
           <button className="chip vip" onClick={() => setQuizOpen(true)}>
-            <Icon name="sparkle" size={16} /> AI Quiz <em className="vip-badge">VIP</em>
+            <Icon name="sparkle" size={16} /> AI Quiz <em className="vip-badge">PRO</em>
           </button>
           {compare.length > 0 && (
             <button className="chip" onClick={() => setCompare([])}>
-              <Icon name="close" size={14} /> Bỏ chọn ({compare.length}/2)
+              <Icon name="close" size={14} /> Bỏ so sánh ({compare.length}/2)
             </button>
           )}
         </div>
       )}
 
-      {trendInfo && !preview && (
+      {/* THANH TRƯỢT NHIỆT ĐỘ THỜI GIAN THỰC (0 K – 6000 K) */}
+      {!preview && viewMode === 'temp' && (
+        <div className="pt-temp-bar">
+          <div className="pt-temp-head">
+            <div className="pt-temp-val">
+              <strong>{tempK} K</strong>
+              <span>({Math.round(tempK - 273.15)}°C)</span>
+            </div>
+            <div className="pt-temp-counts">
+              <span className="is-solid"><i />Rắn: <b>{tempStats?.solid}</b></span>
+              <span className="is-liquid"><i />Lỏng: <b>{tempStats?.liquid}</b></span>
+              <span className="is-gas"><i />Khí: <b>{tempStats?.gas}</b></span>
+            </div>
+            <div className="pt-temp-presets">
+              {TEMP_PRESETS.map((pr) => (
+                <button
+                  key={pr.k}
+                  type="button"
+                  className={`pt-tp-btn ${tempK === pr.k ? 'is-on' : ''}`}
+                  onClick={() => setTempK(pr.k)}
+                >
+                  {pr.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <input
+            type="range"
+            className="pt-temp-slider"
+            min={0}
+            max={6000}
+            step={5}
+            value={tempK}
+            onChange={(e) => setTempK(Number(e.target.value))}
+            aria-label="Thanh trượt nhiệt độ Kelvin"
+          />
+        </div>
+      )}
+
+      {/* CHÚ THÍCH KHỐI OBITAN s / p / d / f */}
+      {!preview && viewMode === 'blocks' && (
+        <div className="pt-blocks-legend">
+          <span><i style={{ background: 'var(--pt-blk-s)' }} /> <b>Khối s</b> (Nhóm IA, IIA &amp; He)</span>
+          <span><i style={{ background: 'var(--pt-blk-p)' }} /> <b>Khối p</b> (Nhóm IIIA – VIIIA)</span>
+          <span><i style={{ background: 'var(--pt-blk-d)' }} /> <b>Khối d</b> (Kim loại chuyển tiếp)</span>
+          <span><i style={{ background: 'var(--pt-blk-f)' }} /> <b>Khối f</b> (Lanthanide &amp; Actinide)</span>
+        </div>
+      )}
+
+      {trendInfo && !preview && viewMode === '2d' && (
         <TrendLegend trend={TRENDS.find((t) => t.key === trend)} min={trendInfo.min} max={trendInfo.max} />
       )}
 
@@ -247,55 +410,109 @@ export default function PeriodicTable({ preview = false }) {
               <i style={{ background: `var(--${k})` }} />{label}
             </button>
           ))}
-          <button className="chip reset" onClick={reset} disabled={!filtering}>Reset Filter</button>
+          <button className="chip reset" onClick={reset} disabled={!filtering}>Đặt lại lọc</button>
         </div>
       )}
 
-      {!preview && (
+      {/* THANH XEM NHANH NGUYÊN TỐ KHI RÊ CHUỘT (ẢNH THỰC + THÔNG SỐ + VÍ DỤ) */}
+      {!preview && viewMode !== '3d' && hoveredEl && !study && (
+        <div className="pt-spotlight-strip" onClick={() => setSel(hoveredEl)} role="button" tabIndex={0}>
+          <div className="pt-sp-thumb" style={{ background: `var(--${hoveredEl.category})` }}>
+            {hoveredEl.image ? (
+              <img src={hoveredEl.image} alt={hoveredEl.name} />
+            ) : (
+              <b>{hoveredEl.symbol}</b>
+            )}
+          </div>
+          <div className="pt-sp-main">
+            <div className="pt-sp-top">
+              <strong>{hoveredEl.symbol} — {hoveredEl.name}</strong>
+              <span className="pt-sp-pill">Z = {hoveredEl.atomicNumber}</span>
+              <span className="pt-sp-pill">{hoveredEl.atomicMass} u</span>
+              <span className="pt-sp-pill">Khối {hoveredEl.block}</span>
+              <span className="pt-sp-pill">{activeHoverState}</span>
+              {hoveredEl.flame && (
+                <span className="pt-sp-pill is-flame" style={{ '--fl': hoveredEl.flame.color }}>
+                  Lửa: {hoveredEl.flame.label}
+                </span>
+              )}
+            </div>
+            <div className="pt-sp-sub">
+              <code className="pt-sp-cfg">{hoveredEl.shortConfiguration}</code>
+              <span>{hoveredEl.examples?.[0] || hoveredEl.uses || 'Bấm để khám phá mô hình 3D, quang phổ & Gia sư AI'}</span>
+            </div>
+          </div>
+          <span className="pt-sp-cta">Xem 3D &amp; AI →</span>
+        </div>
+      )}
+
+      {!preview && viewMode !== '3d' && (
         <p className="hint">
-          {study && `Chế độ học: đã ôn ${revealed.size}/${ELEMENTS.length} nguyên tố (lật: ${studyStats.ok} lượt). `}
-          {filtering && !study ? `${matches.size} nguyên tố phù hợp. ` : ''}
-          {!study && <span className="pt-desktop-hint">Bấm số nhóm/chu kỳ để làm nổi bật. Shift+Click chọn 2 nguyên tố để so sánh. Dùng phím ←→↑↓ di chuyển.</span>}
+          {study && `Chế độ ôn nhớ: đã lật ${revealed.size}/${ELEMENTS.length} nguyên tố (${studyStats.ok} lượt). `}
+          {filtering && !study ? `Tìm thấy ${matches.size} nguyên tố phù hợp. ` : ''}
+          {!study && <span className="pt-desktop-hint">Bấm số nhóm/chu kỳ để tô sáng · Shift+Click chọn 2 nguyên tố để so sánh · Bấm bất kỳ ô nào để mở mô hình 3D &amp; Ảnh thực tế.</span>}
         </p>
       )}
 
-      <div className="ptwrap" ref={gridRef}>
-        <div className="pt" style={{ '--z': zoom }}>
-          {Array.from({ length: 18 }, (_, i) => (
-            <button key={'g' + i} className={'lab' + active('g', i + 1)} style={{ gridRow: 1, gridColumn: i + 2 }}
-              onClick={() => toggle('g', i + 1)} aria-label={`Nhóm ${i + 1}`}>{i + 1}</button>
-          ))}
-          {Array.from({ length: 7 }, (_, i) => (
-            <button key={'p' + i} className={'lab' + active('p', i + 1)} style={{ gridRow: i + 2, gridColumn: 1 }}
-              onClick={() => toggle('p', i + 1)} aria-label={`Chu kỳ ${i + 1}`}>{i + 1}</button>
-          ))}
-          <div className="ph" style={{ gridRow: 7, gridColumn: 4, background: 'var(--lanthanide)' }}>57–71</div>
-          <div className="ph" style={{ gridRow: 8, gridColumn: 4, background: 'var(--actinide)' }}>89–103</div>
-          <div className="rowlab" style={{ gridRow: 10, gridColumn: '1 / 4' }}>Lanthanide</div>
-          <div className="rowlab" style={{ gridRow: 11, gridColumn: '1 / 4' }}>Actinide</div>
+      {/* KHUNG HIỂN THỊ CHÍNH: KHÔNG GIAN 3D HOẶC BẢNG 2D */}
+      {viewMode === '3d' && !preview ? (
+        <Periodic3DView matches={matches} onSelect={handleSelect} />
+      ) : (
+        <div className="ptwrap" ref={gridRef}>
+          <div className="pt" style={{ '--z': zoom }}>
+            {Array.from({ length: 18 }, (_, i) => (
+              <button
+                key={'g' + i}
+                className={'lab' + active('g', i + 1)}
+                style={{ gridRow: 1, gridColumn: i + 2 }}
+                onClick={() => toggle('g', i + 1)}
+                aria-label={`Nhóm ${i + 1}`}
+              >
+                {i + 1}
+              </button>
+            ))}
+            {Array.from({ length: 7 }, (_, i) => (
+              <button
+                key={'p' + i}
+                className={'lab' + active('p', i + 1)}
+                style={{ gridRow: i + 2, gridColumn: 1 }}
+                onClick={() => toggle('p', i + 1)}
+                aria-label={`Chu kỳ ${i + 1}`}
+              >
+                {i + 1}
+              </button>
+            ))}
+            <div className="ph" style={{ gridRow: 7, gridColumn: 4, background: 'var(--lanthanide)' }}>57–71</div>
+            <div className="ph" style={{ gridRow: 8, gridColumn: 4, background: 'var(--actinide)' }}>89–103</div>
+            <div className="rowlab" style={{ gridRow: 10, gridColumn: '1 / 4' }}>Lanthanide</div>
+            <div className="rowlab" style={{ gridRow: 11, gridColumn: '1 / 4' }}>Actinide</div>
 
-          {ELEMENTS.map((e) => {
-            const on = study ? !revealed.has(e.atomicNumber) : matches.has(e.atomicNumber);
-            const selected = compare.some((x) => x.atomicNumber === e.atomicNumber);
-            const isCursor = cursor && e.group === cursor.g && e.period === cursor.p;
-            return (
-              <ElementCard
-                key={e.atomicNumber}
-                e={e}
-                on={on}
-                onSelect={handleSelect}
-                trend={trend}
-                trendInfo={trendInfo}
-                study={study}
-                revealed={revealed.has(e.atomicNumber)}
-                selected={selected}
-                fav={favs.has(e.atomicNumber)}
-                cursor={isCursor}
-              />
-            );
-          })}
+            {ELEMENTS.map((e) => {
+              const on = study ? !revealed.has(e.atomicNumber) : matches.has(e.atomicNumber);
+              const selected = compare.some((x) => x.atomicNumber === e.atomicNumber);
+              const isCursor = cursor && e.group === cursor.g && e.period === cursor.p;
+              return (
+                <ElementCard
+                  key={e.atomicNumber}
+                  e={e}
+                  on={on}
+                  onSelect={handleSelect}
+                  onHover={setHoveredEl}
+                  trend={trend}
+                  trendInfo={trendInfo}
+                  viewMode={viewMode}
+                  tempK={tempK}
+                  study={study}
+                  revealed={revealed.has(e.atomicNumber)}
+                  selected={selected}
+                  fav={favs.has(e.atomicNumber)}
+                  cursor={isCursor}
+                />
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {compare.length === 2 && (
         <CompareBar
@@ -310,6 +527,7 @@ export default function PeriodicTable({ preview = false }) {
           e={sel.__compare ? null : sel}
           compare={sel.__compare}
           onClose={close}
+          onNavigate={(nextEl) => setSel(nextEl)}
           vip={vip}
           fav={!sel.__compare && favs.has(sel.atomicNumber)}
           onToggleFav={() => !sel.__compare && toggleFav(sel.atomicNumber)}

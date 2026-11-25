@@ -163,19 +163,19 @@ const envList = (v) => String(v || '').split(/[\s,;]+/).map((s) => s.trim()).fil
 
 const DEFAULTS = {
   gemini: {
-    // Các model Gemini 3 đang hoạt động thực tế (200 OK, hỗ trợ thinkingConfig + Vision đa phương thức)
-    fast: ['gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest'],
-    smart: ['gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest'],
-    vision: ['gemini-3-flash-preview', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-lite-latest'],
+    // Các model Gemini đang hoạt động thực tế (hỗ trợ thinkingConfig + Vision đa phương thức)
+    fast: ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest'],
+    smart: ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest'],
+    vision: ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest'],
   },
   groq: {
-    // Các model Groq reasoning thực tế đang hoạt động (200 OK, <1s, hỗ trợ reasoning_effort)
-    fast: ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b'],
-    smart: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'],
+    // Các model Groq reasoning & tốc độ cao đang hoạt động (<1s)
+    fast: ['qwen/qwen3.8-27b', 'openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b'],
+    smart: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'llama-3.3-70b-versatile', 'openai/gpt-oss-20b'],
     vision: [],
   },
   agnes: {
-    // Chỉ dùng model Agnes miễn phí hoạt động 200 OK (tránh 403 pro $0 quota)
+    // Model Agnes miễn phí hoạt động ổn định
     fast: ['agnes-3.0-flash', 'agnes-2.5-flash'],
     smart: ['agnes-3.0-flash', 'agnes-2.5-flash'],
     vision: [],
@@ -358,8 +358,8 @@ export function createKeyRing(raw, { cooldownMs = 10 * 60 * 1000 } = {}) {
   };
 }
 
-/** Chuỗi provider ưu tiên theo tác vụ + tầng model (đã lọc key rỗng). */
-export function buildProviderChain({ task, rings, keys }) {
+/** Chuỗi provider ưu tiên theo tác vụ + tầng model (hỗ trợ chọn provider ưu tiên, vẫn giữ toàn bộ provider còn lại làm dự phòng). */
+export function buildProviderChain({ task, rings, preferredProvider = 'auto' }) {
   const tier = tierFor(task);
   const vision = task?.kind === 'vision';
   const chain = [];
@@ -369,6 +369,7 @@ export function buildProviderChain({ task, rings, keys }) {
     const available = Boolean(ring && ring.size > 0 && ring.hasUsable());
     const list = (models || []).filter(Boolean);
     if (!available || !list.length) return;
+    if (chain.some((c) => c.id === id)) return;
     chain.push({ id, models: list, type: vision ? 'vision' : 'text' });
   };
 
@@ -378,18 +379,33 @@ export function buildProviderChain({ task, rings, keys }) {
     return chain;
   }
 
-  // Chat thường: ưu tiên model nhanh để giảm độ trễ.
-  if (task?.kind === 'chat') {
-    push('groq', modelsFor('groq', 'fast'));
-    push('gemini', [...modelsFor('gemini', 'fast'), ...discoveredGemini('text')]);
-    push('agnes', modelsFor('agnes', 'fast'));
+  const pushById = (id) => {
+    if (id === 'gemini') push('gemini', [...modelsFor('gemini', tier === 'fast' ? 'fast' : 'smart'), ...discoveredGemini('text')]);
+    else if (id === 'groq') push('groq', modelsFor('groq', tier === 'fast' ? 'fast' : 'smart'));
+    else if (id === 'agnes') push('agnes', modelsFor('agnes', tier === 'fast' ? 'fast' : 'smart'));
+  };
+
+  // Nếu người dùng chọn 1 AI cụ thể → đẩy AI đó lên đầu, giữ nguyên 2 AI còn lại phía sau để tự động dự phòng
+  if (preferredProvider && preferredProvider !== 'auto') {
+    pushById(preferredProvider);
+    for (const other of ['groq', 'gemini', 'agnes']) {
+      if (other !== preferredProvider) pushById(other);
+    }
     return chain;
   }
 
-  // Bài toán/lý thuyết/tạo đề/DeepThink: ưu tiên Gemini 2.5 Pro/Flash (suy luận thật + đa môn mạnh nhất) → Groq 120B/Qwen3 → Agnes dự phòng.
-  push('gemini', [...modelsFor('gemini', 'smart'), ...discoveredGemini('text')]);
-  push('groq', modelsFor('groq', 'smart'));
-  push('agnes', modelsFor('agnes', tier === 'fast' ? 'fast' : 'smart'));
+  // Chat thường: ưu tiên model nhanh để giảm độ trễ.
+  if (task?.kind === 'chat') {
+    pushById('groq');
+    pushById('gemini');
+    pushById('agnes');
+    return chain;
+  }
+
+  // Bài toán/lý thuyết/tạo đề/DeepThink: Gemini → Groq → Agnes tự động dự phòng đa tầng
+  pushById('gemini');
+  pushById('groq');
+  pushById('agnes');
   return chain;
 }
 

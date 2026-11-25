@@ -1,8 +1,8 @@
 /* ============================================================
    useAsk.js — Hook gọi AI cho AiPanel / AiQuiz
    ------------------------------------------------------------
-   Dùng chung lib/ai.js (askAI) — hỗ trợ 3 provider:
-   Agnes → Gemini → Groq, có fallback tự động.
+   Dùng chung lib/ai.js (askAI) — hỗ trợ đa AI song song:
+   Gemini · Groq · Agnes, có round-robin & fallback tự động.
    ============================================================ */
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { askAI } from '../lib/ai.js';
@@ -12,6 +12,7 @@ import { useAuth } from './useAuth.jsx';
 export default function useAsk() {
   const { user } = useAuth();
   const [text, setText] = useState('');
+  const [model, setModel] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [vipNeeded, setVipNeeded] = useState(false);
@@ -32,7 +33,14 @@ export default function useAsk() {
    * ask(history, opts?)
    *   history: mảng message [{ role: 'user'|'model', parts: [...] }]
    *            hoặc string (sẽ tự bọc thành history 1 message)
-   *   opts:    { systemPrompt?: string, onChunk?: (chunk) => void }
+   *   opts:    {
+   *              systemPrompt?: string,
+   *              preferredProvider?: 'auto'|'gemini'|'groq'|'agnes',
+   *              hedgeMs?: number,
+   *              returnMeta?: boolean,
+   *              onChunk?: (chunk) => void,
+   *              validate?: (text) => void,
+   *            }
    */
   const ask = useCallback(async (history, opts = {}) => {
     // Chuẩn hoá input
@@ -49,11 +57,17 @@ export default function useAsk() {
     setError(null);
     setVipNeeded(false);
     setText('');
+    setModel('');
 
     try {
       const result = await runWithCredit(
         { userId: user?.uid, cost: CREDIT_TARIFF.TUTOR_CONTEXT, actionType: 'ai_tutor', reason: 'AI Phân tích nguyên tố / Quiz' },
         async () => {
+          const aiOptions = {
+            ...(opts.systemPrompt ? { systemPrompt: opts.systemPrompt } : {}),
+            preferredProvider: opts.preferredProvider || 'auto',
+            hedgeMs: typeof opts.hedgeMs === 'number' ? opts.hedgeMs : 2800,
+          };
           const promise = askAI(
             h,
             (chunk) => {
@@ -62,7 +76,7 @@ export default function useAsk() {
               opts.onChunk?.(chunk);
             },
             null,
-            opts.systemPrompt || null
+            aiOptions
           );
           promiseRef.current = promise;
           const res = await promise;
@@ -78,8 +92,9 @@ export default function useAsk() {
       );
       if (mountedRef.current) {
         setText(result.text || '');
+        setModel(result.model || '');
       }
-      return result.text || '';
+      return opts.returnMeta ? result : (result.text || '');
     } catch (err) {
       if (err?.isAbort) {
         // Người dùng dừng — không hiện lỗi
@@ -105,9 +120,10 @@ export default function useAsk() {
 
   const reset = useCallback(() => {
     setText('');
+    setModel('');
     setError(null);
     setVipNeeded(false);
   }, []);
 
-  return { text, loading, error, vipNeeded, ask, stop, reset };
+  return { text, model, loading, error, vipNeeded, ask, stop, reset };
 }

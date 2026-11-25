@@ -181,8 +181,18 @@ export default function AspirationAiStrategyModal({
         {/* ── 1. HEADER KÍNH MỜ ── */}
         <header className="ai-strat-header">
           <div className="ai-strat-title-group">
-            <div className="ai-strat-sparkle-icon" aria-hidden="true">
-              <IcoSparkles />
+            <div className="emm-hero-mascot sm is-violet" aria-hidden="true">
+              <img
+                src={
+                  modalTab === 'strategy'
+                    ? '/img/elec/elec-think.png'
+                    : modalTab === 'radar'
+                      ? '/img/elec/elec-super-saiyan.png'
+                      : '/img/elec/elec-cool.png'
+                }
+                alt="Bé Elec phân tích chiến lược"
+                draggable={false}
+              />
             </div>
             <div className="ai-strat-header-text">
               <h2 id="ai-strat-title">AI Phân tích Chiến lược & Lộ trình Mục tiêu</h2>
@@ -208,6 +218,7 @@ export default function AspirationAiStrategyModal({
             className={`ai-strat-tab-btn ${modalTab === 'strategy' ? 'active' : ''}`}
             onClick={() => setModalTab('strategy')}
           >
+            <img src="/img/elec/elec-hello.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IcoCompass />
             <span>1. Lộ trình AI &amp; Xác suất đỗ</span>
           </button>
@@ -218,6 +229,7 @@ export default function AspirationAiStrategyModal({
             className={`ai-strat-tab-btn ${modalTab === 'radar' ? 'active' : ''}`}
             onClick={() => setModalTab('radar')}
           >
+            <img src="/img/elec/elec-fighting.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IcoTarget />
             <span>2. Radar 6 Chiều &amp; Dải Gaussian</span>
           </button>
@@ -228,6 +240,7 @@ export default function AspirationAiStrategyModal({
             className={`ai-strat-tab-btn ${modalTab === 'portfolio' ? 'active' : ''}`}
             onClick={() => setModalTab('portfolio')}
           >
+            <img src="/img/elec/elec-celebrate.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IcoScale />
             <span>3. Tối ưu Rổ NV &amp; So sánh Trường</span>
           </button>

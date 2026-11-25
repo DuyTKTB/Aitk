@@ -125,8 +125,8 @@
   position: absolute;
   inset: 4px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.38) 0%, rgba(147, 197, 253, 0.12) 64%, transparent 100%);
-  border: 1px solid rgba(255, 255, 255, 0.26);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.32) 0%, rgba(147, 197, 253, 0.1) 60%, transparent 100%);
+  border: none;
 }
 
 .ooc-mascot-img {

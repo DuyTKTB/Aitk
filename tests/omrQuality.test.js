@@ -46,6 +46,14 @@ describe('measureImageQuality', () => {
     expect(q.issues.join(' ')).toMatch(/Ảnh nhỏ/);
   });
 
+  it('ảnh chụp dọc điện thoại & ảnh scan giấy A4 trắng sạch (brightness ~248) vẫn đạt', () => {
+    const portrait = measureImageQuality(makeImage({ width: 800, height: 1130, bg: 245, ink: 20 }));
+    expect(portrait.ok).toBe(true);
+    const cleanScan = measureImageQuality(makeImage({ width: 1653, height: 2338, bg: 254, ink: 15 }));
+    expect(cleanScan.brightness).toBeLessThanOrEqual(IMG_LIMITS.maxBrightness);
+    expect(cleanScan.ok).toBe(true);
+  });
+
   it('dữ liệu ảnh hỏng không làm crash', () => {
     const q = measureImageQuality({ width: 0, height: 0, data: null });
     expect(q.ok).toBe(false);

@@ -535,24 +535,184 @@
   color: #ffffff !important;
 }
 
-/* Chấm chỉ báo live tinh tế với vòng hào quang nhẹ */
+/* Chấm chỉ báo live & hiệu ứng lấp lánh cho "Phòng thi ảo" chuẩn 9study.vn */
 .nav-wrap > nav.nav-apple .ns9-nav-hot-badge {
   display: none !important;
 }
 
+@keyframes ns9VexShimmerText {
+  0% { background-position: 200% 50%; }
+  100% { background-position: -200% 50%; }
+}
+
+@keyframes ns9VexIconShimmer {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(14, 165, 233, 0.35));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 7px rgba(14, 165, 233, 0.82)) brightness(1.14);
+    transform: scale(1.06);
+  }
+}
+
+@keyframes ns9VexTwinkle {
+  0%, 100% { opacity: 0.12; transform: scale(0.55) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.18) rotate(35deg); }
+}
+
+@keyframes ns9VexLiveRipple {
+  0% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.55), 0 0 0 3px rgba(249, 115, 22, 0.22);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(249, 115, 22, 0), 0 0 0 3px rgba(249, 115, 22, 0.16);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(249, 115, 22, 0), 0 0 0 3px rgba(249, 115, 22, 0.22);
+  }
+}
+
+@keyframes ns9VexLiveRippleActive {
+  0% {
+    box-shadow: 0 0 0 0 rgba(254, 240, 138, 0.72), 0 0 0 2.5px rgba(255, 255, 255, 0.3);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(254, 240, 138, 0), 0 0 0 2.5px rgba(255, 255, 255, 0.2);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(254, 240, 138, 0), 0 0 0 2.5px rgba(255, 255, 255, 0.3);
+  }
+}
+
+.nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-nav-ico {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #0284c7 !important;
+}
+
+.nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-nav-ico > svg.nav-svg-pro {
+  color: #0284c7 !important;
+  animation: ns9VexIconShimmer 2.8s ease-in-out infinite;
+}
+
+[data-theme='dark'] .nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-nav-ico,
+[data-theme='dark'] .nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-nav-ico > svg.nav-svg-pro {
+  color: #38bdf8 !important;
+}
+
+.nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-glint {
+  position: absolute;
+  pointer-events: none;
+  color: #38bdf8;
+  filter: drop-shadow(0 0 3px rgba(56, 189, 248, 0.9));
+}
+
+.nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-glint-1 {
+  top: -4px;
+  right: -5px;
+  animation: ns9VexTwinkle 2.1s ease-in-out infinite;
+}
+
+.nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-glint-2 {
+  bottom: -3px;
+  left: -4px;
+  color: #f59e0b;
+  filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.85));
+  animation: ns9VexTwinkle 2.6s ease-in-out 0.9s infinite;
+}
+
+.nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-nav-label {
+  font-weight: 750 !important;
+  background: linear-gradient(
+    110deg,
+    #334155 0%,
+    #1e3a8a 26%,
+    #0284c7 44%,
+    #38bdf8 50%,
+    #0284c7 56%,
+    #1e3a8a 74%,
+    #334155 100%
+  );
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ns9VexShimmerText 3.4s linear infinite;
+}
+
+[data-theme='dark'] .nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-nav-label {
+  background: linear-gradient(
+    110deg,
+    #cbd5e1 0%,
+    #93c5fd 26%,
+    #38bdf8 44%,
+    #ffffff 50%,
+    #38bdf8 56%,
+    #93c5fd 74%,
+    #cbd5e1 100%
+  );
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Trạng thái Active trên nút xanh cobalt: icon trắng phát sáng + chữ lấp lánh ánh bạch kim */
+.nav-wrap > nav.nav-apple .ns9-nav-virtual-exam.active .ns9-vex-nav-ico,
+.nav-wrap > nav.nav-apple .ns9-nav-virtual-exam.active .ns9-vex-nav-ico > svg.nav-svg-pro {
+  color: #ffffff !important;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.72));
+}
+
+.nav-wrap > nav.nav-apple .ns9-nav-virtual-exam.active .ns9-vex-glint {
+  color: #fef08a !important;
+  filter: drop-shadow(0 0 4px rgba(254, 240, 138, 0.95));
+}
+
+.nav-wrap > nav.nav-apple .ns9-nav-virtual-exam.active .ns9-vex-nav-label {
+  background: linear-gradient(
+    110deg,
+    #ffffff 0%,
+    #dbeafe 34%,
+    #fef08a 49%,
+    #ffffff 55%,
+    #dbeafe 72%,
+    #ffffff 100%
+  );
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ns9VexShimmerText 2.8s linear infinite;
+}
+
 .nav-wrap > nav.nav-apple .nav-live-dot {
-  width: 5.5px;
-  height: 5.5px;
+  width: 6.5px;
+  height: 6.5px;
   border-radius: 50%;
   background: #f97316;
-  box-shadow: 0 0 0 2.5px rgba(249, 115, 22, 0.2);
-  margin-left: 1px;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.24);
+  margin-left: 2px;
   flex-shrink: 0;
+  animation: ns9VexLiveRipple 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 
 .nav-wrap > nav.nav-apple .nav-item.active .nav-live-dot {
-  background: #ffffff;
-  box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.28);
+  background: #fde047;
+  box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.32);
+  animation: ns9VexLiveRippleActive 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-nav-ico > svg.nav-svg-pro,
+  .nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-glint,
+  .nav-wrap > nav.nav-apple .ns9-nav-virtual-exam .ns9-vex-nav-label,
+  .nav-wrap > nav.nav-apple .nav-live-dot {
+    animation: none !important;
+  }
 }
 
 /* Mega Menu "Công cụ" neo vừa vặn dưới Vịnh giữa (đáy vịnh = 51px) */

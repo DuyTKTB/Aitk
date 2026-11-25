@@ -29,16 +29,33 @@ export default function ExamModeModal({ exam, onStart, onClose }) {
       <div className="ns9-mode-modal-card" role="dialog" aria-modal="true" aria-labelledby="mode-modal-title">
         {/* Header */}
         <div className="ns9-mm-header">
-          <div className="ns9-mm-header-left">
-            <span className="ns9-mm-badge">THI TRỰC TUYẾN ELEC AI</span>
-            <h3 id="mode-modal-title" className="ns9-mm-title">Chọn cách làm bài</h3>
-            <p className="ns9-mm-exam-name">{exam.title}</p>
-            <div className="ns9-mm-exam-meta">
-              <span>{exam.subject || 'Khoa học Tự nhiên'}</span>
-              <span>·</span>
-              <span>{durationMin} phút</span>
-              <span>·</span>
-              <span>{exam.totalQuestions || exam.questions?.length || 28} câu hỏi</span>
+          <div className="ns9-mm-header-row">
+            <div className={`emm-hero-mascot ${examMode === 'real' ? 'is-amber' : 'is-emerald'}`} aria-hidden="true">
+              <img
+                src={examMode === 'real' ? '/img/elec/elec-super-saiyan.png' : '/img/elec/elec-think.png'}
+                alt="Bé Elec đồng hành chọn chế độ thi"
+                draggable={false}
+              />
+            </div>
+            <div className="ns9-mm-header-left">
+              <span className="ns9-mm-badge">THI TRỰC TUYẾN ELEC AI</span>
+              <h3 id="mode-modal-title" className="ns9-mm-title">Chọn cách làm bài</h3>
+              <p className="ns9-mm-exam-name">{exam.title}</p>
+              <div className="ns9-mm-exam-meta">
+                <span>{exam.subject || 'Khoa học Tự nhiên'}</span>
+                <span>·</span>
+                <span>{durationMin} phút</span>
+                <span>·</span>
+                <span>{exam.totalQuestions || exam.questions?.length || 28} câu hỏi</span>
+              </div>
+              <div className="emm-speech-pill">
+                <span className="emm-speech-dot" aria-hidden="true" />
+                <span>
+                  {examMode === 'real'
+                    ? 'Thi thật bấm giờ chuẩn áp lực — bật chế độ tập trung tối đa!'
+                    : 'Ôn luyện thoải mái — xem đáp án và lời giải ngay sau từng câu!'}
+                </span>
+              </div>
             </div>
           </div>
           <button type="button" className="ns9-mm-close-btn" onClick={onClose} aria-label="Đóng hộp thoại">
@@ -64,6 +81,7 @@ export default function ExamModeModal({ exam, onStart, onClose }) {
                 className={`ns9-mm-opt-card ${examMode === 'real' ? 'is-selected' : ''}`}
                 onClick={() => setExamMode('real')}
               >
+                <img src="/img/elec/elec-fighting.png" alt="" className="ns9-mm-card-mascot" aria-hidden="true" />
                 <div className="ns9-mm-opt-top">
                   <div className="ns9-mm-opt-icon is-real">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -87,6 +105,7 @@ export default function ExamModeModal({ exam, onStart, onClose }) {
                 className={`ns9-mm-opt-card ${examMode === 'practice' ? 'is-selected' : ''}`}
                 onClick={() => setExamMode('practice')}
               >
+                <img src="/img/elec/elec-wink.png" alt="" className="ns9-mm-card-mascot" aria-hidden="true" />
                 <div className="ns9-mm-opt-top">
                   <div className="ns9-mm-opt-icon is-practice">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -120,6 +139,7 @@ export default function ExamModeModal({ exam, onStart, onClose }) {
                 className={`ns9-mm-opt-card ${viewMode === 'single' ? 'is-selected' : ''}`}
                 onClick={() => setViewMode('single')}
               >
+                <img src="/img/elec/elec-cool.png" alt="" className="ns9-mm-card-mascot" aria-hidden="true" />
                 <div className="ns9-mm-opt-top">
                   <div className="ns9-mm-opt-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -143,6 +163,7 @@ export default function ExamModeModal({ exam, onStart, onClose }) {
                 className={`ns9-mm-opt-card ${viewMode === 'paper' ? 'is-selected' : ''}`}
                 onClick={() => setViewMode('paper')}
               >
+                <img src="/img/elec/elec-hello.png" alt="" className="ns9-mm-card-mascot" aria-hidden="true" />
                 <div className="ns9-mm-opt-top">
                   <div className="ns9-mm-opt-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -168,16 +189,22 @@ export default function ExamModeModal({ exam, onStart, onClose }) {
 
         {/* Footer */}
         <div className="ns9-mm-footer">
-          <button type="button" className="ns9-mm-cancel-btn" onClick={onClose}>
-            Hủy
-          </button>
-          <button type="button" className="ns9-mm-start-btn" onClick={handleConfirm}>
-            <span>Bắt đầu làm bài</span>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </button>
+          <div className="s9-pm-foot-buddy">
+            <img src="/img/elec/elec-celebrate.png" alt="" className="emm-mini-mascot" aria-hidden="true" />
+            <span>Bé Elec chúc bạn đạt điểm 9+ bài thi này!</span>
+          </div>
+          <div className="s9-pm-foot-actions">
+            <button type="button" className="ns9-mm-cancel-btn" onClick={onClose}>
+              Hủy
+            </button>
+            <button type="button" className="ns9-mm-start-btn" onClick={handleConfirm}>
+              <span>Bắt đầu làm bài</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -934,7 +934,7 @@ export default function ProfilePage({ credits: propCredits }) {
         )}
       </div>
 
-      {tab !== 'settings' && (
+      {tab !== 'settings' && tab !== 'vip' && (
         <header className="pf-atlas-top-shell">
           {/* ============================================================
              1. ATLAS TOPBAR (IDENTITY + DARK PILL CTA + UTILITY CIRCLES)
@@ -1166,106 +1166,140 @@ export default function ProfilePage({ credits: propCredits }) {
             }}
           />
 
-          <div className="pf-atlas-lower-grid">
-            {/* Thẻ 1: Gói đang sử dụng */}
-            <article className="ns9-sub-card ns9-sub-current">
-              <div className="ns9-sub-current-left">
-                <h2 className="ns9-sub-card-title">Gói đang sử dụng</h2>
+          <div className="pf-atlas-lower-grid pf-v2-bento-row">
+            {/* ── THẺ 1: GÓI ĐANG SỬ DỤNG (PHIÊN BẢN SPATIAL BENTO 2.0) ── */}
+            <article className={`pf-v2-card pf-v2-plan-card ${ent.hasVipAccess ? 'is-vip' : 'is-free'}`}>
+              <div className="pf-v2-card-head">
+                <div className="pf-v2-card-title-row">
+                  <span className="pf-v2-card-kicker">GÓI TÀI KHOẢN</span>
+                  <h3>Gói đang sử dụng</h3>
+                </div>
+                <span className={`pf-v2-live-pill ${ent.hasVipAccess ? 'is-vip' : 'is-free'}`}>
+                  <i aria-hidden="true" />
+                  {ent.hasVipAccess ? 'Đang hoạt động' : 'Miễn phí'}
+                </span>
+              </div>
 
-                <div className="ns9-sub-plan-hero">
-                  <span className="ns9-sub-sprout-ico" aria-hidden="true">
-                    {effectivePlanName === 'Free' ? (
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M7 20h10" />
-                        <path d="M10 20c5.5-2.5.8-6.4 3-10" />
-                        <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
-                        <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
-                      </svg>
-                    ) : (
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M2 6l4 5 6-7 6 7 4-5-2 13H4L2 6z" />
-                        <path d="M4 22h16" />
-                      </svg>
-                    )}
-                  </span>
-
-                  <div className="ns9-sub-plan-meta">
-                    <div className="ns9-sub-plan-name-row">
-                      <strong>{effectivePlanName}</strong>
-                      <span className="ns9-sub-active-pill">• Đang sử dụng</span>
-                    </div>
-                    <small>{planDesc}</small>
+              <div className={`pf-v2-plan-banner ${ent.hasVipAccess ? 'is-vip' : 'is-free'}`}>
+                <div className="pf-v2-plan-banner-l">
+                  <div className="pf-v2-plan-badge-row">
+                    <span className="pf-v2-plan-ico" aria-hidden="true">
+                      {effectivePlanName === 'Free' ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M7 20h10" />
+                          <path d="M10 20c5.5-2.5.8-6.4 3-10" />
+                          <path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z" />
+                          <path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z" />
+                        </svg>
+                      ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M2 6l4 5 6-7 6 7 4-5-2 13H4L2 6z" />
+                          <path d="M4 22h16" />
+                        </svg>
+                      )}
+                    </span>
+                    <strong className="pf-v2-plan-name">{effectivePlanName}</strong>
                   </div>
+                  <p className="pf-v2-plan-desc">{planDesc}</p>
+                </div>
+                <img
+                  src={ent.hasVipAccess ? '/img/elec/elec-celebrate.png' : '/img/elec/elec-hello.png'}
+                  alt="Bé Elec gói tài khoản"
+                  className="pf-v2-plan-mascot"
+                  draggable={false}
+                />
+              </div>
+
+              <div className="pf-v2-spec-grid">
+                <div className="pf-v2-spec-tile">
+                  <span className="pf-v2-spec-lbl">{PfSvg.history} Thời hạn</span>
+                  <strong className="pf-v2-spec-val">
+                    {(isTeacher || ent.isStudentVip) && pro?.daysLeft != null
+                      ? `${pro.daysLeft.toLocaleString('vi-VN')} ngày`
+                      : durationLabel}
+                  </strong>
+                  {(isTeacher || ent.isStudentVip) && pro?.expiry && (
+                    <small className="pf-v2-spec-sub">Đến {new Date(pro.expiry).toLocaleDateString('vi-VN')}</small>
+                  )}
                 </div>
 
-                <div className="ns9-sub-specs">
-                  <div className="ns9-sub-spec-row">
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      {PfSvg.history} Thời hạn
-                    </span>
-                    <b>{durationLabel}</b>
-                  </div>
-                  {isTeacher && pro.pro?.key && (
-                    <div className="ns9-sub-spec-row">
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        {PfSvg.crown} Mã Key PRO
-                      </span>
-                      <b style={{ fontFamily: 'monospace' }}>{pro.pro.key}</b>
-                    </div>
-                  )}
-                  <div className="ns9-sub-spec-row">
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      {PfSvg.doc} Kỳ thi
-                    </span>
-                    <b>{examAccessLabel}</b>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {isTeacherAccount && (
-                    <a
-                      href="#classroom"
-                      className="ns9-sub-upgrade-btn"
-                      style={{ textDecoration: 'none' }}
-                    >
-                      Vào quản lý lớp học <span>→</span>
-                    </a>
-                  )}
-                  <button
-                    type="button"
-                    className="ns9-sub-upgrade-btn"
-                    style={isTeacherAccount ? { background: 'rgba(148, 163, 184, 0.14)', color: 'inherit', boxShadow: 'none' } : undefined}
-                    onClick={() => selectTab('vip')}
-                  >
-                    {isTeacher ? 'Gia hạn / Nâng cấp Giáo viên VIP' : isTeacherAccount ? 'Nâng cấp Giáo viên VIP (999k/năm)' : 'Nâng cấp gói (299k/năm)'} <span>→</span>
-                  </button>
+                <div className="pf-v2-spec-tile">
+                  <span className="pf-v2-spec-lbl">{PfSvg.crown} {isTeacher && pro.pro?.key ? 'Mã Key PRO' : 'Hạng truy cập'}</span>
+                  <strong className={`pf-v2-spec-val ${isTeacher && pro.pro?.key ? 'is-mono' : ''}`}>
+                    {isTeacher && pro.pro?.key ? pro.pro.key : (ent.hasVipAccess ? 'Full VIP / PRO' : 'Cơ bản Free')}
+                  </strong>
+                  <small className="pf-v2-spec-sub">{ent.hasVipAccess ? 'Đồng bộ đa thiết bị' : 'Nâng cấp bất kỳ lúc nào'}</small>
                 </div>
               </div>
 
-              <div className="ns9-sub-current-right">
-                <ElecSubMascot />
+              <div className="pf-v2-access-strip">
+                <span className="pf-v2-access-ico" aria-hidden="true">{PfSvg.doc}</span>
+                <span>{examAccessLabel}</span>
+              </div>
+
+              <div className="pf-v2-plan-actions">
+                {isTeacherAccount && (
+                  <a href="#classroom" className="pf-v2-btn is-primary">
+                    <span>Vào quản lý lớp học</span>
+                    <span aria-hidden="true">→</span>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  className={`pf-v2-btn ${isTeacherAccount ? 'is-soft' : 'is-primary'}`}
+                  onClick={() => selectTab('vip')}
+                >
+                  <span>
+                    {isTeacher
+                      ? 'Quản lý & Gia hạn VIP'
+                      : isTeacherAccount
+                        ? 'Nâng cấp Giáo viên VIP (999k/năm)'
+                        : 'Nâng cấp gói VIP (299k/năm)'}
+                  </span>
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
+
+              <div className="pf-v2-mini-buddy">
+                <img
+                  src={ent.hasVipAccess ? '/img/elec/elec-cool.png' : '/img/elec/elec-wink.png'}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <span>
+                  {ent.hasVipAccess
+                    ? 'Tài khoản đã mở khóa toàn bộ đặc quyền cao cấp ELEC AI!'
+                    : 'Nâng cấp VIP chỉ ~820đ/ngày để mở 100% đề thi & AI!'}
+                </span>
               </div>
             </article>
 
-            {/* Thẻ 2: Hạn mức sử dụng */}
-            <article className="ns9-sub-card ns9-sub-quota">
-              <h2 className="ns9-sub-card-title">Hạn mức sử dụng</h2>
+            {/* ── THẺ 2: HẠN MỨC & NĂNG LƯỢNG HỌC TẬP (KHÔNG CÒN KHOẢNG TRỐNG) ── */}
+            <article className="pf-v2-card pf-v2-quota-card">
+              <div className="pf-v2-card-head">
+                <div className="pf-v2-card-title-row">
+                  <span className="pf-v2-card-kicker">NĂNG LƯỢNG &amp; VÍ AI</span>
+                  <h3>Hạn mức sử dụng</h3>
+                </div>
+                <span className={heartsCount >= maxHeartsCount ? 'ns9-hearts-full-pill' : heartsCount === 0 ? 'ns9-hearts-full-pill is-empty' : 'ns9-hearts-full-pill is-recovering'}>
+                  {heartsCount >= maxHeartsCount ? 'Năng lượng đầy' : heartsCount === 0 ? 'Hết lượt' : 'Đang hồi phục'}
+                </span>
+              </div>
 
-              <div className="ns9-hearts-box">
-                <div className="ns9-hearts-top">
-                  <span className="ns9-hearts-label">
+              {/* Khối 1: Mạng luyện tập */}
+              <div className="pf-v2-energy-box is-hearts">
+                <div className="pf-v2-energy-top">
+                  <div className="pf-v2-energy-title">
                     <i className="ns9-heart-dot" aria-hidden="true">{PfSvg.heartFilled}</i>
-                    <b>Mạng luyện tập</b>
-                  </span>
-                  <span className={heartsCount >= maxHeartsCount ? 'ns9-hearts-full-pill' : heartsCount === 0 ? 'ns9-hearts-full-pill is-empty' : 'ns9-hearts-full-pill is-recovering'}>
-                    {heartsCount >= maxHeartsCount ? 'Đã đầy' : heartsCount === 0 ? 'Hết lượt' : 'Đang hồi phục'}
-                  </span>
+                    <span>Mạng luyện tập</span>
+                  </div>
+                  <img src="/img/elec/elec-heart-eyes.png" alt="" className="pf-v2-inline-mascot" aria-hidden="true" />
                 </div>
 
-                <div className="ns9-hearts-main">
-                  <div className="ns9-hearts-num">
+                <div className="pf-v2-energy-num-row">
+                  <div className="pf-v2-big-num">
                     <strong>{heartsCount}</strong>
-                    <span>/{maxHeartsCount}</span>
+                    <span>/ {maxHeartsCount} tim</span>
                   </div>
                   <div className="ns9-hearts-icons" aria-label={`${heartsCount} mạng luyện tập`}>
                     {Array.from({ length: 5 }, (_, i) => {
@@ -1280,54 +1314,133 @@ export default function ProfilePage({ credits: propCredits }) {
                   </div>
                 </div>
 
-                <small className="ns9-hearts-sub">mạng luyện tập còn lại</small>
                 <div className="ns9-hearts-bar">
                   <i style={{ width: `${Math.min(100, Math.max(0, Math.round(((heartsCount || 5) / (maxHeartsCount || 5)) * 100)))}%` }} />
                 </div>
               </div>
 
-              <div className="ns9-credit-quota-box">
-                <div className="ns9-credit-quota-top">
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {PfSvg.sparkleAi} Điểm &amp; ELEC AI Credit khả dụng
-                  </span>
-                  <b>{credits != null ? credits.toLocaleString('vi-VN') : 0} điểm</b>
+              {/* Khối 2: Ví ELEC AI Credit (số gọn 1 dòng không rớt chữ) */}
+              <div className="pf-v2-energy-box is-credit">
+                <div className="pf-v2-energy-top">
+                  <div className="pf-v2-energy-title is-blue">
+                    {PfSvg.sparkleAi}
+                    <span>ELEC AI Credit khả dụng</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="pf-v2-topup-chip"
+                    onClick={() => {
+                      setShowPayment(false);
+                      window.dispatchEvent(new CustomEvent('elec-open-credit-topup'));
+                    }}
+                  >
+                    + Nạp thêm
+                  </button>
                 </div>
+
+                <div className="pf-v2-credit-figure">
+                  <strong>{credits != null ? credits.toLocaleString('vi-VN') : 0}</strong>
+                  <span>Credit AI</span>
+                </div>
+
                 <div className="ns9-credit-quota-bar">
-                  <i style={{ width: credits != null && credits > 0 ? `${Math.min(100, Math.max(5, Math.round((Math.log10(credits + 1) / 7) * 100)))}%` : '0%' }} />
+                  <i style={{ width: credits != null && credits > 0 ? `${Math.min(100, Math.max(8, Math.round((Math.log10(credits + 1) / 7) * 100)))}%` : '0%' }} />
+                </div>
+              </div>
+
+              {/* Khối 3: Trạm Năng Lượng Bé Elec (lấp đầy cân đối & hữu ích) */}
+              <div className="pf-v2-coach-box">
+                <img
+                  src="/img/elec/elec-super-saiyan.png"
+                  alt="Bé Elec tiếp năng lượng"
+                  className="pf-v2-coach-mascot"
+                  draggable={false}
+                />
+                <div className="pf-v2-coach-body">
+                  <strong>Trạm năng lượng sẵn sàng!</strong>
+                  <p>
+                    {heartsCount >= maxHeartsCount
+                      ? 'Tim đã đầy 100% — thử sức ngay 1 đề chuẩn cấu trúc để ghi điểm ELO nhé!'
+                      : 'Hỏi Gia sư AI hoặc ôn Sổ lỗi sai để củng cố kiến thức ngay hôm nay.'}
+                  </p>
+                  <div className="pf-v2-coach-links">
+                    <a href="#virtual-exams" className="pf-v2-mini-link is-blue">Phòng thi ảo →</a>
+                    <a href="#ai" className="pf-v2-mini-link">Hỏi ELEC AI →</a>
+                  </div>
                 </div>
               </div>
             </article>
 
-            {/* Thẻ 3: Lịch chuỗi 30 ngày (Mini Streak Calendar) */}
-            <article className="pf-m-card">
-              <div className="pf-m-cal-head">
-                <span className="pf-m-cal-title">Lịch duy trì chuỗi học tập</span>
+            {/* ── THẺ 3: LỊCH DUY TRÌ CHUỖI HỌC TẬP (SINH ĐỘNG & CÓ LINH VẬT) ── */}
+            <article className="pf-v2-card pf-v2-streak-card">
+              <img
+                src={currentStreak > 0 ? '/img/elec/elec-fighting.png' : '/img/elec/elec-wink.png'}
+                alt=""
+                className="pf-v2-corner-mascot"
+                aria-hidden="true"
+              />
+              <div className="pf-v2-card-head is-with-corner">
+                <div className="pf-v2-card-title-row">
+                  <span className="pf-v2-card-kicker">THÓI QUEN MỖI NGÀY</span>
+                  <h3>Chuỗi ngày học</h3>
+                </div>
                 <span className="pf-m-cal-streak-tag">
                   <span className="pf-m-cal-fire-ico" aria-hidden="true">{PfSvg.flame}</span>
                   <span>{currentStreak} ngày liên tiếp</span>
                 </span>
               </div>
 
-              <div className="pf-m-cal-weekdays">
-                <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
+              <div className="pf-v2-cal-wrap">
+                <div className="pf-m-cal-weekdays">
+                  <span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span>
+                </div>
+
+                <div className="pf-m-cal-grid">
+                  {calendarDays.map((c, i) => (
+                    <div
+                      key={i}
+                      className={`pf-m-cal-day ${c.empty ? 'empty' : ''} ${c.hasStreak ? 'has-streak' : ''} ${c.isToday ? 'is-today' : ''}`}
+                    >
+                      {c.day && <span>{c.day}</span>}
+                      {c.hasStreak && (
+                        <span className="pf-m-cal-fire-dot" aria-hidden="true">
+                          {PfSvg.flame}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="pf-m-cal-grid">
-                {calendarDays.map((c, i) => (
-                  <div
-                    key={i}
-                    className={`pf-m-cal-day ${c.empty ? 'empty' : ''} ${c.hasStreak ? 'has-streak' : ''} ${c.isToday ? 'is-today' : ''}`}
-                  >
-                    {c.day && <span>{c.day}</span>}
-                    {c.hasStreak && (
-                      <span className="pf-m-cal-fire-dot" aria-hidden="true">
-                        {PfSvg.flame}
-                      </span>
-                    )}
+              {/* Khối mục tiêu chuỗi + Bé Elec cổ vũ */}
+              {(() => {
+                const nextGoal = currentStreak < 7 ? 7 : currentStreak < 14 ? 14 : 30;
+                const pct = Math.min(100, Math.round((currentStreak / nextGoal) * 100));
+                return (
+                  <div className="pf-v2-streak-foot">
+                    <img
+                      src={currentStreak >= 3 ? '/img/elec/elec-happy.png' : '/img/elec/elec-hello.png'}
+                      alt="Bé Elec giữ chuỗi ngày học"
+                      className="pf-v2-streak-mascot"
+                      draggable={false}
+                    />
+                    <div className="pf-v2-streak-meta">
+                      <div className="pf-v2-streak-goal-row">
+                        <strong>Mục tiêu mốc {nextGoal} ngày</strong>
+                        <span>{currentStreak}/{nextGoal} ngày</span>
+                      </div>
+                      <div className="pf-v2-streak-bar">
+                        <i style={{ width: `${Math.max(6, pct)}%` }} />
+                      </div>
+                      <small>
+                        {currentStreak === 0
+                          ? 'Hoàn thành 1 bài luyện nhỏ hôm nay để thắp lửa chuỗi đầu tiên!'
+                          : `Giữ nhịp tuyệt vời! Còn ${Math.max(0, nextGoal - currentStreak)} ngày nữa là chạm mốc!`}
+                      </small>
+                    </div>
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </article>
 
             {/* Thẻ 4 (Full-span): Nhập mã kích hoạt (+15 điểm / lượt) */}
@@ -1365,17 +1478,69 @@ export default function ProfilePage({ credits: propCredits }) {
       )}
 
       {/* ============================================================
-         4B. TAB VIP: GÓI LUYỆN THI VIP & LỘ TRÌNH CHUYÊN SÂU ("ẤN VÀO LÀ HIỆN RA")
+         4B. TAB RIÊNG "GÓI CỦA TÔI" — KHÔNG VƯỚNG HỒ SƠ, CHIA ĐỀU 3 CỘT GIÁ
          ============================================================ */}
       {tab === 'vip' && (
-        <div style={{ maxWidth: 1200, width: '100%', minWidth: 0, boxSizing: 'border-box', margin: '0 auto', padding: '16px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {isTeacherAccount && (
-            <div className="pf-m-card">
-              <TeacherProPanel />
+        <div className="ns9-myplan-shell">
+          <div className="ns9-myplan-topbar">
+            <div className="ns9-myplan-topbar-l">
+              <button
+                type="button"
+                className="ns9-myplan-back-btn"
+                onClick={() => selectTab('overview')}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+                <span>Quay lại hồ sơ</span>
+              </button>
+              <span className="ns9-myplan-page-badge">Gói của tôi</span>
             </div>
-          )}
+
+            <div className="ns9-myplan-status-pills">
+              <div className={`ns9-myplan-status-pill ${ent.hasVipAccess ? 'is-active' : 'is-free'}`}>
+                <span className="ns9-myplan-dot" aria-hidden="true" />
+                <strong>{ent.hasVipAccess ? `${effectivePlanName} đang hoạt động` : 'Gói Free (0đ)'}</strong>
+                {ent.hasVipAccess && pro?.daysLeft != null && (
+                  <span className="ns9-myplan-meta">· Còn {pro.daysLeft.toLocaleString('vi-VN')} ngày</span>
+                )}
+                {ent.hasVipAccess && pro?.expiry && (
+                  <span className="ns9-myplan-meta">· Hạn {new Date(pro.expiry).toLocaleDateString('vi-VN')}</span>
+                )}
+                {isTeacher && pro?.pro?.key && (
+                  <code className="ns9-myplan-key">{pro.pro.key}</code>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="ns9-myplan-credit-pill"
+                onClick={() => {
+                  setShowPayment(false);
+                  window.dispatchEvent(new CustomEvent('elec-open-credit-topup'));
+                }}
+                title="Bấm để nạp thêm ELEC AI Credit"
+              >
+                {PfSvg.bolt}
+                <span>{credits != null ? credits.toLocaleString('vi-VN') : 0} Credit</span>
+              </button>
+            </div>
+          </div>
+
           <SubscriptionTiers
             lockedRole={isTeacherAccount ? 'teacher' : 'student'}
+            isCurrentVip={ent.hasVipAccess}
+            onRedeemVoucher={async (code) => {
+              const res = await redeemActivationCode(uid, code);
+              if (res?.ok) {
+                setSubQuota(getSubscriptionAndQuota(uid));
+                setSyncTick((n) => n + 1);
+                if (typeof pro?.refresh === 'function') pro.refresh();
+                return { ok: true, text: res.message || 'Kích hoạt mã thành công!' };
+              }
+              return { ok: false, text: res?.message || 'Mã không hợp lệ hoặc đã sử dụng.' };
+            }}
             onUpgrade={(pkg) => {
               window.dispatchEvent(new CustomEvent('elec-close-credit-topup'));
               setCustomPkg({ ...pkg, lockedRole: isTeacherAccount ? 'teacher' : 'student' });

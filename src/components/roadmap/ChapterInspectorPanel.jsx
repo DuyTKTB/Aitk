@@ -128,7 +128,7 @@ export default function ChapterInspectorPanel({
     return (
       <aside className="rm-pro-inspector is-empty" aria-label="Chi tiết chuyên đề">
         <div className="rm-pro-insp-empty">
-          <IcoBookOpen size={22} />
+          <img src="/img/elec/elec-hello.png" alt="Bé Elec chào đón" className="rm-pro-insp-empty-mascot" draggable={false} />
           <b>Chọn một chuyên đề trên lộ trình</b>
           <p>Bấm vào bất kỳ nút chuyên đề nào để xem mạch tiên quyết, 3 phần đề thi, công thức và bẫy sai.</p>
         </div>
@@ -145,10 +145,18 @@ export default function ChapterInspectorPanel({
   const detour = chapterView.adaptiveDetour;
   const examParts = meta?.examParts || { part1: 50, part2: 30, part3: 20 };
 
+  const inspMascot =
+    answers >= 6 && masteryPct >= 78
+      ? '/img/elec/elec-celebrate.png'
+      : isDueReview
+        ? '/img/elec/elec-fighting.png'
+        : '/img/elec/elec-think.png';
+
   const body = (
     <div className="rm-pro-insp-card">
+      <img src={inspMascot} alt="" className="rm-pro-insp-mascot" aria-hidden="true" />
       {/* Header gọn */}
-      <div className="rm-pro-insp-head">
+      <div className="rm-pro-insp-head is-with-mascot">
         <div className="rm-pro-insp-badges">
           <span className={`rm-pro-sub-pill sub-${subMeta?.key || 'hoa'}`}>
             {subMeta?.name || 'KHTN'} · Lớp {meta?.grade || chapterView.chapter?.grade || 12}
@@ -199,6 +207,7 @@ export default function ChapterInspectorPanel({
       {detour && (
         <div className="rm-pro-detour-box" role="note">
           <div className="rm-pro-detour-head">
+            <img src="/img/elec/elec-cool.png" alt="" className="rm-pro-mini-sticker" aria-hidden="true" />
             <IcoAlert size={14} />
             <b>Phát hiện kiến thức gốc cần vá</b>
           </div>

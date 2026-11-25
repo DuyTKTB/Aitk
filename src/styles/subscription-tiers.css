@@ -815,3 +815,555 @@
     border-radius: 18px;
   }
 }
+
+/* ============================================================
+   DEDICATED "GÓI CỦA TÔI" SHELL & 3-COLUMN BALANCED DECORATION
+   ============================================================ */
+.ns9-myplan-shell {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 6px 0 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-sizing: border-box;
+}
+
+.ns9-myplan-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding: 10px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(147, 197, 253, 0.45);
+  box-shadow: 0 8px 24px -12px rgba(37, 99, 235, 0.14);
+}
+
+[data-theme="dark"] .ns9-myplan-topbar {
+  background: rgba(15, 23, 42, 0.84);
+  border-color: rgba(96, 165, 250, 0.25);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+}
+
+.ns9-myplan-topbar-l {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ns9-myplan-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: 11px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 750;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.16s ease;
+}
+
+.ns9-myplan-back-btn:hover {
+  border-color: #2563eb;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+[data-theme="dark"] .ns9-myplan-back-btn {
+  background: #1e293b;
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .ns9-myplan-back-btn:hover {
+  border-color: #60a5fa;
+  color: #ffffff;
+  background: #1e3a8a;
+}
+
+.ns9-myplan-page-badge {
+  font-size: 0.84rem;
+  font-weight: 850;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] .ns9-myplan-page-badge {
+  color: #f8fafc;
+}
+
+.ns9-myplan-status-pills {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ns9-myplan-status-pill {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ns9-myplan-status-pill.is-active {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+[data-theme="dark"] .ns9-myplan-status-pill.is-active {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.14) 100%);
+  border-color: rgba(251, 191, 36, 0.45);
+  color: #fde68a;
+}
+
+.ns9-myplan-status-pill.is-free {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+[data-theme="dark"] .ns9-myplan-status-pill.is-free {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #6ee7b7;
+}
+
+.ns9-myplan-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.ns9-myplan-meta {
+  opacity: 0.86;
+  font-weight: 600;
+}
+
+.ns9-myplan-key {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .ns9-myplan-key {
+  background: rgba(15, 23, 42, 0.65);
+  color: #93c5fd;
+}
+
+.ns9-myplan-credit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.ns9-myplan-credit-pill:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+[data-theme="dark"] .ns9-myplan-credit-pill {
+  background: rgba(37, 99, 235, 0.22);
+  border-color: rgba(96, 165, 250, 0.4);
+  color: #93c5fd;
+}
+
+/* ── Decorated Pricing Showcase Container ── */
+.ns9-9study-pricing-wrap {
+  max-width: 1160px;
+  margin-top: 0;
+}
+
+.ns9-9s-modal-card {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 10% 4%, rgba(56, 189, 248, 0.16), transparent 36%),
+    radial-gradient(circle at 90% 4%, rgba(139, 92, 246, 0.14), transparent 36%),
+    radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.1), transparent 44%),
+    linear-gradient(180deg, #f8fbff 0%, #ffffff 34%, #ffffff 100%);
+  border: 1.5px solid rgba(147, 197, 253, 0.48);
+  padding: 30px 28px 24px;
+}
+
+[data-theme="dark"] .ns9-9s-modal-card {
+  background:
+    radial-gradient(circle at 12% 4%, rgba(14, 165, 233, 0.2), transparent 38%),
+    radial-gradient(circle at 88% 4%, rgba(139, 92, 246, 0.2), transparent 38%),
+    radial-gradient(900px circle at 50% -10%, rgba(37, 99, 235, 0.22), transparent 55%),
+    #0b1222;
+  border-color: rgba(96, 165, 250, 0.28);
+}
+
+.ns9-9s-hero-decor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.ns9-9s-hero-decor .ns9-9s-eyebrow-pill {
+  margin-bottom: 0;
+}
+
+.ns9-9s-header-mascot {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 10px rgba(37, 99, 235, 0.24));
+  user-select: none;
+  pointer-events: none;
+}
+
+.ns9-9s-header-mascot.left {
+  transform: rotate(-7deg);
+}
+
+.ns9-9s-header-mascot.right {
+  transform: rotate(7deg);
+}
+
+/* ── 3-Column Symmetric Balanced Grid ── */
+.ns9-9s-cards-grid.is-three-balanced {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+  margin-top: 22px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 980px) {
+  .ns9-9s-cards-grid.is-three-balanced {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+}
+
+.ns9-9s-cards-grid.is-three-balanced .ns9-9s-col-card {
+  overflow: visible;
+  padding: 24px 20px 20px;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Corner Floating Mascots on Cards */
+.ns9-9s-card-mascot {
+  position: absolute;
+  top: -22px;
+  right: 14px;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.2));
+  transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  user-select: none;
+  z-index: 4;
+}
+
+.ns9-9s-card-mascot.is-hero {
+  width: 64px;
+  height: 64px;
+  top: -26px;
+  right: 12px;
+  filter: drop-shadow(0 10px 18px rgba(37, 99, 235, 0.36));
+}
+
+.ns9-9s-col-card:hover .ns9-9s-card-mascot {
+  transform: translateY(-5px) scale(1.08) rotate(-4deg);
+}
+
+/* Center Popular Ribbon */
+.ns9-9s-popular-ribbon {
+  position: absolute;
+  top: -13px;
+  left: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f43f5e 0%, #ec4899 50%, #f59e0b 100%);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  box-shadow: 0 6px 16px rgba(236, 72, 153, 0.42);
+  z-index: 4;
+}
+
+.ns9-9s-cards-grid.is-three-balanced .ns9-9s-card-top-row {
+  padding-right: 54px;
+  min-height: 28px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.ns9-9s-cards-grid.is-three-balanced .ns9-9s-card-eyebrow {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ns9-9s-cards-grid.is-three-balanced .ns9-9s-card-desc {
+  min-height: 40px;
+}
+
+/* Card Tones */
+.ns9-9s-col-card.tone-free {
+  border-color: rgba(16, 185, 129, 0.28);
+  background: linear-gradient(180deg, rgba(236, 253, 245, 0.65) 0%, #ffffff 34%);
+}
+
+[data-theme="dark"] .ns9-9s-col-card.tone-free {
+  border-color: rgba(52, 211, 153, 0.28);
+  background: linear-gradient(180deg, rgba(6, 78, 59, 0.26) 0%, rgba(18, 28, 48, 0.92) 38%);
+}
+
+.ns9-9s-col-card.is-popular-card {
+  border: 2px solid #2563eb;
+  background:
+    radial-gradient(circle at 85% 12%, rgba(56, 189, 248, 0.16), transparent 45%),
+    linear-gradient(180deg, rgba(239, 246, 255, 0.95) 0%, #ffffff 42%);
+  box-shadow:
+    0 20px 44px -14px rgba(37, 99, 235, 0.28),
+    0 0 0 4px rgba(59, 130, 246, 0.08);
+}
+
+[data-theme="dark"] .ns9-9s-col-card.is-popular-card {
+  border-color: #60a5fa;
+  background:
+    radial-gradient(circle at 85% 12%, rgba(56, 189, 248, 0.24), transparent 48%),
+    linear-gradient(180deg, rgba(30, 58, 138, 0.44) 0%, rgba(15, 23, 42, 0.96) 46%);
+  box-shadow:
+    0 22px 50px -12px rgba(37, 99, 235, 0.44),
+    0 0 0 4px rgba(59, 130, 246, 0.14);
+}
+
+.ns9-9s-col-card.tone-credit {
+  border-color: rgba(139, 92, 246, 0.28);
+  background: linear-gradient(180deg, rgba(245, 243, 255, 0.72) 0%, #ffffff 36%);
+}
+
+[data-theme="dark"] .ns9-9s-col-card.tone-credit {
+  border-color: rgba(167, 139, 250, 0.3);
+  background: linear-gradient(180deg, rgba(76, 29, 149, 0.26) 0%, rgba(18, 28, 48, 0.92) 38%);
+}
+
+/* Badges & Attractive Price Heroes */
+.ns9-9s-pill-badge.badge-emerald {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
+[data-theme="dark"] .ns9-9s-pill-badge.badge-emerald {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+
+.ns9-9s-cards-grid.is-three-balanced .ns9-9s-price-hero {
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 16px;
+  border-radius: 16px;
+}
+
+.ns9-9s-price-hero.is-free {
+  background: linear-gradient(135deg, #ecfdf5 0%, #f8fafc 100%);
+  border-color: rgba(16, 185, 129, 0.24);
+}
+
+[data-theme="dark"] .ns9-9s-price-hero.is-free {
+  background: rgba(6, 78, 59, 0.24);
+  border-color: rgba(52, 211, 153, 0.26);
+}
+
+.ns9-9s-price-hero.is-vip {
+  background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
+  border-color: rgba(59, 130, 246, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="dark"] .ns9-9s-price-hero.is-vip {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.26) 0%, rgba(79, 70, 229, 0.2) 100%);
+  border-color: rgba(96, 165, 250, 0.38);
+  box-shadow: none;
+}
+
+.ns9-9s-price-hero.is-credit {
+  background: linear-gradient(135deg, #f5f3ff 0%, #eff6ff 100%);
+  border-color: rgba(139, 92, 246, 0.28);
+}
+
+[data-theme="dark"] .ns9-9s-price-hero.is-credit {
+  background: linear-gradient(135deg, rgba(109, 40, 217, 0.24) 0%, rgba(30, 58, 138, 0.22) 100%);
+  border-color: rgba(167, 139, 250, 0.32);
+}
+
+.ns9-9s-price-main strong {
+  font-size: 1.82rem;
+}
+
+.ns9-9s-price-main strong.is-gradient-price {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 52%, #0284c7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .ns9-9s-price-main strong.is-gradient-price {
+  background: linear-gradient(135deg, #93c5fd 0%, #38bdf8 55%, #ffffff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ns9-9s-price-rate.is-emerald { color: #059669; }
+[data-theme="dark"] .ns9-9s-price-rate.is-emerald { color: #34d399; }
+
+.ns9-9s-price-rate.is-violet { color: #6d28d9; }
+[data-theme="dark"] .ns9-9s-price-rate.is-violet { color: #c4b5fd; }
+
+.ns9-9s-price-perks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ns9-9s-perk-chip {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.ns9-9s-perk-chip.is-emerald {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+[data-theme="dark"] .ns9-9s-perk-chip.is-emerald {
+  background: rgba(16, 185, 129, 0.24);
+  color: #6ee7b7;
+}
+
+.ns9-9s-perk-chip.is-cobalt {
+  background: rgba(37, 99, 235, 0.14);
+  color: #1d4ed8;
+}
+[data-theme="dark"] .ns9-9s-perk-chip.is-cobalt {
+  background: rgba(59, 130, 246, 0.28);
+  color: #bfdbfe;
+}
+
+.ns9-9s-perk-chip.is-amber {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+}
+[data-theme="dark"] .ns9-9s-perk-chip.is-amber {
+  background: rgba(245, 158, 11, 0.24);
+  color: #fde68a;
+}
+
+.ns9-9s-perk-chip.is-violet {
+  background: rgba(124, 58, 237, 0.12);
+  color: #6d28d9;
+}
+[data-theme="dark"] .ns9-9s-perk-chip.is-violet {
+  background: rgba(139, 92, 246, 0.26);
+  color: #ddd6fe;
+}
+
+/* Buttons for Free & Credit Cards */
+.ns9-9s-card-cta-btn.is-free-btn {
+  border-color: rgba(16, 185, 129, 0.28);
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  cursor: default;
+}
+
+.ns9-9s-card-cta-btn.is-free-btn:hover {
+  transform: none;
+  box-shadow: none;
+  background: rgba(16, 185, 129, 0.08);
+  color: #059669;
+  border-color: rgba(16, 185, 129, 0.28);
+}
+
+[data-theme="dark"] .ns9-9s-card-cta-btn.is-free-btn {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #6ee7b7;
+}
+
+.ns9-9s-card-cta-btn.is-credit-btn {
+  border-color: rgba(124, 58, 237, 0.35);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%);
+  color: #5b21b6;
+}
+
+.ns9-9s-card-cta-btn.is-credit-btn:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.32);
+}
+
+[data-theme="dark"] .ns9-9s-card-cta-btn.is-credit-btn {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(167, 139, 250, 0.38);
+  color: #ddd6fe;
+}
+
+@media (max-width: 640px) {
+  .ns9-9s-header-mascot {
+    width: 30px;
+    height: 30px;
+  }
+  .ns9-9s-card-mascot {
+    width: 46px;
+    height: 46px;
+    top: -18px;
+  }
+  .ns9-9s-card-mascot.is-hero {
+    width: 52px;
+    height: 52px;
+    top: -20px;
+  }
+}

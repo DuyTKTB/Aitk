@@ -189,6 +189,36 @@ function devEmailOtpApiPlugin() {
           res.end(JSON.stringify({ ok: false, error: err?.message || 'Lỗi server dev chấm thi' }));
         }
       });
+      server.middlewares.use('/api/youtube-search', async (req, res, next) => {
+        if (req.method !== 'GET' && req.method !== 'OPTIONS') return next();
+        try {
+          let statusCode = 200;
+          const wrappedRes = {
+            setHeader(k, v) {
+              res.setHeader(k, v);
+              return wrappedRes;
+            },
+            status(code) {
+              statusCode = code;
+              return wrappedRes;
+            },
+            json(payload) {
+              res.statusCode = statusCode;
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.end(JSON.stringify(payload));
+              return wrappedRes;
+            },
+          };
+
+          const apiFileUrl = `${pathToFileURL(path.resolve(process.cwd(), 'api/youtube-search.js')).href}?t=${Date.now()}`;
+          const mod = await import(/* @vite-ignore */ apiFileUrl);
+          return await mod.default(req, wrappedRes);
+        } catch (err) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(JSON.stringify({ ok: false, results: [], error: err?.message || 'Lỗi server dev tìm YouTube' }));
+        }
+      });
     },
   };
 }

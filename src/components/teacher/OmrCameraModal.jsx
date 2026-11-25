@@ -304,6 +304,7 @@ export default function OmrCameraModal({
   useEffect(() => {
     if (!open) {
       stopStream();
+      try { window.speechSynthesis?.cancel?.(); } catch {}
       setProbe(null);
       setLastCapture(null);
       setRecentHistory([]);
@@ -312,10 +313,16 @@ export default function OmrCameraModal({
       readyStreakRef.current = 0;
       return;
     }
-    setLockedCode(codeList.length === 1 ? 'auto' : 'auto');
+    setLockedCode('auto');
     startStream('');
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', onKey);
     return () => {
+      window.removeEventListener('keydown', onKey);
       stopStream();
+      try { window.speechSynthesis?.cancel?.(); } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -477,18 +484,18 @@ export default function OmrCameraModal({
         const fullImg = ctx.getImageData(0, 0, info.srcW, info.srcH);
         const fullRead = readSheet(fullImg);
         const scoreOf = (r) => (r?.ok ? (r.quality?.markFit ?? 0) + (r.quality?.alignment ?? 0) * 0.5 : -1);
-        if (scoreOf(fullRead) > scoreOf(read)) {
+        if (!read || scoreOf(fullRead) > scoreOf(read)) {
           read = fullRead;
-          camQ = measureImageQuality(fullImg, { ...IMG_LIMITS, minWidth: 640, minHeight: 480, maxBrightness: 250 });
+          camQ = measureImageQuality(fullImg, { ...IMG_LIMITS, minWidth: 640, minHeight: 480, maxBrightness: 252 });
           usedCrop = null;
         }
       }
 
-      if (!read.ok) {
+      if (!read || !read.ok) {
         if (source === 'manual') {
           setFeedback({
             ok: false,
-            msg: read.error || 'Chưa nhận đủ 4 góc & vạch mép phiếu A4. Hãy đưa phiếu khít khung hơn!',
+            msg: read?.error || 'Chưa nhận đủ 4 góc & vạch mép phiếu A4. Hãy đưa phiếu khít khung hơn!',
           });
         }
         return;
@@ -544,6 +551,7 @@ export default function OmrCameraModal({
       }
 
       const grade = codeKnown ? gradeSheet(read, keys[finalCode], counts, scoring) : null;
+      const camWarnMsg = read.quality?.warn || (!camQ?.ok ? camQ?.issues?.[0] || 'Chất lượng ảnh chưa đạt chuẩn.' : null);
       const item = {
         id: `cam${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`,
         fileName: `camera_${read.sbd || Date.now()}.jpg`,
@@ -553,10 +561,10 @@ export default function OmrCameraModal({
         code: finalCode,
         readCode: read.code,
         read: { p1: read.p1, p2: read.p2, p3: read.p3 },
-        issues: [...(read.issues || []), ...camQ.issues],
-        quality: { ...(read.quality || {}), image: camQ, warn: read.quality?.warn || !camQ.ok },
+        issues: [...(read.issues || []), ...(camQ?.issues || [])],
+        quality: { ...(read.quality || {}), image: camQ, warn: camWarnMsg },
         needsReview: !codeKnown || (read.issues && read.issues.length > 0)
-          || !read.sbd || read.sbd.includes('?') || !camQ.ok,
+          || Boolean(read.quality?.warn) || !read.sbd || read.sbd.includes('?') || !camQ?.ok,
       };
 
       const matchedStudent = paper?.sbdMap?.[read.sbd];
@@ -799,10 +807,10 @@ export default function OmrCameraModal({
               detected={Boolean(probe?.detected)}
               cornerMatched={probe?.cornerMatched}
             />
-            <div className={'pg-cam-corner tl' + (probe?.ready || probe?.cornerMatched?.TL ? ' hit' : '')} />
-            <div className={'pg-cam-corner tr' + (probe?.ready || probe?.cornerMatched?.TR ? ' hit' : '')} />
-            <div className={'pg-cam-corner bl' + (probe?.ready || probe?.cornerMatched?.BL ? ' hit' : '')} />
-            <div className={'pg-cam-corner br' + (probe?.ready || probe?.cornerMatched?.BR ? ' hit' : '')} />
+            <div className={'pg-cam-corner tl' + (probe?.ready || probe?.cornerMatched?.[landscapeGuide ? 'TR' : 'TL'] ? ' hit' : '')} />
+            <div className={'pg-cam-corner tr' + (probe?.ready || probe?.cornerMatched?.[landscapeGuide ? 'BR' : 'TR'] ? ' hit' : '')} />
+            <div className={'pg-cam-corner bl' + (probe?.ready || probe?.cornerMatched?.[landscapeGuide ? 'TL' : 'BL'] ? ' hit' : '')} />
+            <div className={'pg-cam-corner br' + (probe?.ready || probe?.cornerMatched?.[landscapeGuide ? 'BL' : 'BR'] ? ' hit' : '')} />
             {!probe?.ready && <div className="pg-cam-scanline" />}
           </div>
         </div>

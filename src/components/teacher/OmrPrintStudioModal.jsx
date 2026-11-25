@@ -26,15 +26,18 @@ const IcoCheck = (p) => <Svg {...p}><polyline points="20 6 9 17 4 12" /></Svg>;
 function parseCodeList(raw) {
   return String(raw || '')
     .split(/[\s,;]+/)
-    .map((x) => x.replace(/[^0-9A-Za-z]/g, '').slice(0, 4))
-    .filter(Boolean);
+    .map((x) => x.replace(/\D/g, '').slice(0, 3))
+    .filter(Boolean)
+    .map((x) => x.padStart(3, '0'));
 }
+
+const DEFAULT_EXAM_YEAR = `KỲ THI TỐT NGHIỆP THPT NĂM ${Math.max(2025, new Date().getFullYear())}`;
 
 export default function OmrPrintStudioModal({ open, onClose, paper = null, onPrinted = null }) {
   const paperCodes = useMemo(() => Object.keys(paper?.keys || {}).sort(), [paper]);
   const [presetId, setPresetId] = useState(paper ? 'active_paper' : 'full_moet');
   const [schoolName, setSchoolName] = useState('SỞ GIÁO DỤC VÀ ĐÀO TẠO');
-  const [year, setYear] = useState('KỲ THI TỐT NGHIỆP THPT NĂM 2025');
+  const [year, setYear] = useState(DEFAULT_EXAM_YEAR);
   const [examTitle, setExamTitle] = useState(paper?.title || '');
   const [subject, setSubject] = useState('');
   const [duration, setDuration] = useState(50);
@@ -48,7 +51,7 @@ export default function OmrPrintStudioModal({ open, onClose, paper = null, onPri
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) return undefined;
     setErrorMsg('');
     if (paper) {
       setPresetId('active_paper');
@@ -57,9 +60,16 @@ export default function OmrPrintStudioModal({ open, onClose, paper = null, onPri
       setCodesInput(list.join(', '));
     } else {
       setPresetId('full_moet');
+      setExamTitle('');
+      setCodesInput('');
     }
     setPreviewIdx(0);
-  }, [open, paper]);
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose?.();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, paper, onClose]);
 
   const activeCounts = useMemo(() => {
     if (presetId === 'active_paper' && paper?.counts) {

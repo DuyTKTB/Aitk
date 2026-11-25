@@ -55,11 +55,18 @@ export const CHEMS = {
   Na2CO3: { id: 'Na2CO3', vi: 'Natri cacbonat', en: 'Sodium carbonate', formula: 'Na2CO3', M: 106, state: 'solution', conc: 1, color: '#f4f8fa', cat: 'muối', hazard: [] },
   KI: { id: 'KI', vi: 'Kali iotua', en: 'Potassium iodide', formula: 'KI', M: 166, state: 'solution', conc: 0.5, color: '#f5f8fb', cat: 'muối', hazard: [] },
   KMnO4: { id: 'KMnO4', vi: 'Thuốc tím (KMnO4)', en: 'Potassium permanganate', formula: 'KMnO4', M: 158, state: 'solution', conc: 0.2, color: '#9333ea', cat: 'muối', hazard: ['ăn mòn'] },
+  PbNO32: { id: 'PbNO32', vi: 'Chì(II) nitrat', en: 'Lead(II) nitrate', formula: 'Pb(NO3)2', M: 331.2, state: 'solution', conc: 0.5, color: '#f4f8fc', cat: 'muối', hazard: ['độc'] },
+  NaHCO3: { id: 'NaHCO3', vi: 'Natri hiđrocacbonat', en: 'Baking soda', formula: 'NaHCO3', M: 84, state: 'solution', conc: 1, color: '#f5f8fa', cat: 'muối', hazard: [] },
+  H2O2: { id: 'H2O2', vi: 'Oxy già (H2O2)', en: 'Hydrogen peroxide', formula: 'H2O2', M: 34, state: 'solution', conc: 1.5, color: '#eef7ff', cat: 'dung-moi', hazard: ['ăn mòn'] },
+  MnO2: { id: 'MnO2', vi: 'Mangan đioxit (xúc tác)', en: 'Manganese(IV) oxide', formula: 'MnO2', M: 86.9, state: 'solid', color: '#27272a', cat: 'phi-kim', hazard: [], solidGram: 2, shape: 'granule' },
+  I2: { id: 'I2', vi: 'Dung dịch Iot', en: 'Iodine solution', formula: 'I2', M: 253.8, state: 'solution', conc: 0.2, color: '#b45309', cat: 'chi-thi', hazard: [] },
+  Starch: { id: 'Starch', vi: 'Hồ tinh bột', en: 'Starch solution', formula: '(C6H10O5)n', M: 162, state: 'solution', conc: 0.5, color: '#f8fafc', cat: 'muối', hazard: [] },
 
   // — Sản phẩm dung dịch nội bộ (ẩn khỏi danh sách chọn nhưng dùng để pha màu chính xác) —
   Cu_NH3_4: { id: 'Cu_NH3_4', vi: 'Phức đồng-amoniac', en: 'Tetraamminecopper(II)', formula: '[Cu(NH3)4](OH)2', M: 169.6, state: 'solution', conc: 0.5, color: '#1d4ed8', cat: 'muối', hazard: [], hiddenInList: true },
   NaAlO2: { id: 'NaAlO2', vi: 'Natri aluminat', en: 'Sodium aluminate', formula: 'Na[Al(OH)4]', M: 118, state: 'solution', conc: 0.5, color: '#f3f7fb', cat: 'muối', hazard: [], hiddenInList: true },
   Fe2SO43: { id: 'Fe2SO43', vi: 'Sắt(III) sunfat', en: 'Iron(III) sulfate', formula: 'Fe2(SO4)3', M: 400, state: 'solution', conc: 0.3, color: '#eab308', cat: 'muối', hazard: [], hiddenInList: true },
+  I2_Starch: { id: 'I2_Starch', vi: 'Phức Iot–Tinh bột', en: 'Iodine-Starch complex', formula: 'I2·Tinh bột', M: 415, state: 'solution', conc: 0.3, color: '#1e1b4b', cat: 'muối', hazard: [], hiddenInList: true },
 
   // — Chỉ thị —
   Quy: { id: 'Quy', vi: 'Quỳ tím', en: 'Litmus indicator', formula: 'Chỉ thị', M: 0, state: 'indicator', color: '#8b5cf6', cat: 'chi-thi', hazard: [] },
@@ -259,6 +266,48 @@ export const REACTIONS = [
     products: [{ id: 'CuSO4' }],
     obs: { type: 'ket-bam', precip: '#cbd5e1', precipFormula: 'Ag', text: 'Tinh thể bạc trắng sáng bám lên dây đồng; dung dịch chuyển dần sang màu xanh lam Cu²⁺.' },
   },
+  {
+    id: 'pbno32-ki',
+    eqStr: eq('Pb(NO3)2 + 2KI → PbI2↓ + 2KNO3'),
+    reactants: [{ id: 'PbNO32', n: 1 }, { id: 'KI', n: 2 }],
+    products: [{ id: 'NaCl' }],
+    obs: { type: 'kettua', precip: '#eab308', precipFormula: 'PbI2', text: 'Hiệu ứng Mưa Vàng: kết tủa vàng tươi lấp lánh PbI2 xuất hiện ngay lập tức!' },
+  },
+  {
+    id: 'h2o2-mno2',
+    eqStr: eq('2H2O2 →(MnO2) 2H2O + O2↑'),
+    reactants: [{ id: 'H2O2', n: 2 }, { id: 'MnO2', n: 1 }],
+    products: [{ id: 'H2O' }, { id: 'MnO2' }],
+    obs: { type: 'khi', gas: 'O2', text: 'MnO2 xúc tác phân hủy H2O2 giải phóng dòng khí O2 sủi bọt dữ dội, tỏa nhiệt mạnh.', tempDelta: 12 },
+  },
+  {
+    id: 'nahco3-hcl',
+    eqStr: eq('NaHCO3 + HCl → NaCl + H2O + CO2↑'),
+    reactants: [{ id: 'NaHCO3', n: 1 }, { id: 'HCl', n: 1 }],
+    products: [{ id: 'NaCl' }],
+    obs: { type: 'khi', gas: 'CO2', text: 'Sủi bọt khí CO2 mạnh mẽ (phản ứng axit – muối hiđrocacbonat).' },
+  },
+  {
+    id: 'nahco3-ch3cooh',
+    eqStr: eq('NaHCO3 + CH3COOH → CH3COONa + H2O + CO2↑'),
+    reactants: [{ id: 'NaHCO3', n: 1 }, { id: 'CH3COOH', n: 1 }],
+    products: [{ id: 'NaCl' }],
+    obs: { type: 'khi', gas: 'CO2', text: 'Hiệu ứng Núi Lửa: giấm ăn phản ứng với baking soda giải phóng khí CO2 dồi dào.' },
+  },
+  {
+    id: 'i2-starch',
+    eqStr: eq('I2 + (C6H10O5)n → Phức xanh tím đậm'),
+    reactants: [{ id: 'I2', n: 1 }, { id: 'Starch', n: 1 }],
+    products: [{ id: 'I2_Starch' }],
+    obs: { type: 'tao-phuc', text: 'Hồ tinh bột hấp phụ phân tử I2 tạo phức màu xanh tím đậm đặc trưng.' },
+  },
+  {
+    id: 'cu-hno3',
+    eqStr: eq('Cu + 4HNO3 → Cu(NO3)2 + 2NO2↑ + 2H2O'),
+    reactants: [{ id: 'Cu_wire', n: 1 }, { id: 'HNO3', n: 4 }],
+    products: [{ id: 'CuSO4' }],
+    obs: { type: 'khi', gas: 'NO2', text: 'Đồng tan dần tạo dung dịch xanh lam Cu²⁺ và thoát khí NO2 màu nâu đỏ.', tempDelta: 5 },
+  },
 ];
 
 /* Cặp KHÔNG phản ứng nhưng người học hay thử — trả lời đúng khoa học */
@@ -330,8 +379,8 @@ export function dominantColor(container) {
   for (const c of container.contents || []) {
     const chem = CHEMS[c.id];
     if (!chem || chem.state !== 'solution' || (c.mL || 0) <= 0) continue;
-    // Tăng trọng số màu cho các ion có màu đậm (KMnO4, phức đồng, CuSO4, FeCl3)
-    const vividBoost = ['KMnO4', 'Cu_NH3_4', 'CuSO4', 'FeCl3', 'Fe2SO43'].includes(c.id) ? 3.5 : 1;
+    // Tăng trọng số màu cho các ion có màu đậm (KMnO4, phức đồng, CuSO4, FeCl3, phức Iot-tinh bột)
+    const vividBoost = ['KMnO4', 'Cu_NH3_4', 'CuSO4', 'FeCl3', 'Fe2SO43', 'I2_Starch', 'I2'].includes(c.id) ? 3.8 : 1;
     parts.push({ color: chem.color, weight: c.mL * vividBoost });
   }
   let color = mixHex(parts);
@@ -629,3 +678,158 @@ export function suggestReactionsFor(container) {
 export function logEntry(list, entry) {
   return [...list.slice(-50), { at: new Date().toISOString(), ...entry }];
 }
+
+/* ================= DỮ LIỆU ĐA TRẠM LAB 3D PRO ================= */
+/* 1. Phổ màu ngọn lửa ion kim loại (Flame Test Spectroscopy) */
+export const FLAME_IONS = [
+  { id: 'default', ion: 'Không có muối', formula: 'C2H5OH', outer: '#fb923c', inner: '#60a5fa', light: '#fb923c', nm: 'Liên tục', note: 'Ngọn lửa đèn cồn chuẩn (lõi xanh, vỏ vàng cam).' },
+  { id: 'Na', ion: 'Natri (Na⁺)', formula: 'NaCl', outer: '#facc15', inner: '#fef08a', light: '#facc15', nm: '589 nm', note: 'Vàng rực rỡ (vạch D đôi 589 nm) — cực nhạy để nhận biết Na⁺.' },
+  { id: 'K', ion: 'Kali (K⁺)', formula: 'KCl', outer: '#c084fc', inner: '#e9d5ff', light: '#a855f7', nm: '766 / 404 nm', note: 'Tím hoa cà nhạt đặc trưng của ion K⁺.' },
+  { id: 'Li', ion: 'Liti (Li⁺)', formula: 'LiCl', outer: '#f43f5e', inner: '#fda4af', light: '#f43f5e', nm: '671 nm', note: 'Đỏ son rực (crimson red) của ion Li⁺.' },
+  { id: 'Sr', ion: 'Stronti (Sr²⁺)', formula: 'SrCl2', outer: '#dc2626', inner: '#fca5a5', light: '#ef4444', nm: '650 nm', note: 'Đỏ thẫm — thường dùng trong pháo hoa màu đỏ.' },
+  { id: 'Ca', ion: 'Canxi (Ca²⁺)', formula: 'CaCl2', outer: '#ea580c', inner: '#fdba74', light: '#f97316', nm: '622 nm', note: 'Đỏ cam / đỏ gạch đặc trưng của Ca²⁺.' },
+  { id: 'Cu', ion: 'Đồng (Cu²⁺)', formula: 'CuCl2', outer: '#10b981', inner: '#34d399', light: '#10b981', nm: '515 nm', note: 'Xanh lục ngọc pha lam cực bắt mắt của muối đồng.' },
+  { id: 'Ba', ion: 'Bari (Ba²⁺)', formula: 'BaCl2', outer: '#a3e635', inner: '#d9f99d', light: '#84cc16', nm: '524 nm', note: 'Vàng lục táo (apple green) của Ba²⁺.' },
+];
+
+/* 2. Dữ liệu Trạm Điện Phân 3D (Electrolysis Cell) */
+export const ELECTROLYTES = {
+  CuSO4: {
+    id: 'CuSO4',
+    name: 'Điện phân dd CuSO4 (điện cực trơ)',
+    color: '#2563eb',
+    eq: '2CuSO4 + 2H2O →(đpdd) 2Cu↓ + O2↑ + 2H2SO4',
+    cathode: 'Cu²⁺ + 2e → Cu↓ (lớp đồng đỏ bám catot −)',
+    anode: '2H2O → O2↑ + 4H⁺ + 4e (sủi bọt khí O2 ở anot +)',
+    platesCopper: true,
+    cathodeGas: null,
+    anodeGas: '#e0f2fe',
+    resistance: 8,
+  },
+  H2O: {
+    id: 'H2O',
+    name: 'Điện phân nước (H2SO4 xúc tác)',
+    color: '#cfe8fa',
+    eq: '2H2O →(đp) 2H2↑ + O2↑ (tỷ lệ thể tích 2 : 1)',
+    cathode: '2H⁺ + 2e → H2↑ (sủi bọt H2 gấp đôi ở catot −)',
+    anode: '2H2O → O2↑ + 4H⁺ + 4e (sủi bọt khí O2 ở anot +)',
+    platesCopper: false,
+    cathodeGas: '#f8fafc',
+    anodeGas: '#bae6fd',
+    resistance: 10,
+  },
+  NaCl: {
+    id: 'NaCl',
+    name: 'Điện phân dd NaCl bão hòa (có màng ngăn)',
+    color: '#e0f2fe',
+    eq: '2NaCl + 2H2O →(đpdd, cmn) 2NaOH + H2↑ + Cl2↑',
+    cathode: '2H2O + 2e → H2↑ + 2OH⁻ (sủi bọt H2 ở catot −)',
+    anode: '2Cl⁻ → Cl2↑ + 2e (thoát khí Cl2 vàng lục ở anot +)',
+    platesCopper: false,
+    cathodeGas: '#f8fafc',
+    anodeGas: '#bef264',
+    resistance: 6,
+  },
+};
+
+/* 3. Dữ liệu 10 Phân tử 3D VSEPR & Xoắn kép DNA (CPK coloring) */
+export const MOLECULES_3D = [
+  {
+    id: 'H2O', name: 'Nước (H2O)', formula: 'H2O', geometry: 'Chữ V (góc 104.5°)', hybrid: 'sp³',
+    atoms: [
+      { el: 'O', pos: [0, 0.08, 0], color: '#ef4444', r: 0.24 },
+      { el: 'H', pos: [-0.46, -0.26, 0], color: '#f8fafc', r: 0.15 },
+      { el: 'H', pos: [0.46, -0.26, 0], color: '#f8fafc', r: 0.15 },
+    ],
+    bonds: [[0, 1, 1], [0, 2, 1]],
+  },
+  {
+    id: 'CO2', name: 'Cacbon đioxit (CO2)', formula: 'CO2', geometry: 'Thẳng hàng (180°)', hybrid: 'sp',
+    atoms: [
+      { el: 'C', pos: [0, 0, 0], color: '#334155', r: 0.24 },
+      { el: 'O', pos: [-0.68, 0, 0], color: '#ef4444', r: 0.22 },
+      { el: 'O', pos: [0.68, 0, 0], color: '#ef4444', r: 0.22 },
+    ],
+    bonds: [[0, 1, 2], [0, 2, 2]],
+  },
+  {
+    id: 'CH4', name: 'Metan (CH4)', formula: 'CH4', geometry: 'Tứ diện đều (109.5°)', hybrid: 'sp³',
+    atoms: [
+      { el: 'C', pos: [0, 0, 0], color: '#334155', r: 0.24 },
+      { el: 'H', pos: [0.42, 0.42, 0.42], color: '#f8fafc', r: 0.14 },
+      { el: 'H', pos: [-0.42, -0.42, 0.42], color: '#f8fafc', r: 0.14 },
+      { el: 'H', pos: [-0.42, 0.42, -0.42], color: '#f8fafc', r: 0.14 },
+      { el: 'H', pos: [0.42, -0.42, -0.42], color: '#f8fafc', r: 0.14 },
+    ],
+    bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1], [0, 4, 1]],
+  },
+  {
+    id: 'NH3', name: 'Amoniac (NH3)', formula: 'NH3', geometry: 'Chóp tam giác (107°)', hybrid: 'sp³',
+    atoms: [
+      { el: 'N', pos: [0, 0.22, 0], color: '#3b82f6', r: 0.23 },
+      { el: 'H', pos: [0.48, -0.18, 0], color: '#f8fafc', r: 0.14 },
+      { el: 'H', pos: [-0.24, -0.18, 0.42], color: '#f8fafc', r: 0.14 },
+      { el: 'H', pos: [-0.24, -0.18, -0.42], color: '#f8fafc', r: 0.14 },
+    ],
+    bonds: [[0, 1, 1], [0, 2, 1], [0, 3, 1]],
+  },
+  {
+    id: 'H2SO4', name: 'Axit sulfuric (H2SO4)', formula: 'H2SO4', geometry: 'Tứ diện quanh S', hybrid: 'sp³',
+    atoms: [
+      { el: 'S', pos: [0, 0, 0], color: '#eab308', r: 0.28 },
+      { el: 'O', pos: [0, 0.56, 0.34], color: '#ef4444', r: 0.2 },
+      { el: 'O', pos: [0, 0.56, -0.34], color: '#ef4444', r: 0.2 },
+      { el: 'O', pos: [0.54, -0.36, 0], color: '#ef4444', r: 0.2 },
+      { el: 'O', pos: [-0.54, -0.36, 0], color: '#ef4444', r: 0.2 },
+      { el: 'H', pos: [0.88, -0.16, 0], color: '#f8fafc', r: 0.13 },
+      { el: 'H', pos: [-0.88, -0.16, 0], color: '#f8fafc', r: 0.13 },
+    ],
+    bonds: [[0, 1, 2], [0, 2, 2], [0, 3, 1], [0, 4, 1], [3, 5, 1], [4, 6, 1]],
+  },
+  {
+    id: 'C2H5OH', name: 'Etanol (C2H5OH)', formula: 'C2H5OH', geometry: 'Mạch thẳng 2C + nhóm -OH', hybrid: 'sp³',
+    atoms: [
+      { el: 'C', pos: [-0.52, -0.05, 0], color: '#334155', r: 0.22 },
+      { el: 'C', pos: [0.16, 0.18, 0], color: '#334155', r: 0.22 },
+      { el: 'O', pos: [0.76, -0.18, 0], color: '#ef4444', r: 0.2 },
+      { el: 'H', pos: [1.08, 0.08, 0], color: '#f8fafc', r: 0.13 },
+      { el: 'H', pos: [-0.92, 0.24, 0], color: '#f8fafc', r: 0.13 },
+      { el: 'H', pos: [-0.58, -0.38, 0.35], color: '#f8fafc', r: 0.13 },
+      { el: 'H', pos: [-0.58, -0.38, -0.35], color: '#f8fafc', r: 0.13 },
+      { el: 'H', pos: [0.18, 0.52, 0.34], color: '#f8fafc', r: 0.13 },
+      { el: 'H', pos: [0.18, 0.52, -0.34], color: '#f8fafc', r: 0.13 },
+    ],
+    bonds: [[0, 1, 1], [1, 2, 1], [2, 3, 1], [0, 4, 1], [0, 5, 1], [0, 6, 1], [1, 7, 1], [1, 8, 1]],
+  },
+  {
+    id: 'C6H6', name: 'Benzen (C6H6)', formula: 'C6H6', geometry: 'Lục giác đều phẳng (120°)', hybrid: 'sp² (vòng thơm)',
+    atoms: [
+      ...Array.from({ length: 6 }, (_, i) => {
+        const a = (i * Math.PI) / 3;
+        return { el: 'C', pos: [Math.cos(a) * 0.56, Math.sin(a) * 0.56, 0], color: '#334155', r: 0.19 };
+      }),
+      ...Array.from({ length: 6 }, (_, i) => {
+        const a = (i * Math.PI) / 3;
+        return { el: 'H', pos: [Math.cos(a) * 0.96, Math.sin(a) * 0.96, 0], color: '#f8fafc', r: 0.12 };
+      }),
+    ],
+    bonds: [[0, 1, 2], [1, 2, 1], [2, 3, 2], [3, 4, 1], [4, 5, 2], [5, 0, 1], [0, 6, 1], [1, 7, 1], [2, 8, 1], [3, 9, 1], [4, 10, 1], [5, 11, 1]],
+  },
+  {
+    id: 'NaCl', name: 'Tinh thể muối ăn (NaCl)', formula: 'NaCl (lập phương)', geometry: 'Mạng lập phương tâm diện', hybrid: 'Liên kết ion',
+    atoms: Array.from({ length: 27 }, (_, idx) => {
+      const ix = (idx % 3) - 1;
+      const iy = (Math.floor(idx / 3) % 3) - 1;
+      const iz = Math.floor(idx / 9) - 1;
+      const isCl = (ix + iy + iz + 6) % 2 === 0;
+      return { el: isCl ? 'Cl' : 'Na', pos: [ix * 0.42, iy * 0.42, iz * 0.42], color: isCl ? '#22c55e' : '#a855f7', r: isCl ? 0.16 : 0.12 };
+    }),
+    bonds: [],
+  },
+  {
+    id: 'DNA', name: 'Xoắn kép DNA (Sinh học phân tử)', formula: 'A-T · G-C', geometry: 'Xoắn kép phải (B-DNA)', hybrid: 'Liên kết Hiđro',
+    isDNA: true,
+    atoms: [],
+    bonds: [],
+  },
+];

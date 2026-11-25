@@ -219,6 +219,7 @@ const PAGES = [
   ['study', 'Phòng học lý thuyết & Công thức', IconNotebook],
   ['chalkboard', 'Bảng phấn tương tác & Kiểm định', IconScale],
   ['truong', 'Đề án tuyển sinh', IconTarget],
+  ['tap-trung', 'Phòng Tập Trung Pomodoro', IconTimer],
 ];
 
 const GAME_ROUTES = [
@@ -250,6 +251,7 @@ const CLEAN_PATH_MAP = {
   'mo-phong-khtn': 'sim-lab',
   'phong-thi-nghiem-vat-li': 'physics-lab',
   'may-tinh-casio-580': 'casio',
+  'tap-trung': 'pomodoro',
   'auth-action': 'auth-action',
 };
 
@@ -673,12 +675,12 @@ export default function App() {
   const PUBLIC_SEO_PAGES = [
     'ai', 'table', 'balance', 'formulas', 'casio', 'roadmap', 'study', 'grade',
     'virtual-exams', 'tools', 'admission', 'career', 'doc-studio',
-    'chalkboard', 'sim-lab', 'quiz', 'games', 'leaderboard', 'pomodoro', 'schedule',
+    'chalkboard', 'sim-lab', 'quiz', 'games', 'leaderboard', 'pomodoro', 'tap-trung', 'schedule',
   ];
 
   if (!isLoggedIn) {
     if (PUBLIC_SEO_PAGES.includes(page)) {
-      if (page === 'ai') {
+      if (page === 'ai' || page === 'pomodoro' || page === 'tap-trung') {
         return (
           <Suspense fallback={<PageLoader />}>
             <main id="main" tabIndex="-1" style={{ width: '100%', height: '100%' }}>
@@ -781,8 +783,7 @@ export default function App() {
 
     if (page === 'table') {
       return (
-        <section className="wrap">
-          <h1>Bảng tuần hoàn</h1>
+        <section className="wrap pt-page-wrap">
           <PeriodicTable />
         </section>
       );
@@ -815,7 +816,7 @@ export default function App() {
     if (page === 'formulas') return <FormulaCalculator />;
     if (page === 'analyze') return <CompoundAnalyzer />;
     if (page === 'balance') return <EquationBalancer />;
-    if (page === 'pomodoro') return <ClockHub />;
+    if (page === 'pomodoro' || page === 'tap-trung') return <ClockHub />;
     if (page === 'schedule') return <Schedule />;
     if (page === 'exam') return <ExamCountdown />;
     if (page === 'notes') return <Notes />;
@@ -947,23 +948,28 @@ export default function App() {
   const isTeacherPage = page === 'classroom' && isTeacherAccount;
   /* Khi vào làm bài trong Phòng thi ảo (#quiz / #virtual-exams): ẩn toàn bộ Nav, Mascot, ChatWidget, Footer giống hệt ExamJoin */
   const isVirtualExamRoom = (page === 'quiz' || page === 'virtual-exams') && (virtualExamActive || (typeof document !== 'undefined' && document.body?.dataset?.virtualExamActive === '1'));
-  const isFullPage = isAiPage || isTeacherPage || isVirtualExamRoom;
+  /* Phòng Tập Trung Pomodoro (#pomodoro / #tap-trung): hiển thị FULL NỀN 100vw×100dvh không vướng Navbar/Footer, vẫn giữ Con Chat PetWidget */
+  const isFocusStudioPage = page === 'pomodoro' || page === 'tap-trung';
+  /* Phòng Lab 3D (#games/lab-3d): toàn màn hình chuyên dụng — ẩn toàn bộ Navbar, Footer, Mascot & ChatWidget ngoài */
+  const isLab3dPage = page === 'games/lab-3d' && !featureDisabledLabel;
+  const isFullPage = isAiPage || isTeacherPage || isVirtualExamRoom || isLab3dPage;
+  const hidePageChrome = isFullPage || isFocusStudioPage;
 
   return (
-    <div data-page={page} className={isVirtualExamRoom ? 'is-virtual-exam-fullscreen' : undefined}>
+    <div data-page={page} className={isVirtualExamRoom ? 'is-virtual-exam-fullscreen' : isFocusStudioPage ? 'is-focus-fullscreen' : undefined}>
       <OceanGlassIconDefs />
-      {!isVirtualExamRoom && (
+      {!isVirtualExamRoom && !isFocusStudioPage && !isLab3dPage && (
         <a
           className="skip-link"
           href="#main"
           onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}
         >Bỏ qua điều hướng</a>
       )}
-      {!isVirtualExamRoom && <div className="scroll-progress" ref={progRef} aria-hidden="true" />}
+      {!hidePageChrome && <div className="scroll-progress" ref={progRef} aria-hidden="true" />}
 
       {!isFullPage && settings?.enablePet !== false && <PetWidget />}
-      {!isVirtualExamRoom && settings?.enableChat !== false && <ChatWidget />}
-      {!isFullPage && (
+      {!isVirtualExamRoom && !isFocusStudioPage && !isLab3dPage && settings?.enableChat !== false && <ChatWidget />}
+      {!hidePageChrome && (
         <div className="elec-global-bottom-blur" aria-hidden="true">
           <div className="elec-blur-layer l1" />
           <div className="elec-blur-layer l2" />
@@ -987,12 +993,12 @@ export default function App() {
       {/* Vài bạn Elec cỡ lớn đứng cạnh các mục của trang chủ (chỉ hiện trên máy tính) */}
       {/* {page === 'home' && <ElecBuddies />} */}
 
-      {!isVirtualExamRoom && <SystemAnnouncementBanner />}
-      {!isVirtualExamRoom && <LiveSessionBanner />}
+      {!isVirtualExamRoom && !isLab3dPage && <SystemAnnouncementBanner />}
+      {!isVirtualExamRoom && !isLab3dPage && <LiveSessionBanner />}
 
       <ElecIntroLoader />
 
-      {!isFullPage && isMobileScreen && (
+      {!hidePageChrome && isMobileScreen && (
         <MobileHeader
           page={page}
           theme={theme}
@@ -1005,7 +1011,7 @@ export default function App() {
         />
       )}
 
-      {!isFullPage && !isMobileScreen && (
+      {!hidePageChrome && !isMobileScreen && (
         <DesktopNav
           page={page}
           theme={theme}
@@ -1063,9 +1069,9 @@ export default function App() {
         </div>
       </dialog>
 
-      {!isFullPage && !isMobileScreen && <SiteFooter />}
+      {!hidePageChrome && !isMobileScreen && <SiteFooter />}
 
-      {!isFullPage && isMobileScreen && (
+      {!hidePageChrome && isMobileScreen && (
         <BottomNav
           page={page}
           userRole={effectiveRole}

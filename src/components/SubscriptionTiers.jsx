@@ -59,23 +59,66 @@ function SvgBriefcase({ size = 16 }) {
 
 /* ============================================================
    DỮ LIỆU BẢNG GIÁ CHÍNH THỨC ELEC AI 2026
-   • Học sinh VIP: 299.000đ / 1 năm
-   • Giáo viên VIP: 999.000đ / 1 năm
+   • Gói Miễn phí: 0đ trọn đời
+   • Học sinh VIP: 299.000đ / 1 năm (≈820đ/ngày, tặng 700 Credit AI)
+   • Giáo viên VIP: 999.000đ / 1 năm (≈2.700đ/ngày, tặng 800 Credit AI)
    • Nạp Credit AI: từ 10.000đ trở lên (1đ = 1 Credit)
    ============================================================ */
+const FREE_STARTER_CARD = {
+  student: {
+    id: 'hs-free',
+    eyebrow: 'Miễn phí trọn đời',
+    badge: 'Khởi đầu',
+    name: 'Học Sinh Free',
+    desc: 'Trải nghiệm nền tảng ôn thi KHTN thông minh hoàn toàn miễn phí',
+    fee: '0đ',
+    unit: '/ trọn đời',
+    rate: 'Dùng ngay · Không cần thẻ thanh toán',
+    mascot: '/img/elec/elec-hello.png',
+    features: [
+      'Miễn phí Lộ trình học KHTN & Chiến lược Nguyện vọng AI',
+      'Sổ tay lỗi sai thông minh SRS & Lớp học của tôi không giới hạn',
+      '5 tim luyện tập mỗi ngày cho kho đề thi thử FREE',
+      'Bộ công cụ STEM, Bảng tuần hoàn & Máy tính Casio fx-580VN X',
+      'Hỏi đáp Gia sư ELEC AI bằng Credit tặng sẵn',
+    ],
+  },
+  teacher: {
+    id: 'gv-free',
+    eyebrow: 'Miễn phí trọn đời',
+    badge: 'Khởi đầu',
+    name: 'Giáo Viên Free',
+    desc: 'Khởi tạo lớp học và trải nghiệm hệ thống soạn đề, chấm OMR',
+    fee: '0đ',
+    unit: '/ trọn đời',
+    rate: 'Dùng ngay · Nâng cấp bất cứ lúc nào',
+    mascot: '/img/elec/elec-hello.png',
+    features: [
+      'Quản lý miễn phí 1 lớp học với tối đa 40 học sinh',
+      'Dùng thử 10 lần nhập đề Word (.docx) & 30 lần nhập thủ công',
+      'Trải nghiệm 5 lượt quét chấm phiếu OMR A4 bằng Camera AI',
+      'Truy cập kho đề thi thử FREE (5 tim/ngày) & công cụ lớp học',
+      'Lưu trữ tối đa 50 câu hỏi trong Ngân hàng câu hỏi cá nhân',
+    ],
+  },
+};
+
 export const PRICING_PACKAGES = {
   student: [
     {
       id: 'hs-12m',
       pkgKey: 'hs-12m',
-      name: 'Học Sinh VIP · 1 Năm',
-      eyebrow: 'Trọn năm học',
-      badge: '299k / 1 năm',
+      name: 'Học Sinh VIP',
+      eyebrow: 'Trọn năm học · 365 ngày',
+      badge: 'Phổ biến nhất · -50%',
       badgeType: 'crown',
       badgeColor: 'pink',
-      desc: 'Mở khóa toàn bộ quyền lợi Học sinh VIP suốt 365 ngày liên tục',
+      desc: 'Mở khóa toàn bộ kho đề PRO/VIP và gia sư AI chuyên sâu suốt 1 năm',
       defaultTierId: '1y',
       isPopular: true,
+      mascot: '/img/elec/elec-celebrate.png',
+      dailyNote: 'Chỉ ~820đ / ngày',
+      bonusPill: '+700 Credit AI',
       tiers: [
         {
           id: '1y',
@@ -91,7 +134,7 @@ export const PRICING_PACKAGES = {
         },
       ],
       features: [
-        'Mở khóa 100% kho đề thi thử PRO & VIP (THPTQG, ĐGNL, TSA, V-ACT) suốt 1 năm',
+        'Mở khóa 100% kho đề thi thử PRO & VIP (THPTQG, ĐGNL, TSA, V-ACT)',
         '99 tim luyện tập/ngày & bảng thống kê Phòng thi ảo không giới hạn',
         'Tặng kèm 700 Credit AI dùng cho Gia sư & AI Tạo Đề',
         'AI Chẩn đoán lỗ hổng kiến thức & Đơn thuốc ôn tập sau mỗi đề thi',
@@ -106,14 +149,17 @@ export const PRICING_PACKAGES = {
     {
       id: 'gv-12m',
       pkgKey: 'gv-12m',
-      name: 'Giáo Viên VIP · 1 Năm',
-      eyebrow: 'Trọn 1 năm học',
-      badge: '999k / 1 năm',
+      name: 'Giáo Viên VIP',
+      eyebrow: 'Trọn năm học · 365 ngày',
+      badge: 'Phổ biến nhất · -50%',
       badgeType: 'crown',
       badgeColor: 'pink',
-      desc: 'Mở khóa toàn bộ hệ sinh thái giảng dạy AI, OMR & Giám sát thi suốt 365 ngày',
+      desc: 'Mở khóa toàn bộ hệ sinh thái giảng dạy AI, OMR & Giám sát thi 365 ngày',
       defaultTierId: '1y',
       isPopular: true,
+      mascot: '/img/elec/elec-super-saiyan.png',
+      dailyNote: 'Chỉ ~2.700đ / ngày',
+      bonusPill: '+800 Credit AI',
       tiers: [
         {
           id: '1y',
@@ -129,11 +175,11 @@ export const PRICING_PACKAGES = {
         },
       ],
       features: [
-        'Không giới hạn số lớp học & sĩ số học sinh suốt 365 ngày (Free: 1 lớp / 40 HS)',
+        'Không giới hạn số lớp học & sĩ số học sinh suốt 365 ngày',
         'Không giới hạn nhập Word (.docx), soạn thủ công & Ngân hàng câu hỏi AI',
         'Mở khóa AI Tạo Đề theo ma trận & tách đề từ file PDF / Ảnh OCR',
-        'Quét chấm phiếu OMR A4 không giới hạn, xuất Excel & Giám sát thi LIVE Camera AI',
-        'Tặng kèm 800 Credit AI ưu tiên xử lý tác vụ biên soạn & phân tích lớp',
+        'Quét chấm phiếu OMR A4 không giới hạn, xuất Excel & Giám sát LIVE Camera AI',
+        'Tặng kèm 800 Credit AI ưu tiên xử lý biên soạn & phân tích lớp học',
       ],
       ctaText: 'Đăng ký Giáo Viên VIP',
       tone: 'gradient-blue',
@@ -144,15 +190,17 @@ export const PRICING_PACKAGES = {
 const CREDIT_TOPUP_CARD = {
   id: 'credit-topup',
   name: 'ELEC AI Credit',
-  eyebrow: 'Nạp linh hoạt theo nhu cầu',
-  badge: 'Từ 10k trở lên',
+  eyebrow: 'Nạp linh hoạt',
+  badge: 'Không hết hạn',
   badgeColor: 'blue',
-  desc: 'Chỉ trả theo số lượt AI sử dụng, không giới hạn thời gian sử dụng',
+  desc: 'Chỉ trả theo số lượt AI sử dụng, cộng dồn và bảo lưu trọn đời',
   fee: 'Từ 10.000đ',
   unit: 'trở lên',
-  rate: '1đ = 1 ELEC Credit · Không hết hạn',
+  rate: '1đ = 1 ELEC Credit · Nạp VietQR 5s',
+  mascot: '/img/elec/elec-cool.png',
+  quickAmounts: ['10k', '50k', '100k', '200k'],
   features: [
-    'Nạp tự do từ 10.000đ trở lên qua VietQR, cộng Credit tự động sau 5 giây',
+    'Nạp tự do từ 10.000đ qua VietQR, cộng Credit tự động sau 5 giây',
     'Chat nhanh chỉ từ 100 Credit/lượt, DeepThink 500 Credit/lượt',
     'AI Tạo đề chuẩn GDPT 2018 & tách đề từ PDF / Ảnh OCR linh hoạt',
     'Tự động hoàn 100% Credit nếu hệ thống AI gặp sự cố',
@@ -169,6 +217,7 @@ export default function SubscriptionTiers({
   onRedeemVoucher = null,
   lockedRole = null,
   onOpenCreditTopUp = null,
+  isCurrentVip = false,
 }) {
   const effectiveLockedRole = lockedRole === 'teacher' || lockedRole === 'student' ? lockedRole : null;
   const [roleTab, setRoleTab] = useState(effectiveLockedRole || 'student');
@@ -263,9 +312,13 @@ export default function SubscriptionTiers({
         )}
 
         <header className="ns9-9s-header">
-          <div className="ns9-9s-eyebrow-pill">
-            <SvgSparkle size={13} />
-            <span>ELEC AI · Bảng giá nâng cấp 2026</span>
+          <div className="ns9-9s-hero-decor" aria-hidden="true">
+            <img src="/img/elec/elec-wink.png" alt="" className="ns9-9s-header-mascot left" draggable={false} />
+            <div className="ns9-9s-eyebrow-pill">
+              <SvgSparkle size={13} />
+              <span>ELEC AI · Bảng giá nâng cấp 2026</span>
+            </div>
+            <img src="/img/elec/elec-heart-eyes.png" alt="" className="ns9-9s-header-mascot right" draggable={false} />
           </div>
           <h2 className="ns9-9s-main-title">
             {roleTab === 'teacher'
@@ -274,8 +327,8 @@ export default function SubscriptionTiers({
           </h2>
           <p className="ns9-9s-sub-title">
             {roleTab === 'teacher'
-              ? 'AI tạo đề, tách PDF/Ảnh OCR, trộn mã đề A4 & giám sát thi chỉ 999.000đ/năm.'
-              : 'Học sinh VIP chỉ 299.000đ/năm — luyện mọi bộ đề PRO & chẩn đoán AI 24/7.'}
+              ? 'Chọn gói phù hợp nhất — từ khởi đầu miễn phí, trọn bộ Giáo Viên VIP 1 năm đến nạp Credit AI linh hoạt.'
+              : 'Lựa chọn rõ ràng, minh bạch — từ miễn phí trọn đời, Học Sinh VIP chỉ ~820đ/ngày đến nạp Credit AI linh hoạt.'}
           </p>
 
           {exam && (
@@ -302,6 +355,7 @@ export default function SubscriptionTiers({
                 className={`ns9-9s-role-tab ${roleTab === 'student' ? 'is-active' : ''}`}
                 onClick={() => setRoleTab('student')}
               >
+                <img src="/img/elec/elec-happy.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
                 <SvgGradCap size={16} />
                 <span>Học sinh VIP (299k/năm)</span>
               </button>
@@ -313,6 +367,7 @@ export default function SubscriptionTiers({
                 className={`ns9-9s-role-tab ${roleTab === 'teacher' ? 'is-active' : ''}`}
                 onClick={() => setRoleTab('teacher')}
               >
+                <img src="/img/elec/elec-cool.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
                 <SvgBriefcase size={16} />
                 <span>Giáo viên VIP (999k/năm)</span>
               </button>
@@ -322,91 +377,50 @@ export default function SubscriptionTiers({
               {effectiveLockedRole === 'teacher' ? <SvgBriefcase size={15} /> : <SvgGradCap size={15} />}
               <span>
                 {effectiveLockedRole === 'teacher'
-                  ? 'Gói cước Giáo Viên VIP · Chuẩn 999.000đ/năm'
-                  : 'Gói cước Học Sinh VIP · Chỉ 299.000đ/năm'}
+                  ? 'Bảng gói dành cho Giáo Viên · Tiết kiệm 50% gói năm'
+                  : 'Bảng gói dành cho Học Sinh · Tiết kiệm 50% gói năm'}
               </span>
             </div>
           )}
         </header>
 
-        {/* Tóm tắt quyền lợi gói Free hiện có */}
-        <div className="ns9-9s-free-strip">
-          <span className="ns9-9s-free-tag">Gói Free (0đ)</span>
-          <span className="ns9-9s-free-copy">
-            {roleTab === 'teacher'
-              ? 'Bao gồm 1 lớp / 40 HS · Dùng thử 10 lần nhập file Word (.docx) · 30 lần nhập thủ công · 5 lượt chấm OMR'
-              : 'Miễn phí Lộ trình KHTN, Chiến lược Nguyện vọng AI, Sổ tay lỗi sai SRS, Lớp học của tôi & 5 tim/ngày'}
-          </span>
-        </div>
-
-        {/* ── GRID 2 CỘT: GÓI VIP 1 NĂM & NẠP CREDIT TỪ 10K ── */}
-        <div className="ns9-9s-cards-grid is-two-cols">
-          {currentPackages.map((card) => {
-            const activeTierId = selectedTiers[card.id] || card.defaultTierId;
-            const chosenTier = card.tiers.find((t) => t.id === activeTierId) || card.tiers[0];
-
-            return (
-              <article
-                key={card.id}
-                className={`ns9-9s-col-card tone-${card.tone} ${card.isPopular ? 'is-popular-card' : ''}`}
-              >
+        {/* ── GRID 3 CỘT CHIA ĐỀU: FREE (0Đ) · VIP 1 NĂM (TRUNG TÂM) · CREDIT (TỪ 10K) ── */}
+        {(() => {
+          const freeCard = FREE_STARTER_CARD[roleTab] || FREE_STARTER_CARD.student;
+          return (
+            <div className="ns9-9s-cards-grid is-three-balanced">
+              {/* CỘT 1: GÓI MIỄN PHÍ (0đ) */}
+              <article className="ns9-9s-col-card tone-free">
+                <img src={freeCard.mascot} alt="" className="ns9-9s-card-mascot" aria-hidden="true" />
                 <div className="ns9-9s-card-top-row">
-                  <span className="ns9-9s-card-eyebrow">{card.eyebrow}</span>
-                  {card.badge && (
-                    <span className={`ns9-9s-pill-badge badge-${card.badgeColor || 'blue'}`}>
-                      {card.badgeType === 'crown' ? <SvgCrown size={12} /> : card.badgeType === 'flame' ? <SvgFlame size={12} /> : <SvgSparkle size={12} />}
-                      <span>{card.badge}</span>
-                    </span>
-                  )}
+                  <span className="ns9-9s-card-eyebrow">{freeCard.eyebrow}</span>
+                  <span className="ns9-9s-pill-badge badge-emerald">
+                    <SvgSparkle size={11} />
+                    <span>{freeCard.badge}</span>
+                  </span>
                 </div>
 
                 <div className="ns9-9s-card-head">
-                  <h3 className="ns9-9s-card-title">{card.name}</h3>
-                  <p className="ns9-9s-card-desc">{card.desc}</p>
+                  <h3 className="ns9-9s-card-title">{freeCard.name}</h3>
+                  <p className="ns9-9s-card-desc">{freeCard.desc}</p>
                 </div>
 
-                {/* Giá nổi bật của mốc đang chọn */}
-                <div className="ns9-9s-price-hero">
+                <div className="ns9-9s-price-hero is-free">
                   <div className="ns9-9s-price-main">
-                    <strong>{chosenTier.fee}</strong>
-                    <span className="ns9-9s-price-unit">/ {chosenTier.label}</span>
+                    <strong>{freeCard.fee}</strong>
+                    <span className="ns9-9s-price-unit">{freeCard.unit}</span>
                   </div>
                   <div className="ns9-9s-price-meta">
-                    <span className="ns9-9s-price-rate">{chosenTier.rate}</span>
-                    {chosenTier.origFee && (
-                      <span className="ns9-9s-opt-orig-price">{chosenTier.origFee}</span>
-                    )}
-                    {chosenTier.save && (
-                      <span className="ns9-9s-opt-save-badge">{chosenTier.save}</span>
-                    )}
+                    <span className="ns9-9s-price-rate is-emerald">{freeCard.rate}</span>
+                  </div>
+                  <div className="ns9-9s-price-perks">
+                    <span className="ns9-9s-perk-chip is-emerald">Không giới hạn thời gian</span>
                   </div>
                 </div>
-
-                {/* Bộ chọn thời hạn dạng Segment Pills khi gói có nhiều mốc */}
-                {card.tiers.length > 1 && (
-                  <div className="ns9-9s-duration-switch" role="radiogroup" aria-label={`Chọn thời hạn ${card.name}`}>
-                    {card.tiers.map((tier) => {
-                      const isSelected = activeTierId === tier.id;
-                      return (
-                        <button
-                          key={tier.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={isSelected}
-                          className={`ns9-9s-dur-btn ${isSelected ? 'is-selected' : ''}`}
-                          onClick={() => handleSelectOption(card.id, tier.id)}
-                        >
-                          <span>{tier.label}</span>
-                          {tier.save && <small>{tier.save.replace('Tiết kiệm ', '-')}</small>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
 
                 <div className="ns9-9s-features-box">
                   <ul className="ns9-9s-feat-list">
-                    {card.features.map((feat, fIdx) => (
+                    {freeCard.features.map((feat, fIdx) => (
                       <li key={fIdx} className="ns9-9s-feat-item">
                         <SvgCheck size={12} />
                         <span>{feat}</span>
@@ -418,63 +432,170 @@ export default function SubscriptionTiers({
                 <div className="ns9-9s-card-footer">
                   <button
                     type="button"
-                    className={`ns9-9s-card-cta-btn ${card.isPopular ? 'btn-popular' : ''}`}
-                    onClick={() => handleCheckout(card)}
+                    className="ns9-9s-card-cta-btn is-free-btn"
+                    disabled
                   >
-                    <span>{card.ctaText} · {chosenTier.fee}</span>
+                    <span>{isCurrentVip ? 'Đã bao gồm trong gói VIP' : 'Đang sử dụng miễn phí'}</span>
                   </button>
                 </div>
               </article>
-            );
-          })}
 
-          {/* Thẻ Nạp Credit AI từ 10.000đ trở lên */}
-          <article className="ns9-9s-col-card tone-blue">
-            <div className="ns9-9s-card-top-row">
-              <span className="ns9-9s-card-eyebrow">{CREDIT_TOPUP_CARD.eyebrow}</span>
-              <span className={`ns9-9s-pill-badge badge-${CREDIT_TOPUP_CARD.badgeColor}`}>
-                <SvgSparkle size={12} />
-                <span>{CREDIT_TOPUP_CARD.badge}</span>
-              </span>
-            </div>
+              {/* CỘT 2 (TRUNG TÂM NỔI BẬT): GÓI VIP 1 NĂM */}
+              {currentPackages.map((card) => {
+                const activeTierId = selectedTiers[card.id] || card.defaultTierId;
+                const chosenTier = card.tiers.find((t) => t.id === activeTierId) || card.tiers[0];
 
-            <div className="ns9-9s-card-head">
-              <h3 className="ns9-9s-card-title">{CREDIT_TOPUP_CARD.name}</h3>
-              <p className="ns9-9s-card-desc">{CREDIT_TOPUP_CARD.desc}</p>
-            </div>
+                return (
+                  <article
+                    key={card.id}
+                    className={`ns9-9s-col-card tone-${card.tone} ${card.isPopular ? 'is-popular-card' : ''}`}
+                  >
+                    {card.isPopular && (
+                      <div className="ns9-9s-popular-ribbon">
+                        <SvgCrown size={12} />
+                        <span>PHỔ BIẾN NHẤT · TIẾT KIỆM 50%</span>
+                      </div>
+                    )}
+                    <img src={card.mascot || '/img/elec/elec-celebrate.png'} alt="" className="ns9-9s-card-mascot is-hero" aria-hidden="true" />
 
-            <div className="ns9-9s-price-hero">
-              <div className="ns9-9s-price-main">
-                <strong>{CREDIT_TOPUP_CARD.fee}</strong>
-                <span className="ns9-9s-price-unit">{CREDIT_TOPUP_CARD.unit}</span>
-              </div>
-              <div className="ns9-9s-price-meta">
-                <span className="ns9-9s-price-rate">{CREDIT_TOPUP_CARD.rate}</span>
-              </div>
-            </div>
+                    <div className="ns9-9s-card-top-row">
+                      <span className="ns9-9s-card-eyebrow">{card.eyebrow}</span>
+                      {card.badge && !card.isPopular && (
+                        <span className={`ns9-9s-pill-badge badge-${card.badgeColor || 'blue'}`}>
+                          {card.badgeType === 'crown' ? <SvgCrown size={11} /> : card.badgeType === 'flame' ? <SvgFlame size={11} /> : <SvgSparkle size={11} />}
+                          <span>{chosenTier.save || card.badge}</span>
+                        </span>
+                      )}
+                    </div>
 
-            <div className="ns9-9s-features-box">
-              <ul className="ns9-9s-feat-list">
-                {CREDIT_TOPUP_CARD.features.map((feat, fIdx) => (
-                  <li key={fIdx} className="ns9-9s-feat-item">
-                    <SvgCheck size={12} />
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+                    <div className="ns9-9s-card-head">
+                      <h3 className="ns9-9s-card-title">{card.name}</h3>
+                      <p className="ns9-9s-card-desc">{card.desc}</p>
+                    </div>
 
-            <div className="ns9-9s-card-footer">
-              <button
-                type="button"
-                className="ns9-9s-card-cta-btn"
-                onClick={handleOpenCredit}
-              >
-                <span>{CREDIT_TOPUP_CARD.ctaText} · Từ 10.000đ</span>
-              </button>
+                    {/* Giá nổi bật cực hấp dẫn */}
+                    <div className="ns9-9s-price-hero is-vip">
+                      <div className="ns9-9s-price-main">
+                        <strong className="is-gradient-price">{chosenTier.fee}</strong>
+                        <span className="ns9-9s-price-unit">/ {chosenTier.label}</span>
+                      </div>
+                      <div className="ns9-9s-price-meta">
+                        <span className="ns9-9s-price-rate">{chosenTier.rate}</span>
+                        {chosenTier.origFee && (
+                          <span className="ns9-9s-opt-orig-price">{chosenTier.origFee}</span>
+                        )}
+                        {chosenTier.save && (
+                          <span className="ns9-9s-opt-save-badge">-50%</span>
+                        )}
+                      </div>
+                      <div className="ns9-9s-price-perks">
+                        {card.dailyNote && <span className="ns9-9s-perk-chip is-cobalt">{card.dailyNote}</span>}
+                        {card.bonusPill && <span className="ns9-9s-perk-chip is-amber">{card.bonusPill}</span>}
+                      </div>
+                    </div>
+
+                    {card.tiers.length > 1 && (
+                      <div className="ns9-9s-duration-switch" role="radiogroup" aria-label={`Chọn thời hạn ${card.name}`}>
+                        {card.tiers.map((tier) => {
+                          const isSelected = activeTierId === tier.id;
+                          return (
+                            <button
+                              key={tier.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={isSelected}
+                              className={`ns9-9s-dur-btn ${isSelected ? 'is-selected' : ''}`}
+                              onClick={() => handleSelectOption(card.id, tier.id)}
+                            >
+                              <span>{tier.label}</span>
+                              {tier.save && <small>{tier.save.replace('Tiết kiệm ', '-')}</small>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="ns9-9s-features-box">
+                      <ul className="ns9-9s-feat-list">
+                        {card.features.map((feat, fIdx) => (
+                          <li key={fIdx} className="ns9-9s-feat-item">
+                            <SvgCheck size={12} />
+                            <span>{feat}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="ns9-9s-card-footer">
+                      <button
+                        type="button"
+                        className={`ns9-9s-card-cta-btn ${card.isPopular ? 'btn-popular' : ''}`}
+                        onClick={() => handleCheckout(card)}
+                      >
+                        <span>
+                          {isCurrentVip ? `Gia hạn thêm 1 năm · ${chosenTier.fee}` : `${card.ctaText} · ${chosenTier.fee}`}
+                        </span>
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+
+              {/* CỘT 3: NẠP CREDIT AI LINH HOẠT */}
+              <article className="ns9-9s-col-card tone-credit">
+                <img src={CREDIT_TOPUP_CARD.mascot} alt="" className="ns9-9s-card-mascot" aria-hidden="true" />
+                <div className="ns9-9s-card-top-row">
+                  <span className="ns9-9s-card-eyebrow">{CREDIT_TOPUP_CARD.eyebrow}</span>
+                  <span className={`ns9-9s-pill-badge badge-${CREDIT_TOPUP_CARD.badgeColor}`}>
+                    <SvgSparkle size={11} />
+                    <span>{CREDIT_TOPUP_CARD.badge}</span>
+                  </span>
+                </div>
+
+                <div className="ns9-9s-card-head">
+                  <h3 className="ns9-9s-card-title">{CREDIT_TOPUP_CARD.name}</h3>
+                  <p className="ns9-9s-card-desc">{CREDIT_TOPUP_CARD.desc}</p>
+                </div>
+
+                <div className="ns9-9s-price-hero is-credit">
+                  <div className="ns9-9s-price-main">
+                    <strong>{CREDIT_TOPUP_CARD.fee}</strong>
+                    <span className="ns9-9s-price-unit">{CREDIT_TOPUP_CARD.unit}</span>
+                  </div>
+                  <div className="ns9-9s-price-meta">
+                    <span className="ns9-9s-price-rate is-violet">{CREDIT_TOPUP_CARD.rate}</span>
+                  </div>
+                  <div className="ns9-9s-price-perks">
+                    {CREDIT_TOPUP_CARD.quickAmounts.map((amt) => (
+                      <span key={amt} className="ns9-9s-perk-chip is-violet">{amt}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="ns9-9s-features-box">
+                  <ul className="ns9-9s-feat-list">
+                    {CREDIT_TOPUP_CARD.features.map((feat, fIdx) => (
+                      <li key={fIdx} className="ns9-9s-feat-item">
+                        <SvgCheck size={12} />
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="ns9-9s-card-footer">
+                  <button
+                    type="button"
+                    className="ns9-9s-card-cta-btn is-credit-btn"
+                    onClick={handleOpenCredit}
+                  >
+                    <span>{CREDIT_TOPUP_CARD.ctaText} · Từ 10.000đ</span>
+                  </button>
+                </div>
+              </article>
             </div>
-          </article>
-        </div>
+          );
+        })()}
 
         {/* Voucher / Mã kích hoạt */}
         {onRedeemVoucher && (

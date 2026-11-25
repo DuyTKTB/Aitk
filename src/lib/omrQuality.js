@@ -13,9 +13,9 @@
 export const IMG_LIMITS = {
   minWidth: 1000,
   minHeight: 700,
-  /* 0..255 */
+  /* 0..255 — giấy A4 scan chuẩn trắng sạch thường đạt mean ~244..249 */
   minBrightness: 55,
-  maxBrightness: 240,
+  maxBrightness: 251,
   /* độ lệch chuẩn độ sáng — thấp = ảnh bệt, thiếu tương phản */
   minContrast: 18,
   /* trung bình chênh lệch điểm ảnh kề nhau — thấp = ảnh mờ/nhòe */
@@ -85,7 +85,11 @@ export function measureImageQuality(imageData, limits = IMG_LIMITS) {
   const sharpness = gcount ? grad / gcount : 0;
 
   const issues = [];
-  if (width < limits.minWidth || height < limits.minHeight) {
+  const longSide = Math.max(width, height);
+  const shortSide = Math.min(width, height);
+  const reqLong = Math.max(limits.minWidth, limits.minHeight);
+  const reqShort = Math.min(limits.minWidth, limits.minHeight);
+  if (longSide < reqLong || shortSide < reqShort) {
     issues.push(`Ảnh nhỏ (${width}×${height}) — nên chụp ở độ phân giải cao hơn để đọc đúng các ô tô.`);
   }
   if (mean < limits.minBrightness) issues.push('Ảnh quá tối — bật thêm đèn hoặc chụp lại.');
@@ -108,7 +112,10 @@ export function measureImageQuality(imageData, limits = IMG_LIMITS) {
 export function qualityScore(q) {
   if (!q) return 0;
   let score = 100;
-  if (q.width < IMG_LIMITS.minWidth) score -= 20;
+  const longSide = Math.max(q.width || 0, q.height || 0);
+  const shortSide = Math.min(q.width || 0, q.height || 0);
+  if (longSide < Math.max(IMG_LIMITS.minWidth, IMG_LIMITS.minHeight)
+    || shortSide < Math.min(IMG_LIMITS.minWidth, IMG_LIMITS.minHeight)) score -= 20;
   if (q.contrast < IMG_LIMITS.minContrast) score -= 25;
   if (q.sharpness < IMG_LIMITS.minSharpness) score -= 30;
   if (q.brightness < IMG_LIMITS.minBrightness || q.brightness > IMG_LIMITS.maxBrightness) score -= 20;

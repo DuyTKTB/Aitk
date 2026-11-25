@@ -19,6 +19,7 @@ import {
   IcoBulb, IcoSave, IcoHeadphones,
 } from './ClockIcons2.jsx';
 import { focusAudio, FOCUS_SOUND_TRACKS } from '../lib/focusAudioEngine.js';
+import FocusStudioPage from './FocusStudioPage.jsx';
 import './clock-hub.css';
 import './clock-hub-aurora.css';
 import '../styles/student-v9-upgrades.css';
@@ -1717,6 +1718,7 @@ function StatsTab() {
    ============================================================ */
 export default function ClockHub() {
   const [tab, setTab] = useLocalStorage('cs-ch-tab', 'focus');
+  const [studioView, setStudioView] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [zen, setZen] = useState(false);
   const [now, setNow] = useState(new Date());
@@ -1733,11 +1735,25 @@ export default function ClockHub() {
     }
   }, []);
 
+  // Giao diện mặc định chuẩn 9Study Pro: Phòng Tập Trung Toàn Cảnh + YouTube + Lớp học + BXH
+  if (studioView && tab === 'focus') {
+    return (
+      <div className="ch-studio-host">
+        <FocusStudioPage
+          onOpenUtilities={() => {
+            setStudioView(false);
+            setTab('timer');
+          }}
+        />
+      </div>
+    );
+  }
+
   const currentTab = TABS.find((t) => t.id === tab) || TABS[0];
 
   const renderTab = () => {
     switch (tab) {
-      case 'focus':     return <FocusTab soundPreset={soundPreset} />;
+      case 'focus':     return <FocusStudioPage onOpenUtilities={() => setTab('timer')} />;
       case 'timer':     return <TimerTab />;
       case 'alarm':     return <AlarmTab />;
       case 'stopwatch': return <StopwatchTab />;
@@ -1747,7 +1763,7 @@ export default function ClockHub() {
       case 'countdown': return <CountdownTab />;
       case 'sounds':    return <SoundsTab soundPreset={soundPreset} setSoundPreset={setSoundPreset} />;
       case 'stats':     return <StatsTab />;
-      default:          return <FocusTab soundPreset={soundPreset} />;
+      default:          return <FocusStudioPage onOpenUtilities={() => setTab('timer')} />;
     }
   };
 
@@ -1782,7 +1798,10 @@ export default function ClockHub() {
                   type="button"
                   className={'ch-side-item' + (on ? ' on' : '')}
                   style={on ? { '--item-color': t.color } : undefined}
-                  onClick={() => setTab(t.id)}
+                  onClick={() => {
+                    setTab(t.id);
+                    if (t.id === 'focus') setStudioView(true);
+                  }}
                   title={t.label}
                 >
                   <span className="ch-side-item-ico"><Icon size={18} /></span>

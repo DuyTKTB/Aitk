@@ -8,6 +8,9 @@ import {
   solidMassOf,
   computePH,
   suggestReactionsFor,
+  FLAME_IONS,
+  ELECTROLYTES,
+  MOLECULES_3D,
 } from '../src/features/lab3d/engine.js';
 
 describe('Lab3D Chemistry Engine v2', () => {
@@ -93,5 +96,30 @@ describe('Lab3D Chemistry Engine v2', () => {
     const phNH3 = computePH(cWeakBase);
     expect(phNH3).toBeGreaterThan(9);
     expect(phNH3).toBeLessThan(13);
+  });
+
+  it('mô phỏng phản ứng Mưa Vàng PbI2, phân hủy xúc tác H2O2 và phức Iot–Tinh bột', () => {
+    const b1 = createContainer('b1', 250);
+    addChemical(b1, 'PbNO32', 20);
+    const rGold = addChemical(b1, 'KI', 20);
+    expect(rGold.events.some((e) => e.eq?.includes('PbI2'))).toBe(true);
+    expect(b1.precipitates.some((p) => p.formula === 'PbI2')).toBe(true);
+
+    const b2 = createContainer('b2', 250);
+    addChemical(b2, 'H2O2', 25);
+    const rO2 = addChemical(b2, 'MnO2', 2);
+    expect(rO2.events.some((e) => e.eq?.includes('2H2O2'))).toBe(true);
+    expect(b2.gas?.gas).toBe('O2');
+
+    const b3 = createContainer('b3', 250);
+    addChemical(b3, 'Starch', 20);
+    const rStarch = addChemical(b3, 'I2', 10);
+    expect(rStarch.events.some((e) => e.type === 'tao-phuc')).toBe(true);
+  });
+
+  it('cung cấp đầy đủ dữ liệu Đa trạm 3D (Flame Test, Điện phân, Phân tử & DNA)', () => {
+    expect(FLAME_IONS.length).toBeGreaterThanOrEqual(8);
+    expect(Object.keys(ELECTROLYTES)).toEqual(expect.arrayContaining(['CuSO4', 'H2O', 'NaCl']));
+    expect(MOLECULES_3D.some((m) => m.isDNA)).toBe(true);
   });
 });

@@ -28,7 +28,7 @@ import { exportToWord, exportToPDF, exportBundleZip } from '../../lib/examExport
 import { printOmrSheetA4, printMultipleOmrSheets } from '../../lib/omrSheetGenerator.js';
 import { scoreExam } from '../../lib/examScoring.js';
 import { createPaperExam } from '../../lib/paperStore.js';
-import { DEFAULT_SCORING, keyToStored } from '../../lib/paperGrade.js';
+import { DEFAULT_SCORING, MAX_COUNTS, keyToStored } from '../../lib/paperGrade.js';
 import { auth } from '../../lib/firebase.js';
 import '../../styles/exam-preview-simulator.css';
 
@@ -568,21 +568,24 @@ export default function ExamPreviewSimulator({
         p3: subjProf?.pointPerQuestion?.short_answer > 0 ? subjProf.pointPerQuestion.short_answer : DEFAULT_SCORING.p3,
       };
       const counts = {
-        p1: p1Count,
-        p2: p2Count,
-        p3: p3Count,
+        p1: Math.min(MAX_COUNTS.p1, p1Count),
+        p2: Math.min(MAX_COUNTS.p2, p2Count),
+        p3: Math.min(MAX_COUNTS.p3, p3Count),
       };
       const keys = {};
       shuffledExams.forEach((ver) => {
         const qs = ver.questions || [];
         const p1 = qs
           .filter((q) => (q.type || 'single_choice') === 'single_choice')
-          .map((q) => (typeof q.correct === 'number' && q.correct >= 0 && q.correct < 4 ? 'ABCD'[q.correct] : 'A'));
+          .slice(0, MAX_COUNTS.p1)
+          .map((q) => (typeof q.correct === 'number' && q.correct >= 0 && q.correct < 4 ? 'ABCD'[q.correct] : ''));
         const p2 = qs
           .filter((q) => q.type === 'true_false')
+          .slice(0, MAX_COUNTS.p2)
           .map((q) => (q.statements || []).slice(0, 4).map((st) => (st.answer ? 'D' : 'S')));
         const p3 = qs
           .filter((q) => q.type === 'short_answer')
+          .slice(0, MAX_COUNTS.p3)
           .map((q) => (Array.isArray(q.accepted) && q.accepted.length ? q.accepted : [String(q.answer ?? '')]).filter(Boolean));
         keys[ver.code] = keyToStored({ p1, p2, p3 });
       });

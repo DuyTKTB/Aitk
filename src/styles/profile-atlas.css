@@ -1539,10 +1539,11 @@
 .pf-atlas-lower-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
+  align-items: stretch;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1020px) {
   .pf-atlas-lower-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1551,5 +1552,750 @@
 @media (max-width: 680px) {
   .pf-atlas-lower-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ============================================================
+   PROFILE OVERVIEW BENTO 2.0 — 3 THẺ ĐỒNG BỘ + 6 LINH VẬT BÉ ELEC
+   ============================================================ */
+@keyframes pfV2Float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-4px) rotate(-2deg); }
+}
+
+.pf-v2-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 20px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, #ffffff 0%, #fafcff 100%);
+  border: 1.5px solid rgba(147, 197, 253, 0.34);
+  box-shadow:
+    0 12px 30px -14px rgba(15, 23, 42, 0.1),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.pf-v2-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.45);
+  box-shadow: 0 20px 38px -16px rgba(37, 99, 235, 0.18);
+}
+
+.pf-v2-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pf-v2-card-head.is-with-corner {
+  padding-right: 48px;
+}
+
+.pf-v2-card-title-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pf-v2-card-kicker {
+  font-size: 0.65rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3b82f6;
+}
+
+.pf-v2-card-title-row h3 {
+  margin: 0;
+  font-size: 1.06rem;
+  font-weight: 850;
+  color: #0f172a;
+  letter-spacing: -0.015em;
+}
+
+.pf-v2-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pf-v2-live-pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.pf-v2-live-pill.is-vip {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+
+.pf-v2-live-pill.is-free {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+/* ── CARD 1: PLAN BANNER & SPECS ── */
+.pf-v2-plan-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 14px 16px;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.pf-v2-plan-banner.is-vip {
+  background:
+    radial-gradient(circle at 90% 15%, rgba(251, 191, 36, 0.32), transparent 52%),
+    linear-gradient(135deg, #fffbeb 0%, #fef3c7 52%, #eff6ff 100%);
+  border: 1.5px solid #fcd34d;
+}
+
+.pf-v2-plan-banner.is-free {
+  background:
+    radial-gradient(circle at 90% 15%, rgba(52, 211, 153, 0.24), transparent 52%),
+    linear-gradient(135deg, #ecfdf5 0%, #eff6ff 100%);
+  border: 1.5px solid #a7f3d0;
+}
+
+.pf-v2-plan-banner-l {
+  flex: 1;
+  min-width: 0;
+}
+
+.pf-v2-plan-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.pf-v2-plan-ico {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.14);
+}
+
+.pf-v2-plan-name {
+  font-size: 1.12rem;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.pf-v2-plan-desc {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.pf-v2-plan-mascot {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.2));
+  animation: pfV2Float 3.4s ease-in-out infinite;
+  user-select: none;
+}
+
+.pf-v2-spec-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pf-v2-spec-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  min-width: 0;
+}
+
+.pf-v2-spec-lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.pf-v2-spec-val {
+  font-size: 0.88rem;
+  font-weight: 850;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-v2-spec-val.is-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: #1d4ed8;
+}
+
+.pf-v2-spec-sub {
+  font-size: 0.69rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-v2-access-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 13px;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.16);
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.45;
+  color: #1e3a8a;
+}
+
+.pf-v2-access-ico {
+  color: #2563eb;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.pf-v2-plan-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pf-v2-btn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 14px;
+  border-radius: 13px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.18s ease;
+  box-sizing: border-box;
+}
+
+.pf-v2-btn.is-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 58%, #0284c7 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 18px -4px rgba(37, 99, 235, 0.38);
+}
+
+.pf-v2-btn.is-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px -4px rgba(37, 99, 235, 0.48);
+}
+
+.pf-v2-btn.is-soft {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.pf-v2-btn.is-soft:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.pf-v2-mini-buddy {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #f8fbff 0%, #eff6ff 100%);
+  border: 1px dashed rgba(96, 165, 250, 0.55);
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: #334155;
+  line-height: 1.38;
+}
+
+.pf-v2-mini-buddy img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* ── CARD 2: QUOTA & ENERGY STATION ── */
+.pf-v2-energy-box {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 14px 15px;
+  border-radius: 17px;
+  border: 1px solid #e2e8f0;
+}
+
+.pf-v2-energy-box.is-hearts {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffffff 72%);
+  border-color: rgba(251, 113, 133, 0.28);
+}
+
+.pf-v2-energy-box.is-credit {
+  background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+  border-color: rgba(96, 165, 250, 0.34);
+}
+
+.pf-v2-energy-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pf-v2-energy-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #be123c;
+}
+
+.pf-v2-energy-title.is-blue {
+  color: #1d4ed8;
+}
+
+.pf-v2-inline-mascot {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 3px 6px rgba(244, 63, 94, 0.2));
+}
+
+.pf-v2-energy-num-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pf-v2-big-num {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.pf-v2-big-num strong {
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-v2-big-num span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.pf-v2-topup-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+  background: #ffffff;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+.pf-v2-topup-chip:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.pf-v2-credit-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.pf-v2-credit-figure strong {
+  font-size: 1.48rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #0284c7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.pf-v2-credit-figure span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #3b82f6;
+}
+
+.pf-v2-coach-box {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 8% 20%, rgba(56, 189, 248, 0.18), transparent 55%),
+    linear-gradient(135deg, #f0f9ff 0%, #eef2ff 100%);
+  border: 1.5px solid rgba(147, 197, 253, 0.52);
+}
+
+.pf-v2-coach-mascot {
+  width: 62px;
+  height: 62px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 8px 14px rgba(37, 99, 235, 0.25));
+  animation: pfV2Float 3.1s ease-in-out infinite;
+  user-select: none;
+}
+
+.pf-v2-coach-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.pf-v2-coach-body strong {
+  font-size: 0.84rem;
+  font-weight: 850;
+  color: #1e3a8a;
+}
+
+.pf-v2-coach-body p {
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.42;
+  color: #475569;
+}
+
+.pf-v2-coach-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.pf-v2-mini-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 0.71rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.pf-v2-mini-link.is-blue {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.pf-v2-mini-link:hover {
+  transform: translateY(-1px);
+  border-color: #2563eb;
+}
+
+/* ── CARD 3: STREAK CALENDAR & GOAL COMPANION ── */
+.pf-v2-corner-mascot {
+  position: absolute;
+  top: -16px;
+  right: 12px;
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.22));
+  animation: pfV2Float 3.5s ease-in-out infinite;
+  pointer-events: none;
+  user-select: none;
+  z-index: 3;
+}
+
+.pf-v2-cal-wrap {
+  padding: 12px;
+  border-radius: 17px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.pf-v2-streak-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 13px;
+  border-radius: 17px;
+  background: linear-gradient(135deg, #fff7ed 0%, #fefce8 100%);
+  border: 1.5px solid #fed7aa;
+}
+
+.pf-v2-streak-mascot {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 6px 12px rgba(234, 88, 12, 0.2));
+  animation: pfV2Float 3.2s ease-in-out infinite;
+  user-select: none;
+}
+
+.pf-v2-streak-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pf-v2-streak-goal-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.76rem;
+}
+
+.pf-v2-streak-goal-row strong {
+  color: #9a3412;
+  font-weight: 850;
+}
+
+.pf-v2-streak-goal-row span {
+  font-weight: 800;
+  color: #ea580c;
+}
+
+.pf-v2-streak-bar {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(234, 88, 12, 0.16);
+  overflow: hidden;
+}
+
+.pf-v2-streak-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f97316, #f59e0b);
+}
+
+.pf-v2-streak-meta small {
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: #7c2d12;
+}
+
+/* ── DARK MODE CHO PROFILE BENTO 2.0 ── */
+[data-theme="dark"] .pf-v2-card {
+  background: linear-gradient(180deg, #0f1a33 0%, #0b1326 100%);
+  border-color: rgba(96, 165, 250, 0.24);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.42);
+}
+
+[data-theme="dark"] .pf-v2-card-title-row h3,
+[data-theme="dark"] .pf-v2-plan-name,
+[data-theme="dark"] .pf-v2-spec-val,
+[data-theme="dark"] .pf-v2-big-num strong {
+  color: #f8fafc;
+}
+
+[data-theme="dark"] .pf-v2-card-kicker {
+  color: #60a5fa;
+}
+
+[data-theme="dark"] .pf-v2-plan-banner.is-vip {
+  background:
+    radial-gradient(circle at 90% 15%, rgba(245, 158, 11, 0.26), transparent 52%),
+    linear-gradient(135deg, rgba(120, 53, 15, 0.34) 0%, rgba(30, 58, 138, 0.3) 100%);
+  border-color: rgba(251, 191, 36, 0.42);
+}
+
+[data-theme="dark"] .pf-v2-plan-banner.is-free {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.32) 0%, rgba(30, 58, 138, 0.24) 100%);
+  border-color: rgba(52, 211, 153, 0.36);
+}
+
+[data-theme="dark"] .pf-v2-plan-ico {
+  background: rgba(15, 23, 42, 0.75);
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+[data-theme="dark"] .pf-v2-plan-desc,
+[data-theme="dark"] .pf-v2-spec-lbl,
+[data-theme="dark"] .pf-v2-spec-sub,
+[data-theme="dark"] .pf-v2-coach-body p {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .pf-v2-spec-tile,
+[data-theme="dark"] .pf-v2-cal-wrap {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+[data-theme="dark"] .pf-v2-spec-val.is-mono {
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .pf-v2-access-strip {
+  background: rgba(37, 99, 235, 0.16);
+  border-color: rgba(96, 165, 250, 0.3);
+  color: #dbeafe;
+}
+
+[data-theme="dark"] .pf-v2-btn.is-soft {
+  background: #16223b;
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .pf-v2-btn.is-soft:hover {
+  background: #1e3a8a;
+  border-color: #60a5fa;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .pf-v2-mini-buddy {
+  background: rgba(30, 58, 138, 0.22);
+  border-color: rgba(96, 165, 250, 0.36);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .pf-v2-energy-box.is-hearts {
+  background: linear-gradient(135deg, rgba(159, 18, 57, 0.22) 0%, rgba(15, 23, 42, 0.75) 75%);
+  border-color: rgba(251, 113, 133, 0.3);
+}
+
+[data-theme="dark"] .pf-v2-energy-box.is-credit {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.3) 0%, rgba(76, 29, 149, 0.22) 100%);
+  border-color: rgba(96, 165, 250, 0.34);
+}
+
+[data-theme="dark"] .pf-v2-energy-title {
+  color: #fda4af;
+}
+
+[data-theme="dark"] .pf-v2-energy-title.is-blue {
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .pf-v2-credit-figure strong {
+  background: linear-gradient(135deg, #93c5fd 0%, #38bdf8 55%, #ffffff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .pf-v2-topup-chip {
+  background: rgba(37, 99, 235, 0.26);
+  border-color: rgba(96, 165, 250, 0.45);
+  color: #bfdbfe;
+}
+
+[data-theme="dark"] .pf-v2-coach-box {
+  background: linear-gradient(135deg, rgba(14, 116, 144, 0.22) 0%, rgba(49, 46, 129, 0.28) 100%);
+  border-color: rgba(56, 189, 248, 0.34);
+}
+
+[data-theme="dark"] .pf-v2-coach-body strong {
+  color: #7dd3fc;
+}
+
+[data-theme="dark"] .pf-v2-mini-link {
+  background: rgba(15, 23, 42, 0.78);
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .pf-v2-mini-link.is-blue {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .pf-v2-streak-foot {
+  background: linear-gradient(135deg, rgba(154, 52, 18, 0.26) 0%, rgba(120, 53, 15, 0.2) 100%);
+  border-color: rgba(251, 146, 60, 0.38);
+}
+
+[data-theme="dark"] .pf-v2-streak-goal-row strong {
+  color: #fed7aa;
+}
+
+[data-theme="dark"] .pf-v2-streak-goal-row span {
+  color: #fdba74;
+}
+
+[data-theme="dark"] .pf-v2-streak-meta small {
+  color: #fde68a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-v2-plan-mascot,
+  .pf-v2-coach-mascot,
+  .pf-v2-corner-mascot,
+  .pf-v2-streak-mascot {
+    animation: none !important;
   }
 }

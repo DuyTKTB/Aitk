@@ -3872,17 +3872,17 @@
 .s9-swm-mascot-btn {
   width: 34px;
   height: 34px;
-  border-radius: 11px;
-  border: 1.5px solid rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.1);
-  padding: 3px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  background: transparent;
+  padding: 2px;
   cursor: pointer;
   transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
 .s9-swm-stage.theme-dawn .s9-swm-mascot-btn {
-  background: #ffffff;
-  border-color: #dbeafe;
+  background: transparent;
+  border-color: transparent;
 }
 
 .s9-swm-mascot-btn:hover { transform: translateY(-2px); }

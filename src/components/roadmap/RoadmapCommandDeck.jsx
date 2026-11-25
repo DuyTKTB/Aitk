@@ -136,27 +136,40 @@ export default function RoadmapCommandDeck({
               <i className="rm-pro-dot" aria-hidden="true" />
               <span><b>{masteredCount}/{totalCount}</b> chuyên đề vững ({completionPct}%)</span>
             </div>
+            <div className="rm-pro-deck-tools">
+              <button
+                type="button"
+                className={`rm-pro-ghost-btn ${showHubOverview ? 'is-on' : ''}`}
+                onClick={onToggleHubOverview}
+                title="Mở biểu đồ tiến bộ Điểm / Elo và quản lý Nguyện vọng"
+              >
+                <IcoChart size={14} />
+                <span>{showHubOverview ? 'Ẩn biểu đồ' : 'Biểu đồ & NV'}</span>
+              </button>
+              <button
+                type="button"
+                className="rm-pro-ghost-btn"
+                onClick={onOpenDiagnostic}
+                title="Làm bài đánh giá năng lực 12 câu để hiệu chỉnh lộ trình"
+              >
+                <IcoShieldCheck size={14} />
+                <span>Đo năng lực</span>
+              </button>
+            </div>
           </div>
 
-          <div className="rm-pro-deck-tools">
-            <button
-              type="button"
-              className={`rm-pro-ghost-btn ${showHubOverview ? 'is-on' : ''}`}
-              onClick={onToggleHubOverview}
-              title="Mở biểu đồ tiến bộ Điểm / Elo và quản lý Nguyện vọng"
-            >
-              <IcoChart size={14} />
-              <span>{showHubOverview ? 'Ẩn biểu đồ' : 'Biểu đồ & NV'}</span>
-            </button>
-            <button
-              type="button"
-              className="rm-pro-ghost-btn"
-              onClick={onOpenDiagnostic}
-              title="Làm bài đánh giá năng lực 12 câu để hiệu chỉnh lộ trình"
-            >
-              <IcoShieldCheck size={14} />
-              <span>Đo năng lực</span>
-            </button>
+          <div className="rm-pro-deck-mascot" aria-hidden="true">
+            <img
+              src={
+                completionPct >= 65
+                  ? '/img/elec/elec-celebrate.png'
+                  : weighted.hasEvidence && gap10 > 2
+                    ? '/img/elec/elec-super-saiyan.png'
+                    : '/img/elec/elec-cool.png'
+              }
+              alt="Bé Elec đồng hành lộ trình"
+              draggable={false}
+            />
           </div>
         </div>
 
@@ -194,8 +207,14 @@ export default function RoadmapCommandDeck({
         </div>
       </div>
 
-      {/* Cột phải: Thẻ Nhiệm vụ hôm nay duy nhất (1-Click CTA) */}
+      {/* Cột phải: Thẻ Nhiệm vụ hôm nay duy nhất (1-Click CTA + Bé Elec cổ vũ) */}
       <div className="rm-pro-mission-card">
+        <img
+          src={dueTotal > 0 || detour ? '/img/elec/elec-fighting.png' : '/img/elec/elec-hello.png'}
+          alt=""
+          className="rm-pro-mission-mascot"
+          aria-hidden="true"
+        />
         <div className="rm-pro-mission-top">
           <span className="rm-pro-mission-kicker">NHIỆM VỤ ƯU TIÊN HÔM NAY</span>
           {dueTotal > 0 && (
@@ -222,6 +241,7 @@ export default function RoadmapCommandDeck({
             onClick={() => onJumpDetour?.(detour.rootId)}
             title={detour.reason}
           >
+            <img src="/img/elec/elec-think.png" alt="" className="rm-pro-mini-sticker" aria-hidden="true" />
             <IcoDetour size={13} />
             <span>
               Gốc cần vá trước: <b>{formatMathAndChemSymbols(detour.rootName)}</b> (Lớp {detour.rootGrade})

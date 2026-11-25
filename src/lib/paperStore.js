@@ -93,9 +93,11 @@ export async function listPaperResults(examId) {
 }
 
 /* Lưu nhiều phiếu. Có SBD hợp lệ → id = SBD (quét lại cùng SBD sẽ ghi đè, không trùng).
-   Chưa có SBD → dùng id sẵn có hoặc tự sinh. Xóa id cũ nếu SBD thay đổi. */
+   Chưa có SBD → dùng id sẵn có hoặc tự sinh. Xóa id cũ nếu SBD thay đổi.
+   Trả thêm `idMap` (clientId → firestoreDocId) để UI đồng bộ ID thật sau khi lưu. */
 export async function savePaperResults(examId, items) {
   try {
+    const idMap = {};
     // Mỗi item đổi SBD tốn 2 write ops (delete + set) → giới hạn 200 item/batch (tối đa 400 ops <= 500 của Firestore)
     for (let i = 0; i < items.length; i += 200) {
       const b = writeBatch(db);
@@ -103,6 +105,7 @@ export async function savePaperResults(examId, items) {
         const rid = /^\d{3,8}$/.test(r.sbd || '')
           ? `sbd_${r.sbd}`
           : (r.id || doc(collection(db, 'paperExams', examId, 'results')).id);
+        if (r.clientId) idMap[r.clientId] = rid;
         if (r.id && r.id !== rid) {
           b.delete(doc(db, 'paperExams', examId, 'results', r.id));
         }
@@ -111,6 +114,7 @@ export async function savePaperResults(examId, items) {
           max: r.grade?.max ?? 10,
           score10: r.grade?.score10 ?? 0,
           parts: r.grade?.parts || null,
+          correct: r.grade?.correct || null,
           detail: r.grade?.detail || null,
         };
         b.set(doc(db, 'paperExams', examId, 'results', rid), {
@@ -128,7 +132,7 @@ export async function savePaperResults(examId, items) {
       // eslint-disable-next-line no-await-in-loop
       await b.commit();
     }
-    return { ok: true, saved: items.length };
+    return { ok: true, saved: items.length, idMap };
   } catch (e) {
     return { ok: false, error: friendly(e, 'lưu kết quả') };
   }
@@ -153,6 +157,13 @@ export async function syncPaperResultsToSubmissions(paper, items, targetExamId =
         const subId = `omr_${linkedExamId}_${studentId}`;
         const score10 = Number(r.grade?.score10 ?? (r.grade?.total ? ((r.grade.total / (r.grade.max || 10)) * 10).toFixed(1) : 0));
         const totalQ = paper.counts ? (paper.counts.p1 + paper.counts.p2 + paper.counts.p3) : 28;
+        const p2Full = Array.isArray(r.grade?.detail?.p2)
+          ? r.grade.detail.p2.filter((d) => Number(d?.right || 0) === 4).length
+          : 0;
+        const exactCorrect = r.grade?.correct
+          ? (Number(r.grade.correct.p1 || 0) + p2Full + Number(r.grade.correct.p3 || 0))
+          : null;
+        const correctCount = exactCorrect !== null ? exactCorrect : Math.round((score10 / 10) * totalQ);
         b.set(doc(db, 'submissions', subId), {
           examId: linkedExamId,
           paperId: paper.id,
@@ -162,7 +173,7 @@ export async function syncPaperResultsToSubmissions(paper, items, targetExamId =
           studentName: r.studentName || (r.sbd ? `Học sinh SBD ${r.sbd}` : 'Học sinh phiếu A4'),
           score: score10,
           totalPoints: 10,
-          correctCount: Math.round((score10 / 10) * totalQ),
+          correctCount,
           totalQuestions: totalQ,
           submittedAt: serverTimestamp(),
           graded: true,

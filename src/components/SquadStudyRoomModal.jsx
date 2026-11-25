@@ -155,6 +155,9 @@ export default function SquadStudyRoomModal({
       <div className="s9-srm-modal" role="dialog" aria-label={`Phòng tự học Quân đoàn ${squadCode}`}>
         <header className="s9-srm-head">
           <div className="s9-srm-head-l">
+            <div className="emm-hero-mascot sm" aria-hidden="true">
+              <img src="/img/elec/elec-happy.png" alt="Bé Elec Quân đoàn" draggable={false} />
+            </div>
             <div className="s9-srm-code">{squadCode}</div>
             <div>
               <span className="s9-srm-eyebrow">PHÒNG TỰ HỌC QUÂN ĐOÀN · {memberCount} SĨ TỬ</span>
@@ -166,12 +169,17 @@ export default function SquadStudyRoomModal({
 
         {/* Collective 300h Campaign Bar */}
         <div className="s9-srm-campaign">
-          <div className="s9-srm-campaign-top">
-            <span>Mục tiêu học chung tháng này (mở khóa Huy hiệu Quân đoàn)</span>
-            <b>{room.hoursDone}h / {room.hoursGoal}h ({hoursPct}%)</b>
-          </div>
-          <div className="s9-srm-bar">
-            <i style={{ width: `${hoursPct}%` }} />
+          <div className="s9-srm-campaign-row">
+            <img src="/img/elec/elec-super-saiyan.png" alt="" className="s9-srm-campaign-mascot" aria-hidden="true" />
+            <div className="s9-srm-campaign-main">
+              <div className="s9-srm-campaign-top">
+                <span>Mục tiêu học chung tháng này (mở khóa Huy hiệu Quân đoàn)</span>
+                <b>{room.hoursDone}h / {room.hoursGoal}h ({hoursPct}%)</b>
+              </div>
+              <div className="s9-srm-bar">
+                <i style={{ width: `${hoursPct}%` }} />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -184,7 +192,8 @@ export default function SquadStudyRoomModal({
             className={`s9-srm-tab ${tab === 'chat' ? 'active' : ''}`}
             onClick={() => setTab('chat')}
           >
-            Thảo luận &amp; Check-in ({room.messages.length})
+            <img src="/img/elec/elec-hello.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
+            <span>Thảo luận &amp; Check-in ({room.messages.length})</span>
           </button>
           <button
             type="button"
@@ -193,7 +202,8 @@ export default function SquadStudyRoomModal({
             className={`s9-srm-tab ${tab === 'polls' ? 'active' : ''}`}
             onClick={() => setTab('polls')}
           >
-            Bình chọn tuần ({room.polls.length})
+            <img src="/img/elec/elec-think.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
+            <span>Bình chọn tuần ({room.polls.length})</span>
           </button>
         </div>
 

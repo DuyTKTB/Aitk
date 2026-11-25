@@ -15,9 +15,9 @@ import {
 import '../styles/student-v9-upgrades.css';
 
 const TABS = [
-  { id: 'frame', label: 'Khung Avatar' },
-  { id: 'title', label: 'Danh hiệu' },
-  { id: 'item', label: 'Vật phẩm' },
+  { id: 'frame', label: 'Khung Avatar', mascot: '/img/elec/elec-cool.png' },
+  { id: 'title', label: 'Danh hiệu', mascot: '/img/elec/elec-celebrate.png' },
+  { id: 'item', label: 'Vật phẩm', mascot: '/img/elec/elec-super-saiyan.png' },
 ];
 
 export default function RewardShopModal({ open, onClose, uid = 'guest', displayName = 'Học sinh ELEC AI' }) {
@@ -48,9 +48,14 @@ export default function RewardShopModal({ open, onClose, uid = 'guest', displayN
     <div className="s9-shop-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div className="s9-shop-modal" role="dialog" aria-label="Cửa hàng Học Bá">
         <header className="s9-shop-head">
-          <div>
-            <span className="s9-shop-eyebrow">CỬA HÀNG HỌC BÁ · ELEC REWARDS</span>
-            <h3>Đổi Xu Học Bá lấy Khung Avatar &amp; Vật phẩm</h3>
+          <div className="s9-shop-head-l">
+            <div className="emm-hero-mascot sm is-amber" aria-hidden="true">
+              <img src="/img/elec/elec-heart-eyes.png" alt="Bé Elec Cửa hàng Học Bá" draggable={false} />
+            </div>
+            <div>
+              <span className="s9-shop-eyebrow">CỬA HÀNG HỌC BÁ · ELEC REWARDS</span>
+              <h3>Đổi Xu Học Bá lấy Khung Avatar &amp; Vật phẩm</h3>
+            </div>
           </div>
           <div className="s9-shop-head-r">
             <div className="s9-shop-wallet" title="Xu tích lũy tự động từ điểm Lực chiến của bạn">
@@ -78,6 +83,7 @@ export default function RewardShopModal({ open, onClose, uid = 'guest', displayN
             </div>
             <small>Luyện đề Phòng thi ảo hoặc thắng Đấu 1v1 để tự động nhận thêm Xu Học Bá.</small>
           </div>
+          <img src="/img/elec/elec-cool.png" alt="" className="s9-shop-preview-mascot" aria-hidden="true" />
         </div>
 
         {/* Category Tabs */}
@@ -91,7 +97,8 @@ export default function RewardShopModal({ open, onClose, uid = 'guest', displayN
               className={`s9-shop-tab ${cat === t.id ? 'active' : ''}`}
               onClick={() => setCat(t.id)}
             >
-              {t.label}
+              <img src={t.mascot} alt="" className="emm-tab-mascot" aria-hidden="true" />
+              <span>{t.label}</span>
             </button>
           ))}
         </div>

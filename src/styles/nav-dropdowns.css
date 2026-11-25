@@ -2013,20 +2013,27 @@
 .nav-tools-folder-tab {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 5px !important;
-  padding: 5px 11px !important;
+  gap: 7px !important;
+  padding: 6px 13px !important;
   border-radius: 999px !important;
   border: none !important;
   border-bottom: none !important;
   background: transparent !important;
   color: var(--mut, #64748b) !important;
   font-family: inherit !important;
-  font-size: 12.2px !important;
-  font-weight: 600 !important;
+  font-size: 12.6px !important;
+  font-weight: 650 !important;
   cursor: pointer !important;
   white-space: nowrap !important;
   text-decoration: none !important;
   transition: background 0.14s ease, color 0.14s ease !important;
+}
+
+.nav-tools-folder-tab > svg,
+.nav-tools-folder-tab .jigg-ocean-glass {
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0 !important;
 }
 
 .nav-tools-folder-tab:hover {
@@ -2205,20 +2212,37 @@
 
 .nav-tool-card-icon,
 .nav-tool-bento-icon {
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 9px !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 13px !important;
   display: grid !important;
   place-items: center !important;
   flex-shrink: 0 !important;
-  box-shadow: none !important;
+  border: 1px solid rgba(59, 130, 246, 0.14) !important;
+  box-shadow: 0 4px 12px -4px rgba(37, 99, 235, 0.18) !important;
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.2s ease !important;
+}
+
+.nav-tool-card-icon > svg,
+.nav-tool-bento-icon > svg,
+.nav-tool-card-icon .jigg-ocean-glass,
+.nav-tool-bento-icon .jigg-ocean-glass {
+  width: 26px !important;
+  height: 26px !important;
+}
+
+[data-theme='dark'] .nav-tool-card-icon,
+[data-theme='dark'] .nav-tool-bento-icon {
+  border-color: rgba(96, 165, 250, 0.24) !important;
+  box-shadow: 0 6px 14px -4px rgba(0, 0, 0, 0.42) !important;
 }
 
 .nav-tool-card:hover .nav-tool-card-icon,
 .nav-tool-card:hover .nav-tool-bento-icon,
 .nav-tool-item-bento:hover .nav-tool-card-icon,
 .nav-tool-item-bento:hover .nav-tool-bento-icon {
-  transform: none !important;
+  transform: scale(1.07) translateY(-1px) !important;
+  box-shadow: 0 8px 18px -4px rgba(37, 99, 235, 0.3) !important;
 }
 
 .nav-tool-card-info,

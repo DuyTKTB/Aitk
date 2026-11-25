@@ -57,10 +57,27 @@ export default function StudyMethodologyGuideModal({ open, onClose, targetSchool
       <div className="elec-guide-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="elec-guide-header">
-          <div className="elec-guide-header-title">
+          <div className="elec-guide-head-l">
+            <div className="emm-hero-mascot" aria-hidden="true">
+              <img
+                src={
+                  activeTab === 'stages'
+                    ? '/img/elec/elec-hello.png'
+                    : activeTab === 'steps'
+                      ? '/img/elec/elec-think.png'
+                      : activeTab === 'pomodoro'
+                        ? '/img/elec/elec-fighting.png'
+                        : '/img/elec/elec-super-saiyan.png'
+                }
+                alt="Bé Elec hướng dẫn ôn thi"
+                draggable={false}
+              />
+            </div>
+            <div className="elec-guide-header-title">
             <span className="elec-guide-badge">ELEC AI METRICS 2026</span>
             <h2 id="guide-title">Cẩm Nang Hướng Dẫn Ôn Thi Khoa Học &amp; Đúng Cách</h2>
             <p>Phương pháp ôn tập thực chứng giúp học sinh bứt phá điểm số theo nguyện vọng {targetSchool} (Mục tiêu: {targetScore}đ)</p>
+          </div>
           </div>
           <button type="button" className="elec-guide-close-btn" onClick={onClose} aria-label="Đóng hướng dẫn">
             <IcoClose />
@@ -74,6 +91,7 @@ export default function StudyMethodologyGuideModal({ open, onClose, targetSchool
             className={`elec-guide-tab ${activeTab === 'stages' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('stages')}
           >
+            <img src="/img/elec/elec-hello.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IcoCompass />
             <span>4 Giai đoạn ôn chuẩn</span>
           </button>
@@ -82,6 +100,7 @@ export default function StudyMethodologyGuideModal({ open, onClose, targetSchool
             className={`elec-guide-tab ${activeTab === 'steps' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('steps')}
           >
+            <img src="/img/elec/elec-think.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IcoSpark />
             <span>Quy trình giải bài 4 bước</span>
           </button>
@@ -90,6 +109,7 @@ export default function StudyMethodologyGuideModal({ open, onClose, targetSchool
             className={`elec-guide-tab ${activeTab === 'pomodoro' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('pomodoro')}
           >
+            <img src="/img/elec/elec-fighting.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IcoClock />
             <span>Pomodoro 25/5 &amp; SRS</span>
           </button>
@@ -98,6 +118,7 @@ export default function StudyMethodologyGuideModal({ open, onClose, targetSchool
             className={`elec-guide-tab ${activeTab === 'strategy' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('strategy')}
           >
+            <img src="/img/elec/elec-super-saiyan.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IcoTarget />
             <span>Chiến lược đỗ {targetSchool} (8.5+)</span>
           </button>

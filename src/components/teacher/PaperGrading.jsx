@@ -87,7 +87,9 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
     : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('list'); // list | setup | grade | analytics
+  const [view, setView] = useState('list'); // list | setup | grade | analytics | rubric | pedagogy
+  const [analyticsOrigin, setAnalyticsOrigin] = useState('list'); // list | grade
+  const [liveAnalyticsItems, setLiveAnalyticsItems] = useState(null);
   const [current, setCurrent] = useState(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
@@ -169,7 +171,9 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
     if (!p) return;
     setConfirmDeletePaper(null);
     const snapshot = { ...p };
+    let savedResultsSnapshot = [];
     try {
+      savedResultsSnapshot = await listPaperResults(p.id).catch(() => []);
       await deletePaperExam(p.id);
       await refresh();
       say(`Đã xóa bài chấm "${p.title}"`, 'success', {
@@ -177,9 +181,31 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
         onUndo: async () => {
           try {
             const { id: _id, ...rest } = snapshot;
-            await createPaperExam({ ...rest, teacherId: user.uid });
+            const restored = await createPaperExam({ ...rest, teacherId: user.uid });
+            if (savedResultsSnapshot.length > 0 && restored?.id) {
+              const restoredItems = savedResultsSnapshot.map((r) => {
+                const read = answersToRead(r.answers);
+                return {
+                  id: r.id,
+                  sbd: r.sbd || '',
+                  code: r.code || '',
+                  studentId: r.studentId || null,
+                  studentName: r.studentName || '',
+                  p1: read.p1,
+                  p2: read.p2,
+                  p3: read.p3,
+                  grade: r.grade,
+                  needsReview: !!r.needsReview,
+                  fileName: r.fileName || '',
+                };
+              });
+              await savePaperResults(restored.id, restoredItems);
+              if (snapshot.stats) {
+                await updatePaperExam(restored.id, { stats: snapshot.stats }).catch(() => {});
+              }
+            }
             await refresh();
-            say(`Đã khôi phục bài chấm "${snapshot.title}"`);
+            say(`Đã khôi phục bài chấm "${snapshot.title}"${savedResultsSnapshot.length ? ` (${savedResultsSnapshot.length} phiếu)` : ''}`);
           } catch (err) {
             say(err.message || 'Không khôi phục được bài chấm', 'error');
           }
@@ -227,7 +253,13 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
             position: 'fixed', bottom: 24, right: 24, zIndex: 999999,
             display: 'inline-flex', alignItems: 'center', gap: '0.65rem',
             padding: '0.75rem 1.25rem', borderRadius: 14,
-            background: toast.tone === 'error' ? '#ef4444' : toast.tone === 'warn' ? '#f59e0b' : '#10b981',
+            background: toast.tone === 'error'
+              ? '#ef4444'
+              : (toast.tone === 'warn' || toast.tone === 'warning')
+                ? '#f59e0b'
+                : toast.tone === 'info'
+                  ? '#0284c7'
+                  : '#10b981',
             color: '#ffffff', fontWeight: 700, fontSize: '0.9rem',
             boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
           }}
@@ -406,6 +438,11 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
                             {cls ? `Lớp ${cls.name}` : 'Chưa gắn lớp'}
                           </span>
                           <span className="pg-meta-tag">{codeCount} mã đề</span>
+                          {Number(p.stats?.count) > 0 && (
+                            <span className="pg-meta-tag is-graded">
+                              Đã chấm {p.stats.count} phiếu{p.stats.avg != null ? ` · TB ${fmt(p.stats.avg)}` : ''}
+                            </span>
+                          )}
                           <span className="pg-meta-struct">
                             {p1c > 0 && `P.I ${p1c}c`}
                             {p2c > 0 && `${p1c > 0 ? ' · ' : ''}P.II ${p2c}c`}
@@ -433,8 +470,13 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
                       <button
                         type="button"
                         className="vt-btn sm"
-                        onClick={() => { setCurrent(p); setView('analytics'); }}
-                        title="Xem phổ điểm & ELEC AI Chẩn đoán"
+                        onClick={() => {
+                          setCurrent(p);
+                          setLiveAnalyticsItems(null);
+                          setAnalyticsOrigin('list');
+                          setView('analytics');
+                        }}
+                        title="Xem phổ điểm & chẩn đoán lớp học"
                       >
                         <IcoChart size={13} /> Phổ điểm
                       </button>
@@ -497,18 +539,15 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
         <PaperGrade
           paper={current}
           classInfo={classOf(current.classId)}
-          onBack={() => { setView('list'); refresh(); }}
+          onBack={() => { setLiveAnalyticsItems(null); setView('list'); refresh(); }}
           onEditSetup={() => setView('setup')}
-          onOpenAnalytics={() => {
-            if (!vipUnlocked) {
-              say(`Phổ điểm & Chẩn đoán AI thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`, 'error');
-              setView('analytics');
-              return;
-            }
+          onOpenAnalytics={(liveGraded = null) => {
+            setLiveAnalyticsItems(Array.isArray(liveGraded) ? liveGraded : null);
+            setAnalyticsOrigin('grade');
             setView('analytics');
           }}
           onPrintSheet={() => handlePrintSheet(current)}
-          onPaperChange={(patch) => setCurrent((c) => ({ ...c, ...patch }))}
+          onPaperChange={(patch) => setCurrent((c) => (c ? { ...c, ...patch } : c))}
           say={say}
           vipUnlocked={vipUnlocked}
           omrUsed={omrUsed}
@@ -519,22 +558,29 @@ export default function PaperGrading({ classes = [], exams = [], isTeacherVip = 
         />
       )}
 
-      {/* 4. VIEW PHỔ ĐIỂM & ELEC AI CHẨN ĐOÁN (ANALYTICS) */}
+      {/* 4. VIEW PHỔ ĐIỂM & CHẨN ĐOÁN LỚP HỌC (ANALYTICS) */}
       {view === 'analytics' && current && (
         vipUnlocked ? (
           <PaperAnalyticsView
             exam={current}
-            onBack={() => setView('grade')}
+            liveResults={liveAnalyticsItems}
+            backLabel={analyticsOrigin === 'list' ? '← Quay lại danh sách' : '← Quay lại phiên chấm'}
+            onBack={() => setView(analyticsOrigin === 'list' ? 'list' : 'grade')}
             say={say}
           />
         ) : (
           <div style={{ padding: '0.5rem 0' }}>
-            <button type="button" className="vt-btn sm" onClick={() => setView('grade')} style={{ marginBottom: '0.75rem' }}>
-              ← Quay lại phiên chấm
+            <button
+              type="button"
+              className="vt-btn sm"
+              onClick={() => setView(analyticsOrigin === 'list' ? 'list' : 'grade')}
+              style={{ marginBottom: '0.75rem' }}
+            >
+              {analyticsOrigin === 'list' ? '← Quay lại danh sách' : '← Quay lại phiên chấm'}
             </button>
             <TeacherVipLock
-              title="Phổ điểm & AI Chẩn đoán bài chấm phiếu OMR"
-              description="Phân tích phân bố điểm tự động, liệt kê các câu sai nhiều nhất và gợi ý AI ôn tập cho từng nhóm học sinh."
+              title="Phổ điểm & Chẩn đoán bài chấm phiếu OMR"
+              description="Phân tích phân bố điểm tự động, chỉ số độ khó p & độ phân cách D theo từng câu và gợi ý ôn tập cho lớp."
               onUpgrade={onRequestUpgrade}
             />
           </div>
@@ -614,24 +660,40 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
   };
 
   const handleImportMatrix = () => {
-    const res = parseBulkMatrixKeys(matrixText, counts);
+    const res = parseBulkMatrixKeys(matrixText, MAX_COUNTS);
     if (!res.parsedCount) {
       say?.('Không tìm thấy mã đề hợp lệ (VD bảng Excel có hàng tiêu đề Câu | 101 | 102 | 103 | 104).', 'error');
       return;
     }
+    const det = res.detectedCounts || { p1: 0, p2: 0, p3: 0 };
+    const nextCounts = {
+      p1: Math.max(counts.p1, det.p1),
+      p2: Math.max(counts.p2, det.p2),
+      p3: Math.max(counts.p3, det.p3),
+    };
+    const expanded = nextCounts.p1 !== counts.p1 || nextCounts.p2 !== counts.p2 || nextCounts.p3 !== counts.p3;
+    if (expanded) setCounts(nextCounts);
+
     setCodes((prev) => [...new Set([...prev, ...res.codes])].sort());
     setTexts((prev) => {
       const next = { ...prev };
       res.codes.forEach((c) => {
         const k = res.byCode[c];
-        next[c] = { p1: keyToTextP1(k.p1), p2: keyToTextP2(k.p2), p3: keyToTextP3(k.p3) };
+        next[c] = {
+          p1: keyToTextP1(k.p1.slice(0, nextCounts.p1 || MAX_COUNTS.p1)),
+          p2: keyToTextP2(k.p2.slice(0, nextCounts.p2 || MAX_COUNTS.p2)),
+          p3: keyToTextP3(k.p3.slice(0, nextCounts.p3 || MAX_COUNTS.p3)),
+        };
       });
       return next;
     });
     setActive(res.codes[0]);
     setMatrixText('');
     setShowMatrixPaste(false);
-    say?.(`Đã nhập nhanh đáp án cho ${res.parsedCount} mã đề: ${res.codes.join(', ')}`);
+    say?.(
+      `Đã nhập nhanh đáp án cho ${res.parsedCount} mã đề: ${res.codes.join(', ')}`
+      + (expanded ? ` (đã tự mở rộng cấu trúc lên ${nextCounts.p1}·${nextCounts.p2}·${nextCounts.p3})` : '')
+    );
   };
 
   const add4CodesBatch = () => {
@@ -897,7 +959,17 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
               Dán Bảng Excel
             </button>
             {exams.length > 0 && (
-              <select onChange={(e) => e.target.value && importFromExam(e.target.value)} defaultValue="">
+              <select
+                className="pg-select-input pg-select-sm"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    importFromExam(e.target.value);
+                    e.target.value = '';
+                  }
+                }}
+                defaultValue=""
+                aria-label="Lấy đáp án từ đề online đã soạn"
+              >
                 <option value="" disabled>Lấy từ đề online…</option>
                 {exams.filter((x) => (x.questions || []).length).map((ex) => (
                   <option key={ex.id} value={ex.id}>{ex.title} ({ex.questions.length} câu)</option>
@@ -996,7 +1068,7 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
                             onClick={() => {
                               const next = [...parsed.p1];
                               next[i] = val === opt ? '' : opt;
-                              setCur({ p1: keyToTextP1(next) });
+                              setCur({ p1: keyToTextP1(next.slice(0, counts.p1)) });
                             }}
                           >
                             {opt}
@@ -1030,7 +1102,7 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
                                   const next = parsed.p2.map((r) => [...r]);
                                   if (!next[q]) next[q] = ['', '', '', ''];
                                   next[q][yi] = val === codeCh ? '' : codeCh;
-                                  setCur({ p2: keyToTextP2(next) });
+                                  setCur({ p2: keyToTextP2(next.slice(0, counts.p2)) });
                                 }}
                               >
                                 {lbl}
@@ -1047,22 +1119,29 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
 
             {counts.p3 > 0 && (
               <div>
-                <h4 style={{ margin: '0.6rem 0 0.45rem' }}>Phần III ({counts.p3} câu trả lời ngắn)</h4>
+                <h4 style={{ margin: '0.6rem 0 0.45rem' }}>Phần III ({counts.p3} câu trả lời ngắn — dùng dấu <code>|</code> cho nhiều đáp án)</h4>
                 <div className="pg-p3grid">
-                  {Array.from({ length: counts.p3 }, (_, q) => (
-                    <label key={q} className="pg-field">
-                      <span>Câu {q + 1}</span>
-                      <input
-                        value={(parsed.p3[q] || []).join('|')}
-                        placeholder="VD: -1,5"
-                        onChange={(e) => {
-                          const next = parsed.p3.map((arr) => [...arr]);
-                          next[q] = e.target.value.split('|').map((x) => x.trim()).filter(Boolean);
-                          setCur({ p3: keyToTextP3(next) });
-                        }}
-                      />
-                    </label>
-                  ))}
+                  {Array.from({ length: counts.p3 }, (_, q) => {
+                    const rawP3Lines = String(cur.p3 || '').split(/\r?\n/);
+                    const lineVal = rawP3Lines[q] ?? '';
+                    return (
+                      <label key={q} className="pg-field">
+                        <span>Câu {q + 1}</span>
+                        <input
+                          value={lineVal}
+                          placeholder="VD: -1,5|-1.5"
+                          onChange={(e) => {
+                            const nextLines = Array.from(
+                              { length: Math.max(counts.p3, rawP3Lines.length) },
+                              (_v, idx) => rawP3Lines[idx] ?? ''
+                            );
+                            nextLines[q] = e.target.value.replace(/[\r\n]/g, '');
+                            setCur({ p3: nextLines.slice(0, counts.p3).join('\n') });
+                          }}
+                        />
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1170,12 +1249,13 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
    SUB-COMPONENT: PHIÊN CHẤM BÀI (UPLOAD & LIVE CAMERA SCANNER)
    ============================================================ */
 function PaperGrade({
-  paper, classInfo, onBack, onEditSetup, onOpenAnalytics, onPrintSheet, say,
+  paper, classInfo, onBack, onEditSetup, onOpenAnalytics, onPrintSheet, onPaperChange = null, say,
   vipUnlocked = true, omrUsed = 0, omrRemaining = Infinity, maxOmrTrial = FREE_TEACHER_LIMITS.maxOmrTrialSheets,
   onOmrUsed = null, onRequestUpgrade = null,
 }) {
   const [items, setItems] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -1194,10 +1274,10 @@ function PaperGrade({
     Object.entries(paper.keys || {}).forEach(([c, k]) => { out[c] = keyFromStored(k); });
     return out;
   }, [paper.keys]);
-  const codeList = Object.keys(keys);
-  const members = classInfo?.members || [];
-  const counts = { ...DEFAULT_COUNTS, ...(paper.counts || {}) };
-  const scoring = { ...DEFAULT_SCORING, ...(paper.scoring || {}) };
+  const codeList = useMemo(() => Object.keys(keys), [keys]);
+  const members = useMemo(() => classInfo?.members || [], [classInfo?.members]);
+  const counts = useMemo(() => ({ ...DEFAULT_COUNTS, ...(paper.counts || {}) }), [paper.counts]);
+  const scoring = useMemo(() => ({ ...DEFAULT_SCORING, ...(paper.scoring || {}) }), [paper.scoring]);
 
   const regrade = useCallback((it) => {
     const key = keys[it.code];
@@ -1205,15 +1285,12 @@ function PaperGrade({
     return { ...it, grade };
   }, [keys, counts, scoring]);
 
-  /* FIX #2: Tôn trọng studentManual */
+  /* Tôn trọng studentManual; chỉ tự ghép khi chưa gán thủ công */
   const matchStudent = useCallback((it) => {
-    // Nếu giáo viên đã chọn thủ công → KHÔNG ghi đè
     if (it.studentManual) return it;
-    // Nếu đã có studentId (đã match) → giữ nguyên
-    if (it.studentId) return it;
-    // Chỉ match khi có sbdMap
     const s = paper.sbdMap?.[it.sbd];
     if (s) return { ...it, studentId: s.id || null, studentName: s.name || '' };
+    if (it.studentId) return it;
     return it;
   }, [paper.sbdMap]);
 
@@ -1303,11 +1380,12 @@ function PaperGrade({
           let code = r.code;
           if (!keys[code] && codeList.length === 1) code = codeList[0];
           const codeKnown = !!keys[code];
+          const warnMsg = r.quality?.warn || (!imgQ.ok ? imgQ.issues[0] || 'Chất lượng ảnh chưa đạt chuẩn.' : null);
           item = {
              id, fileName: f.name, url, status: 'done', sbd: r.sbd, code, readCode: r.code,
              read: { p1: r.p1, p2: r.p2, p3: r.p3 },
              issues: [...(r.issues || []), ...imgQ.issues],
-             quality: { ...(r.quality || {}), image: imgQ, warn: r.quality?.warn || !imgQ.ok },
+             quality: { ...(r.quality || {}), image: imgQ, warn: warnMsg },
              needsReview: !codeKnown || r.issues.length > 0 || !!r.quality?.warn
                || !imgQ.ok || r.sbd.includes('?'),
           };
@@ -1359,20 +1437,27 @@ function PaperGrade({
     }
   }, [vipUnlocked, omrRemaining, onOmrUsed]);
 
-  /* FIX: updateItem đánh dấu studentManual khi sửa thông tin HS */
+  /* Đánh dấu studentManual khi sửa tên HS; khi sửa SBD thì cho phép tự khớp lại sbdMap */
   const updateItem = useCallback((id, patch) => {
     setItems((cur) => cur.map((c) => {
       if (c.id !== id) return c;
       const next = { ...c, ...patch };
       if ('studentId' in patch || 'studentName' in patch) {
         next.studentManual = true;
+      } else if ('sbd' in patch) {
+        const matched = paper.sbdMap?.[patch.sbd];
+        if (matched) {
+          next.studentId = matched.id || null;
+          next.studentName = matched.name || '';
+          next.studentManual = false;
+        }
       }
-      if ('read' in patch || 'code' in patch || 'sbd' in patch) {
+      if ('read' in patch || 'code' in patch || 'sbd' in patch || 'studentId' in patch || 'studentName' in patch) {
         next.edited = true;
       }
       return next;
     }));
-  }, []);
+  }, [paper.sbdMap]);
 
   const removeItem = (id) => {
     const removed = itemsRef.current.find((c) => c.id === id);
@@ -1438,7 +1523,33 @@ function PaperGrade({
     }
   };
 
-  const okRows = graded.filter((it) => it.status === 'done' && it.grade);
+  const okRows = useMemo(() => graded.filter((it) => it.status === 'done' && it.grade), [graded]);
+  const errorRowsCount = useMemo(() => graded.filter((it) => it.status === 'error').length, [graded]);
+  const unsavedCount = useMemo(() => okRows.filter((r) => !r.saved || r.edited).length, [okRows]);
+
+  // Cảnh báo nếu giáo viên đóng tab / reload khi còn phiếu chưa lưu lên Cloud
+  useEffect(() => {
+    if (unsavedCount <= 0) return undefined;
+    const onBeforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [unsavedCount]);
+
+  const handleSafeBack = () => {
+    if (unsavedCount > 0 && !window.confirm(`Bạn còn ${unsavedCount} phiếu chưa lưu lên Cloud. Rời trang sẽ mất các phiếu này — vẫn quay lại danh sách?`)) {
+      return;
+    }
+    onBack();
+  };
+
+  const handleClearErrors = () => {
+    setItems((cur) => cur.filter((c) => c.status !== 'error'));
+    say(`Đã xóa ${errorRowsCount} phiếu lỗi khỏi danh sách.`, 'info');
+  };
+
   const stats = useMemo(() => {
     const sc = okRows.map((r) => r.grade.score10);
     return {
@@ -1457,6 +1568,7 @@ function PaperGrade({
     if (needs && !window.confirm(`Còn ${needs} phiếu đánh dấu "cần xem lại". Vẫn lưu?`)) return;
     setSaving(true);
     const mappedItems = toSave.map((r) => ({
+      clientId: r.id,
       id: r.saved ? r.id : null,
       sbd: r.sbd, code: r.code, studentId: r.studentId, studentName: r.studentName,
       p1: r.read.p1, p2: r.read.p2, p3: r.read.p3, grade: r.grade, needsReview: r.needsReview, fileName: r.fileName,
@@ -1476,9 +1588,25 @@ function PaperGrade({
       }
     }
 
+    // Cập nhật thống kê tóm tắt trên document bài chấm (hiển thị ở Danh sách & tính lượt dùng thử)
+    if (res.ok) {
+      const idMap = res.idMap || {};
+      const nextStats = {
+        count: okRows.length,
+        avg: stats.avg != null ? round2(stats.avg) : null,
+      };
+      updatePaperExam(paper.id, { stats: nextStats }).catch(() => {});
+      onPaperChange?.({ stats: nextStats });
+      setItems((cur) => cur.map((c) => {
+        if (!toSave.some((s) => s.id === c.id)) return c;
+        const realId = idMap[c.id] || c.id;
+        return { ...c, id: realId, saved: true, edited: false };
+      }));
+      if (editId && idMap[editId]) setEditId(idMap[editId]);
+    }
+
     setSaving(false);
     if (res.ok) {
-      setItems((cur) => cur.map((c) => (toSave.some((s) => s.id === c.id) ? { ...c, saved: true, edited: false } : c)));
       if (syncError) {
         say(`Đã lưu ${res.saved} bài chấm, nhưng đồng bộ Lớp học thất bại: ${syncError}`, 'warning');
       } else {
@@ -1552,9 +1680,9 @@ function PaperGrade({
           </p>
         </div>
         <div className="pg-head-actions">
-          <button type="button" className="vt-btn sm" onClick={onBack}>Danh sách</button>
-          <button type="button" className="vt-btn sm" onClick={onOpenAnalytics}>
-            <IcoChart size={13} /> Phổ điểm & AI
+          <button type="button" className="vt-btn sm" onClick={handleSafeBack}>Danh sách</button>
+          <button type="button" className="vt-btn sm" onClick={() => onOpenAnalytics(okRows)}>
+            <IcoChart size={13} /> Phổ điểm &amp; Phân tích
           </button>
           <button type="button" className="vt-btn sm" onClick={onPrintSheet} title="Mẫu phiếu A4">
             <IcoPrint size={13} /> In Mẫu A4
@@ -1578,7 +1706,26 @@ function PaperGrade({
         </div>
       ) : null}
 
-      <div className="pg-drop">
+      <div
+        className={'pg-drop' + (dragging ? ' dragging' : '')}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!dragging) setDragging(true);
+        }}
+        onDragLeave={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget)) return;
+          setDragging(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setDragging(false);
+          if (e.dataTransfer?.files?.length) {
+            processFiles(e.dataTransfer.files);
+          }
+        }}
+      >
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => processFiles(e.target.files)} />
         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <button
@@ -1601,16 +1748,7 @@ function PaperGrade({
             <IcoScan size={15} /> {busy ? `Đang đọc ${progress.done}/${progress.total}…` : 'Tải / Chụp Ảnh Phiếu'}
           </button>
           {!vipUnlocked && (
-            <span
-              style={{
-                padding: '4px 10px',
-                borderRadius: 999,
-                fontSize: '0.76rem',
-                fontWeight: 700,
-                background: omrRemaining > 0 ? 'rgba(59,130,246,0.12)' : 'rgba(239,68,68,0.12)',
-                color: omrRemaining > 0 ? '#1d4ed8' : '#dc2626',
-              }}
-            >
+            <span className={'pg-quota-pill' + (omrRemaining > 0 ? '' : ' exhausted')}>
               {omrRemaining > 0
                 ? `Dùng thử Free: còn ${omrRemaining}/${maxOmrTrial} phiếu`
                 : `Đã dùng hết ${omrUsed}/${maxOmrTrial} phiếu Free`}
@@ -1618,7 +1756,9 @@ function PaperGrade({
           )}
         </div>
         <span className="pg-note">
-          Hỗ trợ chụp trực tiếp bằng Camera hoặc chọn nhiều file ảnh. Hệ thống tự động căn chỉnh và xử lý 100% trên thiết bị.
+          {dragging
+            ? 'Thả ảnh phiếu vào đây để tự động nhận dạng & chấm ngay…'
+            : 'Kéo thả nhiều ảnh phiếu vào đây, chọn file ảnh hoặc dùng Camera trực tiếp. Xử lý 100% trên thiết bị.'}
         </span>
       </div>
 
@@ -1666,6 +1806,11 @@ function PaperGrade({
               </select>
             </div>
             <div className="pg-head-actions">
+              {errorRowsCount > 0 && (
+                <button type="button" className="vt-btn sm danger" onClick={handleClearErrors}>
+                  <IcoTrash size={13} /> Xóa {errorRowsCount} phiếu lỗi
+                </button>
+              )}
               <button type="button" className="vt-btn sm" onClick={handlePrintReport} disabled={!okRows.length}>
                 <IcoPrint size={13} /> In / PDF Bảng điểm
               </button>
@@ -1673,7 +1818,7 @@ function PaperGrade({
                 <IcoDownload size={13} /> Xuất Excel (.xlsx)
               </button>
               <button type="button" className="vt-btn sm primary" onClick={handleSave} disabled={saving || !okRows.length}>
-                <IcoCheck size={13} /> {saving ? 'Đang lưu…' : 'Lưu kết quả lên Cloud'}
+                <IcoCheck size={13} /> {saving ? 'Đang lưu…' : unsavedCount > 0 ? `Lưu Cloud (${unsavedCount})` : 'Đã lưu Cloud'}
               </button>
             </div>
           </div>
@@ -1821,8 +1966,23 @@ function PaperGrade({
 function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate = null, onChange, onApprove, onClose }) {
   const [imgZoom, setImgZoom] = useState(1);
   const [imgRotate, setImgRotate] = useState(0);
+  const [imgSize, setImgSize] = useState(() => (
+    item.quality?.image?.width && item.quality?.image?.height
+      ? { width: item.quality.image.width, height: item.quality.image.height }
+      : null
+  ));
   const [onlySuspicious, setOnlySuspicious] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
+
+  useEffect(() => {
+    setImgZoom(1);
+    setImgRotate(0);
+    setImgSize(
+      item.quality?.image?.width && item.quality?.image?.height
+        ? { width: item.quality.image.width, height: item.quality.image.height }
+        : null
+    );
+  }, [item.id, item.quality?.image?.width, item.quality?.image?.height]);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -1848,6 +2008,26 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
     onChange({ read: { ...read, p3 } });
   };
   const issueAt = (pred) => item.issues?.some(pred);
+
+  const hasP1Sus = useMemo(
+    () => Array.from({ length: counts.p1 }, (_, q) => issueAt((x) => x.part === 'p1' && x.q === q + 1)).some(Boolean),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [counts.p1, item.issues]
+  );
+  const hasP2Sus = useMemo(
+    () => Array.from({ length: counts.p2 }, (_, q) => [0, 1, 2, 3].some((y) => issueAt((x) => x.part === 'p2' && x.q === q + 1 && x.y === 'abcd'[y]))).some(Boolean),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [counts.p2, item.issues]
+  );
+  const hasP3Sus = useMemo(
+    () => Array.from({ length: counts.p3 }, (_, q) => issueAt((x) => x.part === 'p3' && x.q === q + 1)).some(Boolean),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [counts.p3, item.issues]
+  );
+
+  const warnText = typeof item.quality?.warn === 'string' && item.quality.warn.trim()
+    ? item.quality.warn
+    : (item.quality?.warn ? (item.quality?.image?.issues?.[0] || 'Chất lượng ảnh hoặc căn chỉnh phiếu có thể chưa chuẩn — hãy đối chiếu kỹ.') : '');
 
   const issueLabel = (iss) => {
     if (!iss) return 'Ô nghi ngờ';
@@ -1883,13 +2063,10 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
           </div>
         </header>
 
-        <div className="pg-ed-body">
+        <div className={'pg-ed-body' + (!item.url ? ' no-img' : '')}>
           {item.url && (
-            <div className="pg-ed-img" style={{ position: 'relative', overflow: 'auto' }}>
-              <div style={{
-                position: 'sticky', top: 6, zIndex: 3, display: 'flex', gap: '0.35rem',
-                justifyContent: 'flex-end', marginBottom: '0.4rem', flexWrap: 'wrap',
-              }}>
+            <div className="pg-ed-img">
+              <div className="pg-ed-img-bar">
                 {item.quality?.cornersNorm && item.grade && (
                   <button
                     type="button"
@@ -1917,27 +2094,29 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
                   <IcoRotate size={13} /> Xoay
                 </button>
               </div>
-              <div style={{ overflow: 'auto', textAlign: 'center' }}>
+              <div className="pg-ed-img-viewport">
                 <div
+                  className="pg-ed-img-stage"
                   style={{
-                    position: 'relative',
-                    display: 'inline-block',
-                    transform: `scale(${imgZoom}) rotate(${imgRotate}deg)`,
-                    transformOrigin: 'top center',
-                    transition: 'transform 0.18s ease',
-                    maxWidth: '100%',
+                    width: `${Math.round(imgZoom * 100)}%`,
+                    transform: imgRotate ? `rotate(${imgRotate}deg)` : undefined,
                   }}
                 >
                   <img
                     src={item.url}
                     alt={`Ảnh phiếu ${item.fileName}`}
-                    style={{ display: 'block', width: '100%', height: 'auto' }}
+                    onLoad={(e) => {
+                      const nw = e.currentTarget.naturalWidth;
+                      const nh = e.currentTarget.naturalHeight;
+                      if (nw > 0 && nh > 0) setImgSize({ width: nw, height: nh });
+                    }}
                   />
                   {showOverlay && item.quality?.cornersNorm && item.grade && (
                     <SheetAnswerOverlay
                       grade={item.grade}
                       cornersNorm={item.quality.cornersNorm}
                       counts={counts}
+                      imgSize={imgSize}
                     />
                   )}
                 </div>
@@ -1945,7 +2124,7 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
             </div>
           )}
           <div className="pg-ed-form">
-            {item.quality?.warn && <p className="pg-warn"><IcoWarn size={14} /> {item.quality.warn}</p>}
+            {warnText && <p className="pg-warn"><IcoWarn size={14} /> {warnText}</p>}
             {item.issues?.length > 0 && (
               <div className="pg-note" style={{ marginBottom: '0.6rem' }}>
                 <div>
@@ -1990,22 +2169,33 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
                 </select>
               </label>
 
+              {members.length > 0 && (
+                <label className="pg-field">
+                  <span>Ghép học sinh của lớp</span>
+                  <select
+                    value={item.studentId || ''}
+                    onChange={(e) => {
+                      const m = members.find((x) => x.id === e.target.value);
+                      onChange({ studentId: m?.id || null, studentName: m?.name || '' });
+                    }}
+                  >
+                    <option value="">-- Nhập tay / Chưa ghép lớp --</option>
+                    {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </label>
+              )}
+
               <label className="pg-field">
-                <span>Ghép học sinh của lớp</span>
-                <select
-                  value={item.studentId || ''}
-                  onChange={(e) => {
-                    const m = members.find((x) => x.id === e.target.value);
-                    onChange({ studentId: m?.id || null, studentName: m?.name || '' });
-                  }}
-                >
-                  <option value="">{item.studentName && !item.studentId ? item.studentName : '-- Chưa chọn --'}</option>
-                  {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
+                <span>Họ và tên thí sinh</span>
+                <input
+                  value={item.studentName || ''}
+                  onChange={(e) => onChange({ studentName: e.target.value, studentId: item.studentId || null })}
+                  placeholder="Gõ tên học sinh nếu chưa có trong lớp…"
+                />
               </label>
             </div>
 
-            {counts.p1 > 0 && (
+            {counts.p1 > 0 && (!onlySuspicious || hasP1Sus) && (
               <>
                 <h4>Phần I: Trắc nghiệm ({counts.p1} câu)</h4>
                 <div className="pg-p1grid">
@@ -2024,7 +2214,7 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
                         <select value={read.p1?.[q] || ''} onChange={(e) => setP1(q, e.target.value)}>
                           <option value="">—</option>
                           {['A', 'B', 'C', 'D'].map((c) => <option key={c} value={c}>{c}</option>)}
-                          {read.p1?.[q] === '*' && <option value="*">*</option>}
+                          {read.p1?.[q] === '*' && <option value="*">* (Tô đúp)</option>}
                         </select>
                       </label>
                     );
@@ -2033,7 +2223,7 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
               </>
             )}
 
-            {counts.p2 > 0 && (
+            {counts.p2 > 0 && (!onlySuspicious || hasP2Sus) && (
               <>
                 <h4>Phần II: Đúng / Sai ({counts.p2} câu)</h4>
                 <div className="pg-p2grid">
@@ -2053,7 +2243,7 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
                               <option value="">—</option>
                               <option value="D">Đ</option>
                               <option value="S">S</option>
-                              {read.p2?.[q]?.[y] === '*' && <option value="*">*</option>}
+                              {read.p2?.[q]?.[y] === '*' && <option value="*">* (Tô đúp)</option>}
                             </select>
                           </label>
                         ))}
@@ -2064,7 +2254,7 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
               </>
             )}
 
-            {counts.p3 > 0 && (
+            {counts.p3 > 0 && (!onlySuspicious || hasP3Sus) && (
               <>
                 <h4>Phần III: Trả lời ngắn ({counts.p3} câu)</h4>
                 <div className="pg-p3grid">
@@ -2121,36 +2311,50 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
 }
 
 /* ============================================================
-   SUB-COMPONENT: PHÂN TÍCH PHỔ ĐIỂM & ELEC AI CHẨN ĐOÁN
+   SUB-COMPONENT: PHÂN TÍCH PHỔ ĐIỂM & CHẨN ĐOÁN LỚP HỌC
    ============================================================ */
-function PaperAnalyticsView({ exam, onBack, say }) {
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(true);
+function PaperAnalyticsView({ exam, liveResults = null, backLabel = '← Quay lại chấm bài', onBack, say }) {
+  const [cloudResults, setCloudResults] = useState([]);
+  const [loading, setLoading] = useState(!liveResults?.length);
+
+  const hasLive = Array.isArray(liveResults) && liveResults.length > 0;
+  const unsavedInLive = useMemo(
+    () => (hasLive ? liveResults.filter((r) => !r.saved || r.edited).length : 0),
+    [hasLive, liveResults]
+  );
 
   useEffect(() => {
+    if (hasLive) {
+      setLoading(false);
+      return;
+    }
+    let alive = true;
     (async () => {
       setLoading(true);
       try {
         const list = await listPaperResults(exam.id);
-        setResults(list);
+        if (alive) setCloudResults(list);
       } catch (e) {
-        say(e.message, 'error');
+        if (alive) say(e.message, 'error');
       } finally {
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
-  }, [exam.id, say]);
+    return () => { alive = false; };
+  }, [exam.id, hasLive, say]);
 
-  const stats = useMemo(() => {
-    return computePaperAnalytics(results, exam.counts);
-  }, [results, exam.counts]);
+  const effectiveResults = hasLive ? liveResults : cloudResults;
+  const stats = useMemo(
+    () => computePaperAnalytics(effectiveResults, exam.counts),
+    [effectiveResults, exam.counts]
+  );
 
   if (loading) return <div className="vt-loading"><p>Đang tổng hợp dữ liệu phổ điểm...</p></div>;
   if (!stats) return (
     <div className="pg-empty">
       <h3>Chưa có dữ liệu phổ điểm</h3>
-      <p>Cần ít nhất 1 bài thi đã chấm để phân tích và vẽ biểu đồ phổ điểm!</p>
-      <button type="button" className="vt-btn primary" onClick={onBack}>Quay lại chấm bài</button>
+      <p>Cần ít nhất 1 bài thi đã chấm (và lưu lên Cloud nếu mở từ Danh sách) để phân tích phổ điểm!</p>
+      <button type="button" className="vt-btn primary" onClick={onBack}>{backLabel}</button>
     </div>
   );
 
@@ -2160,30 +2364,37 @@ function PaperAnalyticsView({ exam, onBack, say }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <header className="pg-head">
         <div>
-          <h2><IcoChart size={22} /> Phổ Điểm & Chẩn Đoán Lớp Học</h2>
-          <p>{exam.title} · Tổng số bài đã chấm: <b>{stats.count}</b> học sinh</p>
+          <h2><IcoChart size={22} /> Phổ Điểm &amp; Chẩn Đoán Lớp Học</h2>
+          <p>
+            {exam.title} · Tổng số bài phân tích: <b>{stats.count}</b> học sinh
+            {unsavedInLive > 0 && (
+              <span className="pg-tag warn" style={{ marginLeft: '0.5rem' }}>
+                Đang gồm {unsavedInLive} phiếu chưa lưu Cloud
+              </span>
+            )}
+          </p>
         </div>
         <button type="button" className="vt-btn sm" onClick={onBack}>
-          ← Quay lại chấm bài
+          {backLabel}
         </button>
       </header>
 
       {/* Grid chỉ số then chốt */}
       <div className="pg-analytics-grid">
         <div className="pg-block">
-          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mut)' }}>ĐIỂM TRUNG BÌNH</span>
-          <strong style={{ fontSize: '2.1rem', color: '#0284c7' }}>{stats.avg}</strong>
-          <small>Trung vị: {stats.median} · Độ lệch chuẩn: {stats.stdDev}</small>
+          <span className="pg-kpi-lbl">ĐIỂM TRUNG BÌNH</span>
+          <strong className="pg-kpi-val primary">{fmt(stats.avg)}</strong>
+          <small className="pg-note">Trung vị: {fmt(stats.median)} · Độ lệch chuẩn: {fmt(stats.stdDev)}</small>
         </div>
         <div className="pg-block">
-          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mut)' }}>TỶ LỆ ĐẠT (≥ 5.0)</span>
-          <strong style={{ fontSize: '2.1rem', color: '#10b981' }}>{stats.passRate}%</strong>
-          <small>Học sinh khá giỏi (≥ 8.0): {stats.goodRate}%</small>
+          <span className="pg-kpi-lbl">TỶ LỆ ĐẠT (≥ 5,0)</span>
+          <strong className="pg-kpi-val ok">{stats.passRate}%</strong>
+          <small className="pg-note">Học sinh khá giỏi (≥ 8,0): {stats.goodRate}%</small>
         </div>
         <div className="pg-block">
-          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--mut)' }}>CAO NHẤT / THẤP NHẤT</span>
-          <strong style={{ fontSize: '2.1rem', color: '#f59e0b' }}>{stats.max} / {stats.min}</strong>
-          <small>Khoảng biến thiên: {round2(stats.max - stats.min)} điểm</small>
+          <span className="pg-kpi-lbl">CAO NHẤT / THẤP NHẤT</span>
+          <strong className="pg-kpi-val warn">{fmt(stats.max)} / {fmt(stats.min)}</strong>
+          <small className="pg-note">Khoảng biến thiên: {fmt(round2(stats.max - stats.min))} điểm</small>
         </div>
       </div>
 
@@ -2208,18 +2419,12 @@ function PaperAnalyticsView({ exam, onBack, say }) {
       {stats.hardestP1 && stats.hardestP1.length > 0 && (
         <div className="pg-block">
           <h3>Top 5 câu hỏi học sinh làm sai nhiều nhất (Phần I)</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <div className="pg-hard-list">
             {stats.hardestP1.map((q) => (
-              <div
-                key={q.q}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '0.65rem 0.9rem', background: 'var(--surface-2, #f8fafc)', borderRadius: 12,
-                }}
-              >
+              <div key={q.q} className="pg-hard-row">
                 <span><strong>Câu {q.q}</strong></span>
-                <span style={{ color: '#ef4444', fontWeight: 700, fontSize: '0.88rem' }}>
-                  Tỷ lệ làm đúng chỉ: {q.correctRate}% ({q.correctCount}/{q.totalAnswered} học sinh)
+                <span className="pg-hard-rate">
+                  Tỷ lệ làm đúng: {q.correctRate}% ({q.correctCount}/{q.totalAnswered} học sinh)
                 </span>
               </div>
             ))}
@@ -2227,49 +2432,66 @@ function PaperAnalyticsView({ exam, onBack, say }) {
         </div>
       )}
 
+      {/* Phân tích Phần II & Phần III (GDPT 2025) */}
+      {(stats.p2Questions?.length > 0 || stats.p3Questions?.length > 0) && (
+        <div className="pg-analytics-grid">
+          {stats.p2Questions?.length > 0 && (
+            <div className="pg-block">
+              <h3>Phần II — Đúng / Sai ({stats.p2Questions.length} câu)</h3>
+              <div className="pg-hard-list">
+                {stats.p2Questions.map((q) => (
+                  <div key={q.q} className="pg-hard-row">
+                    <span><strong>Câu {q.q}</strong></span>
+                    <span className="pg-note">
+                      TB <b>{fmt(q.avgRight)}/4</b> ý · Đạt tối đa 4/4: <b>{q.fullRate}%</b> ({q.fullCount}/{q.totalAnswered})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {stats.p3Questions?.length > 0 && (
+            <div className="pg-block">
+              <h3>Phần III — Trả lời ngắn ({stats.p3Questions.length} câu)</h3>
+              <div className="pg-hard-list">
+                {stats.p3Questions.map((q) => (
+                  <div key={q.q} className="pg-hard-row">
+                    <span><strong>Câu {q.q}</strong></span>
+                    <span className={q.correctRate < 50 ? 'pg-hard-rate' : 'pg-ok-rate'}>
+                      Đúng {q.correctRate}% ({q.correctCount}/{q.totalAnswered} HS)
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Bảng Phân Tích Chất Lượng Câu Hỏi Chuẩn IRT / CTT (Độ khó p · Độ phân cách D) */}
       {stats.itemQualityList && stats.itemQualityList.length > 0 && (
         <div className="pg-block">
-          <h3>Phân Tích Chất Lượng Câu Hỏi Chuẩn Khảo Thí (Độ khó p &amp; Độ phân cách D)</h3>
-          <p style={{ margin: '0 0 0.65rem', fontSize: '0.82rem', color: 'var(--mut, #64748b)' }}>
-            Độ khó <strong>p ∈ [0; 1]</strong> (tỷ lệ làm đúng) · Độ phân cách <strong>D = P_nhóm_cao(27%) − P_nhóm_thấp(27%)</strong> (D ≥ 0,30 là câu hỏi phân hóa tốt chuẩn thi Đại học).
+          <h3>Phân Tích Chất Lượng Câu Hỏi Phần I (Độ khó p &amp; Độ phân cách D)</h3>
+          <p className="pg-note">
+            Độ khó <strong>p ∈ [0; 1]</strong> (tỷ lệ làm đúng) · Độ phân cách <strong>D = P_nhóm_cao(27%) − P_nhóm_thấp(27%)</strong>
+            {stats.count < 2
+              ? ' (cần tối thiểu 2 bài chấm để tính chính xác độ phân cách D).'
+              : ' (D ≥ 0,30 là câu phân hóa tốt; D < 0,15 cần rà soát lại mồi nhử hoặc đáp án).'}
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '0.6rem' }}>
+          <div className="pg-q-grid">
             {stats.itemQualityList.map((item) => (
-              <div
-                key={item.q}
-                style={{
-                  padding: '0.7rem 0.85rem',
-                  borderRadius: 12,
-                  border: item.qualityTone === 'warn'
-                    ? '1.5px solid rgba(245, 158, 11, 0.4)'
-                    : '1.5px solid rgba(47, 107, 255, 0.2)',
-                  background: 'var(--surface-2, #f8fafc)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 4,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={item.q} className={`pg-q-card tone-${item.qualityTone}`}>
+                <div className="pg-q-card-top">
                   <strong>Câu {item.q}</strong>
-                  <span
-                    style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                      padding: '2px 8px',
-                      borderRadius: 999,
-                      background: item.qualityTone === 'warn'
-                        ? 'rgba(245, 158, 11, 0.14)'
-                        : 'rgba(47, 107, 255, 0.12)',
-                      color: item.qualityTone === 'warn' ? '#b45309' : '#1d4ed8',
-                    }}
-                  >
+                  <span className={`pg-q-badge tone-${item.qualityTone}`}>
                     {item.qualityLabel}
                   </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 700 }}>
-                  <span>Độ khó p = {item.pIndex}</span>
-                  <span style={{ color: '#2f6bff' }}>Phân cách D = {item.dIndex}</span>
+                <div className="pg-q-card-metrics">
+                  <span>Độ khó p = {fmt(item.pIndex)}</span>
+                  <span className="pg-q-disc">
+                    {stats.count >= 2 ? `Phân cách D = ${fmt(item.dIndex)}` : 'D: cần ≥ 2 bài'}
+                  </span>
                 </div>
               </div>
             ))}
@@ -2277,17 +2499,22 @@ function PaperAnalyticsView({ exam, onBack, say }) {
         </div>
       )}
 
-      {/* ELEC AI Chẩn đoán */}
-      <div className="pg-block" style={{ borderLeft: '4px solid #0284c7' }}>
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0284c7' }}>
-          <IcoSpark size={18} /> ELEC AI Chẩn đoán sư phạm
+      {/* Chẩn đoán & Gợi ý sư phạm tự động theo số liệu */}
+      <div className="pg-block pg-diag-box">
+        <h3 className="pg-diag-title">
+          <IcoSpark size={18} /> Chẩn đoán &amp; Gợi ý ôn tập theo phổ điểm
         </h3>
-        <p style={{ margin: '0.5rem 0 0', lineHeight: 1.6, fontSize: '0.92rem' }}>
-          "Dựa trên kết quả bài chấm phiếu trắc nghiệm, điểm trung bình của lớp đạt <strong>{stats.avg}/10</strong> với tỷ lệ đạt <strong>{stats.passRate}%</strong>.
-          {stats.hardestP1 && stats.hardestP1.length > 0 && (
-            <> Học sinh gặp thử thách lớn nhất ở các câu <strong>{stats.hardestP1.map((x) => `Câu ${x.q}`).join(', ')}</strong>.</>
+        <p className="pg-diag-copy">
+          Điểm trung bình của <strong>{stats.count}</strong> bài đạt <strong>{fmt(stats.avg)}/10</strong> (trung vị <strong>{fmt(stats.median)}</strong>, độ lệch chuẩn <strong>{fmt(stats.stdDev)}</strong>), tỷ lệ đạt từ 5,0 là <strong>{stats.passRate}%</strong> và mức khá giỏi (≥ 8,0) đạt <strong>{stats.goodRate}%</strong>.
+          {stats.hardestP1?.length > 0 && (
+            <> Ở Phần I, học sinh mất điểm nhiều nhất tại <strong>{stats.hardestP1.slice(0, 3).map((x) => `Câu ${x.q} (${x.correctRate}%)`).join(', ')}</strong>.</>
           )}
-          {' '}Thầy cô nên chú trọng củng cố lại các dạng bài tập tương tự trước khi bước vào các bài kiểm tra định kỳ tiếp theo!"
+          {stats.lowDiscP1?.length > 0 && (
+            <> Phát hiện <strong>{stats.lowDiscP1.length}</strong> câu có độ phân cách thấp (D &lt; 0,15): <strong>{stats.lowDiscP1.slice(0, 6).map((x) => `Câu ${x.q}`).join(', ')}</strong> — giáo viên nên rà soát lại phương án nhiễu hoặc bảng đáp án.</>
+          )}
+          {stats.stdDev >= 2.0
+            ? ' Phân hóa điểm trong lớp khá rộng — nên tách nhóm phụ đạo cho nhóm dưới 5,0 và giao bài vận dụng cao cho nhóm trên 8,0.'
+            : ' Phân bố điểm tương đối đồng đều — có thể ưu tiên chữa nhanh các câu sai trọng tâm chung cho cả lớp.'}
         </p>
       </div>
     </div>

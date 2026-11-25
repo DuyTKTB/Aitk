@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import MathText, { MathTextConfigContext } from '../MathText.jsx';
 import { subjectUsesMath } from '../../lib/subjects.js';
 import { buildExamQuestionsForPaper } from '../../data/virtualExamsBank.js';
@@ -16,6 +16,12 @@ export default function ExamPreviewModal({
 }) {
   const [tab, setTab] = useState('preview'); // 'preview' | 'answers'
   const [quickTableOpen, setQuickTableOpen] = useState(true);
+  const bodyRef = useRef(null);
+
+  const switchTab = (nextTab) => {
+    setTab(nextTab);
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  };
 
   const questions = useMemo(() => {
     if (!exam) return [];
@@ -72,56 +78,78 @@ export default function ExamPreviewModal({
     >
       <div className="s9-preview-modal">
         <header className="s9-pm-head">
-          <div className="s9-pm-head-info">
-            <div className="s9-pm-badges">
-              <span className="s9-pm-badge is-type">{exam.examType || 'THPTQG'}</span>
-              <span className={`s9-pm-badge is-${String(exam.tier || 'free').toLowerCase()}`}>
-                {exam.tier || 'FREE'}
-              </span>
-              {exam.duration && <span className="s9-pm-badge is-neutral">{exam.duration} phút</span>}
-              <span className="s9-pm-badge is-neutral">{structure.total || exam.questionCount || 0} câu</span>
+          <div className="s9-pm-head-main">
+            <div className={`emm-hero-mascot ${tab === 'answers' ? 'is-emerald' : ''}`} aria-hidden="true">
+              <img
+                src={tab === 'answers' ? '/img/elec/elec-wink.png' : '/img/elec/elec-hello.png'}
+                alt="Bé Elec đồng hành xem trước đề"
+                draggable={false}
+              />
             </div>
-            <h3>{exam.title}</h3>
-            <p className="s9-pm-sub">
-              Cấu trúc đề:{' '}
-              {structure.p1 > 0 && <><b>Phần I: {structure.p1} câu</b></>}
-              {structure.p2 > 0 && <>{structure.p1 > 0 ? ' · ' : ''}<b>Phần II: {structure.p2} câu</b></>}
-              {structure.p3 > 0 && <>{(structure.p1 + structure.p2) > 0 ? ' · ' : ''}<b>Phần III: {structure.p3} câu</b></>}
-              {structure.p4 > 0 && <>{(structure.p1 + structure.p2 + structure.p3) > 0 ? ' · ' : ''}<b>Tự luận: {structure.p4} câu</b></>}
-              {exam.author ? ` · Biên soạn: ${exam.author}` : ''}
-            </p>
+            <div className="s9-pm-head-info">
+              <div className="s9-pm-badges">
+                <span className="s9-pm-badge is-type">{exam.examType || 'THPTQG'}</span>
+                <span className={`s9-pm-badge is-${String(exam.tier || 'free').toLowerCase()}`}>
+                  {exam.tier || 'FREE'}
+                </span>
+                {exam.duration && <span className="s9-pm-badge is-neutral">{exam.duration} phút</span>}
+                <span className="s9-pm-badge is-neutral">{structure.total || exam.questionCount || 0} câu</span>
+              </div>
+              <h3>{exam.title}</h3>
+              <p className="s9-pm-sub">
+                Cấu trúc đề:{' '}
+                {structure.p1 > 0 && <><b>Phần I: {structure.p1} câu</b></>}
+                {structure.p2 > 0 && <>{structure.p1 > 0 ? ' · ' : ''}<b>Phần II: {structure.p2} câu</b></>}
+                {structure.p3 > 0 && <>{(structure.p1 + structure.p2) > 0 ? ' · ' : ''}<b>Phần III: {structure.p3} câu</b></>}
+                {structure.p4 > 0 && <>{(structure.p1 + structure.p2 + structure.p3) > 0 ? ' · ' : ''}<b>Tự luận: {structure.p4} câu</b></>}
+                {exam.author ? ` · Biên soạn: ${exam.author}` : ''}
+              </p>
+              <div className="emm-speech-pill">
+                <span className="emm-speech-dot" aria-hidden="true" />
+                <span>
+                  {tab === 'answers'
+                    ? 'Elec bật mí: xem kỹ bẫy đáp án mẫu rồi vào phòng thi bấm giờ nhé!'
+                    : 'Elec gợi ý: đọc lướt 5 câu đầu để ước lượng tốc độ làm bài chuẩn!'}
+                </span>
+              </div>
+            </div>
           </div>
           <button type="button" className="s9-pm-close" onClick={onClose} aria-label="Đóng xem trước">
             ✕
           </button>
         </header>
 
-        {/* Thanh chuyển 2 tab kiểu 9Study: Xem trước đề & Đáp án lời giải mẫu */}
+        {/* Thanh chuyển 2 tab kiểu 9Study kèm linh vật Bé Elec */}
         <div className="s9-pm-tabs" role="tablist">
           <button
             type="button"
             role="tab"
             aria-selected={tab === 'preview'}
             className={`s9-pm-tab ${tab === 'preview' ? 'active' : ''}`}
-            onClick={() => setTab('preview')}
+            onClick={() => switchTab('preview')}
           >
-            Xem trước đề ({previewQs.length} câu đầu)
+            <img src="/img/elec/elec-think.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
+            <span>Xem trước đề</span>
+            <span className="s9-pm-tab-count">{previewQs.length} câu đầu</span>
           </button>
           <button
             type="button"
             role="tab"
             aria-selected={tab === 'answers'}
             className={`s9-pm-tab ${tab === 'answers' ? 'active' : ''}`}
-            onClick={() => setTab('answers')}
+            onClick={() => switchTab('answers')}
           >
-            Đáp án &amp; Lời giải mẫu ({solvedQs.length} câu)
+            <img src="/img/elec/elec-celebrate.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
+            <span>Đáp án &amp; Lời giải mẫu</span>
+            <span className="s9-pm-tab-count">{solvedQs.length} câu</span>
           </button>
         </div>
 
-        <div className="s9-pm-body">
+        <div className="s9-pm-body" ref={bodyRef}>
           {questions.length === 0 ? (
             <div className="s9-pm-empty">
-              Đề thi này được khởi tạo động khi vào phòng thi. Bấm nút bên dưới để bắt đầu làm bài ngay!
+              <img src="/img/elec/elec-hello.png" alt="Bé Elec chào đón" />
+              <span>Đề thi này được khởi tạo động khi vào phòng thi. Bấm nút bên dưới để bắt đầu làm bài ngay!</span>
             </div>
           ) : tab === 'preview' ? (
             <>
@@ -131,7 +159,7 @@ export default function ExamPreviewModal({
                   return (
                     <li key={q.id || idx} className="s9-pm-qcard">
                       <div className="s9-pm-qhead">
-                        <b>Câu {idx + 1}</b>
+                        <b className="s9-pm-qnum">Câu {idx + 1}</b>
                         <span className="s9-pm-qpart">
                           {p === 2 ? 'Đúng / Sai' : p === 3 ? 'Trả lời ngắn' : p === 4 ? 'Tự luận / Đọc hiểu mở' : 'Trắc nghiệm 4 lựa chọn'}
                         </span>
@@ -149,7 +177,8 @@ export default function ExamPreviewModal({
                         <ul className="s9-pm-opts">
                           {q.statements.map((st, si) => (
                             <li key={si} className="s9-pm-opt">
-                              <b>{String.fromCharCode(97 + si)})</b> <MathText as="span">{st.text}</MathText>
+                              <b className="s9-pm-opt-letter">{String.fromCharCode(97 + si)}</b>
+                              <span><MathText as="span">{st.text}</MathText></span>
                             </li>
                           ))}
                         </ul>
@@ -161,7 +190,8 @@ export default function ExamPreviewModal({
                         <ul className="s9-pm-opts">
                           {(q.options || []).map((opt, oi) => (
                             <li key={oi} className="s9-pm-opt">
-                              <b>{LETTERS[oi]}.</b> <MathText as="span">{String(opt).replace(/^[A-D]\.\s*/i, '')}</MathText>
+                              <b className="s9-pm-opt-letter">{LETTERS[oi]}</b>
+                              <span><MathText as="span">{String(opt).replace(/^[A-D]\.\s*/i, '')}</MathText></span>
                             </li>
                           ))}
                         </ul>
@@ -173,8 +203,15 @@ export default function ExamPreviewModal({
 
               {remainingCount > 0 && (
                 <div className="s9-pm-gate">
-                  <strong>Còn {remainingCount} câu hỏi tiếp theo trong đề này</strong>
-                  <span>Vào phòng thi bấm giờ để làm trọn vẹn, chấm điểm tự động và nhận phân tích AI điểm yếu + ELO.</span>
+                  <img
+                    src="/img/elec/elec-super-saiyan.png"
+                    alt="Bé Elec sẵn sàng bứt phá"
+                    className="s9-pm-gate-mascot"
+                  />
+                  <div className="s9-pm-gate-text">
+                    <strong>Còn {remainingCount} câu hỏi tiếp theo đang chờ bạn chinh phục!</strong>
+                    <span>Vào phòng thi bấm giờ để làm trọn vẹn, chấm điểm tự động và nhận phân tích AI điểm yếu + ELO.</span>
+                  </div>
                 </div>
               )}
             </>
@@ -187,7 +224,10 @@ export default function ExamPreviewModal({
                   className="s9-pm-quick-toggle"
                   onClick={() => setQuickTableOpen((v) => !v)}
                 >
-                  <span>Bảng tra cứu nhanh đáp án (Câu 1 – Câu {solvedQs.length})</span>
+                  <span className="s9-pm-quick-toggle-l">
+                    <img src="/img/elec/elec-cool.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
+                    <span>Bảng tra cứu nhanh đáp án (Câu 1 – Câu {solvedQs.length})</span>
+                  </span>
                   <span>{quickTableOpen ? 'Thu gọn ▴' : 'Mở rộng ▾'}</span>
                 </button>
                 {quickTableOpen && (
@@ -206,17 +246,20 @@ export default function ExamPreviewModal({
                 {solvedQs.map((q, idx) => (
                   <li key={q.id || idx} className="s9-pm-qcard is-solved">
                     <div className="s9-pm-qhead">
-                      <b>Câu {idx + 1}</b>
+                      <b className="s9-pm-qnum">Câu {idx + 1}</b>
                       <span className="s9-pm-ans-pill">Đáp án: {formatAnswerLabel(q)}</span>
                     </div>
                     <div className="s9-pm-qtext">
                       <MathText as="div">{q.q || q.content || ''}</MathText>
                     </div>
                     <div className="s9-pm-explain">
-                      <b>Lời giải chi tiết</b>
-                      <MathText as="div">
-                        {q.explain || q.explanation || 'Lời giải chi tiết được mở đầy đủ ngay sau khi hoàn thành bài thi.'}
-                      </MathText>
+                      <img src="/img/elec/elec-wink.png" alt="" className="emm-mini-mascot" aria-hidden="true" />
+                      <div className="s9-pm-explain-body">
+                        <b>Lời giải chi tiết · Bé Elec phân tích</b>
+                        <MathText as="div">
+                          {q.explain || q.explanation || 'Lời giải chi tiết được mở đầy đủ ngay sau khi hoàn thành bài thi.'}
+                        </MathText>
+                      </div>
                     </div>
                   </li>
                 ))}
@@ -224,8 +267,15 @@ export default function ExamPreviewModal({
 
               {questions.length > solvedQs.length && (
                 <div className="s9-pm-gate">
-                  <strong>Đáp án &amp; lời giải chi tiết từ Câu {solvedQs.length + 1} – Câu {questions.length}</strong>
-                  <span>Hoàn thành bài thi để mở khóa toàn bộ bảng đáp án, lời giải và tự động lưu câu sai vào Sổ lỗi sai.</span>
+                  <img
+                    src="/img/elec/elec-fighting.png"
+                    alt="Bé Elec cổ vũ hoàn thành đề"
+                    className="s9-pm-gate-mascot"
+                  />
+                  <div className="s9-pm-gate-text">
+                    <strong>Đáp án &amp; lời giải chi tiết từ Câu {solvedQs.length + 1} – Câu {questions.length}</strong>
+                    <span>Hoàn thành bài thi để mở khóa toàn bộ bảng đáp án, lời giải và tự động lưu câu sai vào Sổ lỗi sai.</span>
+                  </div>
                 </div>
               )}
             </>
@@ -233,24 +283,42 @@ export default function ExamPreviewModal({
         </div>
 
         <footer className="s9-pm-foot">
-          <button
-            type="button"
-            className={`s9-pm-btn is-ghost ${isFav ? 'is-fav' : ''}`}
-            onClick={() => onToggleFav?.(exam.id)}
-          >
-            {isFav ? 'Đã lưu yêu thích' : 'Lưu đề yêu thích'}
-          </button>
-          <button
-            type="button"
-            className="s9-pm-btn is-primary"
-            onClick={() => {
-              onClose?.();
-              if (canAccess) onStart?.(exam);
-              else onRequireUpgrade?.(exam);
-            }}
-          >
-            {canAccess ? 'Vào phòng thi bấm giờ ngay' : `Mở khóa đề ${exam.tier}`}
-          </button>
+          <div className="s9-pm-foot-buddy">
+            <img
+              src={isFav ? '/img/elec/elec-heart-eyes.png' : '/img/elec/elec-happy.png'}
+              alt=""
+              className="emm-mini-mascot"
+              aria-hidden="true"
+            />
+            <span>{isFav ? 'Đề yêu thích đã lưu trong tủ ôn!' : 'Sẵn sàng bấm giờ cùng Bé Elec!'}</span>
+          </div>
+          <div className="s9-pm-foot-actions">
+            <button
+              type="button"
+              className={`s9-pm-btn is-ghost ${isFav ? 'is-fav' : ''}`}
+              onClick={() => onToggleFav?.(exam.id)}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+              <span>{isFav ? 'Đã lưu yêu thích' : 'Lưu đề yêu thích'}</span>
+            </button>
+            <button
+              type="button"
+              className="s9-pm-btn is-primary"
+              onClick={() => {
+                onClose?.();
+                if (canAccess) onStart?.(exam);
+                else onRequireUpgrade?.(exam);
+              }}
+            >
+              <span>{canAccess ? 'Vào phòng thi bấm giờ ngay' : `Mở khóa đề ${exam.tier}`}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </button>
+          </div>
         </footer>
       </div>
     </div>

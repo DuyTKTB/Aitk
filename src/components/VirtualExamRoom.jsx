@@ -3153,126 +3153,90 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
       {/* ── MODAL CHỌN MÃ ĐỀ THI (KHI BỘ ĐỀ CÓ NHIỀU MÃ ĐỀ) ── */}
       {variantPickerExam && (
         <div
-          className="ns9-upg-dialog-backdrop"
+          className="s9-modal-backdrop"
           onClick={() => setVariantPickerExam(null)}
           role="dialog"
           aria-modal="true"
+          aria-label="Chọn mã đề thi"
         >
-          <div className="ns9-upg-dialog-card" style={{ maxWidth: 620 }} onClick={(e) => e.stopPropagation()}>
-            <div className="ns9-upg-dialog-head">
-              <div>
-                <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: '0.8rem',
-                  fontWeight: 800,
-                  color: variantPickerExam.tier === 'VIP' ? '#7c3aed' : (variantPickerExam.tier === 'PRO' ? '#ea580c' : '#0284c7'),
-                  background: variantPickerExam.tier === 'VIP' ? 'rgba(124, 58, 237, 0.1)' : (variantPickerExam.tier === 'PRO' ? 'rgba(234, 88, 12, 0.1)' : 'rgba(2, 132, 199, 0.1)'),
-                  padding: '3px 10px',
-                  borderRadius: 999,
-                  marginBottom: 8,
-                }}>
-                  <SvgLayers size={13} />
-                  BỘ ĐỀ GỒM {variantPickerExam.variants.length} MÃ ĐỀ
-                </span>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--ink, #0f172a)' }}>
-                  Chọn mã đề bạn muốn làm thử sức
-                </h3>
+          <div className="s9-variant-modal" onClick={(e) => e.stopPropagation()}>
+            <header className="s9-variant-head">
+              <div className="s9-pm-head-main">
+                <div className="emm-hero-mascot is-violet" aria-hidden="true">
+                  <img src="/img/elec/elec-cool.png" alt="Bé Elec chọn mã đề" draggable={false} />
+                </div>
+                <div className="s9-pm-head-info">
+                  <div className="s9-pm-badges">
+                    <span className={`s9-pm-badge is-${String(variantPickerExam.tier || 'free').toLowerCase()}`}>
+                      <SvgLayers size={12} /> BỘ ĐỀ GỒM {variantPickerExam.variants.length} MÃ ĐỀ
+                    </span>
+                  </div>
+                  <h3 style={{ margin: '6px 0 2px', fontSize: '1.14rem', fontWeight: 850 }}>
+                    Chọn mã đề bạn muốn thử sức
+                  </h3>
+                  <div className="emm-speech-pill">
+                    <span className="emm-speech-dot" aria-hidden="true" />
+                    <span>Chọn mã đề bất kỳ hoặc để Bé Elec bốc ngẫu nhiên chuẩn phòng thi thật!</span>
+                  </div>
+                </div>
               </div>
               <button
                 type="button"
-                className="ns9-cr-close-btn"
+                className="s9-pm-close"
                 onClick={() => setVariantPickerExam(null)}
                 aria-label="Đóng"
-                style={{ position: 'relative', top: 'auto', right: 'auto' }}
               >
                 <SvgClose size={16} />
               </button>
-            </div>
+            </header>
 
-            <div className="ns9-upg-dialog-body" style={{ padding: '16px 20px 24px' }}>
-              <div className="ns9-upg-preview-box" style={{ marginBottom: 16 }}>
-                <strong style={{ fontSize: '0.95rem', color: 'var(--ink, #0f172a)', display: 'block', lineHeight: 1.4 }}>
+            <div className="s9-variant-body">
+              <div className="s9-variant-info-card">
+                <strong style={{ fontSize: '0.95rem', display: 'block', lineHeight: 1.42 }}>
                   {variantPickerExam.title}
                 </strong>
-                <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: '0.8rem', color: 'var(--mut, #64748b)' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8, fontSize: '0.8rem', opacity: 0.8 }}>
                   <span><SvgDoc size={12} /> {variantPickerExam.questionCount} câu</span>
                   <span><SvgClock size={12} /> {variantPickerExam.durationMinutes || 50} phút</span>
                   <span>{variantPickerExam.institution || variantPickerExam.author}</span>
                 </div>
               </div>
 
-              <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--ink, #0f172a)' }}>
+              <div className="s9-variant-toolbar">
+                <span style={{ fontSize: '0.86rem', fontWeight: 800 }}>
                   Danh sách mã đề ({variantPickerExam.variants.length} mã):
                 </span>
                 <button
                   type="button"
+                  className="s9-variant-rnd-btn"
                   onClick={() => {
                     const rnd = variantPickerExam.variants[Math.floor(Math.random() * variantPickerExam.variants.length)];
                     handleStartExam(variantPickerExam, rnd);
                   }}
-                  style={{
-                    background: 'none',
-                    border: '1px solid var(--pri, #2563eb)',
-                    color: 'var(--pri, #2563eb)',
-                    padding: '4px 10px',
-                    borderRadius: 8,
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
                 >
+                  <img src="/img/elec/elec-wink.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
                   <SvgShuffle size={14} />
-                  <span>Chọn ngẫu nhiên mã đề</span>
+                  <span>Bốc ngẫu nhiên mã đề</span>
                 </button>
               </div>
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(105px, 1fr))',
-                gap: 8,
-                maxHeight: 260,
-                overflowY: 'auto',
-                padding: '4px',
-              }}>
+              <div className="s9-variant-grid">
                 {variantPickerExam.variants.map((code) => (
                   <button
                     key={code}
                     type="button"
+                    className="s9-variant-code-btn"
                     onClick={() => handleStartExam(variantPickerExam, code)}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '10px 8px',
-                      borderRadius: 10,
-                      border: '1.5px solid var(--border, #e2e8f0)',
-                      background: 'var(--card-bg, #fff)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      gap: 4,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--pri, #2563eb)';
-                      e.currentTarget.style.background = 'rgba(37, 99, 235, 0.05)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border, #e2e8f0)';
-                      e.currentTarget.style.background = 'var(--card-bg, #fff)';
-                      e.currentTarget.style.transform = 'none';
-                    }}
                   >
-                    <span style={{ fontSize: '0.72rem', color: 'var(--mut, #64748b)', fontWeight: 600 }}>Mã đề</span>
-                    <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--ink, #0f172a)' }}>{code}</span>
+                    <span className="s9-variant-code-lbl">Mã đề</span>
+                    <span className="s9-variant-code-val">{code}</span>
                   </button>
                 ))}
+              </div>
+
+              <div className="s9-variant-tip">
+                <img src="/img/elec/elec-fighting.png" alt="" className="emm-mini-mascot" aria-hidden="true" />
+                <span>Mỗi mã đề có thứ tự câu hỏi và phân bố đáp án độc lập — luyện hết bộ để chống học tủ cực hiệu quả!</span>
               </div>
             </div>
           </div>

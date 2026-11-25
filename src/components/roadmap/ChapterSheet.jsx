@@ -122,15 +122,35 @@ export default function ChapterSheet({
         <div className="rm-sheet-grip" aria-hidden="true" />
 
         <header className="rm-sheet-head ns9-sheet-head">
-          <div className="ns9-sheet-title-wrap">
-            <div className="ns9-sheet-eyebrow">
-              <span className="ns9-ch-pill">{levelKey} · Chương {view.index + 1}</span>
-              <span className={`rm-badge tone-${meta.tone}`}>{meta.icon} {meta.label}</span>
-              {review.isDue && <span className="rm-badge tone-warn">◷ Cần ôn lại</span>}
-              <span className="ns9-bank-count-pill">{totalBuiltin} câu chuẩn cấu trúc ĐH</span>
+          <div className="ns9-sheet-head-mascot">
+            {!isActiveQuiz && (
+              <div
+                className={`emm-hero-mascot sm ${state === 'mastered' ? 'is-emerald' : review.isDue ? 'is-amber' : ''}`}
+                aria-hidden="true"
+              >
+                <img
+                  src={
+                    state === 'mastered'
+                      ? '/img/elec/elec-celebrate.png'
+                      : review.isDue
+                        ? '/img/elec/elec-fighting.png'
+                        : '/img/elec/elec-hello.png'
+                  }
+                  alt="Bé Elec đồng hành học chương"
+                  draggable={false}
+                />
+              </div>
+            )}
+            <div className="ns9-sheet-title-wrap">
+              <div className="ns9-sheet-eyebrow">
+                <span className="ns9-ch-pill">{levelKey} · Chương {view.index + 1}</span>
+                <span className={`rm-badge tone-${meta.tone}`}>{meta.icon} {meta.label}</span>
+                {review.isDue && <span className="rm-badge tone-warn">◷ Cần ôn lại</span>}
+                <span className="ns9-bank-count-pill">{totalBuiltin} câu chuẩn cấu trúc ĐH</span>
+              </div>
+              <h2>{chapter.name}</h2>
+              {!isActiveQuiz && chapter.desc && <p className="rm-sheet-desc">{chapter.desc}</p>}
             </div>
-            <h2>{chapter.name}</h2>
-            {!isActiveQuiz && chapter.desc && <p className="rm-sheet-desc">{chapter.desc}</p>}
           </div>
           <button type="button" className="rm-x ns9-sheet-close" onClick={onClose} aria-label="Đóng">
             <IconClose size={18} />
@@ -159,15 +179,19 @@ export default function ChapterSheet({
 
         <div className="rm-tabs ns9-sheet-tabs" role="tablist">
           <button type="button" role="tab" aria-selected={tab === 'overview'} className={tab === 'overview' ? 'on' : ''} onClick={() => switchTab('overview')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <img src="/img/elec/elec-think.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IconBook size={14} /> Lý thuyết &amp; Trọng tâm
           </button>
           <button type="button" role="tab" aria-selected={tab === 'practice'} className={tab === 'practice' ? 'on' : ''} onClick={() => switchTab('practice')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <img src="/img/elec/elec-fighting.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IconTarget size={14} /> Luyện đề ({totalBuiltin} câu)
           </button>
           <button type="button" role="tab" aria-selected={tab === 'flash'} className={tab === 'flash' ? 'on' : ''} onClick={() => switchTab('flash')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <img src="/img/elec/elec-wink.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IconZap size={14} /> Thẻ ghi nhớ (Flashcard)
           </button>
           <button type="button" role="tab" aria-selected={tab === 'evidence'} className={tab === 'evidence' ? 'on' : ''} onClick={() => switchTab('evidence')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <img src="/img/elec/elec-cool.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IconChart size={14} /> Lịch sử &amp; Bằng chứng
           </button>
         </div>

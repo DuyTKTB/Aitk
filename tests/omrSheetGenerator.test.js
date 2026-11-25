@@ -14,6 +14,10 @@ import {
   parseBulkMatrixKeys,
   autoGenerateSbdRoster,
   buildScoreReportPrintHtml,
+  parseKeyP1,
+  parseKeyP2,
+  parseKeyP3,
+  computePaperAnalytics,
 } from '../src/lib/paperGrade.js';
 
 /** Bộ rasterizer thuần JS nhỏ gọn để kiểm tra khả năng đọc thực tế của omr.js trên phiếu vừa sinh. */
@@ -363,5 +367,73 @@ describe('omrSheetGenerator & MOET presets', () => {
     expect(html).toContain('Nguyễn Thị An');
     expect(html).toContain('12A1');
     expect(html).toContain('000045');
+  });
+
+  it('parseKeyP1/P2/P3 giữ đúng vị trí dòng trống và không nhận nhầm chữ tiêu đề', () => {
+    expect(parseKeyP1('Câu 1: A', 4)).toEqual(['A', '', '', '']);
+    expect(parseKeyP1('Đáp án: ABCD', 4)).toEqual(['A', 'B', 'C', 'D']);
+    // Dòng 1 để trống, nhập câu 2 không được nhảy lên câu 1
+    expect(parseKeyP2('\nĐSĐS', 3)).toEqual([
+      ['', '', '', ''],
+      ['D', 'S', 'D', 'S'],
+      ['', '', '', ''],
+    ]);
+    expect(parseKeyP3('\n-1,5|-1.5\n\n42', 4)).toEqual([
+      [],
+      ['-1,5', '-1.5'],
+      [],
+      ['42'],
+    ]);
+  });
+
+  it('computePaperAnalytics tính đúng độ phân cách D từ score10, đủ >18 câu và thống kê P.II/P.III', () => {
+    const counts = { p1: 24, p2: 2, p3: 2 };
+    const makeRes = (score10, q1Ok, q2Ok, p2Right, p3Ok) => ({
+      grade: {
+        score10,
+        detail: {
+          p1: Array.from({ length: 24 }, (_, i) => ({
+            q: i + 1,
+            ok: i === 0 ? q1Ok : i === 1 ? q2Ok : score10 >= 6,
+          })),
+          p2: [
+            { q: 1, right: p2Right },
+            { q: 2, right: 4 },
+          ],
+          p3: [
+            { q: 1, ok: p3Ok },
+            { q: 2, ok: true },
+          ],
+        },
+      },
+    });
+
+    const results = [
+      makeRes(9.5, true, false, 4, true),
+      makeRes(8.5, true, false, 4, true),
+      makeRes(4.0, false, true, 2, false),
+      makeRes(3.0, false, true, 1, false),
+    ];
+
+    const stats = computePaperAnalytics(results, counts);
+    expect(stats.itemQualityList).toHaveLength(24);
+    // Câu 1: nhóm cao đúng 100%, nhóm thấp đúng 0% -> D = 1.0 (không còn bị hardcode 0.35)
+    expect(stats.itemQualityList[0].dIndex).toBe(1);
+    // Câu 2: nhóm cao sai, nhóm thấp đúng -> D = -1.0 -> lọt vào lowDiscP1 cần rà soát
+    expect(stats.itemQualityList[1].dIndex).toBe(-1);
+    expect(stats.lowDiscP1.some((x) => x.q === 2)).toBe(true);
+    expect(stats.p2Questions).toHaveLength(2);
+    expect(stats.p2Questions[0]).toMatchObject({ q: 1, fullRate: 50, avgRight: 2.75 });
+    expect(stats.p3Questions).toHaveLength(2);
+    expect(stats.p3Questions[0]).toMatchObject({ q: 1, correctRate: 50 });
+  });
+
+  it('parseBulkMatrixKeys không cắt mất câu 19..24 và trả về detectedCounts', () => {
+    const rows = ['Câu\t101\t102'];
+    for (let i = 1; i <= 24; i++) rows.push(`${i}\tA\tB`);
+    const parsed = parseBulkMatrixKeys(rows.join('\n'), { p1: 18, p2: 4, p3: 6 });
+    expect(parsed.detectedCounts.p1).toBe(24);
+    expect(parsed.byCode['101'].p1[23]).toBe('A');
+    expect(parsed.byCode['102'].p1[23]).toBe('B');
   });
 });

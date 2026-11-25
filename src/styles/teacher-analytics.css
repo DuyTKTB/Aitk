@@ -1200,14 +1200,18 @@
 .ta-head-mascot {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(14, 165, 233, 0.16));
-  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: 0;
+  background: transparent;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+  box-shadow: none;
+}
+
+.ta-head-mascot img {
+  filter: drop-shadow(0 4px 10px rgba(37, 99, 235, 0.22));
 }
 
 .ta-head-titles h2 {

@@ -83,26 +83,29 @@ export function parseKeyP1(text, n = 40) {
   const t = stripMarks(text).toUpperCase();
   const out = new Array(n).fill('');
   // Dạng có số thứ tự: "1A 2B", "1.A", "1: B", "1) C", "Câu 1: D"
-  const numbered = [...t.matchAll(/(\d{1,2})\s*[:.)\-–]?\s*([ABCD*])/g)];
-  if (numbered.length >= 2) {
+  const numbered = [...t.matchAll(/(?:^|[\s,;])(?:CÂU\s*)?(\d{1,2})\s*[:.)\-–]?\s*([ABCD*])(?=$|[\s,;])/g)];
+  if (numbered.length >= 1) {
     numbered.forEach((m) => {
       const q = Number(m[1]);
       if (q >= 1 && q <= n) out[q - 1] = m[2];
     });
     return out;
   }
+  // Bỏ tiền tố nhãn tiếng Việt như "Đáp án:", "Phần I:" trước khi lọc chuỗi liền "ABCD..."
+  const cleaned = t.replace(/^\s*(?:ĐÁP\s*ÁN|PHẦN\s*I|P\.?\s*1)\s*[:.\-–]?\s*/i, '');
   // Dạng liền: "ABCD..." ; ký tự · - _ ? là câu chưa có đáp án
-  t.replace(/[^ABCD*·_?\-]/g, '').split('').slice(0, n).forEach((c, i) => {
+  cleaned.replace(/[^ABCD*·_?\-]/g, '').split('').slice(0, n).forEach((c, i) => {
     out[i] = 'ABCD*'.includes(c) ? c : '';
   });
   return out;
 }
 
 export function parseKeyP2(text, n = 8) {
-  const lines = stripMarks(text).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  // Giữ nguyên chỉ số dòng để không đẩy Câu 2 lên Câu 1 khi dòng 1 để trống
+  const rawLines = stripMarks(text).split(/\r?\n/).map((l) => l.trim());
   const out = [];
   for (let i = 0; i < n; i++) {
-    let l = (lines[i] || '').replace(/^\s*(?:câu\s*)?\d+\s*[:.)\-–]\s*/i, '').toUpperCase();
+    let l = (rawLines[i] || '').replace(/^\s*(?:câu\s*)?\d+\s*[:.)\-–]\s*/i, '').toUpperCase();
     // chuẩn hóa: Đ/D/T/1 → D ; S/F/0 → S ; * giữ nguyên
     const arr = [];
     for (const ch of l) {
@@ -117,11 +120,12 @@ export function parseKeyP2(text, n = 8) {
 }
 
 export function parseKeyP3(text, n = 6) {
-  const lines = stripMarks(text).split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  // Giữ nguyên chỉ số dòng để khi sửa/nhập câu sau không bị nhảy lên câu trước
+  const rawLines = stripMarks(text).split(/\r?\n/).map((l) => l.trim());
   const out = [];
   for (let i = 0; i < n; i++) {
-    const l = (lines[i] || '').replace(/^\s*(?:câu\s*)?\d+\s*[:=]\s*/i, '');
-    out.push(l.split('|').map((x) => x.trim()).filter(Boolean));
+    const l = (rawLines[i] || '').replace(/^\s*(?:câu\s*)?\d+\s*[:=]\s*/i, '');
+    out.push(l ? l.split('|').map((x) => x.trim()).filter(Boolean) : []);
   }
   return out;
 }
@@ -349,15 +353,19 @@ export function computePaperAnalytics(results = [], counts = DEFAULT_COUNTS) {
   // Phân tích chất lượng câu hỏi Phần I theo Lý thuyết Khảo thí Cổ điển (CTT / IRT):
   // - Độ khó p = Tỷ lệ làm đúng (0..1)
   // - Độ phân cách D = P_nhóm_cao(27%) - P_nhóm_thấp(27%)
+  const getScore10 = (r) => {
+    const val = r?.grade?.score10 ?? r?.grade?.total10;
+    return typeof val === 'number' && !Number.isNaN(val) ? val : null;
+  };
   const rankedResults = [...results]
-    .filter((r) => typeof r.grade?.total10 === 'number')
-    .sort((a, b) => (b.grade.total10 || 0) - (a.grade.total10 || 0));
+    .filter((r) => getScore10(r) !== null)
+    .sort((a, b) => (getScore10(b) || 0) - (getScore10(a) || 0));
   const groupSize = Math.max(1, Math.round(rankedResults.length * 0.27));
   const upperGroup = rankedResults.slice(0, groupSize);
   const lowerGroup = rankedResults.slice(Math.max(0, rankedResults.length - groupSize));
 
   const p1Questions = [];
-  for (let q = 1; q <= counts.p1; q++) {
+  for (let q = 1; q <= (counts?.p1 || 0); q++) {
     let correctCount = 0;
     let totalAnswered = 0;
     results.forEach((r) => {
@@ -382,11 +390,14 @@ export function computePaperAnalytics(results = [], counts = DEFAULT_COUNTS) {
     });
     const dIndex = rankedResults.length >= 2
       ? round2(upperCorrect / groupSize - lowerCorrect / groupSize)
-      : 0.35;
+      : 0;
 
     let qualityLabel = 'Phân hóa tốt';
     let qualityTone = 'good';
-    if (dIndex < 0.15) {
+    if (rankedResults.length < 2) {
+      qualityLabel = pIndex >= 0.8 ? 'Đạt tốt' : pIndex <= 0.4 ? 'Khó / hay sai' : 'Trung bình';
+      qualityTone = pIndex <= 0.4 ? 'warn' : 'neutral';
+    } else if (dIndex < 0.15) {
       qualityLabel = 'Cần rà soát mồi nhử';
       qualityTone = 'warn';
     } else if (pIndex > 0.88) {
@@ -409,8 +420,55 @@ export function computePaperAnalytics(results = [], counts = DEFAULT_COUNTS) {
     });
   }
 
-  // Top 5 câu học sinh sai nhiều nhất
+  // Phân tích Phần II (Đúng/Sai — tỷ lệ đạt tối đa 4/4 ý & trung bình số ý đúng)
+  const p2Questions = [];
+  for (let q = 1; q <= (counts?.p2 || 0); q++) {
+    let fullCount = 0;
+    let totalRight = 0;
+    let totalAnswered = 0;
+    results.forEach((r) => {
+      const d = r.grade?.detail?.p2?.find((x) => x.q === q);
+      if (d) {
+        totalAnswered++;
+        const right = Number(d.right || 0);
+        totalRight += right;
+        if (right === 4) fullCount++;
+      }
+    });
+    p2Questions.push({
+      q,
+      fullCount,
+      totalAnswered,
+      fullRate: totalAnswered ? Math.round((fullCount / totalAnswered) * 100) : 0,
+      avgRight: totalAnswered ? round2(totalRight / totalAnswered) : 0,
+    });
+  }
+
+  // Phân tích Phần III (Trả lời ngắn)
+  const p3Questions = [];
+  for (let q = 1; q <= (counts?.p3 || 0); q++) {
+    let correctCount = 0;
+    let totalAnswered = 0;
+    results.forEach((r) => {
+      const d = r.grade?.detail?.p3?.find((x) => x.q === q);
+      if (d) {
+        totalAnswered++;
+        if (d.ok) correctCount++;
+      }
+    });
+    p3Questions.push({
+      q,
+      correctCount,
+      totalAnswered,
+      correctRate: totalAnswered ? Math.round((correctCount / totalAnswered) * 100) : 0,
+    });
+  }
+
+  // Top 5 câu học sinh sai nhiều nhất (Phần I)
   const hardestP1 = [...p1Questions].sort((a, b) => a.correctRate - b.correctRate).slice(0, 5);
+  const lowDiscP1 = rankedResults.length >= 2
+    ? p1Questions.filter((x) => x.dIndex < 0.15)
+    : [];
 
   return {
     count: n,
@@ -423,7 +481,10 @@ export function computePaperAnalytics(results = [], counts = DEFAULT_COUNTS) {
     goodRate,
     bins,
     hardestP1,
-    itemQualityList: p1Questions.slice(0, Math.min(counts.p1 || 18, 18)),
+    lowDiscP1,
+    p2Questions,
+    p3Questions,
+    itemQualityList: p1Questions,
   };
 }
 
@@ -600,7 +661,7 @@ export function parseBulkMatrixKeys(rawText, counts = MAX_COUNTS) {
 
       if (part === 1) {
         const idxQ = qNumMatch ? Number(qNumMatch[1]) - 1 : p1Row;
-        if (idxQ >= 0 && idxQ < Math.min(MAX_COUNTS.p1, counts?.p1 ?? MAX_COUNTS.p1)) {
+        if (idxQ >= 0 && idxQ < MAX_COUNTS.p1) {
           colCodeMap.forEach(({ code }, idx) => {
             const ch = String(colVals[idx] || '').trim().toUpperCase();
             if ('ABCD*'.includes(ch) && ch) byCode[code].p1[idxQ] = ch;
@@ -648,7 +709,16 @@ export function parseBulkMatrixKeys(rawText, counts = MAX_COUNTS) {
   }
 
   const codes = Object.keys(byCode).sort();
-  return { byCode, codes, parsedCount: codes.length };
+  let maxP1 = 0;
+  let maxP2 = 0;
+  let maxP3 = 0;
+  codes.forEach((c) => {
+    const k = byCode[c];
+    for (let i = k.p1.length - 1; i >= 0; i--) { if (k.p1[i]) { maxP1 = Math.max(maxP1, i + 1); break; } }
+    for (let i = k.p2.length - 1; i >= 0; i--) { if (k.p2[i]?.some(Boolean)) { maxP2 = Math.max(maxP2, i + 1); break; } }
+    for (let i = k.p3.length - 1; i >= 0; i--) { if (k.p3[i]?.length) { maxP3 = Math.max(maxP3, i + 1); break; } }
+  });
+  return { byCode, codes, parsedCount: codes.length, detectedCounts: { p1: maxP1, p2: maxP2, p3: maxP3 } };
 }
 
 /** Sinh nhanh danh sách SBD 6 chữ số (000001…) từ danh sách thành viên lớp học. */

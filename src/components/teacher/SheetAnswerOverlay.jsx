@@ -6,7 +6,16 @@
 import React, { useMemo } from 'react';
 import { fitHomography, TEMPLATE } from '../../lib/omr.js';
 
-export default function SheetAnswerOverlay({ grade, cornersNorm, counts }) {
+export default function SheetAnswerOverlay({ grade, cornersNorm, counts, imgSize = null }) {
+  // Dùng tỷ lệ khung hình thật của ảnh để viewBox không bị kéo méo hình tròn thành elip
+  const vbW = 1000;
+  const vbH = useMemo(() => {
+    const w = Number(imgSize?.width) || 0;
+    const h = Number(imgSize?.height) || 0;
+    if (w > 0 && h > 0) return Math.max(200, Math.round((vbW * h) / w));
+    return Math.round((vbW * TEMPLATE.height) / TEMPLATE.width); // mặc định tỷ lệ A4 dọc ~1415
+  }, [imgSize?.width, imgSize?.height]);
+
   const rings = useMemo(() => {
     if (!cornersNorm?.TL || !cornersNorm?.TR || !cornersNorm?.BR || !cornersNorm?.BL || !grade?.detail) {
       return [];
@@ -14,24 +23,26 @@ export default function SheetAnswerOverlay({ grade, cornersNorm, counts }) {
     const tc = TEMPLATE.corners;
     const src4 = [tc.TL, tc.TR, tc.BR, tc.BL];
     const dst4 = [
-      [cornersNorm.TL[0] * 1000, cornersNorm.TL[1] * 1000],
-      [cornersNorm.TR[0] * 1000, cornersNorm.TR[1] * 1000],
-      [cornersNorm.BR[0] * 1000, cornersNorm.BR[1] * 1000],
-      [cornersNorm.BL[0] * 1000, cornersNorm.BL[1] * 1000],
+      [cornersNorm.TL[0] * vbW, cornersNorm.TL[1] * vbH],
+      [cornersNorm.TR[0] * vbW, cornersNorm.TR[1] * vbH],
+      [cornersNorm.BR[0] * vbW, cornersNorm.BR[1] * vbH],
+      [cornersNorm.BL[0] * vbW, cornersNorm.BL[1] * vbH],
     ];
     const H = fitHomography(src4, dst4);
     if (!H) return [];
 
-    // Ước lượng bán kính ô trên SVG viewBox 1000x1000 theo chiều ngang phiếu
+    // Ước lượng bán kính ô chuẩn theo cạnh trên phiếu trong cùng hệ tọa độ đẳng hướng
     const spanW = Math.hypot(dst4[1][0] - dst4[0][0], dst4[1][1] - dst4[0][1]);
     const rPx = Math.max(3, (TEMPLATE.bubbleR / (tc.TR[0] - tc.TL[0])) * spanW * 1.15);
     const out = [];
 
-    // Phần I
+    // Phần I (chặn an toàn tối đa 40 câu theo TEMPLATE.p1X)
     const letters = 'ABCD';
-    (grade.detail.p1 || []).slice(0, counts?.p1 || 0).forEach((d, i) => {
+    const maxP1 = Math.min(counts?.p1 || 0, TEMPLATE.p1X.length * TEMPLATE.p1Y.length);
+    (grade.detail.p1 || []).slice(0, maxP1).forEach((d, i) => {
       const b = Math.floor(i / 10);
       const r = i % 10;
+      if (!TEMPLATE.p1X[b] || TEMPLATE.p1Y[r] == null) return;
       const ansIdx = letters.indexOf(d.ans || '');
       const keyIdx = letters.indexOf(d.key || '');
       if (ansIdx >= 0) {
@@ -44,11 +55,14 @@ export default function SheetAnswerOverlay({ grade, cornersNorm, counts }) {
       }
     });
 
-    // Phần II
-    (grade.detail.p2 || []).slice(0, counts?.p2 || 0).forEach((qItem, qi) => {
+    // Phần II (chặn an toàn tối đa 8 câu theo TEMPLATE.p2X)
+    const maxP2 = Math.min(counts?.p2 || 0, TEMPLATE.p2X.length * 2);
+    (grade.detail.p2 || []).slice(0, maxP2).forEach((qItem, qi) => {
       const b = Math.floor(qi / 2);
       const k = qi % 2;
+      if (!TEMPLATE.p2X[b]) return;
       (qItem.ys || []).forEach((yObj, yi) => {
+        if (TEMPLATE.p2Y[yi] == null) return;
         const ansCol = yObj.ans === 'D' ? 0 : yObj.ans === 'S' ? 1 : -1;
         const keyCol = yObj.key === 'D' ? 0 : yObj.key === 'S' ? 1 : -1;
         if (ansCol >= 0) {
@@ -62,10 +76,11 @@ export default function SheetAnswerOverlay({ grade, cornersNorm, counts }) {
       });
     });
 
-    // Phần III (tô xanh/đỏ tại dòng dấu & chữ số đầu cột đã tô)
-    (grade.detail.p3 || []).slice(0, counts?.p3 || 0).forEach((d, qi) => {
+    // Phần III (chặn an toàn tối đa 6 câu theo TEMPLATE.p3X)
+    const maxP3 = Math.min(counts?.p3 || 0, TEMPLATE.p3X.length);
+    (grade.detail.p3 || []).slice(0, maxP3).forEach((d, qi) => {
       const ans = String(d.ans || '');
-      if (!ans) return;
+      if (!ans || !TEMPLATE.p3X[qi]) return;
       ans.split('').forEach((ch, ci) => {
         if (ci >= 4) return;
         let ty = null;
@@ -80,14 +95,14 @@ export default function SheetAnswerOverlay({ grade, cornersNorm, counts }) {
     });
 
     return out;
-  }, [grade, cornersNorm, counts]);
+  }, [grade, cornersNorm, counts, vbW, vbH]);
 
   if (!rings.length) return null;
 
   return (
     <svg
       className="pg-ed-overlay-svg"
-      viewBox="0 0 1000 1000"
+      viewBox={`0 0 ${vbW} ${vbH}`}
       preserveAspectRatio="none"
       aria-hidden="true"
     >

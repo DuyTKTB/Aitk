@@ -18,6 +18,9 @@ import { runWithCredit } from '../lib/creditService.js';
 import { MarkdownLike } from './ChatMarkdown.jsx';
 import { lofiAudio } from '../lib/lofiAudioService.js';
 import { sound } from '../lib/gameSound.js';
+import { focusSession, useFocusSession, formatFocusClock, getTodayKey } from '../lib/focusSessionStore.js';
+import { publishFocusPresence } from '../lib/focusLiveService.js';
+import { youtubeMusic, useYouTubeMusic, CURATED_YOUTUBE_MUSIC } from '../lib/youtubeMusicStore.js';
 import { getUserAspirationsState } from '../lib/aspirationService.js';
 import { getUserProfile, USER_PROFILE_CHANGE_EVENT } from '../lib/userProfileService.js';
 import { getWrongQuestions } from '../lib/wrongQuestionService.js';
@@ -171,15 +174,57 @@ export default function PetWidget() {
   const [newTaskInput, setNewTaskInput] = useState('');
   const [planFilter, setPlanFilter] = useState('all'); // 'all' | 'pending' | 'done'
 
-  // Focus Timer (Pomodoro) & Chế độ tập trung
-  const [focusRunning, setFocusRunning] = useState(false);
-  const [focusSeconds, setFocusSeconds] = useState(25 * 60);
-  const [focusTotalSeconds, setFocusTotalSeconds] = useState(25 * 60);
-  const [focusModeType, setFocusModeType] = useState('focus'); // 'focus' | 'short' | 'long'
+  // Focus Timer (Pomodoro & Flowmodoro) — ĐỒNG BỘ 2 CHIỀU VỚI PHÒNG TẬP TRUNG (#pomodoro / #tap-trung)
+  const focusState = useFocusSession();
+  const ytState = useYouTubeMusic();
+  const focusRunning = focusState.status === 'running';
+  const focusSeconds =
+    focusState.settings.countMode === 'flowmodoro' && focusState.mode === 'focus'
+      ? focusState.elapsedSeconds
+      : focusState.secondsLeft;
 
-  // Focus Ambient Music (Lofi / Rain / Lab)
+  // Focus Ambient Music + Quick YouTube Search Popover
   const [audioState, setAudioState] = useState({ isPlaying: false, mode: 'lofi', volume: 0.35 });
   const [showAudioPopover, setShowAudioPopover] = useState(false);
+  const [showPlanYtPop, setShowPlanYtPop] = useState(false);
+  const [quickYtQuery, setQuickYtQuery] = useState('');
+  const [quickYtResults, setQuickYtResults] = useState([]);
+  const [quickYtLoading, setQuickYtLoading] = useState(false);
+
+  const isAnyMusicPlaying = audioState.isPlaying || ytState.isPlaying;
+
+  // Giữ nhịp đồng bộ trạng thái "Đang học" lên Firestore ngay cả khi bật Pomodoro từ Con Chat hoặc chuyển sang trang khác
+  const globalFocusPingRef = useRef(null);
+  globalFocusPingRef.current = {
+    mode: focusState.mode,
+    name: studentName,
+    email: user?.email || '',
+    photoURL: user?.photoURL || '',
+    task: focusState.activeTaskText || 'Đang tập trung học bài',
+    uni: aspState?.aspirations?.[0]?.school?.code || 'ELEC',
+    uniName: aspState?.aspirations?.[0]?.school?.name || 'ELEC Science AI',
+    highSchool: userProfile?.school || userProfile?.highSchool || '',
+    mascotId: focusState.mascotId || 'fighting',
+    todayMins: focusState.minutesByDay?.[getTodayKey()] || 0,
+    todaySecs:
+      (focusState.minutesByDay?.[getTodayKey()] || 0) * 60 +
+      (focusState.mode === 'focus' && focusState.status === 'running'
+        ? focusState.settings.countMode === 'flowmodoro'
+          ? focusState.elapsedSeconds % 60
+          : Math.max(0, (focusState.totalSeconds || 0) - (focusState.secondsLeft || 0)) % 60
+        : 0),
+    totalMins: Object.values(focusState.minutesByDay || {}).reduce((a, v) => a + (Number(v) || 0), 0),
+    streakDays: Math.max(focusState.streakDays || 0, (focusState.minutesByDay?.[getTodayKey()] || 0) > 0 ? 1 : 0),
+  };
+
+  useEffect(() => {
+    const authUid = user?.uid || user?.id;
+    if (!authUid || authUid === 'guest' || !focusRunning) return undefined;
+    const ping = () => publishFocusPresence(authUid, { ...(globalFocusPingRef.current || {}), active: true });
+    ping();
+    const timer = setInterval(ping, 25000);
+    return () => clearInterval(timer);
+  }, [user?.uid, user?.id, focusRunning, focusState.mode]);
 
   // Floating Mini Draggable Timer
   const [showMiniTimer, setShowMiniTimer] = useState(false);
@@ -376,43 +421,35 @@ export default function PetWidget() {
     return unsub;
   }, []);
 
-  // Pomodoro timer tick & hoàn thành phiên
+  // Pomodoro timer — tự hiện đồng hồ mini khi chạy & chúc mừng trong chat khi hoàn thành phiên
   useEffect(() => {
     if (focusRunning) {
       setShowMiniTimer(true);
     }
   }, [focusRunning]);
 
-  // Đồng bộ trạng thái Focus cho thanh Focus Bar trên trang chủ
   useEffect(() => {
-    try {
-      window.dispatchEvent(
-        new CustomEvent('elec-focus-sync', {
-          detail: { running: focusRunning, seconds: focusSeconds },
-        })
-      );
-    } catch {}
-  }, [focusRunning, focusSeconds]);
-
-  useEffect(() => {
-    let t = null;
-    if (focusRunning && focusSeconds > 0) {
-      t = setInterval(() => {
-        setFocusSeconds((prev) => (prev <= 1 ? 0 : prev - 1));
-      }, 1000);
-    }
-    return () => clearInterval(t);
-  }, [focusRunning, focusSeconds]);
-
-  useEffect(() => {
-    if (focusRunning && focusSeconds === 0) {
-      setFocusRunning(false);
-      setFocusSeconds(focusTotalSeconds);
+    const onFocusDone = (e) => {
+      const mins = e?.detail?.minutes || focusState.settings.workMinutes || 25;
+      const taskTxt = e?.detail?.taskText;
       try { sound.win(); } catch {}
-      lofiAudio.stop();
-      alert('Đã hoàn thành phiên tập trung Pomodoro! Bạn hãy nghỉ ngơi một chút nhé.');
-    }
-  }, [focusRunning, focusSeconds, focusTotalSeconds]);
+      setChatLog((prev) => [
+        ...prev,
+        {
+          id: `focus_done_${Date.now()}`,
+          role: 'assistant',
+          text: taskTxt
+            ? `Xuất sắc ${studentName}! Bạn vừa hoàn thành ${mins} phút tập trung cho "${taskTxt}". Nghỉ ngơi nạp năng lượng chút rồi chiến tiếp nhé!`
+            : `Xuất sắc ${studentName}! Bạn vừa hoàn thành trọn vẹn ${mins} phút tập trung Pomodoro! Nghỉ ngơi vài phút rồi tiếp tục bứt phá nhé!`,
+          actions: [
+            { id: `fd_room_${Date.now()}`, label: 'Mở Phòng Tập Trung', action: 'open_focus_room' },
+          ],
+        },
+      ]);
+    };
+    window.addEventListener('elec-focus-completed', onFocusDone);
+    return () => window.removeEventListener('elec-focus-completed', onFocusDone);
+  }, [studentName, focusState.settings.workMinutes]);
 
   // Auto-scroll chat
   useEffect(() => {
@@ -461,29 +498,41 @@ export default function PetWidget() {
     return userProfile?.highSchool || userProfile?.grade || 'Chưa cập nhật trường';
   }, [aspState, userProfile]);
 
-  const formatTimer = (secs) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
+  const formatTimer = (secs) => formatFocusClock(secs);
 
   const handleStartFocusMode = (modeType = 'focus') => {
-    let secs = 25 * 60;
-    if (modeType === 'short') secs = 5 * 60;
-    if (modeType === 'long') secs = 15 * 60;
-    setFocusModeType(modeType);
-    setFocusTotalSeconds(secs);
-    setFocusSeconds(secs);
-    setFocusRunning(true);
+    const mapped = modeType === 'short' ? 'short_break' : modeType === 'long' ? 'long_break' : 'focus';
+    focusSession.setMode(mapped);
+    focusSession.start();
   };
 
   const handleToggleFocusRunning = () => {
-    setFocusRunning((prev) => !prev);
+    focusSession.toggle();
   };
 
   const handleResetFocus = () => {
-    setFocusRunning(false);
-    setFocusSeconds(focusTotalSeconds);
+    focusSession.reset();
+  };
+
+  const handleQuickYtSearch = async (e, overrideQ) => {
+    e?.preventDefault();
+    const q = String(overrideQ !== undefined ? overrideQ : quickYtQuery).trim();
+    if (!q) return;
+    setQuickYtQuery(q);
+    setQuickYtLoading(true);
+    const res = await youtubeMusic.searchYouTube(q);
+    setQuickYtLoading(false);
+    setQuickYtResults(res.results || []);
+    if (res.direct && res.results?.[0]) {
+      youtubeMusic.playTrack(res.results[0], res.results);
+    }
+  };
+
+  const handleOpenFocusStudio = () => {
+    setIsOpen(false);
+    setShowAudioPopover(false);
+    setShowPlanYtPop(false);
+    window.location.hash = 'pomodoro';
   };
 
   const handleToggleAudio = (modeOverride = null) => {
@@ -545,9 +594,11 @@ export default function PetWidget() {
   // Xử lý các nút hành động tương tác trực tiếp trong bong bóng chat AI
   const handleActionClick = (action, payload) => {
     if (action === 'start_pomodoro') {
-      setFocusRunning(true);
-      setFocusSeconds(25 * 60);
+      focusSession.setMode('focus');
+      focusSession.start();
       setMobileTab('plan');
+    } else if (action === 'open_focus_room') {
+      handleOpenFocusStudio();
     } else if (action === 'generate_plan') {
       generateAiWeeklyPlan(uid, targetAspiration);
       setWeeklyPlan(getWeeklyPlan(uid));
@@ -996,6 +1047,14 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
     setOutfitConfig(saved);
   };
 
+  const selectedDayStats = useMemo(() => {
+    const dayTasks = (weeklyPlan.tasks || []).filter((t) => t.dayIndex === selectedDayIdx);
+    const done = dayTasks.filter((t) => t.completed).length;
+    const total = dayTasks.length;
+    const pending = total - done;
+    return { total, done, pending };
+  }, [weeklyPlan.tasks, selectedDayIdx]);
+
   return (
     <>
       {/* ============================================================
@@ -1129,60 +1188,80 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                   CỘT 1 (TRÁI): THỐNG KÊ HỌC TẬP
                   ──────────────────────────────────────────────────────── */}
               <div className="ns9-pcol ns9-pcol-stats">
-                <div className="ns9-pcol-head">
-                  <h3 className="ns9-pcol-head-title">THỐNG KÊ HỌC TẬP</h3>
+                <div className="ns9-pcol-head ns9-pcol-head-stats">
+                  <div className="ns9-pcol-head-brand">
+                    <img
+                      src={ELEC_SRC.cool}
+                      alt="ELEC AI"
+                      className="ns9-pcol-head-mascot"
+                      draggable={false}
+                    />
+                    <div>
+                      <h3 className="ns9-pcol-head-title">THỐNG KÊ HỌC TẬP</h3>
+                      <span className="ns9-pcol-head-sub">Hồ sơ năng lực &amp; mục tiêu</span>
+                    </div>
+                  </div>
+                  <span className="ns9-pcol-head-badge">2027</span>
                 </div>
 
                 <div className="ns9-pcol-scroll">
-                  {/* Phím tắt chuyển nhanh chức năng */}
+                  {/* Phím tắt chuyển nhanh chức năng (2x2 Grid) */}
                   <div className="ns9-stat-quick-nav-bar">
                     <button
                       type="button"
-                      className="ns9-sq-nav-chip"
+                      className="ns9-sq-nav-chip ns9-sq-tone-blue"
                       onClick={() => { setIsOpen(false); window.location.hash = 'roadmap'; }}
                       title="Mở Lộ trình cá nhân hóa"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <circle cx="12" cy="12" r="10" />
-                        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
-                      </svg>
+                      <span className="ns9-sq-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                          <circle cx="12" cy="12" r="10" />
+                          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+                        </svg>
+                      </span>
                       <span>Lộ trình</span>
                     </button>
                     <button
                       type="button"
-                      className="ns9-sq-nav-chip"
+                      className="ns9-sq-nav-chip ns9-sq-tone-violet"
                       onClick={() => { setIsOpen(false); window.location.hash = 'virtual-exams'; }}
                       title="Vào Phòng thi ảo"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                      </svg>
+                      <span className="ns9-sq-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                      </span>
                       <span>Phòng thi</span>
                     </button>
                     <button
                       type="button"
-                      className="ns9-sq-nav-chip"
+                      className="ns9-sq-nav-chip ns9-sq-tone-amber"
                       onClick={() => { setIsOpen(false); window.location.hash = 'notebook'; }}
                       title="Mở Sổ tay lỗi sai"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                      </svg>
+                      <span className="ns9-sq-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                        </svg>
+                      </span>
                       <span>Sổ lỗi</span>
                     </button>
                     <button
                       type="button"
-                      className="ns9-sq-nav-chip"
+                      className="ns9-sq-nav-chip ns9-sq-tone-emerald"
                       onClick={() => { setIsOpen(false); window.location.hash = 'leaderboard'; }}
                       title="Mở Bảng xếp hạng"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <line x1="18" y1="20" x2="18" y2="10" />
-                        <line x1="12" y1="20" x2="12" y2="4" />
-                        <line x1="6" y1="20" x2="6" y2="14" />
-                      </svg>
+                      <span className="ns9-sq-icon-wrap">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                          <line x1="18" y1="20" x2="18" y2="10" />
+                          <line x1="12" y1="20" x2="12" y2="4" />
+                          <line x1="6" y1="20" x2="6" y2="14" />
+                        </svg>
+                      </span>
                       <span>Xếp hạng</span>
                     </button>
                   </div>
@@ -1190,15 +1269,26 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                   {/* Card 1: Đếm ngược - THPT */}
                   <div className="ns9-stat-countdown-card">
                     <div className="ns9-sc-top">
-                      <span className="ns9-sc-pill">ĐẾM NGƯỢC - THPT</span>
+                      <span className="ns9-sc-pill">
+                        <span className="ns9-sc-live-dot" />
+                        ĐẾM NGƯỢC · THPT
+                      </span>
                       <div className="ns9-sc-target-date">
-                        <span className="ns9-sc-date-txt">-30/06/2027</span>
+                        <span className="ns9-sc-date-txt">30/06/2027</span>
                         <span className="ns9-sc-weeks">~34 tuần nữa</span>
                       </div>
                     </div>
-                    <div className="ns9-sc-main-num">
-                      <span className="ns9-sc-days">~234</span>
-                      <span className="ns9-sc-unit">ngày</span>
+                    <div className="ns9-sc-hero-row">
+                      <div className="ns9-sc-main-num">
+                        <span className="ns9-sc-days">~234</span>
+                        <span className="ns9-sc-unit">ngày</span>
+                      </div>
+                      <img
+                        src={ELEC_SRC['super-saiyan']}
+                        alt="ELEC Chiến thần"
+                        className="ns9-sc-mascot"
+                        draggable={false}
+                      />
                     </div>
                     <div className="ns9-sc-footer-note">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
@@ -1212,10 +1302,16 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                   {/* Card 2: Điểm Elo Tổng */}
                   <div className="ns9-stat-elo-card">
                     <div className="ns9-se-title-row">
-                      <span className="ns9-se-title">ĐIỂM ELO TỔNG:</span>
+                      <span className="ns9-se-title">ĐIỂM ELO TỔNG</span>
                       <span className="ns9-se-val">—</span>
                     </div>
                     <div className="ns9-se-box">
+                      <img
+                        src={ELEC_SRC.think}
+                        alt="ELEC Suy nghĩ"
+                        className="ns9-se-mascot"
+                        draggable={false}
+                      />
                       <p className="ns9-se-desc">
                         Chưa đủ dữ liệu để tính Elo cho chương trình đang chọn — hoàn thành bài test đầu vào hoặc luyện tập để mở khoá.
                       </p>
@@ -1243,7 +1339,7 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                         </div>
                       ) : (
                         displayAspirations.map((asp, idx) => (
-                          <div key={asp.id || idx} className="ns9-sa-item">
+                          <div key={asp.id || idx} className={`ns9-sa-item ns9-sa-rank-${idx === 0 ? 'blue' : idx === 1 ? 'orange' : 'red'}`}>
                             <div className="ns9-sa-item-left">
                               <span className="ns9-sa-school-name">
                                 {asp.school?.name || asp.school?.code} — {asp.major?.name || ''}
@@ -1264,7 +1360,7 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                     </div>
                   </div>
 
-                  {/* Card 4 (Dưới cùng): Thông tin học sinh & Lực chiến liên kết Profile */}
+                  {/* Card 4 (Dưới cùng): Thông tin học sinh & Lực chiến liên kết Profile (2-row layout) */}
                   <div
                     className="ns9-stat-user-card"
                     onClick={() => {
@@ -1274,21 +1370,25 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                     title="Xem & Chỉnh sửa hồ sơ cá nhân"
                     style={{ cursor: 'pointer' }}
                   >
-                    <div className="ns9-su-avatar" style={{ border: 'none', background: 'transparent' }}>
-                      <UserAvatar user={user} size={36} variant="dark" title={studentName} />
-                    </div>
-                    <div className="ns9-su-info">
-                      <div className="ns9-su-name-row">
-                        <span className="ns9-su-name">{studentName}</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="ns9-su-chevron">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
+                    <div className="ns9-su-top-row">
+                      <div className="ns9-su-avatar" style={{ border: 'none', background: 'transparent' }}>
+                        <UserAvatar user={user} size={38} variant="dark" title={studentName} />
                       </div>
-                      <span className="ns9-su-sub">{userSchoolGoal}</span>
+                      <div className="ns9-su-info">
+                        <div className="ns9-su-name-row">
+                          <span className="ns9-su-name">{studentName}</span>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="ns9-su-chevron">
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                        </div>
+                        <span className="ns9-su-sub" title={userSchoolGoal}>{userSchoolGoal}</span>
+                      </div>
                     </div>
                     <div className="ns9-su-rank-pill">
-                      <span className="ns9-su-rank-num">#23.820</span>
-                      <span className="ns9-su-rank-total">/29.283</span>
+                      <div className="ns9-su-rank-left">
+                        <span className="ns9-su-rank-num">#23.820</span>
+                        <span className="ns9-su-rank-total">/ 29.283</span>
+                      </div>
                       <span className="ns9-su-rank-top">Top 81%</span>
                     </div>
                   </div>
@@ -1307,8 +1407,19 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                     </svg>
                   </button>
                   <div className="ns9-plan-title-block">
-                    <h3 className="ns9-plan-main-title">Kế hoạch tuần</h3>
-                    <span className="ns9-plan-sub-title">Tuần hiện tại</span>
+                    <div className="ns9-plan-title-row">
+                      <img
+                        src={ELEC_SRC.happy}
+                        alt="ELEC"
+                        className="ns9-plan-title-mascot"
+                        draggable={false}
+                      />
+                      <h3 className="ns9-plan-main-title">Kế hoạch tuần</h3>
+                    </div>
+                    <span className="ns9-plan-sub-title">
+                      <span className="ns9-plan-sub-dot" />
+                      Tuần hiện tại
+                    </span>
                   </div>
                   <button type="button" className="ns9-nav-arrow" aria-label="Tuần kế tiếp">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -1320,11 +1431,13 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                 <div className="ns9-pcol-scroll">
                   {/* Target dropdown selector */}
                   <div className="ns9-plan-target-select-btn">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.4">
-                      <circle cx="12" cy="12" r="10" />
-                      <circle cx="12" cy="12" r="6" />
-                      <circle cx="12" cy="12" r="2" />
-                    </svg>
+                    <span className="ns9-plan-target-icon">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.4">
+                        <circle cx="12" cy="12" r="10" />
+                        <circle cx="12" cy="12" r="6" />
+                        <circle cx="12" cy="12" r="2" />
+                      </svg>
+                    </span>
                     <span className="ns9-plan-target-label">{targetAspiration}</span>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polyline points="6 9 12 15 18 9" />
@@ -1333,7 +1446,9 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
 
                   {/* Banner Tím: BẮT ĐẦU Ở ĐÂY */}
                   <div className="ns9-hero-purple-banner">
-                    <img src={ELEC_SRC.fighting} alt="ELEC AI" className="ns9-hp-mascot" />
+                    <div className="ns9-hp-mascot-stage">
+                      <img src={ELEC_SRC.fighting} alt="ELEC AI" className="ns9-hp-mascot" draggable={false} />
+                    </div>
                     <div className="ns9-hp-content">
                       <span className="ns9-hp-badge">BẮT ĐẦU Ở ĐÂY</span>
                       <h4 className="ns9-hp-title">Để ELEC AI dựng lộ trình 7 ngày đầu tiên</h4>
@@ -1357,31 +1472,67 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                   {/* Sub-status: Hôm nay & Focus timer */}
                   <div className="ns9-plan-status-bar">
                     <div className="ns9-ps-left">
-                      <span className="ns9-ps-circle-dash">—</span>
+                      <span
+                        className={`ns9-ps-circle-dash ${
+                          selectedDayStats.total > 0 && selectedDayStats.pending === 0
+                            ? 'is-all-done'
+                            : selectedDayStats.total > 0
+                              ? 'has-tasks'
+                              : ''
+                        }`}
+                      >
+                        {selectedDayStats.total === 0 ? (
+                          '—'
+                        ) : selectedDayStats.pending === 0 ? (
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          `${selectedDayStats.done}/${selectedDayStats.total}`
+                        )}
+                      </span>
                       <div>
                         <div className="ns9-ps-day-title">
-                          HÔM NAY · {weekDates[selectedDayIdx]?.dateNum}/{weekDates[selectedDayIdx]?.monthNum}
+                          {weekDates[selectedDayIdx]?.isToday ? 'HÔM NAY' : weekDates[selectedDayIdx]?.label?.toUpperCase()} · {weekDates[selectedDayIdx]?.dateNum}/{weekDates[selectedDayIdx]?.monthNum}
                         </div>
                         <div className="ns9-ps-weekday">{weekDates[selectedDayIdx]?.name}</div>
-                        <div className="ns9-ps-subtitle">Chưa có việc nào — thêm việc đầu tiên nhé!</div>
+                        <div className="ns9-ps-subtitle">
+                          {selectedDayStats.total === 0
+                            ? 'Chưa có việc nào — thêm việc đầu tiên nhé!'
+                            : selectedDayStats.pending === 0
+                              ? `Tuyệt vời! Đã hoàn thành tất cả ${selectedDayStats.total} việc!`
+                              : `Còn ${selectedDayStats.pending}/${selectedDayStats.total} việc cần hoàn thành`}
+                        </div>
                       </div>
                     </div>
-                    <div className="ns9-ps-right">
+                    <div className="ns9-ps-right" style={{ position: 'relative' }}>
                       <div className="ns9-ps-focus-top">
-                        <span className="ns9-ps-focus-label">Focus còn lại</span>
+                        <span className="ns9-ps-focus-label">
+                          {focusState.settings.countMode === 'flowmodoro' && focusState.mode === 'focus'
+                            ? 'Flowmodoro'
+                            : focusState.mode === 'short_break'
+                              ? 'Nghỉ ngắn'
+                              : focusState.mode === 'long_break'
+                                ? 'Nghỉ dài'
+                                : 'Focus còn lại'}
+                        </span>
                         <div className="ns9-ps-tools-row">
-                          {/* Nút bật/tắt nhạc tập trung */}
+                          {/* Nút mở tìm kiếm Nhạc YouTube & Lofi nhanh */}
                           <button
                             type="button"
-                            className={`ns9-ps-tool-btn ${audioState.isPlaying ? 'is-playing' : ''}`}
+                            className={`ns9-ps-tool-btn ${isAnyMusicPlaying ? 'is-playing' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleToggleAudio();
+                              setShowPlanYtPop((prev) => !prev);
                             }}
-                            title={audioState.isPlaying ? 'Tắt nhạc Lofi' : 'Bật nhạc Lofi tập trung'}
-                            aria-label="Bật/Tắt nhạc tập trung"
+                            title={
+                              ytState.currentTrack
+                                ? `Đang phát YouTube: ${ytState.currentTrack.title}`
+                                : 'Tìm & phát nhạc YouTube hoặc Lofi tập trung'
+                            }
+                            aria-label="Tìm nhạc YouTube và Lofi"
                           >
-                            {audioState.isPlaying ? (
+                            {isAnyMusicPlaying ? (
                               <span className="ns9-soundwave-bars">
                                 <span className="ns9-sw-bar" />
                                 <span className="ns9-sw-bar" />
@@ -1394,6 +1545,25 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                                 <circle cx="18" cy="16" r="3" />
                               </svg>
                             )}
+                          </button>
+
+                          {/* Nút mở Phòng Tập Trung Pomodoro Toàn Cảnh (đồng bộ 2 chiều) */}
+                          <button
+                            type="button"
+                            className="ns9-ps-tool-btn ns9-ps-studio-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenFocusStudio();
+                            }}
+                            title="Mở Phòng Tập Trung Pomodoro Toàn Cảnh (YouTube + Lớp học + BXH)"
+                            aria-label="Mở Phòng Tập Trung"
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                              <polyline points="15 3 21 3 21 9" />
+                              <polyline points="9 21 3 21 3 15" />
+                              <line x1="21" y1="3" x2="14" y2="10" />
+                              <line x1="3" y1="21" x2="10" y2="14" />
+                            </svg>
                           </button>
 
                           {/* Nút mở đồng hồ nổi */}
@@ -1438,6 +1608,70 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                           )}
                         </span>
                       </button>
+
+                      {/* Popover tìm & phát nhạc YouTube + Lofi ngay trong Con Chat */}
+                      {showPlanYtPop && (
+                        <div className="ns9-yt-quick-pop" onClick={(e) => e.stopPropagation()}>
+                          <div className="ns9-ytq-head">
+                            <strong>Nhạc YouTube &amp; Tập trung</strong>
+                            <button type="button" onClick={() => setShowPlanYtPop(false)} aria-label="Đóng">✕</button>
+                          </div>
+
+                          <form className="ns9-ytq-search" onSubmit={handleQuickYtSearch}>
+                            <input
+                              type="text"
+                              value={quickYtQuery}
+                              onChange={(e) => setQuickYtQuery(e.target.value)}
+                              placeholder="Tìm bất kỳ bài YouTube nào..."
+                            />
+                            <button type="submit" disabled={quickYtLoading || !quickYtQuery.trim()}>
+                              {quickYtLoading ? '...' : 'Tìm'}
+                            </button>
+                          </form>
+
+                          {ytState.currentTrack && (
+                            <div className="ns9-ytq-now">
+                              <img src={ytState.currentTrack.thumbnail} alt="" />
+                              <div className="ns9-ytq-now-meta">
+                                <span>{ytState.currentTrack.title}</span>
+                                <small>{ytState.currentTrack.channel}</small>
+                              </div>
+                              <button type="button" onClick={() => youtubeMusic.togglePlay()} title={ytState.isPlaying ? 'Tạm dừng' : 'Phát'}>
+                                {ytState.isPlaying ? '❚❚' : '▶'}
+                              </button>
+                              <button type="button" onClick={() => youtubeMusic.next()} title="Bài tiếp theo">
+                                ⏭
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="ns9-ytq-list">
+                            {(quickYtResults.length > 0 ? quickYtResults : CURATED_YOUTUBE_MUSIC.slice(0, 5)).map((tr) => (
+                              <button
+                                key={tr.videoId}
+                                type="button"
+                                className={`ns9-ytq-item ${ytState.currentTrack?.videoId === tr.videoId ? 'is-on' : ''}`}
+                                onClick={() => youtubeMusic.playTrack(tr, quickYtResults.length > 0 ? quickYtResults : CURATED_YOUTUBE_MUSIC)}
+                              >
+                                <img src={tr.thumbnail} alt="" />
+                                <div>
+                                  <span>{tr.title}</span>
+                                  <small>{tr.channel}{tr.duration ? ` · ${tr.duration}` : ''}</small>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="ns9-ytq-foot">
+                            <button type="button" className="ns9-ytq-lofi-btn" onClick={() => handleToggleAudio('rain')}>
+                              {audioState.isPlaying && audioState.mode === 'rain' ? 'Tắt tiếng mưa' : 'Mix Tiếng mưa'}
+                            </button>
+                            <button type="button" className="ns9-ytq-room-btn" onClick={handleOpenFocusStudio}>
+                              Phòng Tập Trung →
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1746,16 +1980,26 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                 <div className="ns9-chat-scroll-area" ref={chatScrollRef}>
                   {/* Tin nhắn mở đầu chuẩn ảnh mẫu */}
                   <div className="ns9-chat-ai-row">
-                    <img
-                      src={activeCornerOutfit.src}
-                      alt="ELEC AI"
-                      className="ns9-c-avatar"
+                    <button
+                      type="button"
+                      className="ns9-c-avatar-stage"
                       onClick={() => setWardrobeOpen(true)}
                       title="Bấm để đổi trang phục 105 Trường ĐH cho linh vật"
-                      style={{ cursor: 'pointer' }}
-                    />
+                    >
+                      <img
+                        src={activeCornerOutfit.src}
+                        alt="ELEC AI"
+                        className="ns9-c-avatar"
+                        draggable={false}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = ELEC_SRC.hello;
+                        }}
+                      />
+                    </button>
                     <div className="ns9-c-bubble-group">
                       <div className="ns9-c-persona-badge">
+                        <span className="ns9-c-online-dot" />
                         <span className="ns9-c-name">ELEC AI</span>
                         <span className="ns9-c-mood-tag">
                           {PERSONAS.find((p) => p.id === persona)?.label || 'Dịu dàng'}
@@ -1769,7 +2013,7 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                     </div>
                   </div>
 
-                  {/* 5 Quick Action Pills */}
+                  {/* 7 Quick Action Pills */}
                   <div className="ns9-quick-pills-container">
                     {QUICK_PILLS.map((qp) => (
                       <button
@@ -1780,6 +2024,9 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                       >
                         <span className="ns9-pill-dot" style={{ background: qp.dotColor }} />
                         <span className="ns9-pill-txt">{qp.text}</span>
+                        <svg className="ns9-pill-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
                       </button>
                     ))}
                   </div>
@@ -2051,20 +2298,25 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
               )}
             </button>
 
-            {/* Music Toggle Button with Equalizer bars & popover */}
+            {/* Music Toggle Button with Equalizer bars & YouTube Quick Search popover */}
             <div className="ns9-mini-music-wrap">
               <button
                 type="button"
-                className={`ns9-mini-btn ns9-mini-btn-music ${audioState.isPlaying ? 'is-playing' : ''}`}
-                onClick={() => handleToggleAudio()}
+                className={`ns9-mini-btn ns9-mini-btn-music ${isAnyMusicPlaying ? 'is-playing' : ''}`}
+                onClick={() => {
+                  if (ytState.currentTrack) youtubeMusic.togglePlay();
+                  else handleToggleAudio();
+                }}
                 title={
-                  audioState.isPlaying
-                    ? `Đang phát: ${audioState.mode.toUpperCase()} (Click để Tắt)`
-                    : 'Bật nhạc Lofi tập trung'
+                  ytState.currentTrack
+                    ? `YouTube: ${ytState.currentTrack.title} (${ytState.isPlaying ? 'Bấm để Tạm dừng' : 'Bấm để Phát'})`
+                    : audioState.isPlaying
+                      ? `Đang phát: ${audioState.mode.toUpperCase()} (Click để Tắt)`
+                      : 'Bật nhạc tập trung'
                 }
                 aria-label="Bật/Tắt nhạc tập trung"
               >
-                {audioState.isPlaying ? (
+                {isAnyMusicPlaying ? (
                   <span className="ns9-mini-soundwaves">
                     <span className="ns9-msw-bar" />
                     <span className="ns9-msw-bar" />
@@ -2083,7 +2335,7 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                 type="button"
                 className="ns9-mini-music-caret"
                 onClick={() => setShowAudioPopover((prev) => !prev)}
-                title="Chọn loại nhạc (Lofi / Mưa / Lab)"
+                title="Tìm nhạc YouTube hoặc chọn tiếng nền"
                 aria-label="Tùy chọn nhạc"
               >
                 <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -2091,58 +2343,92 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                 </svg>
               </button>
 
-              {/* Popover chọn nhạc & âm lượng */}
+              {/* Popover tìm nhạc YouTube & chọn âm thanh nền */}
               {showAudioPopover && (
-                <div className="ns9-mini-audio-popover ns9-no-drag">
-                  <div className="ns9-map-title">Nhạc tập trung</div>
-                  <div className="ns9-map-modes">
+                <div className="ns9-mini-audio-popover ns9-no-drag" style={{ width: 265 }}>
+                  <div className="ns9-map-title">Nhạc YouTube &amp; Tập trung</div>
+                  <form className="ns9-ytq-search" onSubmit={handleQuickYtSearch}>
+                    <input
+                      type="text"
+                      value={quickYtQuery}
+                      onChange={(e) => setQuickYtQuery(e.target.value)}
+                      placeholder="Tra bất kỳ bài YouTube..."
+                    />
+                    <button type="submit" disabled={quickYtLoading || !quickYtQuery.trim()}>
+                      {quickYtLoading ? '...' : 'Tìm'}
+                    </button>
+                  </form>
+                  {ytState.currentTrack && (
+                    <div className="ns9-ytq-now">
+                      <img src={ytState.currentTrack.thumbnail} alt="" />
+                      <div className="ns9-ytq-now-meta">
+                        <span>{ytState.currentTrack.title}</span>
+                        <small>{ytState.currentTrack.channel}</small>
+                      </div>
+                      <button type="button" onClick={() => youtubeMusic.togglePlay()}>
+                        {ytState.isPlaying ? '❚❚' : '▶'}
+                      </button>
+                    </div>
+                  )}
+                  <div className="ns9-ytq-list" style={{ maxHeight: 130 }}>
+                    {(quickYtResults.length > 0 ? quickYtResults.slice(0, 4) : CURATED_YOUTUBE_MUSIC.slice(0, 3)).map((tr) => (
+                      <button
+                        key={tr.videoId}
+                        type="button"
+                        className={`ns9-ytq-item ${ytState.currentTrack?.videoId === tr.videoId ? 'is-on' : ''}`}
+                        onClick={() => youtubeMusic.playTrack(tr, quickYtResults.length > 0 ? quickYtResults : CURATED_YOUTUBE_MUSIC)}
+                      >
+                        <img src={tr.thumbnail} alt="" />
+                        <div>
+                          <span>{tr.title}</span>
+                          <small>{tr.channel}</small>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="ns9-map-modes" style={{ flexDirection: 'row', gap: 4 }}>
                     <button
                       type="button"
                       className={`ns9-map-mode-btn ${audioState.mode === 'lofi' && audioState.isPlaying ? 'is-active' : ''}`}
-                      onClick={() => {
-                        handleToggleAudio('lofi');
-                        setShowAudioPopover(false);
-                      }}
+                      style={{ flex: 1, textAlign: 'center' }}
+                      onClick={() => handleToggleAudio('lofi')}
                     >
                       Lofi
                     </button>
                     <button
                       type="button"
                       className={`ns9-map-mode-btn ${audioState.mode === 'rain' && audioState.isPlaying ? 'is-active' : ''}`}
-                      onClick={() => {
-                        handleToggleAudio('rain');
-                        setShowAudioPopover(false);
-                      }}
+                      style={{ flex: 1, textAlign: 'center' }}
+                      onClick={() => handleToggleAudio('rain')}
                     >
-                      Mưa rơi
+                      Mưa
                     </button>
                     <button
                       type="button"
-                      className={`ns9-map-mode-btn ${audioState.mode === 'lab' && audioState.isPlaying ? 'is-active' : ''}`}
-                      onClick={() => {
-                        handleToggleAudio('lab');
-                        setShowAudioPopover(false);
-                      }}
+                      className="ns9-map-mode-btn is-active"
+                      style={{ flex: 1.2, textAlign: 'center' }}
+                      onClick={handleOpenFocusStudio}
                     >
-                      Lab ASMR
+                      Phòng học
                     </button>
-                  </div>
-                  <div className="ns9-map-vol-row">
-                    <span>Âm lượng</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={audioState.volume}
-                      onChange={(e) => handleChangeVolume(e.target.value)}
-                      className="ns9-map-slider"
-                      aria-label="Thanh trượt âm lượng"
-                    />
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Open Full Focus Studio (#pomodoro) */}
+            <button
+              type="button"
+              className="ns9-mini-btn ns9-mini-btn-expand"
+              onClick={handleOpenFocusStudio}
+              title="Mở Phòng Tập Trung Pomodoro Toàn Cảnh"
+              aria-label="Mở Phòng Tập Trung"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="12 7 12 12 15 14" />
+              </svg>
+            </button>
 
             {/* Expand / Maximize to full 3-column workspace */}
             <button

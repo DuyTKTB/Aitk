@@ -169,10 +169,10 @@ export default function EssayRubricGrader({ onBack, say }) {
       let autoRatio = 0;
       if (trapHit) {
         autoRatio = 0.25;
-      } else if (kwMatches.length >= 1) {
+      } else if (kwMatches.length >= 2) {
         autoRatio = 1.0;
-      } else if (lower.length > 40) {
-        autoRatio = 0.5;
+      } else if (kwMatches.length === 1) {
+        autoRatio = (c.keywords || []).length <= 1 ? 1.0 : 0.75;
       }
 
       const finalRatio =

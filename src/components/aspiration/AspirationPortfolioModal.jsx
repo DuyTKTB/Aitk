@@ -87,8 +87,12 @@ export default function AspirationPortfolioModal({
         {/* ── HEADER ── */}
         <header className="port-opt-header">
           <div className="port-opt-title-group">
-            <div className="port-opt-icon-badge" aria-hidden="true">
-              <IcoShield />
+            <div className="emm-hero-mascot sm" aria-hidden="true">
+              <img
+                src={activeTab === 'health' ? '/img/elec/elec-cool.png' : '/img/elec/elec-think.png'}
+                alt="Bé Elec tối ưu nguyện vọng"
+                draggable={false}
+              />
             </div>
             <div className="port-opt-header-text">
               <h2 id="port-opt-title">Tối ưu hóa Danh mục Nguyện vọng & So sánh Đối đầu</h2>
@@ -114,6 +118,7 @@ export default function AspirationPortfolioModal({
             className={`port-opt-tab ${activeTab === 'health' ? 'active' : ''}`}
             onClick={() => setActiveTab('health')}
           >
+            <img src="/img/elec/elec-wink.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IcoShield />
             <span>Sức khỏe Danh mục ({portfolioAnalysis.healthScore}/100)</span>
           </button>
@@ -124,6 +129,7 @@ export default function AspirationPortfolioModal({
             className={`port-opt-tab ${activeTab === 'compare' ? 'active' : ''}`}
             onClick={() => setActiveTab('compare')}
           >
+            <img src="/img/elec/elec-fighting.png" alt="" className="emm-tab-mascot" aria-hidden="true" />
             <IcoScale />
             <span>So sánh Đối đầu Song song</span>
           </button>

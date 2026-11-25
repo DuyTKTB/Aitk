@@ -721,6 +721,11 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
           <div className="s9-drill-modal">
             {drillIdx >= drillItems.length ? (
               <div className="s9-drill-done">
+                <div className="s9-drill-mascot-duo" aria-hidden="true">
+                  <img src="/img/elec/elec-heart-eyes.png" alt="" className="side" />
+                  <img src="/img/elec/elec-celebrate.png" alt="Bé Elec chúc mừng hoàn thành sửa sai" className="main" />
+                  <img src="/img/elec/elec-wink.png" alt="" className="side" />
+                </div>
                 <h3>Đã hoàn tất vòng sửa sai!</h3>
                 <p>
                   Bạn làm đúng lại <b>{drillScore}</b> / <b>{drillItems.length}</b> câu vừa sai.
@@ -737,12 +742,39 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
             ) : (() => {
               const cur = drillItems[drillIdx];
               const correctIdx = cur.d?.correct;
+              const isDrillCorrect = drillPicked !== null && drillPicked === correctIdx;
+              const isDrillWrong = drillPicked !== null && drillPicked !== correctIdx;
               return (
                 <>
                   <header className="s9-pm-head">
-                    <div>
-                      <span className="s9-pm-badge is-type">Sửa sai tức thì · Câu {drillIdx + 1}/{drillItems.length}</span>
-                      <h3>Câu {cur.i + 1} trong đề</h3>
+                    <div className="s9-pm-head-main">
+                      <div className={`emm-hero-mascot sm ${isDrillCorrect ? 'is-emerald' : isDrillWrong ? 'is-amber' : ''}`} aria-hidden="true">
+                        <img
+                          src={
+                            isDrillCorrect
+                              ? '/img/elec/elec-celebrate.png'
+                              : isDrillWrong
+                                ? '/img/elec/elec-think.png'
+                                : '/img/elec/elec-fighting.png'
+                          }
+                          alt="Bé Elec đồng hành sửa lỗi sai"
+                          draggable={false}
+                        />
+                      </div>
+                      <div className="s9-pm-head-info">
+                        <span className="s9-pm-badge is-type">Sửa sai tức thì · Câu {drillIdx + 1}/{drillItems.length}</span>
+                        <h3>Câu {cur.i + 1} trong đề</h3>
+                        <div className="emm-speech-pill">
+                          <span className="emm-speech-dot" aria-hidden="true" />
+                          <span>
+                            {isDrillCorrect
+                              ? 'Quá đỉnh! Bạn đã gỡ bẫy thành công câu này rồi!'
+                              : isDrillWrong
+                                ? 'Không sao nhé! Xem lời giải bên dưới để nhớ chắc dạng này!'
+                                : 'Bình tĩnh đọc kỹ đề và chọn lại đáp án chuẩn xác nào!'}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                     <button type="button" className="s9-pm-close" onClick={() => setDrillItems(null)} aria-label="Đóng">
                       <IcoX size={15} />
@@ -771,7 +803,7 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
                               if (oi === correctIdx) setDrillScore((s) => s + 1);
                             }}
                           >
-                            <b>{String.fromCharCode(65 + oi)}.</b>
+                            <b className="s9-pm-opt-letter">{String.fromCharCode(65 + oi)}</b>
                             <MathText as="span">{String(opt).replace(/^[A-D]\.\s*/i, '')}</MathText>
                           </button>
                         );
@@ -779,23 +811,32 @@ export default function ExamResult({ exam, result, showAnswer, onExit, onRetrySu
                     </div>
                     {drillPicked !== null && (cur.q.explain || cur.q.explanation) && (
                       <div className="s9-pm-explain">
-                        <b>Lời giải</b>
-                        <MathText as="div">{cur.q.explain || cur.q.explanation}</MathText>
+                        <img src="/img/elec/elec-wink.png" alt="" className="emm-mini-mascot" aria-hidden="true" />
+                        <div className="s9-pm-explain-body">
+                          <b>Lời giải · Bé Elec hướng dẫn</b>
+                          <MathText as="div">{cur.q.explain || cur.q.explanation}</MathText>
+                        </div>
                       </div>
                     )}
                   </div>
                   {drillPicked !== null && (
                     <footer className="s9-pm-foot">
-                      <button
-                        type="button"
-                        className="s9-pm-btn is-primary"
-                        onClick={() => {
-                          setDrillIdx((x) => x + 1);
-                          setDrillPicked(null);
-                        }}
-                      >
-                        {drillIdx === drillItems.length - 1 ? 'Xem kết quả sửa sai' : 'Câu sai tiếp theo →'}
-                      </button>
+                      <div className="s9-pm-foot-buddy">
+                        <img src={isDrillCorrect ? '/img/elec/elec-happy.png' : '/img/elec/elec-cool.png'} alt="" className="emm-mini-mascot" aria-hidden="true" />
+                        <span>Đã gỡ đúng {drillScore}/{drillIdx + 1} câu trong vòng này</span>
+                      </div>
+                      <div className="s9-pm-foot-actions">
+                        <button
+                          type="button"
+                          className="s9-pm-btn is-primary"
+                          onClick={() => {
+                            setDrillIdx((x) => x + 1);
+                            setDrillPicked(null);
+                          }}
+                        >
+                          {drillIdx === drillItems.length - 1 ? 'Xem kết quả sửa sai' : 'Câu sai tiếp theo →'}
+                        </button>
+                      </div>
                     </footer>
                   )}
                 </>

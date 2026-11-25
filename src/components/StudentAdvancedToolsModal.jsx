@@ -254,21 +254,26 @@ export default function StudentAdvancedToolsModal({ initialTab = 'occlusion', on
     <div className="tps-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
       <div className="tps-modal" role="dialog" aria-modal="true" aria-label="Bộ 6 Công Cụ STEM & Học Thuật Pro">
         <header className="tps-head">
-          <div>
-            <h2>Bộ 6 Công Cụ Học Thuật Pro (Anki · Cornell · RSVP · Tiếng Anh · SI · Gen ADN)</h2>
-            <p>Tuyển chọn những tính năng học sinh chất lượng nhất từ các kho mã nguồn mở GitHub</p>
+          <div className="tps-head-l">
+            <div className="emm-hero-mascot sm" aria-hidden="true">
+              <img src="/img/elec/elec-cool.png" alt="Bé Elec Công cụ STEM Pro" draggable={false} />
+            </div>
+            <div>
+              <h2>Bộ 6 Công Cụ Học Thuật Pro (Anki · Cornell · RSVP · Tiếng Anh · SI · Gen ADN)</h2>
+              <p>Tuyển chọn những tính năng học sinh chất lượng nhất từ các kho mã nguồn mở GitHub</p>
+            </div>
           </div>
           <button type="button" className="tps-btn" onClick={onClose}>Đóng</button>
         </header>
 
         <div className="tps-tabs" role="tablist">
           {[
-            { id: 'occlusion', label: 'Che nhãn Hình ảnh' },
-            { id: 'cornell', label: 'Ghi chú Cornell' },
-            { id: 'rsvp', label: 'Đọc nhanh RSVP' },
-            { id: 'english', label: 'Nghe & Shadowing EN' },
-            { id: 'units', label: 'Đổi đơn vị SI' },
-            { id: 'dna', label: 'Giải mã Gen ADN' },
+            { id: 'occlusion', label: 'Che nhãn Hình ảnh', mascot: '/img/elec/elec-think.png' },
+            { id: 'cornell', label: 'Ghi chú Cornell', mascot: '/img/elec/elec-hello.png' },
+            { id: 'rsvp', label: 'Đọc nhanh RSVP', mascot: '/img/elec/elec-fighting.png' },
+            { id: 'english', label: 'Nghe & Shadowing EN', mascot: '/img/elec/elec-happy.png' },
+            { id: 'units', label: 'Đổi đơn vị SI', mascot: '/img/elec/elec-wink.png' },
+            { id: 'dna', label: 'Giải mã Gen ADN', mascot: '/img/elec/elec-super-saiyan.png' },
           ].map((t) => (
             <button
               key={t.id}
@@ -278,7 +283,8 @@ export default function StudentAdvancedToolsModal({ initialTab = 'occlusion', on
               className={`tps-tab${tab === t.id ? ' active' : ''}`}
               onClick={() => setTab(t.id)}
             >
-              {t.label}
+              <img src={t.mascot} alt="" className="emm-tab-mascot" aria-hidden="true" />
+              <span>{t.label}</span>
             </button>
           ))}
         </div>

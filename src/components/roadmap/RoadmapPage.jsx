@@ -726,10 +726,11 @@ export default function RoadmapPage() {
 
             <button
               type="button"
-              className="rm-pro-ghost-btn"
+              className="rm-pro-ghost-btn rm-pro-guide-btn"
               onClick={() => setGuideOpen(true)}
               title="Cẩm nang phương pháp ôn thi 2025–2026"
             >
+              <img src="/img/elec/elec-happy.png" alt="" className="rm-pro-tab-sticker" aria-hidden="true" />
               <IcoCompass />
               <span>Cẩm nang</span>
             </button>
@@ -746,6 +747,7 @@ export default function RoadmapPage() {
               className={`rm-pro-mode-btn ${activeTab === 'trail' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('trail')}
             >
+              <img src="/img/elec/elec-hello.png" alt="" className="rm-pro-tab-sticker" aria-hidden="true" />
               <IcoRoute />
               <span>Lộ trình</span>
             </button>
@@ -757,6 +759,7 @@ export default function RoadmapPage() {
               className={`rm-pro-mode-btn ${activeTab === 'dag' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('dag')}
             >
+              <img src="/img/elec/elec-think.png" alt="" className="rm-pro-tab-sticker" aria-hidden="true" />
               <IcoGraph />
               <span>Bản đồ DAG</span>
             </button>
@@ -768,6 +771,7 @@ export default function RoadmapPage() {
               className={`rm-pro-mode-btn ${activeTab === 'timeline' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('timeline')}
             >
+              <img src="/img/elec/elec-fighting.png" alt="" className="rm-pro-tab-sticker" aria-hidden="true" />
               <IcoCalendar />
               <span>4 tuần</span>
             </button>
@@ -779,6 +783,7 @@ export default function RoadmapPage() {
               className={`rm-pro-mode-btn ${activeTab === 'wrong' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('wrong')}
             >
+              <img src="/img/elec/elec-wink.png" alt="" className="rm-pro-tab-sticker" aria-hidden="true" />
               <IcoAlertBook />
               <span>Sổ sai</span>
               {dueTotal > 0 && <span className="rm-pro-mode-badge">{dueTotal}</span>}
@@ -792,6 +797,7 @@ export default function RoadmapPage() {
               onClick={() => setActiveTab('bookshelf')}
               title="Thư viện Kệ sách 3D KHTN (16 giáo trình Hoá · Vật lí · Sinh học)"
             >
+              <img src="/img/elec/elec-cool.png" alt="" className="rm-pro-tab-sticker" aria-hidden="true" />
               <IcoBookshelf />
               <span>Kệ sách</span>
             </button>

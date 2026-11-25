@@ -90,9 +90,9 @@
 .elec-cp-mascot-ring {
   width: 46px;
   height: 46px;
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 0;
+  background: transparent;
+  border: none;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -100,10 +100,10 @@
 }
 
 .elec-cp-mascot {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
-  filter: none;
+  filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.28));
   animation: none;
 }
 
@@ -490,9 +490,9 @@
 .elec-sp-mascot-ring {
   width: 46px;
   height: 46px;
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0;
+  background: transparent;
+  border: none;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -500,10 +500,10 @@
 }
 
 .elec-sp-mascot {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
-  filter: none;
+  filter: drop-shadow(0 4px 10px rgba(15, 23, 42, 0.28));
   animation: none;
 }
 

@@ -1,3 +1,5 @@
+import { ELEMENT_MEDIA } from './elementMedia.js';
+
 const RAW = `H,Hydrogen,1.008;He,Helium,4.0026;Li,Lithium,6.94;Be,Beryllium,9.0122;B,Boron,10.81;C,Carbon,12.011;N,Nitrogen,14.007;O,Oxygen,15.999;F,Fluorine,18.998;Ne,Neon,20.180;
 Na,Sodium,22.990;Mg,Magnesium,24.305;Al,Aluminium,26.982;Si,Silicon,28.085;P,Phosphorus,30.974;S,Sulfur,32.06;Cl,Chlorine,35.45;Ar,Argon,39.948;K,Potassium,39.098;Ca,Calcium,40.078;
 Sc,Scandium,44.956;Ti,Titanium,47.867;V,Vanadium,50.942;Cr,Chromium,51.996;Mn,Manganese,54.938;Fe,Iron,55.845;Co,Cobalt,58.933;Ni,Nickel,58.693;Cu,Copper,63.546;Zn,Zinc,65.38;
@@ -280,17 +282,32 @@ const USES = {
 };
 
 for (const el of ELEMENTS) {
+  const media = ELEMENT_MEDIA[el.symbol] || {};
+  el.atomicMassNum = parseFloat(String(el.atomicMass).replace(/[[\]]/g, '')) || null;
   el.atomicRadius = RADIUS[el.symbol] ?? null;
-  el.meltingPoint = MELTING[el.symbol] ?? null;
-  el.boilingPoint = BOILING[el.symbol] ?? null;
-  el.density = DENSITY[el.symbol] ?? null;
+  el.meltingPoint = MELTING[el.symbol] ?? media.melt ?? null;
+  el.boilingPoint = BOILING[el.symbol] ?? media.boil ?? null;
+  el.density = DENSITY[el.symbol] ?? media.density ?? null;
+  el.ionizationEnergy = media.ie ?? null;
+  el.electronAffinity = media.ea ?? null;
+  el.block = media.block || (el.group === null ? 'f' : el.group <= 2 || el.atomicNumber === 2 ? 's' : el.group >= 13 ? 'p' : 'd');
+  el.cpk = media.cpk || '';
+  el.image = media.img || '';
+  el.imageTitle = media.imgTitle || '';
+  el.crystal = media.crystal || 'bcc';
+  el.flame = media.flame || null;
+  el.examples = media.examples || null;
+  el.reactions = media.reactions || null;
   el.discovered = DISCOVERY[el.symbol] ?? null;
   el.uses = USES[el.symbol] ?? null;
 }
 export const TRENDS = [
-  { key: 'atomicMass', label: 'Khối lượng nguyên tử', unit: 'u', fmt: (v) => v.toFixed(2) },
+  { key: 'atomicMassNum', label: 'Khối lượng nguyên tử', unit: 'u', fmt: (v) => v.toFixed(2) },
   { key: 'electronegativity', label: 'Độ âm điện (Pauling)', unit: '', fmt: (v) => v.toFixed(2) },
   { key: 'atomicRadius', label: 'Bán kính nguyên tử', unit: 'pm', fmt: (v) => v.toFixed(0) },
+  { key: 'ionizationEnergy', label: 'Năng lượng ion hóa (I₁)', unit: 'kJ/mol', fmt: (v) => v.toFixed(0) },
   { key: 'meltingPoint', label: 'Nhiệt độ nóng chảy', unit: 'K', fmt: (v) => v.toFixed(0) },
+  { key: 'boilingPoint', label: 'Nhiệt độ sôi', unit: 'K', fmt: (v) => v.toFixed(0) },
+  { key: 'density', label: 'Khối lượng riêng', unit: 'g/cm³', fmt: (v) => v.toFixed(2) },
   { key: 'valenceElectrons', label: 'Electron hóa trị', unit: 'e', fmt: (v) => String(v) },
 ];
