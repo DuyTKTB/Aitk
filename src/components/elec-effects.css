@@ -120,36 +120,48 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
+  overflow: hidden;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 32% 28%, #ffffff 0%, #e0f2fe 65%, #bfdbfe 100%);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.8),
-    0 2px 5px rgba(2, 6, 23, 0.45),
-    inset 0 1px 2px #fff;
+  background: radial-gradient(circle at 35% 28%, #ffffff 0%, #e0f2fe 70%, #bfdbfe 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.85),
+    0 2px 5px rgba(2, 6, 23, 0.5);
   transform: translateX(27px);
   transition: transform 0.44s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.35s ease;
+    box-shadow 0.35s ease,
+    border-color 0.35s ease;
 }
 
 .efx-aqua-toggle:hover .efx-aqua-knob {
-  transform: translateX(27px) scale(1.07) rotate(4deg);
+  transform: translateX(27px) scale(1.08) rotate(5deg);
 }
 
 .efx-aqua-toggle.is-light .efx-aqua-knob {
   transform: translateX(0);
-  box-shadow: 0 0 13px rgba(250, 204, 21, 0.82),
-    0 2px 6px rgba(29, 79, 184, 0.32),
-    inset 0 1px 2px #fff;
+  border-color: #fef08a;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.88),
+    0 2px 6px rgba(29, 79, 184, 0.34);
 }
 
 .efx-aqua-toggle.is-light:hover .efx-aqua-knob {
-  transform: translateX(0) scale(1.07) rotate(-4deg);
+  transform: translateX(0) scale(1.08) rotate(-5deg);
 }
 
-.efx-aqua-knob svg {
-  width: 24px;
-  height: 24px;
-  overflow: visible;
+.efx-aqua-face-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 47% 26%;
+  transform: scale(1.62);
+  pointer-events: none;
+  user-select: none;
+  transition: transform 0.35s ease;
+}
+
+.efx-aqua-toggle.is-dark .efx-aqua-face-img {
+  object-position: 40% 34%;
+  transform: scale(1.68);
 }
 
 @keyframes efxTwinkle {
@@ -782,7 +794,7 @@
   font-weight: 600;
 }
 
-/* 7. ELEC LOGIN MASCOT (Bé Elec chính chủ) + OTP VERIFY SWEEP */
+/* 7. ELEC LOGIN MASCOT (Ảnh Bé Elec chính chủ) + OTP VERIFY SWEEP */
 .efx-pip-wrap {
   display: flex;
   flex-direction: column;
@@ -791,21 +803,51 @@
   user-select: none;
 }
 
-.efx-pip-svg {
-  width: 132px;
-  height: 102px;
-  overflow: visible;
-  filter: drop-shadow(0 10px 20px rgba(29, 79, 184, 0.26));
+.efx-elec-stage {
+  position: relative;
+  width: 108px;
+  height: 104px;
+  display: grid;
+  place-items: center;
 }
 
-.efx-elec-bob {
-  animation: efxElecBob 3.2s ease-in-out infinite;
-  transform-origin: 320px 380px;
+.efx-elec-halo {
+  position: absolute;
+  inset: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.32) 0%, rgba(37, 99, 235, 0.08) 55%, transparent 74%);
+  filter: blur(8px);
+  pointer-events: none;
+  transition: background 0.35s ease;
+}
+
+.efx-elec-stage.is-error .efx-elec-halo {
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.34) 0%, transparent 72%);
+}
+
+.efx-elec-stage.is-success .efx-elec-halo {
+  background: radial-gradient(circle, rgba(52, 211, 153, 0.38) 0%, transparent 72%);
+}
+
+.efx-elec-img {
+  position: relative;
+  z-index: 2;
+  width: 98px;
+  height: 98px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 18px rgba(15, 23, 42, 0.32));
+  animation: efxElecPop 0.36s cubic-bezier(0.34, 1.56, 0.64, 1), efxElecBob 3.2s ease-in-out 0.36s infinite;
+  will-change: transform;
+}
+
+@keyframes efxElecPop {
+  0% { transform: scale(0.84) translateY(6px); opacity: 0.72; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 @keyframes efxElecBob {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-6px); }
+  50% { transform: translateY(-5px); }
 }
 
 .efx-pip-status {

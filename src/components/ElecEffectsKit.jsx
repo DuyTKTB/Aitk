@@ -1,14 +1,11 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import './elec-effects.css';
 
 /* ==========================================================================
-   1. ELEC MASCOT SIGNATURE THEME TOGGLE (Bé Elec Face — Proprietary Brand UI)
+   1. ELEC MASCOT SIGNATURE THEME TOGGLE (Ảnh khuôn mặt Bé Elec chính chủ)
    ========================================================================== */
 export function AquariumThemeToggle({ theme = 'dark', onToggle, className = '' }) {
   const isLight = theme === 'light';
-  const uid = useId().replace(/:/g, '');
-  const headId = `etg-head-${uid}`;
-  const blueId = `etg-blue-${uid}`;
   return (
     <button
       type="button"
@@ -25,71 +22,29 @@ export function AquariumThemeToggle({ theme = 'dark', onToggle, className = '' }
         <span className="efx-aqua-star s2" />
         <span className="efx-aqua-star s3" />
         <svg className="efx-aqua-orbit" viewBox="0 0 58 30" fill="none">
-          {/* Cảnh ban đêm (bên trái): trăng khuyết xanh + quỹ đạo electron */}
+          {/* Cảnh ban đêm (bên trái): trăng khuyết vàng + quỹ đạo electron */}
           <g className="efx-aqua-night-el">
-            <path d="M5 24 Q18 14 31 23" stroke="rgba(56,189,248,0.35)" strokeWidth="1.2" strokeDasharray="2 2" />
+            <path d="M5 24 Q18 14 31 23" stroke="rgba(56,189,248,0.42)" strokeWidth="1.2" strokeDasharray="2 2" />
             <path d="M18.5 16.5A4.8 4.8 0 0 1 12.2 10.2a4.8 4.8 0 1 0 6.3 6.3Z" fill="#fde68a" />
           </g>
           {/* Cảnh ban ngày (bên phải): quỹ đạo nguyên tử + tia sét ELEC vàng + mây */}
           <g className="efx-aqua-day-el">
-            <ellipse cx="42" cy="15" rx="11" ry="4.5" transform="rotate(-18 42 15)" stroke="rgba(255,255,255,0.6)" strokeWidth="1.1" />
+            <ellipse cx="42" cy="15" rx="11" ry="4.5" transform="rotate(-18 42 15)" stroke="rgba(255,255,255,0.68)" strokeWidth="1.15" />
             <path d="M43.5 8.5L39.8 14.8H42.6L41.4 20.5L46.4 13.5H43.4L43.5 8.5Z" fill="#fde047" stroke="#ca8a04" strokeWidth="0.6" strokeLinejoin="round" />
-            <circle cx="34" cy="21" r="2.2" fill="rgba(255,255,255,0.85)" />
-            <circle cx="36.5" cy="21.5" r="1.7" fill="rgba(255,255,255,0.85)" />
+            <circle cx="34" cy="21" r="2.2" fill="rgba(255,255,255,0.88)" />
+            <circle cx="36.5" cy="21.5" r="1.7" fill="rgba(255,255,255,0.88)" />
           </g>
         </svg>
       </span>
 
-      {/* Núm trượt: Khuôn mặt Bé Elec chính chủ */}
+      {/* Núm trượt: Ảnh cận mặt Bé Elec chính chủ (Ban ngày nháy mắt tươi / Ban đêm ngủ ngon) */}
       <span className="efx-aqua-knob" aria-hidden="true">
-        <svg viewBox="0 0 40 40" fill="none">
-          <defs>
-            <linearGradient id={headId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ffffff" />
-              <stop offset="100%" stopColor="#dbeafe" />
-            </linearGradient>
-            <linearGradient id={blueId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#3b9bff" />
-              <stop offset="100%" stopColor="#0a6ae6" />
-            </linearGradient>
-          </defs>
-          {/* 3 chỏm tóc xanh đặc trưng Bé Elec */}
-          <ellipse cx="14.5" cy="7.5" rx="3.3" ry="5.2" transform="rotate(-26 14.5 7.5)" fill={`url(#${blueId})`} stroke="#1d4fb8" strokeWidth="1.2" />
-          <ellipse cx="25.5" cy="7.8" rx="3.1" ry="4.9" transform="rotate(28 25.5 7.8)" fill={`url(#${blueId})`} stroke="#1d4fb8" strokeWidth="1.2" />
-          <ellipse cx="20" cy="5.8" rx="3.5" ry="5.6" fill={`url(#${blueId})`} stroke="#1d4fb8" strokeWidth="1.2" />
-
-          {/* Khuôn mặt tròn trắng Bé Elec */}
-          <ellipse cx="20" cy="22" rx="14.5" ry="13.2" fill={`url(#${headId})`} stroke="#1d4fb8" strokeWidth="1.4" />
-
-          {/* Băng đô xanh ELEC trên trán + điểm sét vàng nhỏ */}
-          <path d="M6.8 17.2 Q20 13.8 33.2 17.2 L33.6 20.6 Q20 17.5 6.4 20.6 Z" fill={`url(#${blueId})`} stroke="#1d4fb8" strokeWidth="1" />
-          <path d="M20.6 15.6L18.8 18.2H20.1L19.6 20.1L21.6 17.4H20.3L20.6 15.6Z" fill="#fde047" />
-
-          {/* Má hồng */}
-          <ellipse cx="11.2" cy="27.2" rx="2.7" ry="1.6" fill="#ffa8bd" opacity="0.82" />
-          <ellipse cx="28.8" cy="27.2" rx="2.7" ry="1.6" fill="#ffa8bd" opacity="0.82" />
-
-          {/* Mắt & Miệng đổi biểu cảm theo Sáng / Tối */}
-          {isLight ? (
-            <>
-              {/* Ban ngày: Mắt xanh long lanh năng động */}
-              <ellipse cx="15" cy="24.5" rx="2.5" ry="2.9" fill="#0a5fd6" />
-              <circle cx="14.2" cy="23.4" r="0.95" fill="#fff" />
-              <ellipse cx="25" cy="24.5" rx="2.5" ry="2.9" fill="#0a5fd6" />
-              <circle cx="24.2" cy="23.4" r="0.95" fill="#fff" />
-              {/* Miệng cười tươi */}
-              <path d="M17.4 28.4 Q20 31.4 22.6 28.4 Z" fill="#b02a47" stroke="#7d1d33" strokeWidth="0.7" />
-            </>
-          ) : (
-            <>
-              {/* Ban đêm: Mắt cong thư giãn / chế độ đêm */}
-              <path d="M12.6 25.2 Q15 22.5 17.4 25.2" stroke="#13306b" strokeWidth="1.7" strokeLinecap="round" />
-              <path d="M22.6 25.2 Q25 22.5 27.4 25.2" stroke="#13306b" strokeWidth="1.7" strokeLinecap="round" />
-              {/* Nụ cười nhẹ dịu mắt */}
-              <path d="M18.2 28.7 Q20 30.2 21.8 28.7" stroke="#7d1d33" strokeWidth="1.3" strokeLinecap="round" />
-            </>
-          )}
-        </svg>
+        <img
+          src={isLight ? '/img/elec/elec-wink.png' : '/img/elec/elec-sleepy.png'}
+          alt=""
+          className="efx-aqua-face-img"
+          draggable={false}
+        />
       </span>
     </button>
   );
@@ -639,164 +594,73 @@ export function EnergyMorphWidget({ masteryPct = 86, elo = 1680 }) {
 }
 
 /* ==========================================================================
-   7. ELEC LOGIN MASCOT (Bé Elec chính chủ) + OTP VERIFY SWEEP
+   7. ELEC LOGIN MASCOT (Ảnh Bé Elec chính chủ từ /img/elec/) + OTP VERIFY SWEEP
    ========================================================================== */
+const ELEC_LOGIN_SPRITES = [
+  '/img/elec/elec-default.png',
+  '/img/elec/elec-think.png',
+  '/img/elec/elec-suspicious.png',
+  '/img/elec/elec-shy.png',
+  '/img/elec/elec-wink.png',
+  '/img/elec/elec-cool.png',
+  '/img/elec/elec-shocked.png',
+  '/img/elec/elec-heart-eyes.png',
+];
+
 export function PipLoginMascot({ email = '', focusField = 'idle', showPass = false, hasError = false, isSuccess = false }) {
+  useEffect(() => {
+    ELEC_LOGIN_SPRITES.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
+
   const emailLen = Math.min(email.length, 28);
-  const lookX = focusField === 'email' ? -18 + (emailLen / 28) * 36 : focusField === 'otp' ? 0 : 0;
-  const lookY = focusField === 'email' || focusField === 'otp' ? 12 : 0;
-  const headTilt = focusField === 'email' ? -5 + (emailLen / 28) * 10 : hasError ? -4 : 0;
+  const tiltDeg = focusField === 'email' ? -6 + (emailLen / 28) * 12 : 0;
   const badEmail = focusField === 'email' && email.length > 3 && !email.includes('@');
   const coverEyes = focusField === 'password' && !showPass;
   const peekEye = focusField === 'password' && showPass;
 
-  const statusText = isSuccess
-    ? 'Chào mừng trở lại ELEC AI!'
-    : hasError
-      ? 'Ối, kiểm tra lại thông tin nhé!'
-      : coverEyes
-        ? 'Bé Elec đang bịt mắt bảo mật mật khẩu…'
-        : peekEye
-          ? 'Bé Elec hé 1 mắt một xíu thôi!'
-          : badEmail
-            ? 'Hình như thiếu ký tự @ trong email nè?'
-            : focusField === 'otp'
-              ? 'Nhập đủ 6 chữ số OTP để xác thực nhé!'
-              : 'Bé Elec chào mừng bạn đến ELEC AI';
+  let sprite = '/img/elec/elec-default.png';
+  let statusText = 'Bé Elec chào mừng bạn đến ELEC AI';
 
-  const ink = '#1d4fb8';
+  if (isSuccess) {
+    sprite = '/img/elec/elec-heart-eyes.png';
+    statusText = 'Chào mừng trở lại ELEC AI!';
+  } else if (hasError) {
+    sprite = '/img/elec/elec-shocked.png';
+    statusText = 'Ối, kiểm tra lại thông tin nhé!';
+  } else if (coverEyes) {
+    sprite = '/img/elec/elec-shy.png';
+    statusText = 'Bé Elec nhắm mắt bảo mật mật khẩu…';
+  } else if (peekEye) {
+    sprite = '/img/elec/elec-wink.png';
+    statusText = 'Bé Elec hé 1 mắt kiểm tra cùng bạn!';
+  } else if (badEmail) {
+    sprite = '/img/elec/elec-suspicious.png';
+    statusText = 'Hình như thiếu ký tự @ trong email nè?';
+  } else if (focusField === 'otp') {
+    sprite = '/img/elec/elec-cool.png';
+    statusText = 'Nhập đủ 6 chữ số OTP để xác thực nhé!';
+  } else if (focusField === 'email') {
+    sprite = '/img/elec/elec-think.png';
+    statusText = 'Bé Elec đang theo dõi bạn nhập email…';
+  }
 
   return (
     <div className="efx-pip-wrap" aria-hidden="true">
-      <svg className="efx-pip-svg" viewBox="80 10 480 460">
-        <defs>
-          <radialGradient id="efx-ec-iris" cx="50%" cy="30%" r="80%">
-            <stop offset="0%" stopColor="#6cb4ff" />
-            <stop offset="100%" stopColor="#0a5fd6" />
-          </radialGradient>
-          <linearGradient id="efx-ec-head" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="70%" stopColor="#f3f8ff" />
-            <stop offset="100%" stopColor="#d9e9ff" />
-          </linearGradient>
-          <linearGradient id="efx-ec-blue" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3b9bff" />
-            <stop offset="100%" stopColor="#0a6ae6" />
-          </linearGradient>
-          <linearGradient id="efx-ec-hair" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2f86f5" />
-            <stop offset="100%" stopColor="#0d4fc9" />
-          </linearGradient>
-          <clipPath id="efx-ec-hc">
-            <ellipse cx="320" cy="270" rx="215" ry="185" />
-          </clipPath>
-          <clipPath id="efx-ec-mc">
-            <path d="M290,346 Q320,338 350,346 Q348,390 320,390 Q292,390 290,346Z" />
-          </clipPath>
-        </defs>
-
-        <g className="efx-elec-bob" strokeLinejoin="round" strokeLinecap="round">
-          {/* Head group with subtle tilt */}
-          <g style={{ transformOrigin: '320px 380px', transform: `rotate(${headTilt.toFixed(1)}deg)`, transition: 'transform 0.2s ease-out' }}>
-            {/* Main white head */}
-            <ellipse cx="320" cy="270" rx="215" ry="185" fill="url(#efx-ec-head)" stroke={ink} strokeWidth="6" />
-
-            {/* 3 iconic blue hair tufts */}
-            <g fill="url(#efx-ec-hair)" stroke={ink} strokeWidth="5.5">
-              <ellipse cx="250" cy="96" rx="42" ry="64" transform="rotate(-28 250 96)" />
-              <ellipse cx="400" cy="100" rx="40" ry="60" transform="rotate(30 400 100)" />
-              <ellipse cx="324" cy="70" rx="44" ry="70" transform="rotate(4 324 70)" />
-              <path d="M168,200 Q180,120 320,112 Q460,120 472,200 Z" />
-            </g>
-            <ellipse cx="306" cy="52" rx="10" ry="22" transform="rotate(8 306 52)" fill="#fff" opacity=".35" />
-
-            {/* Iconic ELEC AI blue headband */}
-            <g clipPath="url(#efx-ec-hc)">
-              <path d="M90,176 Q320,146 550,172 L552,238 Q320,214 88,244 Z" fill="url(#efx-ec-blue)" stroke={ink} strokeWidth="5.5" />
-              <path d="M90,166 Q320,136 550,162 L550,176 Q320,150 90,180Z" fill="#fff" opacity=".18" />
-            </g>
-            <text
-              x="320"
-              y="219"
-              textAnchor="middle"
-              transform="rotate(-1.2 320 205)"
-              fontFamily="'Be Vietnam Pro', Poppins, Arial, sans-serif"
-              fontWeight="800"
-              fontSize="40"
-              fill="#fff"
-              letterSpacing="2"
-            >
-              ELEC AI
-            </text>
-
-            {/* Rosy cheeks */}
-            <ellipse cx="186" cy="354" rx="34" ry="21" fill="#ffa8bd" opacity={coverEyes || isSuccess ? '.92' : '.72'} />
-            <ellipse cx="454" cy="354" rx="34" ry="21" fill="#ffa8bd" opacity={coverEyes || isSuccess ? '.92' : '.72'} />
-
-            {/* Eyes */}
-            {isSuccess ? (
-              <>
-                <path d="M218,322 Q250,282 282,322" fill="none" stroke="#13306b" strokeWidth="11" />
-                <path d="M358,322 Q390,282 422,322" fill="none" stroke="#13306b" strokeWidth="11" />
-                <path d="M126,118 L135,140 157,149 135,158 126,180 117,158 95,149 117,140Z" fill="#ffd45e" />
-                <path d="M512,96 L519,112 535,119 519,126 512,142 505,126 489,119 505,112Z" fill="#34d399" />
-              </>
-            ) : hasError ? (
-              <g stroke="#13306b" strokeWidth="10">
-                <path d="M226,294 L274,316 L226,336" fill="none" />
-                <path d="M414,294 L366,316 L414,336" fill="none" />
-                {/* Cute sweat drop */}
-                <path d="M482,252 Q498,278 482,292 Q466,278 482,252Z" fill="#7dd3fc" stroke={ink} strokeWidth="4" />
-              </g>
-            ) : (
-              <g style={{ transform: `translate(${lookX.toFixed(1)}px, ${lookY.toFixed(1)}px)`, transition: 'transform 0.16s ease-out' }}>
-                <g>
-                  <ellipse cx="250" cy="312" rx="34" ry="39" fill="url(#efx-ec-iris)" />
-                  <ellipse cx="253" cy="318" rx="19" ry="23" fill="#13306b" />
-                  <circle cx="241" cy="298" r="11" fill="#fff" />
-                  <circle cx="262" cy="330" r="5.5" fill="#fff" />
-                  <circle cx="264" cy="304" r="3" fill="#fff" opacity=".8" />
-                </g>
-                <g>
-                  <ellipse cx="390" cy="312" rx="34" ry="39" fill="url(#efx-ec-iris)" />
-                  <ellipse cx="393" cy="318" rx="19" ry="23" fill="#13306b" />
-                  <circle cx="381" cy="298" r="11" fill="#fff" />
-                  <circle cx="402" cy="330" r="5.5" fill="#fff" />
-                  <circle cx="404" cy="304" r="3" fill="#fff" opacity=".8" />
-                </g>
-              </g>
-            )}
-
-            {/* Mouth */}
-            {badEmail || hasError ? (
-              <g>
-                <ellipse cx="320" cy="364" rx="13" ry="15" fill="#b02a47" />
-                <ellipse cx="320" cy="371" rx="7" ry="6" fill="#ff8aa0" />
-              </g>
-            ) : (
-              <g>
-                <path d="M290,346 Q320,338 350,346 Q348,390 320,390 Q292,390 290,346Z" fill="#b02a47" />
-                <g clipPath="url(#efx-ec-mc)">
-                  <ellipse cx="320" cy="392" rx="22" ry="15" fill="#ff8aa0" />
-                </g>
-                <path d="M290,346 Q320,338 350,346 Q348,390 320,390 Q292,390 290,346Z" fill="none" stroke="#7d1d33" strokeWidth="4.5" />
-              </g>
-            )}
-          </g>
-
-          {/* Iconic white gloved hands of Bé Elec — lift smoothly to cover eyes on password */}
-          <g style={{ transition: 'transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1)', transform: coverEyes ? 'translate(58px, -112px) rotate(12deg)' : peekEye ? 'translate(38px, -46px) rotate(4deg)' : 'translate(0px, 0px)' }}>
-            <circle cx="192" cy="422" r="42" fill="#fff" stroke={ink} strokeWidth="6" />
-            <ellipse cx="228" cy="404" rx="14" ry="20" transform="rotate(-24 228 404)" fill="#fff" stroke={ink} strokeWidth="5.5" />
-            <circle cx="192" cy="422" r="36" fill="#fff" />
-          </g>
-          <g style={{ transition: 'transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1)', transform: coverEyes ? 'translate(-58px, -112px) rotate(-12deg)' : peekEye ? 'translate(-58px, -112px) rotate(-12deg)' : 'translate(0px, 0px)' }}>
-            <circle cx="448" cy="422" r="42" fill="#fff" stroke={ink} strokeWidth="6" />
-            <ellipse cx="412" cy="404" rx="14" ry="20" transform="rotate(24 412 404)" fill="#fff" stroke={ink} strokeWidth="5.5" />
-            <circle cx="448" cy="422" r="36" fill="#fff" />
-          </g>
-        </g>
-      </svg>
+      <div className={`efx-elec-stage ${hasError ? 'is-error' : ''} ${isSuccess ? 'is-success' : ''}`}>
+        <span className="efx-elec-halo" />
+        <div style={{ transform: `rotate(${tiltDeg.toFixed(1)}deg)`, transition: 'transform 0.2s ease-out' }}>
+          <img
+            key={sprite}
+            src={sprite}
+            alt=""
+            className="efx-elec-img"
+            draggable={false}
+          />
+        </div>
+      </div>
       <span className="efx-pip-status">{statusText}</span>
     </div>
   );
