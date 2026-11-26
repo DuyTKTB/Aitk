@@ -26,6 +26,7 @@ import { fsrsSchedule, predictCardRetentionPct } from '../lib/fsrsEngine.js';
 import { gradeClozeAnswers } from '../lib/studentStudyStudio.js';
 import { speak as speakVi, stop as stopVi, isSupported as isTtsSupported } from '../lib/tts.js';
 import { ArcChargeLoader, PdfParseScanner } from './ElecEffectsKit.jsx';
+import { AppleSwipeFlashcardStack } from './AppleShowcaseSections.jsx';
 import {
   extractPptxText,
   chunkDocumentForCitations,
@@ -620,6 +621,7 @@ function PodcastStudio({ doc, onSavePodcast }) {
    ============================================================ */
 function Flashcards({ doc, onRateCard }) {
   const [filter, setFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('swipe'); // swipe | flip
   const [seed, setSeed] = useState(0);
   const [i, setI] = useState(0);
   const [open, setOpen] = useState(false);
@@ -678,6 +680,10 @@ function Flashcards({ doc, onRateCard }) {
           <button type="button" className={filter === 'due' ? 'on' : ''} onClick={() => reset('due')}>Đến hạn FSRS ({dueCount})</button>
           <button type="button" className={filter === 'unknown' ? 'on' : ''} onClick={() => reset('unknown')}>Chưa thuộc ({doc.flashcards.length - knownCount})</button>
         </div>
+        <div className="dst-seg">
+          <button type="button" className={viewMode === 'swipe' ? 'on' : ''} onClick={() => setViewMode('swipe')}>Vuốt thẻ</button>
+          <button type="button" className={viewMode === 'flip' ? 'on' : ''} onClick={() => setViewMode('flip')}>Lật 4 mức</button>
+        </div>
         <button type="button" className="dst-ghost" onClick={() => { setSeed((x) => x + 1); setI(0); setOpen(false); }}>
           <Ico n="shuffle" s={15} /> Xáo trộn
         </button>
@@ -696,6 +702,15 @@ function Flashcards({ doc, onRateCard }) {
           <Ico n="check" s={30} />
           <b>Hoàn thành hết thẻ trong mục này!</b>
           <span>Chuyển sang "Tất cả" để ôn lại hoặc sang tab Quiz &amp; Cloze để kiểm tra.</span>
+        </div>
+      ) : viewMode === 'swipe' ? (
+        <div style={{ padding: '14px 0 6px' }}>
+          <AppleSwipeFlashcardStack
+            key={`${doc.id}-${filter}-${seed}`}
+            cards={list}
+            onSwipeRight={(c) => onRateCard(c.k, 3)}
+            onSwipeLeft={(c) => onRateCard(c.k, 1)}
+          />
         </div>
       ) : (
         <>

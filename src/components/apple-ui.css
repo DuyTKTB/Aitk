@@ -1,0 +1,840 @@
+/* ==========================================================================
+   APPLE DESIGN SYSTEM EXTENSIONS FOR ELEC SCIENCE AI (apple-ui.css)
+   Inspired by apple.com, macOS Sequoia & visionOS
+   Clean hairline borders, frosted glass, optical typography, restrained color
+   ========================================================================== */
+
+.ap-sec {
+  --ap-bg-card: rgba(28, 28, 30, 0.72);
+  --ap-bg-elevated: rgba(44, 44, 46, 0.78);
+  --ap-bg-subtle: rgba(255, 255, 255, 0.045);
+  --ap-border: rgba(255, 255, 255, 0.11);
+  --ap-border-strong: rgba(255, 255, 255, 0.2);
+  --ap-ink: #f5f5f7;
+  --ap-ink-2: #a1a1a6;
+  --ap-blue: #2997ff;
+  --ap-blue-solid: #0071e3;
+  --ap-green: #30d158;
+  --ap-rose: #ff453a;
+  --ap-amber: #ff9f0a;
+  --ap-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+  --ap-specular: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 76px 22px;
+  color: var(--ap-ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Be Vietnam Pro', system-ui, sans-serif;
+}
+
+[data-theme='light'] .ap-sec {
+  --ap-bg-card: rgba(255, 255, 255, 0.86);
+  --ap-bg-elevated: #ffffff;
+  --ap-bg-subtle: #f5f5f7;
+  --ap-border: rgba(0, 0, 0, 0.08);
+  --ap-border-strong: rgba(0, 0, 0, 0.15);
+  --ap-ink: #1d1d1f;
+  --ap-ink-2: #6e6e73;
+  --ap-blue: #0071e3;
+  --ap-blue-solid: #0071e3;
+  --ap-green: #1d8f4e;
+  --ap-rose: #d70015;
+  --ap-amber: #b25000;
+  --ap-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+  --ap-specular: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.ap-head {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 44px;
+}
+
+.ap-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ap-blue);
+  margin-bottom: 12px;
+}
+
+.ap-head h2 {
+  font-size: clamp(28px, 4.1vw, 46px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  margin: 0 0 14px;
+  color: var(--ap-ink);
+}
+
+.ap-head p {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ap-ink-2);
+  margin: 0;
+}
+
+/* ==========================================================================
+   1. APPLE COMPARISON BLOCK (Cách học cũ vs ELEC Science AI)
+   ========================================================================== */
+.ap-cmp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 820px) {
+  .ap-cmp-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ap-cmp-card {
+  position: relative;
+  border-radius: 28px;
+  padding: 32px 28px;
+  background: var(--ap-bg-card);
+  border: 1px solid var(--ap-border);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: var(--ap-specular), var(--ap-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s ease;
+}
+
+.ap-cmp-card.is-elec {
+  border-color: rgba(41, 151, 255, 0.42);
+  background: linear-gradient(165deg, rgba(0, 113, 227, 0.12), var(--ap-bg-card) 48%);
+}
+
+[data-theme='light'] .ap-cmp-card.is-elec {
+  background: linear-gradient(165deg, rgba(0, 113, 227, 0.06), #ffffff 48%);
+  border-color: rgba(0, 113, 227, 0.32);
+}
+
+.ap-cmp-card:hover {
+  transform: translateY(-3px);
+}
+
+.ap-cmp-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--ap-border);
+}
+
+.ap-cmp-top h3 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.ap-cmp-top p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ap-ink-2);
+}
+
+.ap-cmp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ap-cmp-badge.old {
+  background: var(--ap-bg-subtle);
+  color: var(--ap-ink-2);
+  border: 1px solid var(--ap-border);
+}
+
+.ap-cmp-badge.pro {
+  background: rgba(0, 113, 227, 0.14);
+  color: var(--ap-blue);
+  border: 1px solid rgba(41, 151, 255, 0.32);
+}
+
+.ap-cmp-mascot {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: drop-shadow(0 6px 12px rgba(0, 113, 227, 0.25));
+}
+
+.ap-cmp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ap-cmp-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.ap-cmp-ic {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ap-cmp-ic.bad {
+  background: rgba(255, 69, 58, 0.12);
+  color: var(--ap-rose);
+}
+
+.ap-cmp-ic.good {
+  background: rgba(48, 209, 88, 0.14);
+  color: var(--ap-green);
+}
+
+.ap-cmp-list strong {
+  display: block;
+  font-weight: 700;
+  color: var(--ap-ink);
+}
+
+.ap-cmp-list span {
+  display: block;
+  font-size: 13.5px;
+  color: var(--ap-ink-2);
+}
+
+/* ==========================================================================
+   2. VISIONOS HOVER PREVIEW TOOL GRID (Rê chuột hiện thẻ xem trước)
+   ========================================================================== */
+.ap-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 920px) {
+  .ap-tool-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .ap-tool-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ap-tool-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 24px;
+  background: var(--ap-bg-card);
+  border: 1px solid var(--ap-border);
+  backdrop-filter: blur(22px) saturate(180%);
+  box-shadow: var(--ap-specular);
+  color: var(--ap-ink);
+  text-decoration: none;
+  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease,
+    box-shadow 0.34s ease;
+}
+
+.ap-tool-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--ap-border-strong);
+  box-shadow: var(--ap-specular), var(--ap-shadow);
+  z-index: 6;
+}
+
+.ap-tool-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ap-tool-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ap-bg-subtle);
+  color: var(--ap-blue);
+  border: 1px solid var(--ap-border);
+}
+
+.ap-tool-arrow {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ap-bg-subtle);
+  color: var(--ap-ink-2);
+  transition: transform 0.28s ease, background 0.28s ease, color 0.28s ease;
+}
+
+.ap-tool-card:hover .ap-tool-arrow {
+  background: var(--ap-blue-solid);
+  color: #fff;
+  transform: translate(2px, -2px);
+}
+
+.ap-tool-card h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.ap-tool-card p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ap-ink-2);
+}
+
+/* VisionOS Floating Preview Drawer on Hover */
+.ap-tool-preview {
+  padding: 11px 13px;
+  border-radius: 14px;
+  background: var(--ap-bg-subtle);
+  border: 1px solid var(--ap-border);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+
+.ap-tool-card:hover .ap-tool-preview {
+  border-color: rgba(41, 151, 255, 0.35);
+  background: rgba(0, 113, 227, 0.08);
+}
+
+.ap-tool-preview-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.ap-tool-preview-line b {
+  color: var(--ap-ink);
+  font-weight: 700;
+}
+
+.ap-tool-preview-line em {
+  font-style: normal;
+  color: var(--ap-green);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   3. APPLE BENTO PRICING (Segmented Control + 3 Clean Cards)
+   ========================================================================== */
+.ap-seg-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 34px;
+}
+
+.ap-seg {
+  display: inline-flex;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--ap-bg-subtle);
+  border: 1px solid var(--ap-border);
+  backdrop-filter: blur(18px);
+}
+
+.ap-seg button {
+  border: 0;
+  background: transparent;
+  color: var(--ap-ink-2);
+  font: 700 13.5px/1 -apple-system, BlinkMacSystemFont, 'Be Vietnam Pro', sans-serif;
+  padding: 10px 20px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ap-seg button.on {
+  background: var(--ap-bg-elevated);
+  color: var(--ap-ink);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+
+.ap-price-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .ap-price-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ap-price-card {
+  position: relative;
+  border-radius: 28px;
+  padding: 30px 26px;
+  background: var(--ap-bg-card);
+  border: 1px solid var(--ap-border);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: var(--ap-specular);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.32s ease;
+}
+
+.ap-price-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--ap-specular), var(--ap-shadow);
+}
+
+.ap-price-card.featured {
+  border-color: rgba(41, 151, 255, 0.55);
+  background: linear-gradient(175deg, rgba(0, 113, 227, 0.15), var(--ap-bg-card) 46%);
+  box-shadow: var(--ap-specular), 0 24px 64px rgba(0, 113, 227, 0.18);
+}
+
+[data-theme='light'] .ap-price-card.featured {
+  background: linear-gradient(175deg, rgba(0, 113, 227, 0.08), #ffffff 44%);
+}
+
+.ap-price-pill {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--ap-blue-solid);
+  color: #fff;
+}
+
+.ap-price-name {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.ap-price-sub {
+  font-size: 13.5px;
+  color: var(--ap-ink-2);
+  margin: 4px 0 0;
+}
+
+.ap-price-val {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ap-price-val b {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.ap-price-val span {
+  font-size: 13.5px;
+  color: var(--ap-ink-2);
+}
+
+.ap-price-feats {
+  list-style: none;
+  margin: 0;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--ap-border);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  flex: 1;
+  font-size: 14px;
+  color: var(--ap-ink);
+}
+
+.ap-price-feats li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  line-height: 1.45;
+}
+
+.ap-price-feats svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--ap-blue);
+}
+
+.ap-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 13px 20px;
+  border-radius: 999px;
+  font: 700 14.5px/1 -apple-system, BlinkMacSystemFont, 'Be Vietnam Pro', sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid var(--ap-border-strong);
+  background: var(--ap-bg-subtle);
+  color: var(--ap-ink);
+  transition: transform 0.2s ease, background 0.22s ease, box-shadow 0.22s ease;
+}
+
+.ap-btn:hover {
+  transform: scale(1.015);
+  background: var(--ap-bg-elevated);
+}
+
+.ap-btn.primary {
+  border-color: transparent;
+  background: var(--ap-blue-solid);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 113, 227, 0.34);
+}
+
+.ap-btn.primary:hover {
+  background: #0077ed;
+  box-shadow: 0 12px 28px rgba(0, 113, 227, 0.44);
+}
+
+/* ==========================================================================
+   4. APPLE DUAL-TRACK SOCIAL PROOF MARQUEE
+   ========================================================================== */
+.ap-wall-wrap {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+}
+
+.ap-wall-track {
+  display: flex;
+  gap: 16px;
+  width: max-content;
+  animation: apMarqueeL 42s linear infinite;
+}
+
+.ap-wall-track.reverse {
+  animation: apMarqueeR 46s linear infinite;
+}
+
+.ap-wall-wrap:hover .ap-wall-track {
+  animation-play-state: paused;
+}
+
+@keyframes apMarqueeL {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes apMarqueeR {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+
+.ap-review {
+  width: 330px;
+  flex-shrink: 0;
+  border-radius: 22px;
+  padding: 20px;
+  background: var(--ap-bg-card);
+  border: 1px solid var(--ap-border);
+  backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: var(--ap-specular);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ap-review-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ap-review-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ap-review-av {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, #0071e3, #38bdf8);
+}
+
+.ap-review-user b {
+  display: block;
+  font-size: 14px;
+  color: var(--ap-ink);
+}
+
+.ap-review-user small {
+  display: block;
+  font-size: 12px;
+  color: var(--ap-ink-2);
+}
+
+.ap-review-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(48, 209, 88, 0.14);
+  color: var(--ap-green);
+  white-space: nowrap;
+}
+
+.ap-review p {
+  margin: 0;
+  font-size: 13.8px;
+  line-height: 1.55;
+  color: var(--ap-ink);
+}
+
+/* ==========================================================================
+   5. APPLE WALLET PHYSICAL SWIPE FLASHCARD STACK
+   ========================================================================== */
+.ap-swipe-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  user-select: none;
+}
+
+.ap-swipe-meta {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ap-ink-2, #94a3b8);
+}
+
+.ap-swipe-deck {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  height: 270px;
+  perspective: 1100px;
+  touch-action: pan-y;
+}
+
+.ap-swipe-ghost {
+  position: absolute;
+  inset: 0;
+  border-radius: 26px;
+  background: var(--ap-bg-card, rgba(28, 28, 30, 0.72));
+  border: 1px solid var(--ap-border, rgba(255, 255, 255, 0.12));
+  pointer-events: none;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+}
+
+.ap-swipe-ghost.g1 {
+  transform: translateY(10px) scale(0.955);
+  opacity: 0.7;
+  z-index: 1;
+}
+
+.ap-swipe-ghost.g2 {
+  transform: translateY(20px) scale(0.91);
+  opacity: 0.4;
+  z-index: 0;
+}
+
+.ap-swipe-card {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: 26px;
+  padding: 26px 24px;
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.94), rgba(15, 23, 42, 0.98));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 22px 50px rgba(0, 0, 0, 0.36);
+  color: #f5f5f7;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: grab;
+  will-change: transform;
+}
+
+[data-theme='light'] .ap-swipe-card {
+  background: linear-gradient(160deg, #ffffff, #f5f5f7);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: inset 0 1px 0 #ffffff, 0 20px 44px rgba(15, 23, 42, 0.12);
+  color: #1d1d1f;
+}
+
+.ap-swipe-card:active {
+  cursor: grabbing;
+}
+
+.ap-swipe-stamp {
+  position: absolute;
+  top: 18px;
+  padding: 5px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  border: 2px solid currentColor;
+  pointer-events: none;
+  transition: opacity 0.08s linear;
+}
+
+.ap-swipe-stamp.right {
+  left: 18px;
+  color: #30d158;
+  transform: rotate(-8deg);
+}
+
+.ap-swipe-stamp.left {
+  right: 18px;
+  color: #ff9f0a;
+  transform: rotate(8deg);
+}
+
+.ap-swipe-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.ap-swipe-content {
+  text-align: center;
+  font-size: clamp(16px, 2.2vw, 20px);
+  font-weight: 700;
+  line-height: 1.45;
+  padding: 6px 8px;
+  overflow-y: auto;
+  max-height: 150px;
+}
+
+.ap-swipe-hint {
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.ap-swipe-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ap-swipe-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.1);
+  color: inherit;
+  font: 700 13px/1 -apple-system, BlinkMacSystemFont, 'Be Vietnam Pro', sans-serif;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.ap-swipe-btn:hover {
+  transform: translateY(-1px);
+}
+
+.ap-swipe-btn.again {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.38);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.ap-swipe-btn.good {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.42);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.ap-swipe-feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(0, 113, 227, 0.12);
+  color: #2997ff;
+}
+
+.ap-swipe-feedback img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ap-wall-track,
+  .ap-wall-track.reverse {
+    animation: none !important;
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { AppleSwipeFlashcardStack } from './AppleShowcaseSections.jsx';
 import './elec-effects.css';
 
 /* ==========================================================================
@@ -686,6 +687,7 @@ export function OtpVerifySweep({ value = '' }) {
    ========================================================================== */
 const FX_TABS = [
   { id: 'pdf', label: 'Quét đề PDF & OCR' },
+  { id: 'swipe', label: 'Vuốt Flashcard' },
   { id: 'arc', label: 'Nạp điện Arc Charge' },
   { id: 'morph', label: 'Biến hình Elo & Beam' },
   { id: 'cta', label: 'Nút AI Hút Hạt' },
@@ -743,6 +745,7 @@ export function ElecFxShowcase({ onTryAi }) {
 
       <div className="efx-showcase-panel">
         {tab === 'pdf' && <PdfParseScanner />}
+        {tab === 'swipe' && <AppleSwipeFlashcardStack demoMode />}
         {tab === 'arc' && (
           <ArcChargeLoader
             autoLoop

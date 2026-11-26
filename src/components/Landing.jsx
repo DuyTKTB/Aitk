@@ -4,6 +4,12 @@ import AIMark from './AIMark.jsx';
 import SiteFooter from './SiteFooter.jsx';
 import { LOGO_GLIDE_TRANSITION, useElecIntro } from './ElecIntroLoader.jsx';
 import { AquariumThemeToggle, AiGlowButton, ElecFxShowcase } from './ElecEffectsKit.jsx';
+import {
+  AppleComparisonSection,
+  AppleToolHoverGrid,
+  ApplePricingSection,
+  AppleTestimonialsSection,
+} from './AppleShowcaseSections.jsx';
 import './landing-v3.css';
 import './landing-ocean.css';
 import './landing-class.css';
@@ -1201,8 +1207,10 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
         <Story />
         <Tools />
         <ElecFxShowcase onTryAi={() => { location.hash = 'ai'; }} />
+        <AppleComparisonSection />
         <Audience kit={KIT} />
         <Bento kit={KIT} />
+        <AppleToolHoverGrid />
         <ClassSection />
         <ExamFlow kit={KIT} />
 
@@ -1212,6 +1220,8 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
 
         <Beyond kit={KIT} />
         <Grades />
+        <AppleTestimonialsSection />
+        <ApplePricingSection />
         <Trust />
         <Faq />
 
