@@ -3,30 +3,46 @@
    7 signature interactive effects crafted for ELEC Science AI (Dark & Light)
    ========================================================================== */
 
-/* 1. AQUARIUM / LENS THEME TOGGLE */
+/* 1. ELEC MASCOT SIGNATURE THEME TOGGLE (Bé Elec Face — Proprietary Brand UI) */
 .efx-aqua-toggle {
   position: relative;
   display: inline-flex;
   align-items: center;
-  width: 52px;
-  height: 28px;
+  width: 58px;
+  height: 30px;
   padding: 2px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.34);
-  background: linear-gradient(180deg, #06142e 0%, #0b2447 58%, #073b4c 100%);
+  border: 1.5px solid rgba(96, 165, 250, 0.42);
+  background: linear-gradient(135deg, #060e26 0%, #0d1d47 55%, #132a63 100%);
   cursor: pointer;
   overflow: hidden;
   transition: background 0.45s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.35s ease,
     box-shadow 0.35s ease,
     transform 0.2s ease;
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.45), 0 1px 8px rgba(47, 107, 255, 0.2);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.55),
+    inset 0 -1px 3px rgba(56, 189, 248, 0.24),
+    0 2px 12px rgba(37, 99, 235, 0.28);
   flex-shrink: 0;
 }
 
+.efx-aqua-toggle::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 6px;
+  right: 6px;
+  height: 9px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0));
+  pointer-events: none;
+  z-index: 3;
+}
+
 .efx-aqua-toggle:hover {
-  border-color: rgba(96, 165, 250, 0.72);
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 14px rgba(56, 189, 248, 0.35);
+  border-color: rgba(125, 211, 252, 0.85);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.42),
+    0 0 18px rgba(56, 189, 248, 0.48);
 }
 
 .efx-aqua-toggle:active {
@@ -34,9 +50,11 @@
 }
 
 .efx-aqua-toggle.is-light {
-  background: linear-gradient(180deg, #38bdf8 0%, #7dd3fc 56%, #bae6fd 100%);
-  border-color: rgba(14, 165, 233, 0.45);
-  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.6), 0 2px 10px rgba(56, 189, 248, 0.28);
+  background: linear-gradient(135deg, #bae6fd 0%, #60a5fa 58%, #38bdf8 100%);
+  border-color: rgba(29, 79, 184, 0.38);
+  box-shadow: inset 0 2px 5px rgba(255, 255, 255, 0.68),
+    inset 0 -2px 5px rgba(29, 79, 184, 0.22),
+    0 2px 12px rgba(56, 189, 248, 0.36);
 }
 
 .efx-aqua-scene {
@@ -45,124 +63,98 @@
   pointer-events: none;
 }
 
-.efx-aqua-water {
+.efx-aqua-orbit {
   position: absolute;
-  left: -10%;
-  right: -10%;
-  bottom: -2px;
-  height: 11px;
-  border-radius: 45% 55% 0 0;
-  background: linear-gradient(180deg, rgba(34, 211, 238, 0.45), rgba(14, 116, 144, 0.75));
-  animation: efxWave 3.2s ease-in-out infinite;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.92;
 }
 
-.efx-aqua-toggle.is-light .efx-aqua-water {
-  background: linear-gradient(180deg, rgba(2, 132, 199, 0.34), rgba(14, 165, 233, 0.58));
+.efx-aqua-night-el {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.efx-aqua-toggle.is-light .efx-aqua-night-el {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+.efx-aqua-day-el {
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.efx-aqua-toggle.is-light .efx-aqua-day-el {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .efx-aqua-star {
   position: absolute;
-  width: 2px;
-  height: 2px;
+  width: 2.2px;
+  height: 2.2px;
   border-radius: 50%;
   background: #e0f2fe;
-  box-shadow: 0 0 4px #38bdf8;
-  opacity: 0.9;
+  box-shadow: 0 0 5px #38bdf8;
+  opacity: 0.95;
   transition: opacity 0.35s ease, transform 0.35s ease;
-  animation: efxTwinkle 2.4s ease-in-out infinite;
+  animation: efxTwinkle 2.2s ease-in-out infinite;
 }
 
-.efx-aqua-star.s1 { top: 5px; left: 10px; animation-delay: 0s; }
-.efx-aqua-star.s2 { top: 9px; left: 19px; animation-delay: 0.8s; }
-.efx-aqua-star.s3 { top: 6px; left: 26px; animation-delay: 1.5s; }
+.efx-aqua-star.s1 { top: 6px; left: 9px; animation-delay: 0s; }
+.efx-aqua-star.s2 { top: 18px; left: 15px; animation-delay: 0.7s; }
+.efx-aqua-star.s3 { top: 9px; left: 22px; width: 1.8px; height: 1.8px; animation-delay: 1.3s; }
 
 .efx-aqua-toggle.is-light .efx-aqua-star {
   opacity: 0;
-  transform: translateY(-4px) scale(0.4);
-}
-
-.efx-aqua-bubble {
-  position: absolute;
-  bottom: 3px;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: rgba(165, 243, 252, 0.9);
-  box-shadow: 0 0 5px rgba(34, 211, 238, 0.9);
-  animation: efxBubble 2.6s ease-in infinite;
-}
-
-.efx-aqua-bubble.b1 { left: 12px; animation-delay: 0.2s; }
-.efx-aqua-bubble.b2 { left: 23px; width: 2px; height: 2px; animation-delay: 1.1s; }
-
-.efx-aqua-cloud {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  width: 12px;
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  opacity: 0;
-  transform: translateX(6px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
-}
-
-.efx-aqua-cloud::after {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: 3px;
-  width: 6px;
-  height: 5px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.95);
-}
-
-.efx-aqua-toggle.is-light .efx-aqua-cloud {
-  opacity: 0.92;
-  transform: translateX(0);
+  transform: scale(0.3);
 }
 
 .efx-aqua-knob {
   position: relative;
   z-index: 2;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 35% 30%, #f8fafc 0%, #cbd5e1 65%, #94a3b8 100%);
-  box-shadow: 0 0 10px rgba(147, 197, 253, 0.75), inset 0 1px 2px #fff;
-  transform: translateX(24px);
-  transition: transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.35s ease, box-shadow 0.35s ease;
+  background: radial-gradient(circle at 32% 28%, #ffffff 0%, #e0f2fe 65%, #bfdbfe 100%);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.8),
+    0 2px 5px rgba(2, 6, 23, 0.45),
+    inset 0 1px 2px #fff;
+  transform: translateX(27px);
+  transition: transform 0.44s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.35s ease;
+}
+
+.efx-aqua-toggle:hover .efx-aqua-knob {
+  transform: translateX(27px) scale(1.07) rotate(4deg);
 }
 
 .efx-aqua-toggle.is-light .efx-aqua-knob {
   transform: translateX(0);
-  background: radial-gradient(circle at 35% 30%, #fef08a 0%, #facc15 58%, #f59e0b 100%);
-  box-shadow: 0 0 12px rgba(250, 204, 21, 0.95), inset 0 1px 2px #fff;
+  box-shadow: 0 0 13px rgba(250, 204, 21, 0.82),
+    0 2px 6px rgba(29, 79, 184, 0.32),
+    inset 0 1px 2px #fff;
+}
+
+.efx-aqua-toggle.is-light:hover .efx-aqua-knob {
+  transform: translateX(0) scale(1.07) rotate(-4deg);
 }
 
 .efx-aqua-knob svg {
-  width: 12px;
-  height: 12px;
-}
-
-@keyframes efxWave {
-  0%, 100% { transform: translateX(0) translateY(0); }
-  50% { transform: translateX(3px) translateY(-1.5px); }
+  width: 24px;
+  height: 24px;
+  overflow: visible;
 }
 
 @keyframes efxTwinkle {
   0%, 100% { opacity: 0.35; }
   50% { opacity: 1; }
-}
-
-@keyframes efxBubble {
-  0% { transform: translateY(0) scale(0.7); opacity: 0; }
-  30% { opacity: 0.95; }
-  100% { transform: translateY(-13px) scale(1.1); opacity: 0; }
 }
 
 /* 2. SPOTLIGHT NAV BEAM (glides seamlessly over DesktopNav center links) */

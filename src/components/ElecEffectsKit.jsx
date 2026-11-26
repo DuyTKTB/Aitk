@@ -1,11 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import './elec-effects.css';
 
 /* ==========================================================================
-   1. AQUARIUM / LENS THEME TOGGLE (Dark/Light switch)
+   1. ELEC MASCOT SIGNATURE THEME TOGGLE (Bé Elec Face — Proprietary Brand UI)
    ========================================================================== */
 export function AquariumThemeToggle({ theme = 'dark', onToggle, className = '' }) {
   const isLight = theme === 'light';
+  const uid = useId().replace(/:/g, '');
+  const headId = `etg-head-${uid}`;
+  const blueId = `etg-blue-${uid}`;
   return (
     <button
       type="button"
@@ -14,28 +17,79 @@ export function AquariumThemeToggle({ theme = 'dark', onToggle, className = '' }
       role="switch"
       aria-checked={!isLight}
       aria-label={isLight ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng'}
-      title={isLight ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng'}
+      title={isLight ? 'Bé Elec · Chuyển sang chế độ Tối' : 'Bé Elec · Chuyển sang chế độ Sáng'}
     >
+      {/* Nền cảnh quan khoa học độc quyền ELEC */}
       <span className="efx-aqua-scene" aria-hidden="true">
         <span className="efx-aqua-star s1" />
         <span className="efx-aqua-star s2" />
         <span className="efx-aqua-star s3" />
-        <span className="efx-aqua-cloud" />
-        <span className="efx-aqua-water" />
-        <span className="efx-aqua-bubble b1" />
-        <span className="efx-aqua-bubble b2" />
+        <svg className="efx-aqua-orbit" viewBox="0 0 58 30" fill="none">
+          {/* Cảnh ban đêm (bên trái): trăng khuyết xanh + quỹ đạo electron */}
+          <g className="efx-aqua-night-el">
+            <path d="M5 24 Q18 14 31 23" stroke="rgba(56,189,248,0.35)" strokeWidth="1.2" strokeDasharray="2 2" />
+            <path d="M18.5 16.5A4.8 4.8 0 0 1 12.2 10.2a4.8 4.8 0 1 0 6.3 6.3Z" fill="#fde68a" />
+          </g>
+          {/* Cảnh ban ngày (bên phải): quỹ đạo nguyên tử + tia sét ELEC vàng + mây */}
+          <g className="efx-aqua-day-el">
+            <ellipse cx="42" cy="15" rx="11" ry="4.5" transform="rotate(-18 42 15)" stroke="rgba(255,255,255,0.6)" strokeWidth="1.1" />
+            <path d="M43.5 8.5L39.8 14.8H42.6L41.4 20.5L46.4 13.5H43.4L43.5 8.5Z" fill="#fde047" stroke="#ca8a04" strokeWidth="0.6" strokeLinejoin="round" />
+            <circle cx="34" cy="21" r="2.2" fill="rgba(255,255,255,0.85)" />
+            <circle cx="36.5" cy="21.5" r="1.7" fill="rgba(255,255,255,0.85)" />
+          </g>
+        </svg>
       </span>
+
+      {/* Núm trượt: Khuôn mặt Bé Elec chính chủ */}
       <span className="efx-aqua-knob" aria-hidden="true">
-        {isLight ? (
-          <svg viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2.4" strokeLinecap="round">
-            <circle cx="12" cy="12" r="4.5" fill="#fef08a" />
-            <path d="M12 2.5v2M12 19.5v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2.5 12h2M19.5 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" fill="#1e3a8a" stroke="#0f172a" strokeWidth="1.6">
-            <path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10Z" />
-          </svg>
-        )}
+        <svg viewBox="0 0 40 40" fill="none">
+          <defs>
+            <linearGradient id={headId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="100%" stopColor="#dbeafe" />
+            </linearGradient>
+            <linearGradient id={blueId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3b9bff" />
+              <stop offset="100%" stopColor="#0a6ae6" />
+            </linearGradient>
+          </defs>
+          {/* 3 chỏm tóc xanh đặc trưng Bé Elec */}
+          <ellipse cx="14.5" cy="7.5" rx="3.3" ry="5.2" transform="rotate(-26 14.5 7.5)" fill={`url(#${blueId})`} stroke="#1d4fb8" strokeWidth="1.2" />
+          <ellipse cx="25.5" cy="7.8" rx="3.1" ry="4.9" transform="rotate(28 25.5 7.8)" fill={`url(#${blueId})`} stroke="#1d4fb8" strokeWidth="1.2" />
+          <ellipse cx="20" cy="5.8" rx="3.5" ry="5.6" fill={`url(#${blueId})`} stroke="#1d4fb8" strokeWidth="1.2" />
+
+          {/* Khuôn mặt tròn trắng Bé Elec */}
+          <ellipse cx="20" cy="22" rx="14.5" ry="13.2" fill={`url(#${headId})`} stroke="#1d4fb8" strokeWidth="1.4" />
+
+          {/* Băng đô xanh ELEC trên trán + điểm sét vàng nhỏ */}
+          <path d="M6.8 17.2 Q20 13.8 33.2 17.2 L33.6 20.6 Q20 17.5 6.4 20.6 Z" fill={`url(#${blueId})`} stroke="#1d4fb8" strokeWidth="1" />
+          <path d="M20.6 15.6L18.8 18.2H20.1L19.6 20.1L21.6 17.4H20.3L20.6 15.6Z" fill="#fde047" />
+
+          {/* Má hồng */}
+          <ellipse cx="11.2" cy="27.2" rx="2.7" ry="1.6" fill="#ffa8bd" opacity="0.82" />
+          <ellipse cx="28.8" cy="27.2" rx="2.7" ry="1.6" fill="#ffa8bd" opacity="0.82" />
+
+          {/* Mắt & Miệng đổi biểu cảm theo Sáng / Tối */}
+          {isLight ? (
+            <>
+              {/* Ban ngày: Mắt xanh long lanh năng động */}
+              <ellipse cx="15" cy="24.5" rx="2.5" ry="2.9" fill="#0a5fd6" />
+              <circle cx="14.2" cy="23.4" r="0.95" fill="#fff" />
+              <ellipse cx="25" cy="24.5" rx="2.5" ry="2.9" fill="#0a5fd6" />
+              <circle cx="24.2" cy="23.4" r="0.95" fill="#fff" />
+              {/* Miệng cười tươi */}
+              <path d="M17.4 28.4 Q20 31.4 22.6 28.4 Z" fill="#b02a47" stroke="#7d1d33" strokeWidth="0.7" />
+            </>
+          ) : (
+            <>
+              {/* Ban đêm: Mắt cong thư giãn / chế độ đêm */}
+              <path d="M12.6 25.2 Q15 22.5 17.4 25.2" stroke="#13306b" strokeWidth="1.7" strokeLinecap="round" />
+              <path d="M22.6 25.2 Q25 22.5 27.4 25.2" stroke="#13306b" strokeWidth="1.7" strokeLinecap="round" />
+              {/* Nụ cười nhẹ dịu mắt */}
+              <path d="M18.2 28.7 Q20 30.2 21.8 28.7" stroke="#7d1d33" strokeWidth="1.3" strokeLinecap="round" />
+            </>
+          )}
+        </svg>
       </span>
     </button>
   );
