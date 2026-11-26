@@ -585,12 +585,13 @@ export function EnergyMorphWidget({ masteryPct = 86, elo = 1680 }) {
 }
 
 /* ==========================================================================
-   7. PIP LOGIN ROBOT + OTP VERIFY SWEEP
+   7. ELEC LOGIN MASCOT (Bé Elec chính chủ) + OTP VERIFY SWEEP
    ========================================================================== */
 export function PipLoginMascot({ email = '', focusField = 'idle', showPass = false, hasError = false, isSuccess = false }) {
   const emailLen = Math.min(email.length, 28);
-  const lookX = focusField === 'email' ? -6 + (emailLen / 28) * 12 : 0;
-  const lookY = focusField === 'email' ? 3 : 0;
+  const lookX = focusField === 'email' ? -18 + (emailLen / 28) * 36 : focusField === 'otp' ? 0 : 0;
+  const lookY = focusField === 'email' || focusField === 'otp' ? 12 : 0;
+  const headTilt = focusField === 'email' ? -5 + (emailLen / 28) * 10 : hasError ? -4 : 0;
   const badEmail = focusField === 'email' && email.length > 3 && !email.includes('@');
   const coverEyes = focusField === 'password' && !showPass;
   const peekEye = focusField === 'password' && showPass;
@@ -600,64 +601,153 @@ export function PipLoginMascot({ email = '', focusField = 'idle', showPass = fal
     : hasError
       ? 'Ối, kiểm tra lại thông tin nhé!'
       : coverEyes
-        ? 'Pip đang che mắt bảo mật mật khẩu…'
+        ? 'Bé Elec đang bịt mắt bảo mật mật khẩu…'
         : peekEye
-          ? 'Pip hé mắt một xíu thôi!'
+          ? 'Bé Elec hé 1 mắt một xíu thôi!'
           : badEmail
-            ? 'Hình như thiếu ký tự @ trong email?'
+            ? 'Hình như thiếu ký tự @ trong email nè?'
             : focusField === 'otp'
-              ? 'Nhập đủ 6 chữ số OTP để quét xác thực'
-              : 'Pip trợ lý đăng nhập ELEC AI';
+              ? 'Nhập đủ 6 chữ số OTP để xác thực nhé!'
+              : 'Bé Elec chào mừng bạn đến ELEC AI';
+
+  const ink = '#1d4fb8';
 
   return (
     <div className="efx-pip-wrap" aria-hidden="true">
-      <svg className="efx-pip-svg" viewBox="0 0 120 82">
+      <svg className="efx-pip-svg" viewBox="80 10 480 460">
         <defs>
-          <linearGradient id="pipBody" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1e293b" />
-            <stop offset="100%" stopColor="#0f172a" />
+          <radialGradient id="efx-ec-iris" cx="50%" cy="30%" r="80%">
+            <stop offset="0%" stopColor="#6cb4ff" />
+            <stop offset="100%" stopColor="#0a5fd6" />
+          </radialGradient>
+          <linearGradient id="efx-ec-head" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" />
+            <stop offset="70%" stopColor="#f3f8ff" />
+            <stop offset="100%" stopColor="#d9e9ff" />
           </linearGradient>
+          <linearGradient id="efx-ec-blue" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#3b9bff" />
+            <stop offset="100%" stopColor="#0a6ae6" />
+          </linearGradient>
+          <linearGradient id="efx-ec-hair" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2f86f5" />
+            <stop offset="100%" stopColor="#0d4fc9" />
+          </linearGradient>
+          <clipPath id="efx-ec-hc">
+            <ellipse cx="320" cy="270" rx="215" ry="185" />
+          </clipPath>
+          <clipPath id="efx-ec-mc">
+            <path d="M290,346 Q320,338 350,346 Q348,390 320,390 Q292,390 290,346Z" />
+          </clipPath>
         </defs>
-        {/* Antenna */}
-        <line x1="60" y1="12" x2="60" y2="22" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" />
-        <circle cx="60" cy="9" r="4" fill={isSuccess ? '#34d399' : hasError ? '#f43f5e' : '#38bdf8'} />
-        {/* Head */}
-        <rect x="20" y="20" width="80" height="52" rx="18" fill="url(#pipBody)" stroke="rgba(148,163,184,0.38)" strokeWidth="2" />
-        {/* Visor */}
-        <rect x="29" y="30" width="62" height="30" rx="11" fill="#020617" />
 
-        {/* Eyes */}
-        {isSuccess ? (
-          <g fill="#34d399" transform="translate(0, 1)">
-            <path d="M44 41c-2.5-3-7-1-7 2.5 0 3 7 6.5 7 6.5s7-3.5 7-6.5c0-3.5-4.5-5.5-7-2.5Z" />
-            <path d="M76 41c-2.5-3-7-1-7 2.5 0 3 7 6.5 7 6.5s7-3.5 7-6.5c0-3.5-4.5-5.5-7-2.5Z" />
-          </g>
-        ) : hasError || badEmail ? (
-          <g stroke={hasError ? '#fb7185' : '#fbbf24'} strokeWidth="2.8" strokeLinecap="round">
-            <path d="M40 40l8 8M48 40l-8 8" />
-            <path d="M72 40l8 8M80 40l-8 8" />
-          </g>
-        ) : (
-          <g transform={`translate(${lookX.toFixed(1)}, ${lookY.toFixed(1)})`} style={{ transition: 'transform 0.16s ease-out' }}>
-            <circle cx="45" cy="45" r="5.2" fill="#38bdf8" />
-            <circle cx="43.5" cy="43.5" r="1.6" fill="#e0f2fe" />
-            <circle cx="75" cy="45" r="5.2" fill="#38bdf8" />
-            <circle cx="73.5" cy="43.5" r="1.6" fill="#e0f2fe" />
-          </g>
-        )}
+        <g className="efx-elec-bob" strokeLinejoin="round" strokeLinecap="round">
+          {/* Head group with subtle tilt */}
+          <g style={{ transformOrigin: '320px 380px', transform: `rotate(${headTilt.toFixed(1)}deg)`, transition: 'transform 0.2s ease-out' }}>
+            {/* Main white head */}
+            <ellipse cx="320" cy="270" rx="215" ry="185" fill="url(#efx-ec-head)" stroke={ink} strokeWidth="6" />
 
-        {/* Hands covering eyes when typing password */}
-        <g style={{ transition: 'transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)', transform: coverEyes ? 'translateY(-24px)' : peekEye ? 'translateY(-14px)' : 'translateY(0)' }}>
-          <rect x="26" y="61" width="26" height="16" rx="8" fill="#334155" stroke="#64748b" strokeWidth="1.6" />
-        </g>
-        <g style={{ transition: 'transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)', transform: coverEyes ? 'translateY(-24px)' : peekEye ? 'translateY(-24px)' : 'translateY(0)' }}>
-          <rect x="68" y="61" width="26" height="16" rx="8" fill="#334155" stroke="#64748b" strokeWidth="1.6" />
+            {/* 3 iconic blue hair tufts */}
+            <g fill="url(#efx-ec-hair)" stroke={ink} strokeWidth="5.5">
+              <ellipse cx="250" cy="96" rx="42" ry="64" transform="rotate(-28 250 96)" />
+              <ellipse cx="400" cy="100" rx="40" ry="60" transform="rotate(30 400 100)" />
+              <ellipse cx="324" cy="70" rx="44" ry="70" transform="rotate(4 324 70)" />
+              <path d="M168,200 Q180,120 320,112 Q460,120 472,200 Z" />
+            </g>
+            <ellipse cx="306" cy="52" rx="10" ry="22" transform="rotate(8 306 52)" fill="#fff" opacity=".35" />
+
+            {/* Iconic ELEC AI blue headband */}
+            <g clipPath="url(#efx-ec-hc)">
+              <path d="M90,176 Q320,146 550,172 L552,238 Q320,214 88,244 Z" fill="url(#efx-ec-blue)" stroke={ink} strokeWidth="5.5" />
+              <path d="M90,166 Q320,136 550,162 L550,176 Q320,150 90,180Z" fill="#fff" opacity=".18" />
+            </g>
+            <text
+              x="320"
+              y="219"
+              textAnchor="middle"
+              transform="rotate(-1.2 320 205)"
+              fontFamily="'Be Vietnam Pro', Poppins, Arial, sans-serif"
+              fontWeight="800"
+              fontSize="40"
+              fill="#fff"
+              letterSpacing="2"
+            >
+              ELEC AI
+            </text>
+
+            {/* Rosy cheeks */}
+            <ellipse cx="186" cy="354" rx="34" ry="21" fill="#ffa8bd" opacity={coverEyes || isSuccess ? '.92' : '.72'} />
+            <ellipse cx="454" cy="354" rx="34" ry="21" fill="#ffa8bd" opacity={coverEyes || isSuccess ? '.92' : '.72'} />
+
+            {/* Eyes */}
+            {isSuccess ? (
+              <>
+                <path d="M218,322 Q250,282 282,322" fill="none" stroke="#13306b" strokeWidth="11" />
+                <path d="M358,322 Q390,282 422,322" fill="none" stroke="#13306b" strokeWidth="11" />
+                <path d="M126,118 L135,140 157,149 135,158 126,180 117,158 95,149 117,140Z" fill="#ffd45e" />
+                <path d="M512,96 L519,112 535,119 519,126 512,142 505,126 489,119 505,112Z" fill="#34d399" />
+              </>
+            ) : hasError ? (
+              <g stroke="#13306b" strokeWidth="10">
+                <path d="M226,294 L274,316 L226,336" fill="none" />
+                <path d="M414,294 L366,316 L414,336" fill="none" />
+                {/* Cute sweat drop */}
+                <path d="M482,252 Q498,278 482,292 Q466,278 482,252Z" fill="#7dd3fc" stroke={ink} strokeWidth="4" />
+              </g>
+            ) : (
+              <g style={{ transform: `translate(${lookX.toFixed(1)}px, ${lookY.toFixed(1)}px)`, transition: 'transform 0.16s ease-out' }}>
+                <g>
+                  <ellipse cx="250" cy="312" rx="34" ry="39" fill="url(#efx-ec-iris)" />
+                  <ellipse cx="253" cy="318" rx="19" ry="23" fill="#13306b" />
+                  <circle cx="241" cy="298" r="11" fill="#fff" />
+                  <circle cx="262" cy="330" r="5.5" fill="#fff" />
+                  <circle cx="264" cy="304" r="3" fill="#fff" opacity=".8" />
+                </g>
+                <g>
+                  <ellipse cx="390" cy="312" rx="34" ry="39" fill="url(#efx-ec-iris)" />
+                  <ellipse cx="393" cy="318" rx="19" ry="23" fill="#13306b" />
+                  <circle cx="381" cy="298" r="11" fill="#fff" />
+                  <circle cx="402" cy="330" r="5.5" fill="#fff" />
+                  <circle cx="404" cy="304" r="3" fill="#fff" opacity=".8" />
+                </g>
+              </g>
+            )}
+
+            {/* Mouth */}
+            {badEmail || hasError ? (
+              <g>
+                <ellipse cx="320" cy="364" rx="13" ry="15" fill="#b02a47" />
+                <ellipse cx="320" cy="371" rx="7" ry="6" fill="#ff8aa0" />
+              </g>
+            ) : (
+              <g>
+                <path d="M290,346 Q320,338 350,346 Q348,390 320,390 Q292,390 290,346Z" fill="#b02a47" />
+                <g clipPath="url(#efx-ec-mc)">
+                  <ellipse cx="320" cy="392" rx="22" ry="15" fill="#ff8aa0" />
+                </g>
+                <path d="M290,346 Q320,338 350,346 Q348,390 320,390 Q292,390 290,346Z" fill="none" stroke="#7d1d33" strokeWidth="4.5" />
+              </g>
+            )}
+          </g>
+
+          {/* Iconic white gloved hands of Bé Elec — lift smoothly to cover eyes on password */}
+          <g style={{ transition: 'transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1)', transform: coverEyes ? 'translate(58px, -112px) rotate(12deg)' : peekEye ? 'translate(38px, -46px) rotate(4deg)' : 'translate(0px, 0px)' }}>
+            <circle cx="192" cy="422" r="42" fill="#fff" stroke={ink} strokeWidth="6" />
+            <ellipse cx="228" cy="404" rx="14" ry="20" transform="rotate(-24 228 404)" fill="#fff" stroke={ink} strokeWidth="5.5" />
+            <circle cx="192" cy="422" r="36" fill="#fff" />
+          </g>
+          <g style={{ transition: 'transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1)', transform: coverEyes ? 'translate(-58px, -112px) rotate(-12deg)' : peekEye ? 'translate(-58px, -112px) rotate(-12deg)' : 'translate(0px, 0px)' }}>
+            <circle cx="448" cy="422" r="42" fill="#fff" stroke={ink} strokeWidth="6" />
+            <ellipse cx="412" cy="404" rx="14" ry="20" transform="rotate(24 412 404)" fill="#fff" stroke={ink} strokeWidth="5.5" />
+            <circle cx="448" cy="422" r="36" fill="#fff" />
+          </g>
         </g>
       </svg>
       <span className="efx-pip-status">{statusText}</span>
     </div>
   );
 }
+export const ElecLoginMascot = PipLoginMascot;
 
 export function OtpVerifySweep({ value = '' }) {
   const digits = String(value || '').replace(/\D/g, '').slice(0, 6);

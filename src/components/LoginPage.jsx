@@ -326,6 +326,8 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
                     type={showPass ? 'text' : 'password'}
                     value={newPass}
                     onChange={(e) => setNewPass(e.target.value)}
+                    onFocus={() => setFocusField('password')}
+                    onBlur={() => setFocusField('idle')}
                     placeholder="Mật khẩu mới (≥ 8 ký tự)"
                     autoComplete="new-password"
                     minLength={8}
@@ -347,6 +349,8 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
                     type={showPass ? 'text' : 'password'}
                     value={confirmNewPass}
                     onChange={(e) => setConfirmNewPass(e.target.value)}
+                    onFocus={() => setFocusField('password')}
+                    onBlur={() => setFocusField('idle')}
                     placeholder="Nhập lại mật khẩu mới"
                     autoComplete="new-password"
                     minLength={8}
