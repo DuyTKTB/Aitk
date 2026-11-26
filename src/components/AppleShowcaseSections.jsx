@@ -267,7 +267,7 @@ export function ApplePricingSection() {
         {
           name: 'Giáo viên Pro Studio',
           sub: 'Tự động hóa 90% công việc soạn đề & chấm thi',
-          price: 'Teacher Pro',
+          price: 'Pro GV',
           unit: '· toàn bộ công cụ',
           pill: 'Khuyên dùng',
           cta: 'Kích hoạt Teacher Pro',

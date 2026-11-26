@@ -462,14 +462,16 @@
 .ap-price-val {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 6px;
   font-variant-numeric: tabular-nums;
 }
 
 .ap-price-val b {
-  font-size: 36px;
+  font-size: clamp(28px, 2.5vw, 34px);
   font-weight: 800;
   letter-spacing: -0.035em;
+  white-space: nowrap;
 }
 
 .ap-price-val span {
@@ -660,7 +662,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   font-size: 13px;
   color: var(--ap-ink-2, #94a3b8);
 }
@@ -817,13 +820,15 @@
 .ap-swipe-feedback {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: 7px;
+  font-size: 12.5px;
   font-weight: 700;
-  padding: 5px 14px;
+  padding: 5px 12px;
   border-radius: 999px;
   background: rgba(0, 113, 227, 0.12);
   color: #2997ff;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ap-swipe-feedback img {

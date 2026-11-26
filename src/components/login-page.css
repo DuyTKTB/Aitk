@@ -277,6 +277,12 @@
   height: 100%;
 }
 .lg-field input::placeholder { color: var(--lg-mut); opacity: .85; }
+.lg-field input:focus,
+.lg-field input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
 
 .lg-eye {
   display: grid;
