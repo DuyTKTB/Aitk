@@ -17,6 +17,14 @@ import { useToast } from '../../ui/index.jsx';
 import { getClassesByStudent, getClassesByTeacher } from '../../lib/classroom.js';
 import { listenClassChat, sendClassMessage } from '../../lib/social.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
+import { isAdmin } from '../../lib/isAdmin.js';
+import {
+  hasEveryoneMention,
+  MENTION_SPLIT_RE,
+  checkEveryoneCooldown,
+  markEveryoneCooldown,
+  broadcastEveryoneMention,
+} from '../../lib/mentionPush.js';
 import StudentAvatar from '../StudentAvatar.jsx';
 import './social.css';
 
@@ -60,7 +68,9 @@ export default function ClassChat({ onOpenProfile }) {
   const [reacting, setReacting] = useState(null); // msgId showing picker
   const [liveClassDoc, setLiveClassDoc] = useState(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState(null); // null | string
   const listRef = useRef(null);
+  const inputRef = useRef(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -130,15 +140,62 @@ export default function ClassChat({ onOpenProfile }) {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
   }, [msgs.length, classId]);
 
+  const handleTextChange = (val) => {
+    setText(val);
+    const match = val.match(/(?:^|\s)@([^\s@]{0,18})$/);
+    setMentionQuery(match ? match[1].toLowerCase() : null);
+  };
+
+  const insertClassMention = (label) => {
+    setText((prev) => {
+      const cleaned = prev.replace(/@[^\s@]*$/, '');
+      const sep = cleaned && !/\s$/.test(cleaned) ? ' ' : '';
+      return `${cleaned}${sep}@${label} `.slice(0, 500);
+    });
+    setMentionQuery(null);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
   const send = (e) => {
     e.preventDefault();
     const t = text.trim();
     if (!t) return;
+    const isMentionAll = hasEveryoneMention(t);
+    const currentCls = liveClassDoc || classes?.find((c) => c.id === classId);
+    const canBypass = isAdmin(user) || currentCls?.teacherId === user?.uid;
+    if (isMentionAll) {
+      const cd = checkEveryoneCooldown(user?.uid, `class_${classId}`, canBypass);
+      if (!cd.ok) {
+        toast(`Đợi ${cd.waitSec}s nữa trước khi nhắc @mọi người trong lớp nhé.`);
+        return;
+      }
+      markEveryoneCooldown(user?.uid, `class_${classId}`);
+      broadcastEveryoneMention({
+        channel: 'class_chat',
+        channelName: currentCls?.name || 'Lớp học ELEC',
+        classId,
+        authorUid: user?.uid,
+        authorName: user?.displayName || 'Thành viên lớp',
+        authorPhoto: user?.photoURL || '',
+        text: t,
+      }).catch(() => {});
+      toast('Đã gửi tin & thông báo đẩy tới @mọi người trong lớp!');
+    }
     setText('');
+    setMentionQuery(null);
     sendClassMessage(classId, user, t);
   };
 
   const onKey = (e) => {
+    if (mentionQuery !== null && (e.key === 'Tab' || e.key === 'Enter')) {
+      e.preventDefault();
+      insertClassMention('mọi người');
+      return;
+    }
+    if (mentionQuery !== null && e.key === 'Escape') {
+      setMentionQuery(null);
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault(); send(e);
     }
@@ -332,7 +389,19 @@ export default function ClassChat({ onOpenProfile }) {
                   )}
                   {!head && <span style={{ width: 28, flexShrink: 0 }} />}
                   <div className="sw-bubble" style={{ position: 'relative' }}>
-                    <span>{m.text}</span>
+                    <span>
+                      {String(m.text || '').split(MENTION_SPLIT_RE).map((seg, sIdx) => {
+                        if (MENTION_SPLIT_RE.test(seg)) {
+                          MENTION_SPLIT_RE.lastIndex = 0;
+                          return (
+                            <span key={sIdx} className="elec-mention-pill">
+                              {seg}
+                            </span>
+                          );
+                        }
+                        return seg;
+                      })}
+                    </span>
                     <small>{fmtTime(m.createdAt)}</small>
                   </div>
                 </div>
@@ -342,24 +411,74 @@ export default function ClassChat({ onOpenProfile }) {
         })}
       </div>
 
-      {/* Compose */}
-      <form className="sw-form" onSubmit={send}>
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={onKey}
-          placeholder="Nhắn cho cả lớp…"
-          maxLength={500}
-        />
-        <button
-          type="submit"
-          className="sw-send"
-          disabled={!text.trim()}
-          aria-label="Gửi"
-        >
-          <Svg d={ICONS.send} size={15} />
-        </button>
-      </form>
+      {/* Compose + @mọi người mention popup */}
+      <div style={{ position: 'relative' }}>
+        {mentionQuery !== null && (
+          <div className="elec-mention-pop is-above" role="listbox" aria-label="Nhắc thành viên lớp">
+            <button
+              type="button"
+              className="elec-mention-opt"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                insertClassMention('mọi người');
+              }}
+            >
+              <span className="elec-mention-ico">@</span>
+              <span className="elec-mention-copy">
+                <b>@mọi người</b>
+                <small>Gửi thông báo đẩy tới tất cả thành viên lớp {targetClass?.name || ''}</small>
+              </span>
+            </button>
+            {allMembers
+              .filter((m) => m?.id !== user?.uid && (!mentionQuery || String(m?.name || '').toLowerCase().includes(mentionQuery)))
+              .slice(0, 4)
+              .map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className="elec-mention-opt"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    insertClassMention(m.name || 'bạn');
+                  }}
+                >
+                  <StudentAvatar uid={m.id} name={m.name} size={24} />
+                  <span className="elec-mention-copy">
+                    <b>@{m.name || 'Thành viên'}</b>
+                    <small>Nhắc thành viên trong lớp</small>
+                  </span>
+                </button>
+              ))}
+          </div>
+        )}
+        <form className="sw-form" onSubmit={send}>
+          <button
+            type="button"
+            className="sw-mention-trigger"
+            onClick={() => insertClassMention('mọi người')}
+            title="Nhắc @mọi người trong lớp (Thông báo đẩy)"
+            aria-label="Nhắc mọi người"
+          >
+            @
+          </button>
+          <input
+            ref={inputRef}
+            value={text}
+            onChange={(e) => handleTextChange(e.target.value)}
+            onKeyDown={onKey}
+            placeholder="Nhắn cho cả lớp… (gõ @mọi người để báo đẩy)"
+            maxLength={500}
+          />
+          <button
+            type="submit"
+            className="sw-send"
+            disabled={!text.trim()}
+            aria-label="Gửi"
+          >
+            <Svg d={ICONS.send} size={15} />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

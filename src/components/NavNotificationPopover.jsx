@@ -15,6 +15,12 @@ import { useLiveStreak } from '../hooks.js';
 import { subscribeNotices, markNoticeRead, markAllNoticesRead } from '../lib/notices.js';
 import { noticeSummary } from '../lib/noticesCore.js';
 import { subscribeCommunityFeed } from '../lib/socialWall.js';
+import {
+  getPushPermission,
+  requestPushPermission,
+  fireElecPushNotification,
+  subscribeEveryoneMentions,
+} from '../lib/mentionPush.js';
 import { getTodayPendingTasks } from '../lib/weeklyPlanService.js';
 import '../styles/nav-notifications.css';
 
@@ -98,6 +104,9 @@ export default function NavNotificationPopover({ compact = false }) {
   const [liveStudiers, setLiveStudiers] = useState([]);
   const [latestStudyInvite, setLatestStudyInvite] = useState(null);
   const [communityNotifs, setCommunityNotifs] = useState([]);
+  const [mentionAlerts, setMentionAlerts] = useState([]);
+  const [pushPerm, setPushPerm] = useState(() => getPushPermission());
+  const [enablingPush, setEnablingPush] = useState(false);
   const [pendingTasks, setPendingTasks] = useState([]);
 
   const todayKey = getTodayKeyLocal();
@@ -175,6 +184,35 @@ export default function NavNotificationPopover({ compact = false }) {
     return () => unsub?.();
   }, [user?.uid]);
 
+  // 2b. Lắng nghe trực tiếp luồng @mọi người thời gian thực (tự kích hoạt Thông báo đẩy OS + Banner)
+  useEffect(() => {
+    const unsub = subscribeEveryoneMentions(user?.uid || null, (list) => {
+      setMentionAlerts(Array.isArray(list) ? list : []);
+    });
+    return () => unsub?.();
+  }, [user?.uid]);
+
+  const handleEnablePush = async () => {
+    if (enablingPush) return;
+    setEnablingPush(true);
+    try {
+      const next = await requestPushPermission();
+      setPushPerm(next);
+      if (next === 'granted') {
+        fireElecPushNotification({
+          id: `push_enabled_${Date.now()}`,
+          title: 'Đã bật Thông báo đẩy ELEC AI!',
+          body: 'Khi có ai nhắc @mọi người hoặc có thông báo mới, Bé Elec sẽ gửi thông báo đẩy tức thì cho bạn.',
+          tag: 'elec-push-welcome',
+          channel: 'community',
+          force: true,
+        });
+      }
+    } finally {
+      setEnablingPush(false);
+    }
+  };
+
   // 3. Đồng bộ nhiệm vụ hôm nay từ Kế hoạch tuần
   useEffect(() => {
     const refreshTasks = () => {
@@ -193,6 +231,29 @@ export default function NavNotificationPopover({ compact = false }) {
   const items = useMemo(() => {
     const list = [];
     const readSet = new Set(readIds);
+
+    // A0. Thông báo nhắc @mọi người trực tiếp (Cộng đồng / Chat Cộng đồng / Chat Lớp)
+    mentionAlerts.slice(0, 10).forEach((m) => {
+      const id = `mention_${m.id}`;
+      const isClass = m.channel === 'class_chat';
+      list.push({
+        id,
+        category: 'community',
+        icon: 'study',
+        tone: 'orange',
+        tag: isClass ? '@MỌI NGƯỜI · LỚP' : '@MỌI NGƯỜI',
+        title: `${m.authorName || 'Thành viên ELEC'} đã nhắc @mọi người`,
+        body: m.text,
+        time: fmtRelTime(m.at),
+        unread: m.authorUid !== user?.uid && !readSet.has(id),
+        action: () =>
+          window.dispatchEvent(
+            new CustomEvent('elec-open-community-chat', {
+              detail: { tab: isClass ? 'class' : m.channel === 'feed' ? 'feed' : 'community' },
+            })
+          ),
+      });
+    });
 
     // A. Thông báo toàn hệ thống từ Admin (Settings)
     const adminText = String(settings?.announcementText || '').trim();
@@ -370,7 +431,7 @@ export default function NavNotificationPopover({ compact = false }) {
     });
 
     return list;
-  }, [settings, dbNotices, streakCount, hasStreakToday, pendingTasks, liveStudiers, latestStudyInvite, communityNotifs, readIds, todayKey]);
+  }, [settings, dbNotices, streakCount, hasStreakToday, pendingTasks, liveStudiers, latestStudyInvite, communityNotifs, mentionAlerts, readIds, todayKey, user?.uid]);
 
   const totalUnread = useMemo(() => items.filter((i) => i.unread).length, [items]);
 
@@ -448,6 +509,33 @@ export default function NavNotificationPopover({ compact = false }) {
               </button>
             )}
           </div>
+
+          {pushPerm !== 'unsupported' && (
+            <div className={`enotif-push-bar ${pushPerm === 'granted' ? 'is-on' : ''}`}>
+              <div className="enotif-push-copy">
+                <b>{pushPerm === 'granted' ? 'Thông báo đẩy đang bật' : 'Bật thông báo đẩy @mọi người'}</b>
+                <span>
+                  {pushPerm === 'granted'
+                    ? 'Tự động báo trên máy khi có người nhắc @mọi người.'
+                    : pushPerm === 'denied'
+                      ? 'Trình duyệt đang chặn thông báo — hãy bật lại ở biểu tượng ổ khóa.'
+                      : 'Nhận thông báo đẩy tức thì khi có @mọi người, tin lớp & học chung.'}
+                </span>
+              </div>
+              {pushPerm === 'default' ? (
+                <button
+                  type="button"
+                  className="enotif-push-btn"
+                  onClick={handleEnablePush}
+                  disabled={enablingPush}
+                >
+                  {enablingPush ? 'Đang bật…' : 'Bật đẩy'}
+                </button>
+              ) : pushPerm === 'granted' ? (
+                <span className="enotif-push-status">Đang bật</span>
+              ) : null}
+            </div>
+          )}
 
           <div className="enotif-tabs" role="tablist">
             {[

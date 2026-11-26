@@ -3,7 +3,7 @@
    - Điều hướng: mạng trước, rớt thì dùng bản đã lưu, cuối cùng /offline.html
    - File tĩnh cùng origin: trả bản cache ngay, cập nhật nền (stale-while-revalidate)
    - /api/* và mọi request không phải GET: KHÔNG đụng (chat ELECAI, phản hồi, đăng nhập) */
-const VERSION = 'v6';
+const VERSION = 'v7';
 const SHELL = `ELECAI-shell-${VERSION}`;
 const ASSETS = `ELECAI-assets-${VERSION}`;
 const PRECACHE = ['/', '/offline.html', '/manifest.json', '/favicon.ico', '/img/logo.png'];
@@ -56,7 +56,12 @@ self.addEventListener('fetch', (e) => {
   ) return;
 
   if (req.mode === 'navigate') {
-    if (STATIC_INFO_PATHS.has(url.pathname)) {
+    if (
+      STATIC_INFO_PATHS.has(url.pathname) ||
+      url.pathname === '/cong-dong' ||
+      url.pathname.startsWith('/cong-dong/') ||
+      url.pathname.startsWith('/chu-de/')
+    ) {
       e.respondWith(fetch(req).catch(async () => (await caches.match(req)) || (await caches.match('/offline.html'))));
       return;
     }
@@ -83,4 +88,26 @@ self.addEventListener('fetch', (e) => {
       })
     );
   }
+});
+
+/* Khi người dùng bấm vào Thông báo đẩy (Push Notification / @mọi người) */
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const targetUrl = (e.notification?.data && e.notification.data.url) || '/#home';
+  const targetTab = (e.notification?.data && e.notification.data.channel) || 'community';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.focus();
+          client.postMessage({ type: 'OPEN_COMMUNITY', tab: targetTab });
+          return;
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+      return undefined;
+    })
+  );
 });

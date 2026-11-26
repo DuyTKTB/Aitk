@@ -33,6 +33,13 @@ import {
   adminToggleHidePost,
   saveStudyTogetherHandoff,
 } from '../../lib/socialWall.js';
+import {
+  hasEveryoneMention,
+  MENTION_SPLIT_RE,
+  checkEveryoneCooldown,
+  markEveryoneCooldown,
+  broadcastEveryoneMention,
+} from '../../lib/mentionPush.js';
 import VerifiedBadge from '../VerifiedBadge.jsx';
 import StudentAvatar from '../StudentAvatar.jsx';
 import ProfileCard from './ProfileCard.jsx';
@@ -95,6 +102,10 @@ function ThIcon({ name, size = 18, filled = false, sw = 1.8 }) {
       return <svg {...props}><circle cx="12" cy="12" r="9" /><path d="M3.6 9h16.8M3.6 15h16.8M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18" /></svg>;
     case 'shield':
       return <svg {...props}><path d="M12 3l7 3v5c0 5-3.2 8.8-7 10-3.8-1.2-7-5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></svg>;
+    case 'bell':
+      return <svg {...props}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>;
+    case 'at':
+      return <svg {...props}><circle cx="12" cy="12" r="4" /><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" /></svg>;
     default:
       return null;
   }
@@ -106,24 +117,35 @@ function ReactionSvg({ type, size = 16, filled = true }) {
 }
 
 function RichThreadText({ text = '', onClickTag }) {
-  const parts = String(text || '').split(/(#[A-Za-z0-9_\u00C0-\u1EF9]+)/g);
-  return parts.map((part, idx) =>
-    part.startsWith('#') && part.length > 1 ? (
-      <button
-        key={idx}
-        type="button"
-        className="th-hashtag"
-        onClick={(e) => {
-          e.stopPropagation();
-          onClickTag?.(part);
-        }}
-      >
-        {part}
-      </button>
-    ) : (
-      <span key={idx}>{part}</span>
-    )
-  );
+  const mentionChunks = String(text || '').split(MENTION_SPLIT_RE);
+  return mentionChunks.map((chunk, mIdx) => {
+    if (MENTION_SPLIT_RE.test(chunk)) {
+      MENTION_SPLIT_RE.lastIndex = 0;
+      return (
+        <span key={`m-${mIdx}`} className="elec-mention-pill" title="Nhắc toàn bộ Cộng đồng ELEC">
+          {chunk}
+        </span>
+      );
+    }
+    const parts = chunk.split(/(#[A-Za-z0-9_\u00C0-\u1EF9]+)/g);
+    return parts.map((part, idx) =>
+      part.startsWith('#') && part.length > 1 ? (
+        <button
+          key={`${mIdx}-${idx}`}
+          type="button"
+          className="th-hashtag"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClickTag?.(part);
+          }}
+        >
+          {part}
+        </button>
+      ) : (
+        <span key={`${mIdx}-${idx}`}>{part}</span>
+      )
+    );
+  });
 }
 
 function fmtShortRel(ts, nowMs = Date.now()) {
@@ -183,7 +205,9 @@ export default function SocialFeedPanel({
   const [capStudy, setCapStudy] = useState(false);
   const [capStudyMins, setCapStudyMins] = useState(25);
   const [capStudyTopic, setCapStudyTopic] = useState('');
+  const [showMentionPop, setShowMentionPop] = useState(false);
   const [posting, setPosting] = useState(false);
+  const capTaRef = useRef(null);
 
   // Replies
   const [openReplies, setOpenReplies] = useState({});
@@ -276,10 +300,41 @@ export default function SocialFeedPanel({
     return TRENDING_HASHTAGS.map((tag) => ({ tag, count: 0 }));
   }, [feedData.trendingTags]);
 
+  const insertMentionEveryone = () => {
+    setCapText((prev) => {
+      const cleaned = prev.replace(/@[^\s@]*$/, '');
+      const sep = cleaned && !/\s$/.test(cleaned) ? ' ' : '';
+      return `${cleaned}${sep}@mọi người `.slice(0, 800);
+    });
+    setShowMentionPop(false);
+    setTimeout(() => capTaRef.current?.focus(), 0);
+  };
+
+  const handleCapTextChange = (val) => {
+    setCapText(val);
+    const match = val.match(/(?:^|\s)@([^\s@]{0,14})$/);
+    if (match) {
+      const q = match[1].toLowerCase();
+      setShowMentionPop(
+        !q || 'mọi người'.startsWith(q) || 'moinguoi'.startsWith(q) || 'everyone'.startsWith(q) || 'all'.startsWith(q)
+      );
+    } else {
+      setShowMentionPop(false);
+    }
+  };
+
   const handleCreateCap = async (e) => {
     e.preventDefault();
     if (!meUid || posting) return;
     if (!capText.trim() && !capStudy) return;
+    const isMentionAll = hasEveryoneMention(capText);
+    if (isMentionAll) {
+      const cd = checkEveryoneCooldown(meUid, 'feed', meIsAdmin);
+      if (!cd.ok) {
+        showToast(`Vui lòng đợi ${cd.waitSec} giây nữa trước khi nhắc @mọi người tiếp nhé.`);
+        return;
+      }
+    }
     setPosting(true);
     try {
       const studyInvite = capStudy
@@ -300,6 +355,17 @@ export default function SocialFeedPanel({
         mood: capMood,
         studyInvite,
       });
+      if (isMentionAll) {
+        markEveryoneCooldown(meUid, 'feed');
+        broadcastEveryoneMention({
+          channel: 'feed',
+          channelName: 'Cộng đồng ELEC',
+          authorUid: meUid,
+          authorName: meName,
+          authorPhoto: user?.photoURL || '',
+          text: capText,
+        }).catch(() => {});
+      }
       setCapText('');
       setCapBg('none');
       setCapMood('');
@@ -308,7 +374,14 @@ export default function SocialFeedPanel({
       setCapStudyTopic('');
       setShowMoodMenu(false);
       setShowBgPicker(false);
-      showToast(studyInvite ? 'Đã đăng thẻ Rủ học chung!' : 'Đã đăng lên Cộng đồng ELEC');
+      setShowMentionPop(false);
+      showToast(
+        isMentionAll
+          ? 'Đã đăng & gửi thông báo đẩy tới @mọi người!'
+          : studyInvite
+            ? 'Đã đăng thẻ Rủ học chung!'
+            : 'Đã đăng lên Cộng đồng ELEC'
+      );
     } catch (err) {
       showToast(err?.message || 'Đăng thất bại');
     } finally {
@@ -541,7 +614,7 @@ export default function SocialFeedPanel({
         key={`${post.ownerUid}_${post.id}`}
         className={`th-post ${post.pinnedGlobal ? 'is-global-pin' : ''} ${post.featuredByAdmin ? 'is-featured' : ''} ${post.hiddenByAdmin ? 'is-hidden-post' : ''}`}
       >
-        {(post.pinnedGlobal || post.featuredByAdmin || post.pinned || post.repostOf || post.hiddenByAdmin) && (
+        {(post.pinnedGlobal || post.featuredByAdmin || post.pinned || post.repostOf || post.hiddenByAdmin || hasEveryoneMention(post.text)) && (
           <div className="th-meta-ribbon">
             {post.hiddenByAdmin ? (
               <span className="th-rib-tag is-warn">
@@ -569,6 +642,12 @@ export default function SocialFeedPanel({
                 <span>{post.authorName} đã đăng lại từ {post.repostOf.authorName}</span>
               </span>
             ) : null}
+            {hasEveryoneMention(post.text) && (
+              <span className="th-rib-tag is-mention">
+                <ThIcon name="bell" size={11} />
+                <span>Nhắc @mọi người</span>
+              </span>
+            )}
             {meIsAdmin && post.reportCount > 0 && (
               <span className="th-rib-tag is-warn">{post.reportCount} báo cáo</span>
             )}
@@ -1179,22 +1258,51 @@ export default function SocialFeedPanel({
 
                   <div className="th-ta-wrap">
                     <textarea
+                      ref={capTaRef}
                       className={`th-ta ${composerBgClass}`}
                       style={isBgActive ? { background: activeBgObj.css } : undefined}
                       rows={isBgActive ? 3 : capText.includes('\n') || capText.length > 68 ? 2 : 1}
                       value={capText}
                       maxLength={800}
-                      onChange={(e) => setCapText(e.target.value)}
+                      onChange={(e) => handleCapTextChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (showMentionPop && (e.key === 'Enter' || e.key === 'Tab')) {
+                          e.preventDefault();
+                          insertMentionEveryone();
+                        } else if (showMentionPop && e.key === 'Escape') {
+                          setShowMentionPop(false);
+                        }
+                      }}
                       placeholder={
                         capStudy
                           ? 'Viết lời rủ học chung tới cộng đồng…'
                           : capCategory === 'question'
-                            ? 'Đặt câu hỏi Lý, Hóa, Sinh, Toán… kèm #hashtag để bạn học & AI hỗ trợ…'
+                            ? 'Đặt câu hỏi Lý, Hóa, Sinh… gõ @mọi người để đẩy thông báo hoặc #hashtag…'
                             : capCategory === 'tip'
                               ? 'Chia sẻ mẹo giải nhanh, công thức hoặc bí kíp ôn thi THPTQG…'
-                              : 'Có gì mới? Chia sẻ suy nghĩ hoặc mục tiêu học tập…'
+                              : 'Có gì mới? Gõ @mọi người để thông báo đẩy tới cộng đồng…'
                       }
                     />
+                    {showMentionPop && (
+                      <div className="elec-mention-pop" role="listbox" aria-label="Gợi ý nhắc tên">
+                        <button
+                          type="button"
+                          className="elec-mention-opt"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            insertMentionEveryone();
+                          }}
+                        >
+                          <span className="elec-mention-ico">
+                            <ThIcon name="bell" size={14} />
+                          </span>
+                          <span className="elec-mention-copy">
+                            <b>@mọi người</b>
+                            <small>Gửi thông báo đẩy tức thì tới tất cả thành viên Cộng đồng ELEC</small>
+                          </span>
+                        </button>
+                      </div>
+                    )}
                     {isBgActive && (
                       <>
                         <span className="th-ta-mark">© ELEC AI</span>
@@ -1273,6 +1381,16 @@ export default function SocialFeedPanel({
                           }}
                         />
                         <span>Nền màu</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`th-tool ${hasEveryoneMention(capText) ? 'is-active' : ''}`}
+                        onClick={insertMentionEveryone}
+                        title="Nhắc @mọi người (gửi thông báo đẩy tức thì)"
+                      >
+                        <ThIcon name="at" size={14} />
+                        <span>Mọi người</span>
                       </button>
 
                       <button

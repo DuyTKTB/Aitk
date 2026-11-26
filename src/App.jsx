@@ -79,6 +79,7 @@ import CommandPalette from './components/CommandPalette.jsx';
 import SiteFooter from './components/SiteFooter.jsx';
 import LiveSessionBanner from './components/LiveSessionBanner.jsx';
 import SystemAnnouncementBanner from './components/SystemAnnouncementBanner.jsx';
+import GlobalPushBanner from './components/GlobalPushBanner.jsx';
 import OutOfCreditsModal from './components/OutOfCreditsModal.jsx';
 import FeedbackModal from './components/FeedbackModal.jsx';
 import CreditTopUp from './components/CreditTopUp.jsx';
@@ -995,6 +996,7 @@ export default function App() {
 
       {!isVirtualExamRoom && !isLab3dPage && <SystemAnnouncementBanner />}
       {!isVirtualExamRoom && !isLab3dPage && <LiveSessionBanner />}
+      <GlobalPushBanner />
 
       <ElecIntroLoader />
 

@@ -3,6 +3,14 @@ import { useLocalStorage, useLiveStreak, recordDailyStreak } from '../hooks.js';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useToast } from '../ui/index.jsx';
 import { isValidStreakMessage } from '../lib/chatStreak.js';
+import { isAdmin } from '../lib/isAdmin.js';
+import {
+  hasEveryoneMention,
+  MENTION_SPLIT_RE,
+  checkEveryoneCooldown,
+  markEveryoneCooldown,
+  broadcastEveryoneMention,
+} from '../lib/mentionPush.js';
 import { syncMyPublicStats, getProfile } from '../lib/social.js';
 import { getTopStreakClasses } from '../lib/classroom.js';
 import VerifiedBadge from './VerifiedBadge.jsx';
@@ -155,7 +163,17 @@ function Rich({ text, solo = false }) {
     if (/^https?:\/\//.test(p)) {
       return <a key={i} href={p} target="_blank" rel="noopener noreferrer nofollow">{p}</a>;
     }
-    return p;
+    return p.split(MENTION_SPLIT_RE).map((seg, sIdx) => {
+      if (MENTION_SPLIT_RE.test(seg)) {
+        MENTION_SPLIT_RE.lastIndex = 0;
+        return (
+          <span key={`${i}-m-${sIdx}`} className="elec-mention-pill">
+            {seg}
+          </span>
+        );
+      }
+      return seg;
+    });
   });
 }
 
@@ -470,6 +488,7 @@ export default function ChatWidget() {
   const [showSocialPane, setShowSocialPane] = useState(true);
   const [mobilePane, setMobilePane] = useState('social'); // 'social' | 'chat'
   const [topClasses, setTopClasses] = useState([]);
+  const [showMentionPop, setShowMentionPop] = useState(false);
 
   const openUserProfile = (tUid, tName) => {
     if (!tUid) return;
@@ -483,7 +502,18 @@ export default function ChatWidget() {
   const lastSentText = useRef('');
 
   useEffect(() => {
-    const handleOpenChat = () => setOpen((prev) => !prev);
+    const handleOpenChat = (e) => {
+      const targetTab = e?.detail?.tab;
+      if (targetTab) {
+        setOpen(true);
+        if (targetTab === 'class' || targetTab === 'community' || targetTab === 'friends') {
+          setActiveTab(targetTab);
+        }
+        setMobilePane(targetTab === 'feed' ? 'social' : 'chat');
+      } else {
+        setOpen((prev) => !prev);
+      }
+    };
     const handleOpenDm = (e) => {
       const detail = e?.detail;
       setOpen(true);
@@ -780,12 +810,43 @@ export default function ChatWidget() {
   };
   const onDrop = (e) => { e.preventDefault(); setDragging(false); pickFile(e.dataTransfer.files[0]); };
 
+  const handleChatTextChange = (val) => {
+    setText(val);
+    const match = val.match(/(?:^|\s)@([^\s@]{0,14})$/);
+    if (match) {
+      const q = match[1].toLowerCase();
+      setShowMentionPop(
+        !q || 'mọi người'.startsWith(q) || 'moinguoi'.startsWith(q) || 'everyone'.startsWith(q) || 'all'.startsWith(q)
+      );
+    } else {
+      setShowMentionPop(false);
+    }
+  };
+
+  const insertChatMentionEveryone = () => {
+    setText((prev) => {
+      const cleaned = prev.replace(/@[^\s@]*$/, '');
+      const sep = cleaned && !/\s$/.test(cleaned) ? ' ' : '';
+      return `${cleaned}${sep}@mọi người `.slice(0, MAX_TEXT);
+    });
+    setShowMentionPop(false);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
   const sendPayloadText = async (overrideText = null) => {
     const raw = overrideText !== null ? overrideText : text;
     const t = String(raw || '').trim().slice(0, MAX_TEXT);
     const attachedImg = overrideText !== null ? null : img;
     if ((!t && !attachedImg) || sending) return;
     if (Date.now() - lastSend.current < 450) { setErr('Gửi chậm lại một chút nhé.'); return; }
+    const isMentionAll = hasEveryoneMention(t);
+    if (isMentionAll) {
+      const cd = checkEveryoneCooldown(uid, 'community_chat', isAdmin(user));
+      if (!cd.ok) {
+        setErr(`Đợi ${cd.waitSec} giây nữa trước khi nhắc @mọi người tiếp nhé.`);
+        return;
+      }
+    }
     lastSend.current = Date.now();
     setSending(true);
     try {
@@ -834,6 +895,18 @@ export default function ChatWidget() {
         );
       }
       stick.current = true;
+      if (isMentionAll) {
+        markEveryoneCooldown(uid, 'community_chat');
+        broadcastEveryoneMention({
+          channel: 'community_chat',
+          channelName: 'Chat Cộng đồng ELEC',
+          authorUid: uid,
+          authorName: (name.trim() || 'Thành viên ELEC').slice(0, 28),
+          authorPhoto: user?.photoURL || '',
+          text: t,
+        }).catch(() => {});
+        toast('Đã gửi tin & thông báo đẩy tới @mọi người!');
+      }
       if (overrideText === null) {
         setText('');
         setImg(null);
@@ -841,6 +914,7 @@ export default function ChatWidget() {
       setErr('');
       setReplyTo(null);
       setShowPicker(false);
+      setShowMentionPop(false);
     } catch {
       setErr('Gửi thất bại. Kiểm tra mạng.');
     } finally {
@@ -854,6 +928,15 @@ export default function ChatWidget() {
   };
 
   const onKeyDown = (e) => {
+    if (showMentionPop && (e.key === 'Tab' || e.key === 'Enter')) {
+      e.preventDefault();
+      insertChatMentionEveryone();
+      return;
+    }
+    if (showMentionPop && e.key === 'Escape') {
+      setShowMentionPop(false);
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && e.keyCode !== 229) {
       e.preventDefault();
       send();
@@ -1450,6 +1533,25 @@ export default function ChatWidget() {
                     </div>
                   )}
 
+                  {showMentionPop && (
+                    <div className="elec-mention-pop is-above" role="listbox" aria-label="Nhắc mọi người">
+                      <button
+                        type="button"
+                        className="elec-mention-opt"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          insertChatMentionEveryone();
+                        }}
+                      >
+                        <span className="elec-mention-ico">@</span>
+                        <span className="elec-mention-copy">
+                          <b>@mọi người</b>
+                          <small>Gửi thông báo đẩy tới tất cả thành viên ELEC AI</small>
+                        </span>
+                      </button>
+                    </div>
+                  )}
+
                   <form className="ec-composer" onSubmit={send}>
                     <label className="ec-tool-btn" title="Gửi ảnh" aria-label="Gửi ảnh">
                       <IcImage width="19" height="19" />
@@ -1466,15 +1568,26 @@ export default function ChatWidget() {
                       <IcSmile width="19" height="19" />
                     </button>
 
+                    <button
+                      type="button"
+                      className={`ec-tool-btn ${hasEveryoneMention(text) ? 'is-active' : ''}`}
+                      onClick={insertChatMentionEveryone}
+                      title="Nhắc @mọi người (gửi thông báo đẩy)"
+                      aria-label="Nhắc mọi người"
+                      style={{ fontWeight: 800, fontSize: 15 }}
+                    >
+                      @
+                    </button>
+
                     <div className="ec-input-pill">
                       <input
                         ref={inputRef}
                         type="text"
                         value={text}
                         maxLength={MAX_TEXT}
-                        placeholder="Nhắn tin tới Cộng đồng ELEC..."
+                        placeholder="Nhắn tin… (gõ @mọi người để đẩy thông báo)"
                         className="ec-input"
-                        onChange={(e) => setText(e.target.value)}
+                        onChange={(e) => handleChatTextChange(e.target.value)}
                         onKeyDown={onKeyDown}
                         onPaste={onPaste}
                       />
