@@ -230,13 +230,13 @@ export default function Dashboard({ onNavigate }) {
         right={
           <div style={{ display: 'flex', gap: '.45rem', flexWrap: 'wrap' }}>
             <button type="button" className="vt-btn sm primary" onClick={() => onNavigate('create')}>
-              <IconPlus size={13} /> Tạo đề mới
+              + Tạo đề mới
             </button>
             <button type="button" className="vt-btn sm" onClick={() => onNavigate('keys')}>
-              <IconKey size={13} /> Phát hành Key PRO
+              Phát hành Key PRO
             </button>
             <button type="button" className="vt-btn sm" onClick={load} title="Làm mới dữ liệu">
-              <IconRefresh size={13} /> Làm mới
+              Làm mới
             </button>
           </div>
         }
@@ -254,6 +254,7 @@ export default function Dashboard({ onNavigate }) {
       <div className="ad-kpi-strip">
         <StatCard
           Icon={IconTrophy}
+          tone="blue"
           label="Tổng lượt làm bài"
           value={stats.attempts}
           delta={week.attempts}
@@ -261,6 +262,7 @@ export default function Dashboard({ onNavigate }) {
         />
         <StatCard
           Icon={IconExam}
+          tone="indigo"
           label="Đề thi hệ thống"
           value={stats.exams}
           delta={week.exams}
@@ -268,6 +270,7 @@ export default function Dashboard({ onNavigate }) {
         />
         <StatCard
           Icon={IconQuestion}
+          tone="teal"
           label="Ngân hàng câu hỏi"
           value={stats.questions}
           delta={week.questions}
@@ -275,6 +278,7 @@ export default function Dashboard({ onNavigate }) {
         />
         <StatCard
           Icon={IconUsers}
+          tone="green"
           label="Tài khoản người dùng"
           value={stats.users}
           delta={week.users}
@@ -282,9 +286,11 @@ export default function Dashboard({ onNavigate }) {
         />
         <StatCard
           Icon={IconCrown}
+          tone={keyStats?.soon?.length > 0 ? 'danger' : 'amber'}
           label="Thuê bao VIP / PRO"
           value={keyStats?.proActive ?? 0}
-          sub={`${keyStats?.teacherProActive ?? 0} GV (999k/năm) · ${keyStats?.studentVipActive ?? 0} HS (299k/năm)`}
+          sub={`${keyStats?.teacherProActive ?? 0} GV PRO · ${keyStats?.studentVipActive ?? 0} HS VIP`}
+          subTitle={`${keyStats?.teacherProActive ?? 0} GV (999k/năm) · ${keyStats?.studentVipActive ?? 0} HS (299k/năm)`}
           onClick={() => onNavigate('pro-users')}
           danger={keyStats?.soon?.length > 0}
         />
@@ -294,22 +300,20 @@ export default function Dashboard({ onNavigate }) {
       <div className="ad-dash-row2">
         {/* Cột trái: Biểu đồ lượt làm bài 7 ngày + Tăng trưởng tuần */}
         <div className="vt-card ad-trend-card">
-          <header className="vt-card-head" style={{ marginBottom: '.6rem' }}>
-            <h3 className="vt-card-title">
-              <IconTrendUp size={16} className="vt-title-ico" />
-              Nhịp độ làm bài 7 ngày qua
-            </h3>
+          <header className="vt-card-head">
+            <h3 className="vt-card-title">Nhịp độ làm bài 7 ngày qua</h3>
             <span className="vt-chip ready">+{week.attempts ?? 0} lượt tuần này</span>
           </header>
 
           <div className="ad-bar-chart" role="img" aria-label="Biểu đồ lượt làm bài 7 ngày qua">
             {dailyAttempts.map((b) => {
-              const hPct = Math.max(8, Math.round((b.count / maxDaily) * 100));
+              const isZero = !b.count;
+              const hPct = isZero ? 0 : Math.max(12, Math.round((b.count / maxDaily) * 100));
               return (
-                <div key={b.key} className="ad-bar-col" title={`${b.label}: ${b.count} lượt làm bài`}>
+                <div key={b.key} className={'ad-bar-col' + (isZero ? ' is-zero' : '')} title={`${b.label}: ${b.count} lượt làm bài`}>
                   <span className="ad-bar-val">{b.count}</span>
                   <div className="ad-bar-track">
-                    <div className="ad-bar-fill" style={{ height: `${hPct}%` }} />
+                    <div className="ad-bar-fill" style={{ height: isZero ? '0%' : `${hPct}%` }} />
                   </div>
                   <small className="ad-bar-lbl">{b.label}</small>
                 </div>
@@ -327,11 +331,8 @@ export default function Dashboard({ onNavigate }) {
 
         {/* Cột phải: Kiểm định chất lượng & Tình trạng Key PRO */}
         <div className="vt-card ad-health-card">
-          <header className="vt-card-head" style={{ marginBottom: '.6rem' }}>
-            <h3 className="vt-card-title">
-              <IconShield size={16} className="vt-title-ico" />
-              Kiểm định & Cảnh báo nhanh
-            </h3>
+          <header className="vt-card-head">
+            <h3 className="vt-card-title">Kiểm định & Cảnh báo nhanh</h3>
             <button type="button" className="vt-link" onClick={() => onNavigate('keys')}>
               Quản lý Key →
             </button>
@@ -339,9 +340,7 @@ export default function Dashboard({ onNavigate }) {
 
           <div className="ad-health-grid">
             <div className={'ad-health-item' + (emptyExams.length > 0 ? ' warn' : ' ok')}>
-              <span className="ad-health-ico" aria-hidden="true">
-                {emptyExams.length > 0 ? <IconWarning size={16} /> : <IconCheckCircle size={16} />}
-              </span>
+              <span className="ad-status-dot" aria-hidden="true" />
               <div className="ad-health-info">
                 <b>{emptyExams.length} đề đang hiện bị trống</b>
                 <small>{emptyExams.length > 0 ? 'Học sinh vào sẽ không thấy câu hỏi' : 'Mọi đề công khai đều có câu hỏi'}</small>
@@ -352,9 +351,7 @@ export default function Dashboard({ onNavigate }) {
             </div>
 
             <div className={'ad-health-item' + (stats.noExplainCount > 0 ? ' warn' : ' ok')}>
-              <span className="ad-health-ico" aria-hidden="true">
-                {stats.noExplainCount > 0 ? <IconWarning size={16} /> : <IconCheckCircle size={16} />}
-              </span>
+              <span className="ad-status-dot" aria-hidden="true" />
               <div className="ad-health-info">
                 <b>{(stats.noExplainCount || 0).toLocaleString('vi-VN')} câu chưa có lời giải</b>
                 <small>{stats.noExplainCount > 0 ? 'Nên bổ sung lời giải để học sinh ôn tập' : '100% câu hỏi đã có lời giải'}</small>
@@ -365,9 +362,7 @@ export default function Dashboard({ onNavigate }) {
             </div>
 
             <div className={'ad-health-item' + ((keyStats?.soon?.length || 0) > 0 ? ' warn' : ' ok')}>
-              <span className="ad-health-ico" aria-hidden="true">
-                {(keyStats?.soon?.length || 0) > 0 ? <IconWarning size={16} /> : <IconCrown size={16} />}
-              </span>
+              <span className="ad-status-dot" aria-hidden="true" />
               <div className="ad-health-info">
                 <b>{keyStats?.soon?.length || 0} giáo viên PRO sắp hết hạn (≤7 ngày)</b>
                 <small>Đang hoạt động: {keyStats?.proActive ?? 0} · Đã hết hạn: {keyStats?.proExpired ?? 0}</small>
@@ -377,10 +372,8 @@ export default function Dashboard({ onNavigate }) {
               </button>
             </div>
 
-            <div className="ad-health-item ok">
-              <span className="ad-health-ico" aria-hidden="true">
-                <IconShield size={16} />
-              </span>
+            <div className="ad-health-item ok is-info">
+              <span className="ad-status-dot" aria-hidden="true" />
               <div className="ad-health-info">
                 <b>{(keyStats?.totalCredits || 0).toLocaleString('vi-VN')} Credit AI toàn hệ thống</b>
                 <small>{keyStats?.userWithCredits || 0} tài khoản đang có số dư · Nạp hoặc điều chỉnh thủ công</small>
@@ -395,10 +388,9 @@ export default function Dashboard({ onNavigate }) {
 
       {/* ===== KEY SẮP HẾT HẠN (Hỗ trợ gia hạn 1 chạm ngay tại chỗ) ===== */}
       {keyStats?.soon?.length > 0 && (
-        <div className="vt-card" style={{ borderLeft: '4px solid var(--vt-amber)' }}>
+        <div className="vt-card ad-expiring-card">
           <header className="vt-card-head">
             <h3 className="vt-card-title">
-              <IconHourglass size={16} className="vt-title-ico" />
               Giáo viên PRO sắp hết hạn (≤7 ngày) — Gia hạn nhanh 1 chạm
             </h3>
             <button type="button" className="vt-link" onClick={() => onNavigate('pro-users')}>
@@ -408,14 +400,12 @@ export default function Dashboard({ onNavigate }) {
           <ul className="vt-list">
             {keyStats.soon.map((u) => (
               <li key={u.user_id}>
-                <span className="vt-list-ico" style={{ background: u.left <= 3 ? 'var(--vt-red)' : 'var(--vt-amber)' }}>
-                  <IconExtend size={18} />
-                </span>
+                <span className={'ad-status-dot ' + (u.left <= 3 ? 'is-danger' : 'is-warn')} aria-hidden="true" />
                 <div className="vt-list-main">
                   <b>{u.name}</b>
-                  <small>{u.email} · mã {u.key_code} · còn <b>{u.left}</b> ngày</small>
+                  <small>{u.email} · mã <code>{u.key_code}</code> · còn <b>{u.left}</b> ngày</small>
                 </div>
-                <div style={{ display: 'flex', gap: '.35rem' }}>
+                <div className="ad-inline-actions">
                   <button
                     type="button"
                     className="vt-btn sm primary"
@@ -444,20 +434,19 @@ export default function Dashboard({ onNavigate }) {
         <div className="vt-card soft">
           <header className="vt-card-head">
             <h3 className="vt-card-title">
-              <IconWarning size={16} className="vt-title-ico" style={{ color: 'var(--vt-amber)' }} />
               Đề đang hiện nhưng chưa có câu hỏi ({emptyExams.length})
             </h3>
           </header>
           <ul className="vt-list">
             {emptyExams.map((e) => (
               <li key={e.id}>
-                <span className="vt-list-ico"><IconExam size={18} /></span>
+                <span className="ad-status-dot is-warn" aria-hidden="true" />
                 <div className="vt-list-main">
                   <b>{e.title}</b>
                   <small>Học sinh sẽ thấy đề trống nếu không ẩn hoặc thêm câu hỏi</small>
                 </div>
                 <button type="button" className="vt-btn sm primary" onClick={() => onNavigate('exams', { editId: e.id })}>
-                  <IconEdit size={13} /> Thêm câu hỏi ngay
+                  Thêm câu hỏi ngay
                 </button>
               </li>
             ))}
@@ -470,7 +459,6 @@ export default function Dashboard({ onNavigate }) {
         <div className="vt-col">
           <ExamListPanel
             title="Đề được làm nhiều nhất"
-            Icon={IconTrophy}
             exams={top}
             ranked
             onAll={() => onNavigate('exams')}
@@ -480,12 +468,9 @@ export default function Dashboard({ onNavigate }) {
         <aside className="vt-col side">
           <div className="vt-card" style={{ height: '100%' }}>
             <header className="vt-card-head">
-              <h3 className="vt-card-title">
-                <IconClock size={16} className="vt-title-ico" />
-                Đề mới tạo gần đây
-              </h3>
+              <h3 className="vt-card-title">Đề mới tạo gần đây</h3>
               <button type="button" className="vt-link" onClick={() => onNavigate('exams')}>
-                Tất cả
+                Tất cả →
               </button>
             </header>
             {recent.length === 0 ? (
@@ -494,9 +479,8 @@ export default function Dashboard({ onNavigate }) {
               <ul className="vt-list">
                 {recent.map((e) => (
                   <li key={e.id} style={{ cursor: 'pointer' }} onClick={() => onNavigate('exams', { editId: e.id })}>
-                    <span className="vt-list-ico"><IconExam size={16} /></span>
                     <div className="vt-list-main">
-                      <b style={{ fontSize: '.86rem' }}>{e.title}</b>
+                      <b>{e.title}</b>
                       <small>{[e.subject?.name, e.grade?.name, formatDate(e.created_at)].filter(Boolean).join(' · ')}</small>
                     </div>
                   </li>
@@ -518,27 +502,28 @@ export default function Dashboard({ onNavigate }) {
 /* ============================================================
    SUB-COMPONENTS
    ============================================================ */
-function StatCard({ Icon, label, value, delta, sub, onClick, danger }) {
+function StatCard({ tone = 'blue', label, value, delta, sub, subTitle, onClick, danger }) {
   return (
     <button
       type="button"
-      className={'vt-card vt-stat-card ad-kpi-card' + (danger ? ' danger' : '')}
+      className={'vt-card vt-stat-card ad-kpi-card' + (danger ? ' danger' : '') + ` ad-kpi--${tone}`}
       onClick={onClick}
+      title={subTitle || label}
     >
-      <span className={'vt-stat-ico' + (danger ? ' danger' : '')}>
-        <Icon size={20} />
-      </span>
-      <div className="vt-stat-body">
+      <div className="ad-kpi-top">
         <small className="vt-stat-label">{label}</small>
+        {danger && <span className="ad-kpi-alert-dot" aria-label="Cần chú ý" />}
+      </div>
+      <div className="vt-stat-body">
         <div className="vt-stat-value">
           {value == null ? '—' : value.toLocaleString('vi-VN')}
         </div>
         {delta != null && delta > 0 ? (
           <small className="vt-stat-delta">
-            <IconTrendUp size={11} /> +{delta} tuần này
+            +{delta} tuần này
           </small>
         ) : sub ? (
-          <small className="vt-stat-sub">{sub}</small>
+          <small className="vt-stat-sub" title={subTitle || sub}>{sub}</small>
         ) : (
           <small className="vt-stat-sub">Ổn định</small>
         )}
@@ -547,15 +532,12 @@ function StatCard({ Icon, label, value, delta, sub, onClick, danger }) {
   );
 }
 
-function ExamListPanel({ title, Icon, exams, ranked, onAll, onEdit }) {
+function ExamListPanel({ title, exams, ranked, onAll, onEdit }) {
   return (
     <div className="vt-card" style={{ height: '100%' }}>
       <header className="vt-card-head">
-        <h3 className="vt-card-title">
-          <Icon size={16} className="vt-title-ico" />
-          {title}
-        </h3>
-        <button type="button" className="vt-link" onClick={onAll}>Xem tất cả</button>
+        <h3 className="vt-card-title">{title}</h3>
+        <button type="button" className="vt-link" onClick={onAll}>Xem tất cả →</button>
       </header>
       {exams.length === 0 ? (
         <p className="vt-muted">Chưa có dữ liệu.</p>
@@ -563,7 +545,7 @@ function ExamListPanel({ title, Icon, exams, ranked, onAll, onEdit }) {
         <ol className="vt-rank">
           {exams.map((e, i) => (
             <li key={e.id} style={{ cursor: 'pointer' }} onClick={() => onEdit?.(e.id)} title="Bấm để mở trình sửa đề">
-              {ranked && <span className={'vt-rank-n' + (i < 3 ? ' r' + (i + 1) : '')}>{i + 1}</span>}
+              {ranked && <span className={'vt-rank-n' + (i < 3 ? ' r' + (i + 1) : '')}>{String(i + 1).padStart(2, '0')}</span>}
               <b>{e.title}</b>
               <small>{[e.subject?.name, e.grade?.name].filter(Boolean).join(' · ')}</small>
               <span className="vt-rank-score">{(e.attempt_count || 0).toLocaleString('vi-VN')} lượt</span>

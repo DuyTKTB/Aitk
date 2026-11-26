@@ -1,0 +1,1896 @@
+/* ============================================================================
+   admin-apple-emil.css — v2 Quiet Luxury Apple HIG × Emil Kowalski × Linear
+   Unified Admin Control Center (Light + OLED Dark + Mobile)
+   ----------------------------------------------------------------------------
+   Imported LAST in src/components/admin/AdminPanel.jsx.
+   Strictly scoped under .ad-scope (plus admin-only .ad-*, .adl-* modals/toasts)
+   so Teacher Dashboard (.t-shell without .ad-scope) remains 100% untouched.
+   ============================================================================ */
+
+/* ── 1. DESIGN TOKENS (LIGHT + OLED DARK) ── */
+.t-root.t-shell.ad-scope,
+.ad-scope {
+  --ae-canvas: #f5f5f7;
+  --ae-sidebar: #fbfbfd;
+  --ae-surface: #ffffff;
+  --ae-surface-inset: #f6f6f8;
+  --ae-surface-hover: #f0f0f5;
+  --ae-glass: rgba(255, 255, 255, 0.84);
+  --ae-glass-strong: rgba(255, 255, 255, 0.94);
+
+  --ae-ink: #1d1d1f;
+  --ae-ink-2: #515154;
+  --ae-ink-3: #86868b;
+
+  --ae-blue: #0071e3;
+  --ae-blue-hover: #0077ed;
+  --ae-blue-soft: rgba(0, 113, 227, 0.09);
+  --ae-blue-ring: rgba(0, 113, 227, 0.22);
+
+  --ae-green: #248a3d;
+  --ae-green-dot: #34c759;
+  --ae-green-soft: rgba(52, 199, 89, 0.13);
+
+  --ae-amber: #b25000;
+  --ae-amber-dot: #ff9500;
+  --ae-amber-soft: rgba(255, 149, 0, 0.13);
+
+  --ae-red: #d70015;
+  --ae-red-dot: #ff3b30;
+  --ae-red-soft: rgba(255, 59, 48, 0.11);
+
+  --ae-hairline: rgba(0, 0, 0, 0.064);
+  --ae-hairline-strong: rgba(0, 0, 0, 0.115);
+
+  --ae-shadow-card:
+    0 0 0 1px rgba(0, 0, 0, 0.052),
+    0 1px 2px rgba(0, 0, 0, 0.028),
+    0 10px 28px -12px rgba(0, 0, 0, 0.055);
+  --ae-shadow-card-hover:
+    0 0 0 1px rgba(0, 113, 227, 0.22),
+    0 4px 14px rgba(0, 0, 0, 0.045),
+    0 16px 36px -14px rgba(0, 0, 0, 0.09);
+  --ae-shadow-btn:
+    0 0 0 1px rgba(0, 0, 0, 0.082),
+    0 1px 2px rgba(0, 0, 0, 0.036);
+  --ae-shadow-btn-hover:
+    0 0 0 1px rgba(0, 0, 0, 0.13),
+    0 3px 10px -3px rgba(0, 0, 0, 0.08);
+  --ae-shadow-modal:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 24px 64px -12px rgba(0, 0, 0, 0.24),
+    0 8px 20px -6px rgba(0, 0, 0, 0.10);
+
+  --ae-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --ae-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Inter', 'Be Vietnam Pro', system-ui, sans-serif;
+  --ae-mono: 'SF Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Remap legacy --t-*, --ad-*, --vt-* tokens cleanly inside Admin */
+  --t-bg: var(--ae-canvas);
+  --t-surface-0: var(--ae-surface);
+  --t-surface-1: var(--ae-sidebar);
+  --t-surface-2: var(--ae-surface);
+  --t-surface-3: var(--ae-surface-inset);
+  --t-ink: var(--ae-ink);
+  --t-ink-2: var(--ae-ink-2);
+  --t-ink-3: var(--ae-ink-3);
+  --t-ink-muted: var(--ae-ink-2);
+  --t-border: var(--ae-hairline);
+  --t-border-subtle: var(--ae-hairline);
+  --t-border-strong: var(--ae-hairline-strong);
+  --t-accent: var(--ae-blue);
+  --t-accent-hover: var(--ae-blue-hover);
+  --t-accent-subtle: var(--ae-blue-soft);
+  --t-accent-ink: #ffffff;
+  --t-r-md: 12px;
+  --t-r-lg: 20px;
+
+  --ad-panel: var(--ae-surface);
+  --ad-panel-soft: var(--ae-surface-inset);
+  --ad-line: var(--ae-hairline);
+  --ad-line-strong: var(--ae-hairline-strong);
+  --ad-ink: var(--ae-ink);
+  --ad-ink-muted: var(--ae-ink-2);
+  --ad-ink-soft: var(--ae-ink-3);
+  --ad-brand: var(--ae-blue);
+  --ad-brand-soft: var(--ae-blue-soft);
+  --ad-brand-ring: var(--ae-blue-ring);
+  --ad-ok: var(--ae-green);
+  --ad-ok-soft: var(--ae-green-soft);
+  --ad-warn: var(--ae-amber);
+  --ad-warn-soft: var(--ae-amber-soft);
+  --ad-err: var(--ae-red);
+  --ad-err-soft: var(--ae-red-soft);
+
+  --bg: var(--ae-canvas);
+  --panel: var(--ae-surface);
+  --ink: var(--ae-ink);
+  --mut: var(--ae-ink-3);
+  --line: var(--ae-hairline);
+  --acc: var(--ae-blue);
+  --vt-tint: var(--ae-surface-inset);
+  --vt-tint2: var(--ae-surface-hover);
+  --vt-soft: var(--ae-surface-inset);
+  --vt-radius: 20px;
+  --vt-amber: #ff9500;
+  --vt-red: #ff3b30;
+
+  background: var(--ae-canvas) !important;
+  background-image: none !important;
+  color: var(--ae-ink) !important;
+  font-family: var(--ae-font) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.t-root.t-shell.ad-scope[data-theme='dark'],
+[data-theme='dark'] .t-root.t-shell.ad-scope,
+[data-theme='dark'] .ad-scope {
+  --ae-canvas: #000000;
+  --ae-sidebar: #0e0e10;
+  --ae-surface: #18181b;
+  --ae-surface-inset: #222226;
+  --ae-surface-hover: #2a2a2f;
+  --ae-glass: rgba(16, 16, 18, 0.84);
+  --ae-glass-strong: rgba(24, 24, 27, 0.94);
+
+  --ae-ink: #f5f5f7;
+  --ae-ink-2: #aeaeb2;
+  --ae-ink-3: #8e8e93;
+
+  --ae-blue: #0a84ff;
+  --ae-blue-hover: #409cff;
+  --ae-blue-soft: rgba(10, 132, 255, 0.16);
+  --ae-blue-ring: rgba(10, 132, 255, 0.34);
+
+  --ae-green: #30d158;
+  --ae-green-dot: #30d158;
+  --ae-green-soft: rgba(48, 209, 88, 0.15);
+
+  --ae-amber: #ff9f0a;
+  --ae-amber-dot: #ff9f0a;
+  --ae-amber-soft: rgba(255, 159, 10, 0.15);
+
+  --ae-red: #ff453a;
+  --ae-red-dot: #ff453a;
+  --ae-red-soft: rgba(255, 69, 58, 0.17);
+
+  --ae-hairline: rgba(255, 255, 255, 0.082);
+  --ae-hairline-strong: rgba(255, 255, 255, 0.145);
+
+  --ae-shadow-card:
+    0 0 0 1px rgba(255, 255, 255, 0.078),
+    0 1px 2px rgba(0, 0, 0, 0.45),
+    0 12px 30px -12px rgba(0, 0, 0, 0.65);
+  --ae-shadow-card-hover:
+    0 0 0 1px rgba(10, 132, 255, 0.36),
+    0 14px 34px -10px rgba(0, 0, 0, 0.78);
+  --ae-shadow-btn:
+    0 0 0 1px rgba(255, 255, 255, 0.115),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  --ae-shadow-btn-hover:
+    0 0 0 1px rgba(255, 255, 255, 0.20),
+    0 4px 12px rgba(0, 0, 0, 0.55);
+  --ae-shadow-modal:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 28px 72px -12px rgba(0, 0, 0, 0.84);
+
+  background: var(--ae-canvas) !important;
+  background-image: none !important;
+  color: var(--ae-ink) !important;
+}
+
+.ad-scope *:not([class*='katex']):not(code):not(pre):not(kbd):not(.vt-key-code):not(.mono) {
+  font-family: var(--ae-font);
+}
+
+/* ── 2. NEUTRALIZE BLUEPRINT GRID & SHELL CANVAS ── */
+.t-root.t-shell.ad-scope .t-main-area,
+.t-root.t-shell.ad-scope .t-main,
+.t-root.t-shell.ad-scope .t-viewport {
+  background-color: var(--ae-canvas) !important;
+  background-image: none !important;
+}
+
+.ad-scope .t-viewport {
+  padding: 22px 28px 44px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ad-scope .t-viewport > * {
+  width: 100%;
+  max-width: 1360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ── 3. QUIET LUXURY TYPOGRAPHIC SIDEBAR (NO ICON CLUTTER WHEN EXPANDED) ── */
+.t-root.t-shell.ad-scope .t-rail-sidebar {
+  width: 232px !important;
+  background: var(--ae-sidebar) !important;
+  border-right: 1px solid var(--ae-hairline) !important;
+  box-shadow: none !important;
+  padding: 14px 0 10px !important;
+  transition: width 220ms var(--ae-ease) !important;
+}
+
+/* Lock collapsed sidebar strictly to 68px even on hover (fixes teacher-ds hover spill bug) */
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed:hover {
+  width: 68px !important;
+  align-items: stretch !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed .t-rail-btn-label,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed:hover .t-rail-btn-label,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed .t-rail-logo-text,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed:hover .t-rail-logo-text,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed .t-rail-group-label,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed:hover .t-rail-group-label,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed .t-rail-user-meta,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed:hover .t-rail-user-meta,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed .ad-rail-kbd,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed:hover .ad-rail-kbd {
+  display: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 14px 14px !important;
+  border-bottom: 1px solid var(--ae-hairline) !important;
+  margin-bottom: 8px !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed .t-rail-header {
+  flex-direction: column;
+  padding: 2px 8px 10px !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-logo {
+  border-bottom: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+  gap: 10px !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-logo-text {
+  font-size: 15px !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.025em !important;
+  color: var(--ae-ink) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-collapse-btn {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 8px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ae-ink-3) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 150ms var(--ae-ease), color 150ms var(--ae-ease), transform 140ms var(--ae-ease) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-collapse-btn:hover {
+  background: var(--ae-surface-hover) !important;
+  color: var(--ae-ink) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-collapse-btn:active {
+  transform: scale(0.94);
+}
+
+.t-root.t-shell.ad-scope .t-rail-nav {
+  padding: 2px 10px 16px !important;
+  gap: 2px !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-group-divider {
+  height: 1px !important;
+  width: calc(100% - 16px) !important;
+  margin: 10px auto 6px !important;
+  background: var(--ae-hairline) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-group-label {
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.065em !important;
+  text-transform: uppercase !important;
+  color: var(--ae-ink-3) !important;
+  padding: 4px 12px 5px !important;
+  opacity: 0.85 !important;
+  height: auto !important;
+  line-height: 1.3 !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-btn {
+  min-height: 34px !important;
+  padding: 6px 12px !important;
+  border-radius: 10px !important;
+  border: 0 !important;
+  gap: 8px !important;
+  color: var(--ae-ink-2) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  position: relative;
+  transition: background-color 150ms var(--ae-ease), color 150ms var(--ae-ease), transform 140ms var(--ae-ease) !important;
+}
+
+/* Hide redundant icons in expanded sidebar for ultra-clean Vercel/Apple typography */
+.t-root.t-shell.ad-scope .t-rail-sidebar.expanded .t-rail-btn-icon {
+  display: none !important;
+}
+
+/* Show icons cleanly centered ONLY when sidebar is collapsed to 68px */
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed .t-rail-btn,
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed:hover .t-rail-btn {
+  justify-content: center !important;
+  padding: 0 !important;
+  min-height: 38px !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed .t-rail-btn-icon {
+  display: grid !important;
+  place-items: center;
+  width: 22px !important;
+  height: 22px !important;
+  color: var(--ae-ink-3) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed .t-rail-btn.active .t-rail-btn-icon {
+  color: var(--ae-blue) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-btn-label {
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-btn:hover {
+  background: var(--ae-surface-hover) !important;
+  color: var(--ae-ink) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-btn:active {
+  transform: scale(0.985) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-btn.active {
+  background: var(--ae-blue-soft) !important;
+  color: var(--ae-blue) !important;
+  font-weight: 650 !important;
+  box-shadow: none !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-sidebar.expanded .t-rail-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--ae-blue);
+}
+
+.t-root.t-shell.ad-scope .t-rail-btn.active .t-rail-btn-label {
+  font-weight: 650 !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-btn-badge {
+  background: var(--ae-red-dot) !important;
+  color: #ffffff !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px !important;
+}
+
+.ad-extra-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ad-rail-kbd {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-family: var(--ae-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ae-ink-3);
+  background: var(--ae-surface);
+  box-shadow: 0 0 0 1px var(--ae-hairline-strong);
+}
+
+.t-root.t-shell.ad-scope .t-rail-footer {
+  background: var(--ae-sidebar) !important;
+  border-top: 1px solid var(--ae-hairline) !important;
+  padding: 10px 10px 8px !important;
+  gap: 4px !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px !important;
+  border-radius: 12px !important;
+  border: 0 !important;
+  background: var(--ae-surface-inset) !important;
+  box-shadow: 0 0 0 1px var(--ae-hairline) !important;
+  color: var(--ae-ink) !important;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms var(--ae-ease), transform 140ms var(--ae-ease) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-sidebar.collapsed .t-rail-user-card {
+  justify-content: center;
+  padding: 6px !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-user-card:hover {
+  background: var(--ae-surface-hover) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-user-meta b {
+  font-size: 12.5px !important;
+  font-weight: 650 !important;
+  color: var(--ae-ink) !important;
+}
+
+.t-root.t-shell.ad-scope .t-rail-user-meta small {
+  font-size: 11px !important;
+  color: var(--ae-ink-3) !important;
+}
+
+/* ── 4. LIQUID GLASS STICKY TOPBAR ── */
+.t-root.t-shell.ad-scope .t-topbar-slim {
+  height: auto !important;
+  min-height: 64px !important;
+  padding: 12px 28px !important;
+  background: var(--ae-glass) !important;
+  backdrop-filter: saturate(180%) blur(24px) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(24px) !important;
+  border-bottom: 1px solid var(--ae-hairline) !important;
+  box-shadow: none !important;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+.ad-scope .t-top-title,
+.ad-scope .t-topbar-slim h1 {
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  line-height: 1.2 !important;
+  color: var(--ae-ink) !important;
+  margin: 0 !important;
+  text-wrap: balance;
+}
+
+.ad-scope .t-top-sub {
+  font-size: 12.5px !important;
+  font-weight: 450 !important;
+  color: var(--ae-ink-3) !important;
+  margin: 2px 0 0 !important;
+  line-height: 1.35 !important;
+}
+
+.ad-scope .t-top-right {
+  gap: 8px !important;
+}
+
+/* Remove decorative calendar icon inside date pill for calmer topbar */
+.ad-scope .t-top-date-pill svg {
+  display: none !important;
+}
+
+.ad-scope .t-top-date-pill {
+  height: 34px !important;
+  padding: 0 13px !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+  background: var(--ae-surface) !important;
+  box-shadow: var(--ae-shadow-btn) !important;
+  color: var(--ae-ink-2) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ad-scope .t-top-action-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+  background: var(--ae-surface) !important;
+  box-shadow: var(--ae-shadow-btn) !important;
+  color: var(--ae-ink-2) !important;
+  transition: background-color 160ms var(--ae-ease), color 160ms var(--ae-ease), box-shadow 160ms var(--ae-ease), transform 140ms var(--ae-ease) !important;
+}
+
+.ad-scope .t-top-action-btn:hover {
+  background: var(--ae-surface) !important;
+  color: var(--ae-blue) !important;
+  box-shadow: var(--ae-shadow-btn-hover) !important;
+  transform: translateY(-1px) !important;
+}
+
+.ad-scope .t-top-action-btn:active {
+  transform: scale(0.95) !important;
+}
+
+.ad-scope .t-top-profile-chip {
+  height: 34px !important;
+  padding: 3px 12px 3px 4px !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+  background: var(--ae-surface) !important;
+  box-shadow: var(--ae-shadow-btn) !important;
+  color: var(--ae-ink) !important;
+  transition: box-shadow 160ms var(--ae-ease), transform 140ms var(--ae-ease) !important;
+}
+
+.ad-scope .t-top-profile-chip:hover {
+  box-shadow: var(--ae-shadow-btn-hover) !important;
+}
+
+.ad-scope .t-top-profile-chip:active {
+  transform: scale(0.97) !important;
+}
+
+.ad-scope .t-top-profile-meta b {
+  font-size: 12.5px !important;
+  font-weight: 650 !important;
+  color: var(--ae-ink) !important;
+}
+
+.ad-scope .t-top-profile-meta small {
+  font-size: 10.5px !important;
+  color: var(--ae-ink-3) !important;
+}
+
+/* ── 5. SEGMENTED CONTEXT BAR (SUB-PAGES ONLY) ── */
+.ad-scope .ad-context-bar {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 8px !important;
+  background: var(--ae-surface) !important;
+  border: 0 !important;
+  border-radius: 16px !important;
+  box-shadow: var(--ae-shadow-card) !important;
+  flex-wrap: wrap;
+}
+
+.ad-scope .ad-context-tabs {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 3px !important;
+  padding: 3px !important;
+  border-radius: 12px !important;
+  background: var(--ae-surface-inset) !important;
+  flex-wrap: wrap;
+}
+
+.ad-scope .ad-context-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px !important;
+  border-radius: 9px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ae-ink-2) !important;
+  font-size: 12.8px !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: background-color 160ms var(--ae-ease), color 160ms var(--ae-ease), box-shadow 160ms var(--ae-ease), transform 130ms var(--ae-ease) !important;
+}
+
+.ad-scope .ad-context-tab svg {
+  display: none !important;
+}
+
+.ad-scope .ad-context-tab:hover {
+  color: var(--ae-ink) !important;
+  background: rgba(0, 0, 0, 0.035) !important;
+}
+
+[data-theme='dark'] .ad-scope .ad-context-tab:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.ad-scope .ad-context-tab.on,
+.ad-scope .ad-context-tab.is-active {
+  background: var(--ae-surface) !important;
+  color: var(--ae-ink) !important;
+  font-weight: 650 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.09), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme='dark'] .ad-scope .ad-context-tab.on,
+[data-theme='dark'] .ad-scope .ad-context-tab.is-active {
+  background: #3a3a3c !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.ad-scope .ad-context-badge {
+  font-style: normal;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--ae-red-dot) !important;
+  color: #ffffff !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-scope .ad-cmd-trigger {
+  height: 32px !important;
+  padding: 0 10px 0 13px !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+  background: var(--ae-surface-inset) !important;
+  box-shadow: 0 0 0 1px var(--ae-hairline) !important;
+  color: var(--ae-ink-3) !important;
+  font-size: 12px !important;
+  font-weight: 550 !important;
+  transition: background-color 150ms var(--ae-ease), color 150ms var(--ae-ease), box-shadow 150ms var(--ae-ease) !important;
+}
+
+.ad-scope .ad-cmd-trigger:hover {
+  background: var(--ae-surface-hover) !important;
+  color: var(--ae-ink) !important;
+  box-shadow: 0 0 0 1px var(--ae-hairline-strong) !important;
+}
+
+.ad-scope .ad-cmd-trigger kbd {
+  padding: 2px 6px !important;
+  border-radius: 6px !important;
+  border: 0 !important;
+  background: var(--ae-surface) !important;
+  box-shadow: 0 0 0 1px var(--ae-hairline-strong) !important;
+  color: var(--ae-ink-2) !important;
+  font-family: var(--ae-mono) !important;
+  font-size: 10.5px !important;
+  font-weight: 600 !important;
+}
+
+/* ── 6. ELEVATED CARDS + CLEAN ICON-FREE HEADINGS ACROSS ALL 13 ADMIN VIEWS ── */
+.ad-scope .vt-card,
+.ad-scope .adl-panel,
+.ad-scope .adl-exam-card,
+.ad-scope .adl-pb-card,
+.ad-scope .adl-review-card,
+.ad-scope .adl-guide-sec,
+.ad-scope .ad-mini-kpi {
+  background: var(--ae-surface) !important;
+  border: 0 !important;
+  border-radius: 20px !important;
+  box-shadow: var(--ae-shadow-card) !important;
+  color: var(--ae-ink) !important;
+}
+
+.ad-scope .vt-card {
+  padding: 20px 22px !important;
+}
+
+/* Fix Bug #3: Nested cards (e.g. ApiUsagePanel provider cards) use crisp inset elevation */
+.ad-scope .vt-card .vt-card {
+  background: var(--ae-surface-inset) !important;
+  box-shadow: 0 0 0 1px var(--ae-hairline) !important;
+  border-radius: 14px !important;
+  padding: 14px 16px !important;
+}
+
+.ad-scope .vt-card.soft,
+.ad-scope .adl-panel.soft {
+  background: var(--ae-surface-inset) !important;
+  box-shadow: 0 0 0 1px var(--ae-hairline) !important;
+}
+
+.ad-scope .vt-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px !important;
+}
+
+.ad-scope .vt-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 !important;
+  font-size: 15.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.022em !important;
+  color: var(--ae-ink) !important;
+}
+
+/* Strip cluttered decorative icons across ALL Admin pages (headings, mini-KPIs, list boxes, empty state boxes) */
+.ad-scope .vt-title-ico,
+.ad-scope .ad-mini-kpi-ico,
+.ad-scope .vt-list-ico,
+.ad-scope .vt-empty > span,
+.ad-scope .adl-empty-ico {
+  display: none !important;
+}
+
+/* Keep decorative button icons off primary/secondary text buttons on sub-pages for calm editorial clarity */
+.ad-scope .vt-btn svg,
+.ad-scope .adl-btn-primary svg,
+.ad-scope .adl-btn-outline svg {
+  display: none !important;
+}
+
+.ad-scope .vt-link {
+  background: none !important;
+  border: 0 !important;
+  color: var(--ae-blue) !important;
+  font-size: 12.8px !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  transition: background-color 140ms var(--ae-ease), color 140ms var(--ae-ease) !important;
+}
+
+.ad-scope .vt-link:hover {
+  background: var(--ae-blue-soft) !important;
+  text-decoration: none !important;
+}
+
+.ad-scope .vt-muted {
+  color: var(--ae-ink-3) !important;
+}
+
+/* ── 7. PURE EDITORIAL KPI STRIP (ZERO ICONS — APPLE / STRIPE / LINEAR) ── */
+.ad-scope .ad-kpi-strip {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+}
+
+.ad-scope .ad-kpi-strip--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.ad-scope .vt-stat-card.ad-kpi-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  min-height: 124px !important;
+  padding: 18px 20px !important;
+  border: 0 !important;
+  border-radius: 20px !important;
+  background: var(--ae-surface) !important;
+  box-shadow: var(--ae-shadow-card) !important;
+  text-align: left !important;
+  cursor: pointer;
+  transition: transform 180ms var(--ae-ease), box-shadow 180ms var(--ae-ease) !important;
+}
+
+.ad-scope .vt-stat-card.ad-kpi-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: var(--ae-shadow-card-hover) !important;
+}
+
+.ad-scope .vt-stat-card.ad-kpi-card:active {
+  transform: scale(0.985) !important;
+}
+
+.ad-scope .vt-stat-card.ad-kpi-card.danger {
+  box-shadow:
+    0 0 0 1px rgba(255, 59, 48, 0.24),
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 10px 28px -12px rgba(255, 59, 48, 0.12) !important;
+}
+
+.ad-scope .ad-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ad-scope .ad-kpi-alert-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ae-red-dot);
+  box-shadow: 0 0 0 4px var(--ae-red-soft);
+  flex-shrink: 0;
+}
+
+.ad-scope .vt-stat-label {
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.005em !important;
+  text-transform: none !important;
+  color: var(--ae-ink-2) !important;
+  margin: 0 !important;
+  line-height: 1.3 !important;
+}
+
+.ad-scope .vt-stat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ad-scope .vt-stat-value {
+  font-size: 32px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.04em !important;
+  font-variant-numeric: tabular-nums !important;
+  line-height: 1.04 !important;
+  margin: 0 !important;
+  color: var(--ae-ink) !important;
+}
+
+.ad-scope .vt-stat-delta {
+  display: inline-flex !important;
+  align-items: center;
+  width: fit-content;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--ae-green-soft);
+  color: var(--ae-green) !important;
+  font-size: 11.5px !important;
+  font-weight: 650 !important;
+  margin: 0 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-scope .vt-stat-sub {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: var(--ae-ink-3) !important;
+  margin: 0 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Sub-page Mini KPI cards */
+.ad-scope .ad-mini-kpi {
+  padding: 16px 18px !important;
+  gap: 4px !important;
+}
+
+.ad-scope .ad-mini-kpi > span:not(.ad-mini-kpi-ico),
+.ad-scope .ad-mini-kpi-label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  letter-spacing: -0.005em !important;
+  color: var(--ae-ink-2) !important;
+}
+
+.ad-scope .ad-mini-kpi > b,
+.ad-scope .ad-mini-kpi-val {
+  font-size: 26px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.035em !important;
+  color: var(--ae-ink) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.ad-scope .ad-mini-kpi > small,
+.ad-scope .ad-mini-kpi-sub {
+  font-size: 12px !important;
+  color: var(--ae-ink-3) !important;
+}
+
+/* ── 8. ROW 2: APPLE SCREEN TIME CHART & IOS INSET GROUPED HEALTH LIST ── */
+.ad-scope .ad-dash-row2 {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr) !important;
+  gap: 18px !important;
+  align-items: stretch;
+}
+
+.ad-scope .ad-trend-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.ad-scope .ad-bar-chart {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  align-items: end !important;
+  height: 168px !important;
+  padding: 14px 8px 6px !important;
+}
+
+.ad-scope .ad-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px !important;
+  height: 100%;
+}
+
+.ad-scope .ad-bar-val {
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: var(--ae-ink-2) !important;
+}
+
+.ad-scope .ad-bar-col.is-zero .ad-bar-val {
+  color: var(--ae-ink-3) !important;
+  opacity: 0.6;
+}
+
+.ad-scope .ad-bar-track {
+  flex: 1;
+  width: 100%;
+  max-width: 28px !important;
+  border-radius: 999px !important;
+  background: var(--ae-surface-inset) !important;
+  box-shadow: inset 0 0 0 1px var(--ae-hairline);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.ad-scope .ad-bar-fill {
+  width: 100%;
+  border-radius: 999px !important;
+  background: linear-gradient(180deg, #4da3ff 0%, var(--ae-blue) 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: height 300ms var(--ae-ease) !important;
+}
+
+.ad-scope .ad-bar-col.is-zero .ad-bar-fill {
+  background: transparent !important;
+  box-shadow: none !important;
+  opacity: 0;
+}
+
+.ad-scope .ad-bar-lbl {
+  font-size: 11.5px !important;
+  font-weight: 550 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: var(--ae-ink-3) !important;
+  margin-top: 0 !important;
+}
+
+/* Unified segmented 4-column summary bar with hairline vertical dividers */
+.ad-scope .ad-week-summary {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0 !important;
+  margin-top: 16px !important;
+  padding: 12px 0 2px !important;
+  border-top: 1px solid var(--ae-hairline) !important;
+}
+
+.ad-scope .ad-week-summary > div {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 2px 14px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-right: 1px solid var(--ae-hairline) !important;
+}
+
+.ad-scope .ad-week-summary > div:first-child {
+  padding-left: 4px !important;
+}
+
+.ad-scope .ad-week-summary > div:last-child {
+  border-right: 0 !important;
+}
+
+.ad-scope .ad-week-summary span {
+  font-size: 11.5px !important;
+  font-weight: 550 !important;
+  color: var(--ae-ink-3) !important;
+}
+
+.ad-scope .ad-week-summary b {
+  font-size: 19px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  font-variant-numeric: tabular-nums !important;
+  color: var(--ae-ink) !important;
+}
+
+/* Seamless iOS Grouped List for Health Check (Zero nested boxes, crisp status dots) */
+.ad-scope .ad-health-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  flex: 1;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--ae-surface-inset);
+  box-shadow: 0 0 0 1px var(--ae-hairline);
+}
+
+.ad-scope .ad-health-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 13px 16px !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--ae-hairline) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: default !important;
+  flex: 1;
+  transition: background-color 150ms var(--ae-ease) !important;
+}
+
+.ad-scope .ad-health-item:last-child {
+  border-bottom: 0 !important;
+}
+
+.ad-scope .ad-health-item:hover {
+  background: var(--ae-surface-hover) !important;
+}
+
+.ad-scope .ad-health-item.warn,
+.ad-scope .ad-health-item.is-warn {
+  background: color-mix(in srgb, var(--ae-amber-dot) 7%, transparent) !important;
+}
+
+.ad-scope .ad-health-item.warn:hover,
+.ad-scope .ad-health-item.is-warn:hover {
+  background: color-mix(in srgb, var(--ae-amber-dot) 11%, transparent) !important;
+}
+
+/* Crisp Apple Status Indicator Dot */
+.ad-scope .ad-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--ae-green-dot);
+  box-shadow: 0 0 0 4px var(--ae-green-soft);
+}
+
+.ad-scope .ad-health-item.warn .ad-status-dot,
+.ad-scope .ad-health-item.is-warn .ad-status-dot,
+.ad-scope .ad-status-dot.is-warn {
+  background: var(--ae-amber-dot);
+  box-shadow: 0 0 0 4px var(--ae-amber-soft);
+}
+
+.ad-scope .ad-health-item.is-info .ad-status-dot {
+  background: var(--ae-blue);
+  box-shadow: 0 0 0 4px var(--ae-blue-soft);
+}
+
+.ad-scope .ad-status-dot.is-danger {
+  background: var(--ae-red-dot);
+  box-shadow: 0 0 0 4px var(--ae-red-soft);
+}
+
+.ad-scope .ad-health-info b {
+  font-size: 13.5px !important;
+  font-weight: 650 !important;
+  color: var(--ae-ink) !important;
+  letter-spacing: -0.01em;
+}
+
+.ad-scope .ad-health-info small {
+  font-size: 12px !important;
+  color: var(--ae-ink-3) !important;
+}
+
+/* ── 9. EXPIRING PRO, LISTS & TYPOGRAPHIC RANKINGS (HAIRLINE GROUPED) ── */
+.ad-scope .ad-expiring-card {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ae-amber-dot) 28%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 10px 28px -12px rgba(255, 149, 0, 0.12) !important;
+}
+
+.ad-scope .ad-inline-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.ad-scope .vt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0 !important;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--ae-surface-inset);
+  box-shadow: 0 0 0 1px var(--ae-hairline);
+}
+
+.ad-scope .vt-list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--ae-hairline) !important;
+  box-shadow: none !important;
+  transition: background-color 140ms var(--ae-ease) !important;
+}
+
+.ad-scope .vt-list li:last-child {
+  border-bottom: 0 !important;
+}
+
+.ad-scope .vt-list li:hover {
+  background: var(--ae-surface-hover) !important;
+}
+
+.ad-scope .vt-list-main b {
+  font-size: 13.5px !important;
+  font-weight: 650 !important;
+  color: var(--ae-ink) !important;
+}
+
+.ad-scope .vt-list-main small {
+  font-size: 12px !important;
+  color: var(--ae-ink-3) !important;
+}
+
+.ad-scope .vt-list-main code {
+  font-family: var(--ae-mono);
+  font-size: 11.5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--ae-surface);
+  color: var(--ae-ink-2);
+  box-shadow: 0 0 0 1px var(--ae-hairline);
+}
+
+.ad-scope .vt-cols {
+  gap: 18px !important;
+}
+
+.ad-scope .vt-rank {
+  display: flex;
+  flex-direction: column;
+  gap: 0 !important;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--ae-surface-inset);
+  box-shadow: 0 0 0 1px var(--ae-hairline);
+}
+
+.ad-scope .vt-rank li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--ae-hairline) !important;
+  box-shadow: none !important;
+  transition: background-color 140ms var(--ae-ease) !important;
+}
+
+.ad-scope .vt-rank li:last-child {
+  border-bottom: 0 !important;
+}
+
+.ad-scope .vt-rank li:hover {
+  background: var(--ae-surface-hover) !important;
+}
+
+.ad-scope .vt-rank li b {
+  font-size: 13.5px !important;
+  font-weight: 650 !important;
+  color: var(--ae-ink) !important;
+  flex: 1;
+  min-width: 0;
+}
+
+.ad-scope .vt-rank li small {
+  font-size: 12px !important;
+  color: var(--ae-ink-3) !important;
+}
+
+.ad-scope .vt-rank-score {
+  font-size: 12.5px !important;
+  font-weight: 650 !important;
+  font-variant-numeric: tabular-nums !important;
+  color: var(--ae-ink) !important;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--ae-surface);
+  box-shadow: 0 0 0 1px var(--ae-hairline);
+}
+
+/* Typographic monospace rank index instead of loud solid circles */
+.ad-scope .vt-rank-n {
+  width: auto !important;
+  min-width: 24px !important;
+  height: auto !important;
+  border-radius: 0 !important;
+  font-family: var(--ae-mono) !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+  background: transparent !important;
+  color: var(--ae-ink-3) !important;
+  box-shadow: none !important;
+  text-align: center;
+}
+
+.ad-scope .vt-rank-n.r1 {
+  color: var(--ae-amber) !important;
+  background: transparent !important;
+}
+
+.ad-scope .vt-rank-n.r2 {
+  color: var(--ae-ink-2) !important;
+  background: transparent !important;
+}
+
+.ad-scope .vt-rank-n.r3 {
+  color: var(--ae-blue) !important;
+  background: transparent !important;
+}
+
+/* ── 10. APPLE CAPSULE BUTTONS & CHIPS ── */
+.ad-scope .vt-btn,
+.ad-scope .adl-btn-outline,
+.ad-scope .adl-btn-primary,
+.ad-scope .adl-btn-danger,
+.ad-scope .adl-btn-sm {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  height: 36px;
+  padding: 0 16px !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+  background: var(--ae-surface) !important;
+  color: var(--ae-ink) !important;
+  box-shadow: var(--ae-shadow-btn) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 150ms var(--ae-ease), color 150ms var(--ae-ease), box-shadow 150ms var(--ae-ease), transform 130ms var(--ae-ease) !important;
+}
+
+.ad-scope .vt-btn.sm,
+.ad-scope .adl-btn-sm {
+  height: 32px !important;
+  padding: 0 14px !important;
+  font-size: 12.5px !important;
+}
+
+.ad-scope .vt-btn:hover:not(:disabled),
+.ad-scope .adl-btn-outline:hover:not(:disabled),
+.ad-scope .adl-btn-sm:hover:not(:disabled) {
+  background: var(--ae-surface-hover) !important;
+  box-shadow: var(--ae-shadow-btn-hover) !important;
+  transform: translateY(-1px) !important;
+}
+
+.ad-scope .vt-btn:active:not(:disabled),
+.ad-scope .adl-btn-outline:active:not(:disabled),
+.ad-scope .adl-btn-primary:active:not(:disabled),
+.ad-scope .adl-btn-danger:active:not(:disabled),
+.ad-scope .adl-btn-sm:active:not(:disabled) {
+  transform: scale(0.97) !important;
+}
+
+/* Unify primary CTAs cleanly to Apple System Blue (overrides stray inline purple/pink gradients) */
+.ad-scope .vt-btn.primary,
+.ad-scope .adl-btn-primary,
+.ad-scope .adl-btn-sm.primary {
+  background: var(--ae-blue) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 2px 8px -2px rgba(0, 113, 227, 0.42) !important;
+}
+
+.ad-scope .vt-btn.primary::before {
+  display: none !important;
+}
+
+.ad-scope .vt-btn.primary:hover:not(:disabled),
+.ad-scope .adl-btn-primary:hover:not(:disabled),
+.ad-scope .adl-btn-sm.primary:hover:not(:disabled) {
+  background: var(--ae-blue-hover) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 6px 16px -4px rgba(0, 113, 227, 0.50) !important;
+}
+
+.ad-scope .vt-btn.danger,
+.ad-scope .adl-btn-danger,
+.ad-scope .adl-btn-sm.danger {
+  background: var(--ae-red-dot) !important;
+  color: #ffffff !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 2px 8px -2px rgba(255, 59, 48, 0.42) !important;
+}
+
+.ad-scope .vt-btn:disabled,
+.ad-scope .adl-btn-primary:disabled,
+.ad-scope .adl-btn-outline:disabled {
+  opacity: 0.48 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.ad-scope .vt-icon-btn,
+.ad-scope .adl-icon-btn,
+.ad-scope .adl-icon-btn-sm {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+  background: var(--ae-surface-inset) !important;
+  color: var(--ae-ink-2) !important;
+  box-shadow: 0 0 0 1px var(--ae-hairline) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 140ms var(--ae-ease), color 140ms var(--ae-ease), transform 130ms var(--ae-ease) !important;
+}
+
+.ad-scope .vt-icon-btn:hover,
+.ad-scope .adl-icon-btn:hover,
+.ad-scope .adl-icon-btn-sm:hover {
+  background: var(--ae-blue-soft) !important;
+  color: var(--ae-blue) !important;
+}
+
+.ad-scope .vt-icon-btn.danger:hover,
+.ad-scope .adl-icon-btn.danger:hover,
+.ad-scope .adl-icon-btn-sm.danger:hover {
+  background: var(--ae-red-soft) !important;
+  color: var(--ae-red) !important;
+}
+
+.ad-scope .vt-chip {
+  height: 24px;
+  padding: 0 10px !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+  font-size: 11.5px !important;
+  font-weight: 650 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-scope .vt-chip.ready {
+  background: var(--ae-green-soft) !important;
+  color: var(--ae-green) !important;
+}
+
+.ad-scope .vt-chip.ready::before {
+  background: var(--ae-green-dot) !important;
+  box-shadow: none !important;
+}
+
+.ad-scope .vt-chip.soon {
+  background: var(--ae-amber-soft) !important;
+  color: var(--ae-amber) !important;
+}
+
+.ad-scope .vt-chip.soon::before {
+  background: var(--ae-amber-dot) !important;
+}
+
+.ad-scope .vt-chip.kicked,
+.ad-scope .vt-chip.closed {
+  background: var(--ae-surface-inset) !important;
+  color: var(--ae-ink-3) !important;
+}
+
+/* ── 11. TABLES, FILTERS, INPUTS & BULK BAR (ALL SUB-PAGES) ── */
+.ad-scope .vt-table-wrap,
+.ad-scope .adl-table-wrap {
+  border-radius: 16px !important;
+  border: 0 !important;
+  box-shadow: 0 0 0 1px var(--ae-hairline) !important;
+  background: var(--ae-surface) !important;
+  overflow: auto !important;
+}
+
+.ad-scope .vt-table,
+.ad-scope .adl-table {
+  width: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+.ad-scope .vt-table thead th,
+.ad-scope .adl-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--ae-surface-inset) !important;
+  backdrop-filter: saturate(180%) blur(12px);
+  color: var(--ae-ink-3) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.055em !important;
+  padding: 11px 14px !important;
+  border-bottom: 1px solid var(--ae-hairline) !important;
+  white-space: nowrap;
+}
+
+.ad-scope .vt-table tbody tr,
+.ad-scope .adl-table tbody tr {
+  background: transparent !important;
+  transition: background-color 130ms var(--ae-ease);
+}
+
+.ad-scope .vt-table tbody tr:nth-child(even) {
+  background: transparent !important;
+}
+
+.ad-scope .vt-table tbody tr:hover,
+.ad-scope .adl-table tbody tr:hover td {
+  background: var(--ae-surface-inset) !important;
+}
+
+.ad-scope .vt-table tbody tr.vt-row-selected {
+  background: var(--ae-blue-soft) !important;
+}
+
+.ad-scope .vt-table td,
+.ad-scope .adl-table td {
+  padding: 12px 14px !important;
+  border-bottom: 1px solid var(--ae-hairline) !important;
+  color: var(--ae-ink) !important;
+  font-size: 13px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.ad-scope .vt-table tbody tr:last-child td,
+.ad-scope .adl-table tbody tr:last-child td {
+  border-bottom: 0 !important;
+}
+
+/* Filters, Selects, Search, Form Fields */
+.ad-scope .vt-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px !important;
+  flex-wrap: wrap;
+}
+
+.ad-scope .t-search-pill,
+.ad-scope .adl-search {
+  height: 36px;
+  padding: 0 14px !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+  background: var(--ae-surface) !important;
+  box-shadow: var(--ae-shadow-btn) !important;
+  color: var(--ae-ink-3) !important;
+}
+
+.ad-scope .t-search-pill:focus-within,
+.ad-scope .adl-search:focus-within {
+  box-shadow: 0 0 0 1.5px var(--ae-blue), 0 0 0 4px var(--ae-blue-soft) !important;
+}
+
+.ad-scope .t-search-pill input,
+.ad-scope .adl-search input {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-size: 13px !important;
+  color: var(--ae-ink) !important;
+}
+
+.ad-scope .vt-filter-group select,
+.ad-scope .vt-select-pill {
+  height: 36px !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+  background-color: var(--ae-surface) !important;
+  box-shadow: var(--ae-shadow-btn) !important;
+  color: var(--ae-ink) !important;
+  font-size: 12.8px !important;
+  font-weight: 600 !important;
+}
+
+.ad-scope .vt-filter-group select:focus,
+.ad-scope .vt-select-pill:focus {
+  box-shadow: 0 0 0 1.5px var(--ae-blue), 0 0 0 4px var(--ae-blue-soft) !important;
+  outline: none !important;
+}
+
+/* Fix Bug #2: Do NOT force !important on padding so inline left-padded search inputs never overlap icons */
+.ad-scope input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.vt-search-input),
+.ad-scope textarea,
+.ad-scope .vt-field select,
+.ad-scope .adl-field select {
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: var(--ae-surface-inset) !important;
+  box-shadow: inset 0 0 0 1px var(--ae-hairline-strong) !important;
+  color: var(--ae-ink) !important;
+  font-size: 13.5px;
+  padding: 9px 13px;
+  transition: box-shadow 150ms var(--ae-ease), background-color 150ms var(--ae-ease) !important;
+}
+
+.ad-scope input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.vt-search-input):focus,
+.ad-scope textarea:focus,
+.ad-scope .vt-field select:focus,
+.ad-scope .adl-field select:focus {
+  background: var(--ae-surface) !important;
+  box-shadow: inset 0 0 0 1.5px var(--ae-blue), 0 0 0 3.5px var(--ae-blue-soft) !important;
+  outline: none !important;
+}
+
+.ad-scope input[type='checkbox'],
+.ad-scope input[type='radio'] {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  accent-color: var(--ae-blue);
+  cursor: pointer;
+}
+
+.ad-scope .vt-bulk-bar {
+  background: var(--ae-blue-soft) !important;
+  border: 0 !important;
+  box-shadow: 0 0 0 1px var(--ae-blue-ring) !important;
+  border-radius: 16px !important;
+  padding: 10px 14px !important;
+}
+
+.ad-scope .vt-seg,
+.ad-scope .adl-tabs {
+  display: inline-flex !important;
+  gap: 3px !important;
+  padding: 3px !important;
+  border-radius: 9999px !important;
+  border: 0 !important;
+  background: var(--ae-surface-inset) !important;
+  box-shadow: 0 0 0 1px var(--ae-hairline) !important;
+}
+
+.ad-scope .vt-seg button,
+.ad-scope .adl-tab {
+  border: 0 !important;
+  border-radius: 9999px !important;
+  padding: 6px 14px !important;
+  background: transparent !important;
+  color: var(--ae-ink-2) !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+}
+
+.ad-scope .vt-seg button.on,
+.ad-scope .vt-seg button.active,
+.ad-scope .adl-tab.on {
+  background: var(--ae-surface) !important;
+  color: var(--ae-ink) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+}
+
+[data-theme='dark'] .ad-scope .vt-seg button.on,
+[data-theme='dark'] .ad-scope .vt-seg button.active,
+[data-theme='dark'] .ad-scope .adl-tab.on {
+  background: #3a3a3c !important;
+  color: #ffffff !important;
+}
+
+.ad-scope .vt-key-code {
+  font-family: var(--ae-mono) !important;
+  font-size: 12.5px !important;
+  font-weight: 650 !important;
+  background: var(--ae-surface-inset) !important;
+  color: var(--ae-ink) !important;
+  box-shadow: 0 0 0 1px var(--ae-hairline) !important;
+  border-radius: 8px !important;
+  padding: 3px 8px !important;
+}
+
+.ad-scope .vt-bar {
+  height: 7px !important;
+  border-radius: 999px !important;
+  background: var(--ae-surface-inset) !important;
+  overflow: hidden;
+}
+
+.ad-scope .vt-bar i {
+  border-radius: 999px !important;
+}
+
+.ad-scope .vt-empty,
+.ad-scope .adl-empty-state {
+  background: var(--ae-surface-inset) !important;
+  border: 1px dashed var(--ae-hairline-strong) !important;
+  border-radius: 18px !important;
+}
+
+/* ── 12. SPOTLIGHT COMMAND PALETTE & LIQUID GLASS MODALS ── */
+.adl-modal-backdrop {
+  background: rgba(0, 0, 0, 0.42) !important;
+  backdrop-filter: saturate(160%) blur(12px) !important;
+  -webkit-backdrop-filter: saturate(160%) blur(12px) !important;
+  z-index: 10000 !important;
+}
+
+.ad-cmd-modal {
+  width: min(580px, 94vw) !important;
+  border-radius: 22px !important;
+  border: 0 !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: saturate(200%) blur(28px) !important;
+  -webkit-backdrop-filter: saturate(200%) blur(28px) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 28px 72px -14px rgba(0, 0, 0, 0.28) !important;
+  color: #1d1d1f !important;
+  animation: ae-sheet-pop 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+[data-theme='dark'] .ad-cmd-modal {
+  background: rgba(24, 24, 27, 0.94) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 32px 80px -14px rgba(0, 0, 0, 0.85) !important;
+  color: #f5f5f7 !important;
+}
+
+.ad-cmd-search {
+  padding: 14px 18px !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
+  background: transparent !important;
+}
+
+[data-theme='dark'] .ad-cmd-search {
+  border-bottom-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+.ad-cmd-search input {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  padding: 2px 0 !important;
+}
+
+.ad-cmd-list {
+  padding: 8px !important;
+  gap: 2px !important;
+}
+
+.ad-cmd-item {
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  transition: background-color 120ms ease, color 120ms ease !important;
+}
+
+.ad-cmd-item:hover,
+.ad-cmd-item.first {
+  background: rgba(0, 113, 227, 0.10) !important;
+  color: #0071e3 !important;
+}
+
+[data-theme='dark'] .ad-cmd-item:hover,
+[data-theme='dark'] .ad-cmd-item.first {
+  background: rgba(10, 132, 255, 0.20) !important;
+  color: #409cff !important;
+}
+
+.ad-cmd-ico {
+  display: none !important;
+}
+
+.ad-cmd-foot {
+  background: rgba(0, 0, 0, 0.025) !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.07) !important;
+  padding: 10px 16px !important;
+}
+
+[data-theme='dark'] .ad-cmd-foot {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-top-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+.adl-modal,
+.adl-confirm {
+  border-radius: 22px !important;
+  border: 0 !important;
+  background: #ffffff !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 24px 64px -12px rgba(0, 0, 0, 0.25) !important;
+  animation: ae-sheet-pop 220ms cubic-bezier(0.23, 1, 0.32, 1) !important;
+}
+
+[data-theme='dark'] .adl-modal,
+[data-theme='dark'] .adl-confirm {
+  background: #1c1c1e !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 28px 72px -12px rgba(0, 0, 0, 0.85) !important;
+}
+
+.adl-toast-item,
+.ad-scope .vt-toast {
+  border-radius: 9999px !important;
+  border: 0 !important;
+  background: rgba(29, 29, 31, 0.92) !important;
+  color: #ffffff !important;
+  backdrop-filter: saturate(180%) blur(18px) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 12px 32px -8px rgba(0, 0, 0, 0.35) !important;
+  padding: 10px 16px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+@keyframes ae-sheet-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── 13. RESPONSIVE BREAKPOINTS (TABLET & MOBILE) ── */
+@media (max-width: 1240px) {
+  .ad-scope .ad-kpi-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .ad-scope .ad-dash-row2 {
+    grid-template-columns: 1fr !important;
+  }
+  .ad-scope .ad-kpi-strip,
+  .ad-scope .ad-kpi-strip--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .ad-scope .t-topbar-slim {
+    padding: 10px 14px !important;
+  }
+  .ad-scope .t-top-date-pill {
+    display: none !important;
+  }
+  .ad-scope .t-top-profile-chip {
+    width: 34px !important;
+    padding: 3px !important;
+    justify-content: center !important;
+  }
+  .ad-scope .t-viewport {
+    padding: 14px 14px 96px !important;
+    gap: 14px !important;
+  }
+  .ad-scope .ad-week-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    row-gap: 12px !important;
+  }
+  .ad-scope .ad-week-summary > div:nth-child(2n) {
+    border-right: 0 !important;
+  }
+  .ad-scope .ad-context-bar {
+    padding: 8px !important;
+  }
+  .ad-scope .ad-cmd-trigger {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .ad-scope .t-mobile-bottom-nav {
+    background: var(--ae-glass-strong) !important;
+    backdrop-filter: saturate(180%) blur(24px) !important;
+    -webkit-backdrop-filter: saturate(180%) blur(24px) !important;
+    border: 0 !important;
+    box-shadow: var(--ae-shadow-modal) !important;
+  }
+  .ad-scope .t-mobile-nav-btn.active {
+    color: var(--ae-blue) !important;
+  }
+  .ad-scope .t-mobile-sheet {
+    background: var(--ae-surface) !important;
+    border-top-left-radius: 24px !important;
+    border-top-right-radius: 24px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .ad-scope .ad-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+  .ad-scope .ad-kpi-strip > :last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  .ad-scope .vt-stat-card.ad-kpi-card {
+    min-height: 104px !important;
+    padding: 14px 16px !important;
+  }
+  .ad-scope .vt-stat-value {
+    font-size: 26px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ad-scope *,
+  .ad-cmd-modal,
+  .adl-modal,
+  .adl-confirm {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

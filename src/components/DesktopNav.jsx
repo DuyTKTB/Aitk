@@ -6,6 +6,7 @@ import UserProfileNavDropdown from './UserProfileNavDropdown.jsx';
 import StudyGoalNavDropdown from './aspiration/StudyGoalNavDropdown.jsx';
 import NavCreditPopover from './NavCreditPopover.jsx';
 import NavStreakPopover from './NavStreakPopover.jsx';
+import NavNotificationPopover from './NavNotificationPopover.jsx';
 import { LOGO_GLIDE_TRANSITION, useElecIntro } from './ElecIntroLoader.jsx';
 import '../styles/nav-dropdowns.css';
 import '../styles/nav-redesign-v2.css';
@@ -976,19 +977,8 @@ export default function DesktopNav({
               )}
             </button>
 
-            {/* 3. Nút Chat cộng đồng ELEC AI */}
-            <button
-              type="button"
-              className="nav-action-icon-btn nav-companion-msg-btn"
-              onClick={() => { window.dispatchEvent(new CustomEvent('elec-open-community-chat')); }}
-              aria-label="Chat cộng đồng học tập ELEC AI"
-              title="Chat cộng đồng học tập ELEC AI (Hỏi bài, giao lưu & học nhóm)"
-            >
-              <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" className="nav-svg-pro">
-                <path d="M16.8 11.8a2.2 2.2 0 0 1-2.2 2.2H7L3.5 17V5.2A2.2 2.2 0 0 1 5.7 3h8.9a2.2 2.2 0 0 1 2.2 2.2v6.6Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                <path d="M7.2 7.6h5.6M7.2 10.3h3.6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </button>
+            {/* 3. Trung tâm Thông báo ELEC AI (Admin · Chuỗi · Học chung · Mẹo KHTN) */}
+            <NavNotificationPopover />
           </div>
 
           {/* 4. Avatar cá nhân tròn tối giản */}

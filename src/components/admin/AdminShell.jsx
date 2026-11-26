@@ -32,6 +32,13 @@ export const ADMIN_MENU = [
   { key: 'guide',      label: 'Hướng dẫn',        Icon: IconBook,      group: 4, desc: 'Quy trình chuẩn, mẫu JSON & xử lý sự cố' },
 ];
 
+const GROUP_LABELS = {
+  1: 'Tổng quan',
+  2: 'Nội dung & Đề thi',
+  3: 'Kinh doanh & User',
+  4: 'Vận hành & Hệ thống',
+};
+
 const GROUP_TABS = {
   2: [
     { key: 'exams',     label: 'Danh sách Đề thi',   Icon: IconExam },
@@ -90,6 +97,7 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
     key: m.key,
     label: m.label,
     Icon: m.Icon,
+    group: GROUP_LABELS[m.group] || null,
     badge: m.badge ? mergedBadges[m.badge] || null : null,
     live: false,
   })), [mergedBadges]);
@@ -147,15 +155,18 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
   }, [cmdQuery, mergedBadges]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const extraNav = (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div className="ad-extra-nav">
+      <div className="t-rail-group-divider" />
+      <div className="t-rail-group-label">Lối tắt</div>
       <button
         type="button"
         className="t-rail-btn"
         onClick={() => { setCmdOpen(true); setCmdQuery(''); }}
         title="Tìm nhanh & chuyển trang (Ctrl + K)"
       >
-        <span className="t-rail-btn-icon"><IconSearch size={19} /></span>
+        <span className="t-rail-btn-icon"><IconSearch size={18} /></span>
         <span className="t-rail-btn-label">Lệnh nhanh</span>
+        <kbd className="ad-rail-kbd">⌘K</kbd>
       </button>
       <button
         type="button"
@@ -163,7 +174,7 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
         onClick={() => { window.location.hash = 'classroom'; }}
         title="Sang trang quản lý lớp học"
       >
-        <span className="t-rail-btn-icon"><IconUserCheck size={19} /></span>
+        <span className="t-rail-btn-icon"><IconUserCheck size={18} /></span>
         <span className="t-rail-btn-label">Quản lý lớp</span>
       </button>
     </div>
@@ -184,9 +195,9 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
       onOpenCommandPalette={() => { setCmdOpen(true); setCmdQuery(''); }}
       onOpenProfile={() => navigateTo('users')}
     >
-      {/* Thanh chuyển nhanh theo cụm chức năng + nút Ctrl+K */}
-      <div className="ad-context-bar">
-        {siblingTabs ? (
+      {/* Thanh chuyển nhanh theo cụm chức năng + nút Ctrl+K (chỉ hiện ở các trang nhóm con) */}
+      {siblingTabs && (
+        <div className="ad-context-bar">
           <nav className="ad-context-tabs" aria-label="Chuyển nhanh trong nhóm">
             {siblingTabs.map((t) => {
               const isOn = t.key === active;
@@ -198,35 +209,27 @@ export default function AdminShell({ active, onChange, badges = {}, sideNote, ch
                   className={'ad-context-tab' + (isOn ? ' on' : '')}
                   onClick={() => navigateTo(t.key)}
                 >
-                  <t.Icon size={14} />
                   <span>{t.label}</span>
                   {badgeVal ? <em className="ad-context-badge">{badgeVal}</em> : null}
                 </button>
               );
             })}
           </nav>
-        ) : (
-          <div className="ad-context-crumb">
-            <span className="ad-context-crumb-icon" aria-hidden="true">
-              <IconDashboard size={15} />
-            </span>
-            <span>Trung tâm Quản trị Hệ thống</span>
-          </div>
-        )}
 
-        <div className="ad-context-right">
-          <button
-            type="button"
-            className="ad-cmd-trigger"
-            onClick={() => { setCmdOpen(true); setCmdQuery(''); }}
-            title="Mở bảng điều khiển nhanh (Ctrl + K)"
-          >
-            <IconSearch size={13} />
-            <span>Tìm trang & lệnh nhanh…</span>
-            <kbd>Ctrl K</kbd>
-          </button>
+          <div className="ad-context-right">
+            <button
+              type="button"
+              className="ad-cmd-trigger"
+              onClick={() => { setCmdOpen(true); setCmdQuery(''); }}
+              title="Mở bảng điều khiển nhanh (Ctrl + K)"
+            >
+              <IconSearch size={13} />
+              <span>Tìm trang & lệnh nhanh…</span>
+              <kbd>Ctrl K</kbd>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {children}
 

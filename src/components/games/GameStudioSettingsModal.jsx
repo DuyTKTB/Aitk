@@ -16,6 +16,7 @@ import {
 } from './ClassroomGameIcons.jsx';
 import { IconClose, IconShield, IconLock, IconDownload, IconUpload } from '../Icons.jsx';
 import '../../styles/classroom-games.css';
+import './game-studio-settings.css';
 
 /* Danh sách 11 trò chơi */
 export const ALL_GAMES_METADATA = [
@@ -256,351 +257,195 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
     reader.readAsText(file);
   };
 
+  const activeGame = ALL_GAMES_METADATA.find((g) => g.id === activeTab);
+  const ActiveIcon = activeGame?.icon || SvgFlag;
+
   return (
-    <div className="cg-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div
-        className="cg-question-box animate-pop"
-        style={{
-          maxWidth: 960,
-          width: '95vw',
-          maxHeight: '90vh',
-          padding: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Modal Top Header */}
-        <div
-          style={{
-            padding: '1.25rem 1.75rem',
-            borderBottom: '1px solid var(--line, rgba(0,0,0,0.08))',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'var(--panel, #ffffff)',
-          }}
-        >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span className="cg-badge">TRUNG TÂM CÀI ĐẶT TRÒ CHƠI</span>
-              {userIsAdmin && (
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    fontWeight: 800,
-                    padding: '0.2rem 0.5rem',
-                    borderRadius: '6px',
-                    background: '#ef4444',
-                    color: '#ffffff',
-                  }}
-                >
-                  ADMIN
-                </span>
-              )}
+    <div
+      className="gss-backdrop"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose?.();
+      }}
+    >
+      <div className="gss-sheet" role="dialog" aria-modal="true" aria-label="Cài đặt Game Studio">
+        {/* ============ LEFT MACOS SIDEBAR ============ */}
+        <aside className="gss-sidebar">
+          <div className="gss-side-head">
+            <div className="gss-side-brand">
+              <strong>Game Studio</strong>
+              <small>Trung tâm tùy chỉnh</small>
             </div>
-            <h2 style={{ margin: '0.25rem 0 0', fontSize: '1.35rem', fontWeight: 800 }}>
-              Cài đặt & Quản trị Game Studio
-            </h2>
+            {userIsAdmin && <span className="gss-admin-badge">Admin</span>}
           </div>
 
-          <button
-            type="button"
-            className="cg-action-btn"
-            style={{ padding: '0.4rem 0.8rem', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-            onClick={onClose}
-          >
-            Đóng <IconClose size={14} />
-          </button>
-        </div>
-
-        {/* Modal Body: Sidebar + Main Content */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          {/* Left Sidebar Tabs */}
-          <aside
-            style={{
-              width: 250,
-              borderRight: '1px solid var(--line, rgba(0,0,0,0.08))',
-              background: 'var(--surface-2, #f8fafc)',
-              overflowY: 'auto',
-              padding: '0.75rem',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.35rem',
-            }}
-          >
-            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--mut, #64748b)', padding: '0.4rem 0.6rem', textTransform: 'uppercase' }}>
-              Cài đặt nội dung (Công khai)
-            </div>
+          <div className="gss-side-scroll">
+            <div className="gss-side-label">Nội dung trò chơi</div>
 
             {ALL_GAMES_METADATA.map((g) => {
               const isSelected = activeTab === g.id;
               const isHidden = visibility[g.id] === false;
+              const GameIcon = g.icon;
 
               return (
                 <button
                   key={g.id}
                   type="button"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.6rem 0.75rem',
-                    borderRadius: '12px',
-                    border: 'none',
-                    background: isSelected ? 'var(--panel, #ffffff)' : 'transparent',
-                    color: isSelected ? 'var(--ink, #0f172a)' : 'var(--mut, #64748b)',
-                    fontWeight: isSelected ? 700 : 500,
-                    fontSize: '0.88rem',
-                    cursor: 'pointer',
-                    boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-                    textAlign: 'left',
-                    transition: 'all 0.15s ease',
-                  }}
+                  className={`gss-nav-item ${isSelected ? 'is-active' : ''}`}
                   onClick={() => setActiveTab(g.id)}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: g.color }} />
-                    <span>{g.name}</span>
-                  </div>
-                  {isHidden && (
-                    <span style={{ fontSize: '0.65rem', background: 'rgba(239,68,68,0.15)', color: '#ef4444', padding: '0.1rem 0.35rem', borderRadius: '4px' }}>
-                      Đã ẩn
+                  <span className="gss-nav-item-l">
+                    <span className="gss-nav-ico" style={{ '--item-color': g.color }}>
+                      <GameIcon />
                     </span>
-                  )}
+                    <span>{g.name}</span>
+                  </span>
+                  {isHidden && <span className="gss-hidden-tag">Ẩn</span>}
                 </button>
               );
             })}
+          </div>
 
-            <div style={{ margin: '0.75rem 0 0.25rem', height: 1, background: 'var(--line, rgba(0,0,0,0.08))' }} />
-
-            {/* Tab Admin */}
+          <div className="gss-side-foot">
             <button
               type="button"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.6rem',
-                padding: '0.7rem 0.75rem',
-                borderRadius: '12px',
-                border: activeTab === 'admin' ? '1.5px solid #ef4444' : '1px solid transparent',
-                background: activeTab === 'admin' ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
-                color: activeTab === 'admin' ? '#ef4444' : 'var(--mut, #64748b)',
-                fontWeight: 800,
-                fontSize: '0.88rem',
-                cursor: 'pointer',
-              }}
+              className={`gss-nav-item is-admin ${activeTab === 'admin' ? 'is-active' : ''}`}
               onClick={() => setActiveTab('admin')}
             >
-              <IconShield size={16} />
-              <span>Quản trị Hệ thống (Admin)</span>
+              <span className="gss-nav-item-l">
+                <span className="gss-nav-ico" style={{ '--item-color': '#ff3b30' }}>
+                  <IconShield size={13} />
+                </span>
+                <span>Quản trị hệ thống</span>
+              </span>
             </button>
-          </aside>
+          </div>
+        </aside>
 
-          {/* Right Main Content */}
-          <main style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: 'var(--panel, #ffffff)' }}>
-            {saveSuccess && (
-              <div style={{ padding: '0.75rem 1rem', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', fontWeight: 700, marginBottom: '1.25rem' }}>
-                ✓ {saveSuccess}
+        {/* ============ RIGHT CONTENT PANE ============ */}
+        <section className="gss-main">
+          {/* Sticky Header */}
+          <header className="gss-head">
+            <div className="gss-head-l">
+              <span
+                className="gss-head-ico"
+                style={{ background: activeTab === 'admin' ? '#ff3b30' : (activeGame?.color || '#0071e3') }}
+              >
+                {activeTab === 'admin' ? <IconShield size={17} /> : <ActiveIcon />}
+              </span>
+              <div className="gss-head-copy">
+                <h2>{activeTab === 'admin' ? 'Quản trị hệ thống' : activeGame?.name}</h2>
+                <p>
+                  {activeTab === 'admin'
+                    ? 'Kiểm soát hiển thị từng trò chơi, khóa giờ thi và khôi phục mặc định.'
+                    : 'Tùy chỉnh thời gian, thông số vòng chơi và ngân hàng câu hỏi riêng cho lớp.'}
+                </p>
               </div>
-            )}
+            </div>
 
-            {/* TAB QUẢN TRỊ ADMIN */}
+            <button
+              type="button"
+              className="gss-close-btn"
+              onClick={onClose}
+              aria-label="Đóng cài đặt"
+              title="Đóng (Esc)"
+            >
+              <IconClose size={14} />
+            </button>
+          </header>
+
+          {/* Scrollable Body */}
+          <div className="gss-body">
             {activeTab === 'admin' ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div>
-                  <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.25rem', fontWeight: 800 }}>
-                    Quyền Quản Trị Viên Tối Cao (Admin Only)
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--mut, #64748b)' }}>
-                    Admin có thể kiểm soát trạng thái hiển thị của từng trò chơi trên GameHub, khóa học sinh tự do chơi trong giờ kiểm tra và reset hệ thống.
+              !userIsAdmin ? (
+                <div className="gss-admin-locked">
+                  <div style={{ color: 'var(--gss-mut)' }}><IconLock size={34} /></div>
+                  <h4>Chức năng dành riêng cho Quản trị viên</h4>
+                  <p>
+                    Chỉ tài khoản Admin mới có quyền ẩn/hiện trò chơi hoặc khóa toàn bộ trong giờ kiểm tra.
+                    Bạn vẫn có thể tự do chỉnh sửa câu hỏi và thông số ở các mục trò chơi bên trái.
                   </p>
                 </div>
-
-                {!userIsAdmin ? (
-                  <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--surface-2, #f8fafc)', borderRadius: '18px', border: '1px dashed var(--line, #ccc)' }}>
-                    <div style={{ marginBottom: '0.5rem', color: 'var(--mut, #64748b)' }}><IconLock size={40} /></div>
-                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 800 }}>
-                      Bạn chưa có quyền Admin
-                    </h4>
-                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--mut, #64748b)', maxWidth: 450, marginInline: 'auto' }}>
-                      Chỉ tài khoản Quản trị viên (Admin) mới có quyền ẩn/hiện trò chơi hoặc can thiệp sâu vào hệ sinh thái. Người dùng thông thường có thể thoải mái chỉnh sửa câu hỏi và thời gian ở các tab trò chơi bên trái.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Bật/Tắt khóa toàn bộ trong giờ thi */}
-                    <div
-                      style={{
-                        padding: '1.25rem',
-                        borderRadius: '16px',
-                        background: lockAllGames ? 'rgba(239, 68, 68, 0.08)' : 'var(--surface-2, #f8fafc)',
-                        border: lockAllGames ? '1.5px solid #ef4444' : '1px solid var(--line, rgba(0,0,0,0.08))',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
+              ) : (
+                <>
+                  {/* Khóa giờ thi */}
+                  <div className={`gss-lock-banner ${lockAllGames ? 'is-locked' : ''}`}>
+                    <div>
+                      <strong>Chế độ Giờ thi (Khóa toàn bộ trò chơi)</strong>
+                      <span>
+                        Khi bật, toàn bộ trò chơi trên GameHub sẽ tạm ẩn khỏi học sinh để tập trung làm bài kiểm tra.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={lockAllGames}
+                      className={`gss-switch is-danger ${lockAllGames ? 'is-on' : ''}`}
+                      onClick={handleToggleLockAll}
+                      title={lockAllGames ? 'Đang khóa toàn bộ game' : 'Đang mở tự do'}
                     >
-                      <div>
-                        <strong style={{ display: 'block', fontSize: '1rem', color: lockAllGames ? '#ef4444' : 'inherit' }}>
-                          Chế độ Giờ thi / Khóa toàn bộ trò chơi
-                        </strong>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--mut, #64748b)' }}>
-                          Khi kích hoạt, toàn bộ trò chơi sẽ tạm thời bị ẩn khỏi học sinh để tập trung làm bài kiểm tra.
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className={lockAllGames ? 'cg-btn-primary' : 'cg-btn-secondary'}
-                        style={{ background: lockAllGames ? '#ef4444' : undefined, whiteSpace: 'nowrap' }}
-                        onClick={handleToggleLockAll}
-                      >
-                        {lockAllGames ? 'Đang KHÓA' : 'MỞ TỰ DO'}
-                      </button>
-                    </div>
-
-                    {/* Danh sách Ẩn / Hiện từng Game */}
-                    <div>
-                      <h4 style={{ margin: '0 0 0.75rem', fontSize: '1rem', fontWeight: 700 }}>
-                        Trạng thái hiển thị từng trò chơi trên GameHub:
-                      </h4>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                        {ALL_GAMES_METADATA.map((g) => {
-                          const isShown = visibility[g.id] !== false;
-
-                          return (
-                            <div
-                              key={g.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                padding: '0.85rem 1.15rem',
-                                borderRadius: '14px',
-                                background: 'var(--surface-2, #f8fafc)',
-                                border: '1px solid var(--line, rgba(0,0,0,0.08))',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ width: 10, height: 10, borderRadius: '50%', background: g.color }} />
-                                <div>
-                                  <strong style={{ fontSize: '0.95rem' }}>{g.name}</strong>
-                                  <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--mut, #64748b)' }}>
-                                    Route: #{g.id}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <button
-                                type="button"
-                                style={{
-                                  padding: '0.4rem 0.85rem',
-                                  borderRadius: '999px',
-                                  border: 'none',
-                                  background: isShown ? '#10b981' : '#ef4444',
-                                  color: '#ffffff',
-                                  fontSize: '0.8rem',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s ease',
-                                }}
-                                onClick={() => handleToggleVisibility(g.id)}
-                              >
-                                {isShown ? 'Đang HIỆN' : 'Đã ẨN'}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Nút reset hệ thống */}
-                    <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--line, rgba(0,0,0,0.08))' }}>
-                      <button
-                        type="button"
-                        style={{
-                          padding: '0.65rem 1.25rem',
-                          borderRadius: '12px',
-                          border: '1px solid #ef4444',
-                          background: 'transparent',
-                          color: '#ef4444',
-                          fontWeight: 700,
-                          fontSize: '0.88rem',
-                          cursor: 'pointer',
-                        }}
-                        onClick={handleResetSystemDefaults}
-                      >
-                        Khôi phục toàn bộ trò chơi về mặc định hệ thống
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              /* TAB CÀI ĐẶT CÔNG KHAI CỦA TỪNG GAME */
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.85rem' }}>
-                  <div style={{ flex: '1 1 260px' }}>
-                    <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.35rem', fontWeight: 800 }}>
-                      Cài đặt: {ALL_GAMES_METADATA.find((g) => g.id === activeTab)?.name}
-                    </h3>
-                    <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--mut, #64748b)' }}>
-                      Giáo viên / Học sinh có thể tùy chỉnh thời gian suy nghĩ, luật chơi và nội dung câu hỏi.
-                    </p>
+                      <span className="gss-switch-knob" />
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    className="cg-btn-primary"
-                    style={{
-                      padding: '0.65rem 1.4rem',
-                      whiteSpace: 'nowrap',
-                      flex: '0 0 auto',
-                      minWidth: 'max-content',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 700,
-                    }}
-                    onClick={handleSaveGameConfig}
-                  >
-                    Lưu tất cả thay đổi
-                  </button>
-                </div>
+                  {/* Trạng thái hiển thị từng trò chơi */}
+                  <div className="gss-group">
+                    <h4 className="gss-group-title">Trạng thái hiển thị trên GameHub ({ALL_GAMES_METADATA.length} trò chơi)</h4>
+                    <div className="gss-vis-grid">
+                      {ALL_GAMES_METADATA.map((g) => {
+                        const isShown = visibility[g.id] !== false;
+                        const GameIcon = g.icon;
 
-                {/* Phần 1: Tùy chỉnh thông số & thời gian (Công khai) */}
-                <div
-                  style={{
-                    padding: '1.25rem',
-                    borderRadius: '16px',
-                    background: 'var(--surface-2, #f8fafc)',
-                    border: '1px solid var(--line, rgba(0,0,0,0.08))',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                  }}
-                >
-                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0284c7' }}>
-                    ⏱️ THỜI GIAN & THÔNG SỐ VÒNG CHƠI
-                  </h4>
+                        return (
+                          <div key={g.id} className="gss-vis-row">
+                            <div className="gss-vis-row-l">
+                              <span className="gss-nav-ico" style={{ '--item-color': g.color }}>
+                                <GameIcon />
+                              </span>
+                              <div style={{ minWidth: 0 }}>
+                                <strong>{g.name}</strong>
+                                <small>{isShown ? 'Đang hiển thị' : 'Đang ẩn'}</small>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isShown}
+                              className={`gss-switch ${isShown ? 'is-on' : ''}`}
+                              onClick={() => handleToggleVisibility(g.id)}
+                              aria-label={`Bật hoặc tắt hiển thị ${g.name}`}
+                            >
+                              <span className="gss-switch-knob" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                    {/* Chỉnh thời gian đếm ngược */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--mut, #64748b)', marginBottom: '0.35rem' }}>
-                        Thời gian suy nghĩ mỗi câu:
-                      </label>
+                  {/* Khôi phục mặc định */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                    <button
+                      type="button"
+                      className="gss-pill-btn is-danger"
+                      onClick={handleResetSystemDefaults}
+                    >
+                      Khôi phục toàn bộ về mặc định hệ thống
+                    </button>
+                  </div>
+                </>
+              )
+            ) : (
+              <>
+                {/* Phần 1: Thời gian & Thông số vòng chơi */}
+                <div className="gss-group">
+                  <h4 className="gss-group-title">Thời gian &amp; thông số vòng chơi</h4>
+
+                  <div className="gss-fields-grid">
+                    <div className="gss-field">
+                      <label htmlFor="gss-timer-select">Thời gian suy nghĩ mỗi câu</label>
                       <select
-                        style={{
-                          width: '100%',
-                          padding: '0.6rem 0.85rem',
-                          borderRadius: '10px',
-                          border: '1px solid var(--line, #ccc)',
-                          background: 'var(--panel, #fff)',
-                          color: 'var(--ink, #000)',
-                          fontWeight: 600,
-                        }}
+                        id="gss-timer-select"
+                        className="gss-select"
                         value={gameConfig.timer ?? 25}
                         onChange={(e) => setGameConfig({ ...gameConfig, timer: Number(e.target.value) })}
                       >
@@ -614,22 +459,12 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
                       </select>
                     </div>
 
-                    {/* Ngưỡng chiến thắng (Kéo co hoặc Đua xe) */}
                     {activeTab === 'tugofwar' && (
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--mut, #64748b)', marginBottom: '0.35rem' }}>
-                          Ngưỡng kéo để thắng cuộc:
-                        </label>
+                      <div className="gss-field">
+                        <label htmlFor="gss-threshold-select">Ngưỡng kéo để thắng cuộc</label>
                         <select
-                          style={{
-                            width: '100%',
-                            padding: '0.6rem 0.85rem',
-                            borderRadius: '10px',
-                            border: '1px solid var(--line, #ccc)',
-                            background: 'var(--panel, #fff)',
-                            color: 'var(--ink, #000)',
-                            fontWeight: 600,
-                          }}
+                          id="gss-threshold-select"
+                          className="gss-select"
                           value={gameConfig.winThreshold ?? 4}
                           onChange={(e) => setGameConfig({ ...gameConfig, winThreshold: Number(e.target.value) })}
                         >
@@ -640,43 +475,30 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
                       </div>
                     )}
 
-                    {/* Tên đội Đỏ / Xanh */}
                     {activeTab === 'tugofwar' && (
                       <>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#ef4444', marginBottom: '0.35rem' }}>
-                            Tên Đội 1:
+                        <div className="gss-field">
+                          <label htmlFor="gss-team-red">
+                            <span className="gss-team-dot" style={{ background: '#ff3b30' }} />
+                            <span>Tên Đội 1</span>
                           </label>
                           <input
+                            id="gss-team-red"
                             type="text"
-                            style={{
-                              width: '100%',
-                              padding: '0.55rem 0.75rem',
-                              borderRadius: '10px',
-                              border: '1px solid var(--line, #ccc)',
-                              background: 'var(--panel, #fff)',
-                              color: 'var(--ink, #000)',
-                              boxSizing: 'border-box',
-                            }}
+                            className="gss-input"
                             value={gameConfig.teamRed ?? 'Đội Đỏ'}
                             onChange={(e) => setGameConfig({ ...gameConfig, teamRed: e.target.value })}
                           />
                         </div>
-                        <div>
-                          <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#0284c7', marginBottom: '0.35rem' }}>
-                            Tên Đội 2:
+                        <div className="gss-field">
+                          <label htmlFor="gss-team-blue">
+                            <span className="gss-team-dot" style={{ background: '#0071e3' }} />
+                            <span>Tên Đội 2</span>
                           </label>
                           <input
+                            id="gss-team-blue"
                             type="text"
-                            style={{
-                              width: '100%',
-                              padding: '0.55rem 0.75rem',
-                              borderRadius: '10px',
-                              border: '1px solid var(--line, #ccc)',
-                              background: 'var(--panel, #fff)',
-                              color: 'var(--ink, #000)',
-                              boxSizing: 'border-box',
-                            }}
+                            className="gss-input"
                             value={gameConfig.teamBlue ?? 'Đội Xanh'}
                             onChange={(e) => setGameConfig({ ...gameConfig, teamBlue: e.target.value })}
                           />
@@ -686,161 +508,125 @@ export default function GameStudioSettingsModal({ user, onClose, onUpdated }) {
                   </div>
                 </div>
 
-                {/* Phần 2: Quản lý ngân hàng câu hỏi của game */}
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>
-                      Danh sách câu hỏi ({questions.length} câu)
-                    </h4>
+                {/* Phần 2: Ngân hàng câu hỏi */}
+                <div className="gss-q-section">
+                  <div className="gss-q-header">
+                    <div className="gss-q-header-l">
+                      <h3>Ngân hàng câu hỏi</h3>
+                      <span className="gss-count-pill">{questions.length} câu</span>
+                    </div>
 
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <label className="cg-action-btn" style={{ cursor: 'pointer', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                        <IconUpload size={14} /> Nhập JSON
+                    <div className="gss-q-tools">
+                      <label className="gss-pill-btn">
+                        <IconUpload size={13} />
+                        <span>Nhập JSON</span>
                         <input type="file" accept=".json" onChange={handleImportJSON} style={{ display: 'none' }} />
                       </label>
-                      <button
-                        type="button"
-                        className="cg-action-btn"
-                        style={{ padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                        onClick={handleExportJSON}
-                      >
-                        <IconDownload size={14} /> Xuất JSON
+                      <button type="button" className="gss-pill-btn" onClick={handleExportJSON}>
+                        <IconDownload size={13} />
+                        <span>Xuất JSON</span>
                       </button>
-                      <button
-                        type="button"
-                        className="cg-btn-primary"
-                        style={{ padding: '0.35rem 0.85rem', fontSize: '0.85rem', whiteSpace: 'nowrap', flex: '0 0 auto' }}
-                        onClick={handleAddQuestion}
-                      >
+                      <button type="button" className="gss-pill-btn is-primary" onClick={handleAddQuestion}>
                         + Thêm câu hỏi
                       </button>
                     </div>
                   </div>
 
-                  {/* List câu hỏi có thể chỉnh sửa trực tiếp */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {questions.length === 0 ? (
-                      <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--surface-2, #f8fafc)', borderRadius: '16px', color: 'var(--mut, #64748b)' }}>
-                        Chưa có câu hỏi tùy biến nào (Game đang dùng bộ câu hỏi mặc định của hệ thống). Bấm "+ Thêm câu hỏi" để tạo đề thi riêng của lớp!
-                      </div>
-                    ) : (
-                      questions.map((q, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            padding: '1.25rem',
-                            borderRadius: '16px',
-                            background: 'var(--surface-2, #f8fafc)',
-                            border: '1px solid var(--line, rgba(0,0,0,0.08))',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.75rem',
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0284c7' }}>
-                              CÂU HỎI #{idx + 1}
-                            </span>
+                  {questions.length === 0 ? (
+                    <div className="gss-empty">
+                      <strong>Đang dùng bộ câu hỏi mặc định của hệ thống</strong>
+                      Bấm “+ Thêm câu hỏi” hoặc “Nhập JSON” để tạo ngân hàng câu hỏi riêng cho lớp học.
+                    </div>
+                  ) : (
+                    <div className="gss-q-list">
+                      {questions.map((q, idx) => (
+                        <div key={idx} className="gss-q-card">
+                          <div className="gss-q-top">
+                            <span className="gss-q-num">Câu hỏi #{idx + 1}</span>
                             <button
                               type="button"
-                              style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 700 }}
+                              className="gss-q-del"
                               onClick={() => handleDeleteQuestion(idx)}
                             >
-                              Xóa câu này
+                              Xóa câu
                             </button>
                           </div>
 
                           <input
                             type="text"
-                            style={{
-                              width: '100%',
-                              padding: '0.65rem 0.85rem',
-                              borderRadius: '10px',
-                              border: '1px solid var(--line, #ccc)',
-                              background: 'var(--panel, #fff)',
-                              color: 'var(--ink, #000)',
-                              fontWeight: 700,
-                              fontSize: '0.95rem',
-                              boxSizing: 'border-box',
-                            }}
+                            className="gss-q-stem"
                             value={q.q || q.question || ''}
                             onChange={(e) => handleUpdateQuestion(idx, 'q', e.target.value)}
                             placeholder="Nhập nội dung câu hỏi..."
                           />
 
-                          {/* 4 Lựa chọn A, B, C, D */}
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                            {(q.options || ['A', 'B', 'C', 'D']).map((opt, optIdx) => {
+                          {/* 4 Lựa chọn A, B, C, D — Click chữ cái để chọn đáp án đúng */}
+                          <div className="gss-opt-grid">
+                            {(q.options || ['Lựa chọn A', 'Lựa chọn B', 'Lựa chọn C', 'Lựa chọn D']).map((opt, optIdx) => {
                               const isCorrect = q.correct === optIdx;
+                              const letter = String.fromCharCode(65 + optIdx);
 
                               return (
-                                <div
-                                  key={optIdx}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.5rem',
-                                    padding: '0.4rem 0.6rem',
-                                    borderRadius: '10px',
-                                    background: isCorrect ? 'rgba(16, 185, 129, 0.1)' : 'var(--panel, #fff)',
-                                    border: isCorrect ? '1.5px solid #10b981' : '1px solid var(--line, #ccc)',
-                                  }}
-                                >
-                                  <input
-                                    type="radio"
-                                    name={`correct-${idx}`}
-                                    checked={isCorrect}
-                                    onChange={() => handleUpdateQuestion(idx, 'correct', optIdx)}
-                                    title="Đánh dấu đáp án đúng"
-                                  />
-                                  <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>
-                                    {String.fromCharCode(65 + optIdx)}:
-                                  </span>
+                                <div key={optIdx} className={`gss-opt-row ${isCorrect ? 'is-correct' : ''}`}>
+                                  <button
+                                    type="button"
+                                    className="gss-opt-pick"
+                                    onClick={() => handleUpdateQuestion(idx, 'correct', optIdx)}
+                                    title={`Đặt đáp án ${letter} là đáp án đúng`}
+                                    aria-pressed={isCorrect}
+                                  >
+                                    {letter}
+                                  </button>
                                   <input
                                     type="text"
-                                    style={{
-                                      flex: 1,
-                                      border: 'none',
-                                      background: 'transparent',
-                                      color: 'var(--ink, #000)',
-                                      fontSize: '0.88rem',
-                                      fontWeight: 600,
-                                      outline: 'none',
-                                    }}
+                                    className="gss-opt-input"
                                     value={opt}
                                     onChange={(e) => handleUpdateOption(idx, optIdx, e.target.value)}
+                                    placeholder={`Nhập đáp án ${letter}...`}
                                   />
                                 </div>
                               );
                             })}
                           </div>
 
-                          {/* Giải thích */}
                           <input
                             type="text"
-                            style={{
-                              width: '100%',
-                              padding: '0.5rem 0.75rem',
-                              borderRadius: '8px',
-                              border: '1px solid var(--line, #ccc)',
-                              background: 'var(--panel, #fff)',
-                              color: 'var(--ink, #000)',
-                              fontSize: '0.82rem',
-                              boxSizing: 'border-box',
-                            }}
+                            className="gss-explain-input"
                             value={q.explain || ''}
                             onChange={(e) => handleUpdateQuestion(idx, 'explain', e.target.value)}
-                            placeholder="Lời giải thích chi tiết cho câu hỏi này..."
+                            placeholder="Lời giải thích nhanh (tùy chọn)..."
                           />
                         </div>
-                      ))
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
+              </>
             )}
-          </main>
-        </div>
+          </div>
+
+          {/* Sticky Footer */}
+          <footer className="gss-foot">
+            <span className={`gss-foot-status ${saveSuccess ? 'is-ok' : ''}`}>
+              {saveSuccess
+                ? `✓ ${saveSuccess}`
+                : activeTab === 'admin'
+                  ? 'Các thay đổi quản trị được áp dụng ngay lập tức'
+                  : 'Bấm vào chữ cái A/B/C/D để chọn đáp án đúng'}
+            </span>
+
+            <div className="gss-foot-actions">
+              <button type="button" className="gss-btn-cancel" onClick={onClose}>
+                Đóng
+              </button>
+              {activeTab !== 'admin' && (
+                <button type="button" className="gss-btn-save" onClick={handleSaveGameConfig}>
+                  Lưu thay đổi
+                </button>
+              )}
+            </div>
+          </footer>
+        </section>
       </div>
     </div>
   );

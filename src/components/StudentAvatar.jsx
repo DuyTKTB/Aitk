@@ -1,14 +1,42 @@
-import { memo } from 'react';
-import UserAvatar from './UserAvatar.jsx';
+import { memo, useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase.js';
 
-/**
- * StudentAvatar — Avatar hình nhân vật học sinh vector SVG cao cấp
- * Dành cho người dùng khác trong cộng đồng và lớp học khi chưa tải ảnh chân dung riêng:
- * - 100% SVG thuần, không phụ thuộc tài nguyên ngoài
- * - Tự động tạo kiểu tóc, khuôn mặt, biểu cảm học sinh sinh động theo tên / uid
- * - Nếu là tài khoản Admin/User TK hoặc Duy -> tự động dùng UserAvatar (Logo Vương miện TK)
- * - Nếu có photoURL hợp lệ -> hiển thị ảnh chân dung thật
- */
+const _photoCache = new Map();
+const _inFlight = new Map();
+
+function isValidUrl(url) {
+  return (
+    typeof url === 'string' &&
+    url.trim().length > 6 &&
+    !url.includes('placeholder') &&
+    url !== 'null' &&
+    url !== 'undefined'
+  );
+}
+
+function fetchUserPhotoOnce(uid) {
+  if (!uid || uid === 'anonymous' || uid === 'guest') return Promise.resolve(null);
+  if (_photoCache.has(uid)) return Promise.resolve(_photoCache.get(uid));
+  if (_inFlight.has(uid)) return _inFlight.get(uid);
+
+  const p = getDoc(doc(db, 'users', uid))
+    .then((snap) => {
+      const url = snap.exists() ? (snap.data()?.photoURL || null) : null;
+      const clean = isValidUrl(url) ? url.trim() : null;
+      if (clean) _photoCache.set(uid, clean);
+      _inFlight.delete(uid);
+      return clean;
+    })
+    .catch(() => {
+      _inFlight.delete(uid);
+      return null;
+    });
+
+  _inFlight.set(uid, p);
+  return p;
+}
+
 function hashStr(str = '') {
   let h = 0;
   for (let i = 0; i < str.length; i++) {
@@ -17,15 +45,21 @@ function hashStr(str = '') {
   return h;
 }
 
-const PALETTES = [
-  ['#ec4899', '#f43f5e'], // Hồng hoa đào
-  ['#f97316', '#fbbf24'], // Cam nắng ấm
-  ['#0284c7', '#38bdf8'], // Xanh biển
-  ['#8b5cf6', '#a855f7'], // Tím thạch anh
-  ['#10b981', '#14b8a6'], // Xanh ngọc
-  ['#6366f1', '#8b5cf6'], // Lam đậm
-  ['#d97706', '#f59e0b'], // Vàng mật
-  ['#059669', '#34d399'], // Xanh lá
+function getInitials(name = '') {
+  const clean = String(name || '').trim();
+  if (!clean) return 'E';
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return clean.slice(0, 2).toUpperCase();
+}
+
+const MONOGRAM_GRADIENTS = [
+  'linear-gradient(135deg, #0058cc 0%, #0071e3 55%, #38bdf8 100%)',
+  'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+  'linear-gradient(135deg, #0369a1 0%, #06b6d4 100%)',
+  'linear-gradient(135deg, #4338ca 0%, #6366f1 100%)',
+  'linear-gradient(135deg, #047857 0%, #10b981 100%)',
+  'linear-gradient(135deg, #0f172a 0%, #334155 100%)',
 ];
 
 function StudentAvatar({
@@ -38,63 +72,46 @@ function StudentAvatar({
   onClick = undefined,
   title = '',
 }) {
+  const propValid = isValidUrl(photoURL) ? photoURL.trim() : null;
+  const [resolvedUrl, setResolvedUrl] = useState(
+    () => propValid || (uid && _photoCache.has(uid) ? _photoCache.get(uid) : null)
+  );
+  const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => {
+    setImgFailed(false);
+    if (propValid) {
+      setResolvedUrl(propValid);
+      if (uid) _photoCache.set(uid, propValid);
+      return undefined;
+    }
+    if (!uid || uid === 'anonymous' || uid === 'guest') {
+      setResolvedUrl(null);
+      return undefined;
+    }
+    if (_photoCache.has(uid)) {
+      setResolvedUrl(_photoCache.get(uid));
+      return undefined;
+    }
+    let alive = true;
+    fetchUserPhotoOnce(uid).then((url) => {
+      if (alive && url) setResolvedUrl(url);
+    });
+    return () => { alive = false; };
+  }, [uid, propValid]);
+
   const normName = String(name || '').trim();
-  const upper = normName.toUpperCase();
-
-  // 1. Nếu là tài khoản của bạn (ADMIN TK, Duy, TK, hoặc người dùng hiện tại) -> Dùng UserAvatar logo vương miện TK
-  const isMe =
-    upper.includes('TK') ||
-    upper.includes('DUY') ||
-    upper.startsWith('ADMIN') ||
-    normName === 'Bạn' ||
-    (typeof window !== 'undefined' && uid && uid === (window.__elecAuthUid || localStorage.getItem('elec_auth_uid')));
-
-  if (isMe) {
-    return (
-      <UserAvatar
-        photoURL={photoURL}
-        size={size}
-        className={className}
-        style={style}
-        onClick={onClick}
-        title={title || normName}
-      />
-    );
-  }
-
-  // 2. Nếu người dùng có ảnh chân dung riêng đã tải lên
-  if (photoURL && typeof photoURL === 'string' && !photoURL.includes('placeholder')) {
-    return (
-      <img
-        src={photoURL}
-        alt={title || normName || 'Học sinh'}
-        title={title || normName || 'Học sinh'}
-        className={`ns9-student-avatar-img ${className}`}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: '50%',
-          objectFit: 'cover',
-          display: 'block',
-          flexShrink: 0,
-          ...style,
-        }}
-        onClick={onClick}
-      />
-    );
-  }
-
-  // 3. Avatar nhân vật học sinh chuẩn Vector SVG sắc nét
-  const seed = String(uid || normName || 'student');
-  const h = hashStr(seed);
-  const [bg1, bg2] = PALETTES[h % PALETTES.length];
-  const preset = h % 4;
-  const hasGlasses = (h >> 2) % 3 === 0;
+  const displayUrl = !imgFailed && isValidUrl(resolvedUrl) ? resolvedUrl : null;
+  const seed = String(uid || normName || 'elec');
+  const bg = MONOGRAM_GRADIENTS[hashStr(seed) % MONOGRAM_GRADIENTS.length];
+  const fontSize = Math.max(10, Math.round(Number(size) * 0.37));
 
   return (
     <div
       className={`ns9-student-svg-avatar ${className}`}
-      title={title || normName || 'Học sinh'}
+      title={title || normName || 'Thành viên ELEC'}
+      onClick={onClick}
+      aria-label={title || normName || 'Avatar'}
       style={{
         width: size,
         height: size,
@@ -103,90 +120,38 @@ function StudentAvatar({
         maxWidth: size,
         maxHeight: size,
         borderRadius: '50%',
-        background: `linear-gradient(135deg, ${bg1}, ${bg2})`,
+        background: displayUrl ? '#f1f5f9' : bg,
+        color: '#ffffff',
+        fontWeight: 800,
+        fontSize,
+        letterSpacing: '-0.02em',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
         overflow: 'hidden',
         userSelect: 'none',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.14)',
         ...style,
       }}
-      onClick={onClick}
-      aria-label={title || normName || 'Avatar học sinh'}
     >
-      <svg
-        width="100%"
-        height="100%"
-        viewBox="0 0 64 64"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        style={{ display: 'block', width: '100%', height: '100%' }}
-      >
-        {/* Vai & Áo đồng phục học sinh */}
-        <path d="M14 62 C16 48, 24 44, 32 44 C40 44, 48 48, 50 62 Z" fill="#ffffff" opacity="0.95" />
-        <path d="M28 44 L32 50 L36 44 Z" fill="#e2e8f0" />
-
-        {/* Cổ áo */}
-        <rect x="28" y="38" width="8" height="8" rx="2" fill="#ffd1b3" />
-
-        {/* Khuôn mặt */}
-        <circle cx="32" cy="27" r="13" fill="#ffe0cc" />
-
-        {/* Má hồng hào tươi tắn */}
-        <circle cx="23" cy="29" r="2.2" fill="#fca5a5" opacity="0.65" />
-        <circle cx="41" cy="29" r="2.2" fill="#fca5a5" opacity="0.65" />
-
-        {/* Mắt hoặc Kính trí tuệ */}
-        {hasGlasses ? (
-          <g>
-            <circle cx="26" cy="26" r="4.2" stroke="#1e293b" strokeWidth="1.3" fill="none" />
-            <circle cx="38" cy="26" r="4.2" stroke="#1e293b" strokeWidth="1.3" fill="none" />
-            <line x1="30.2" y1="26" x2="33.8" y2="26" stroke="#1e293b" strokeWidth="1.3" />
-            <circle cx="26" cy="26" r="1.5" fill="#1e293b" />
-            <circle cx="38" cy="26" r="1.5" fill="#1e293b" />
-          </g>
-        ) : (
-          <g>
-            <circle cx="26" cy="26" r="1.8" fill="#1e293b" />
-            <circle cx="38" cy="26" r="1.8" fill="#1e293b" />
-          </g>
-        )}
-
-        {/* Nụ cười vui tươi */}
-        <path d="M29 32 Q32 35 35 32" stroke="#1e293b" strokeWidth="1.4" strokeLinecap="round" fill="none" />
-
-        {/* Kiểu tóc học sinh đa dạng */}
-        {preset === 0 && (
-          <g>
-            <path d="M19 25 C19 14, 45 14, 45 25 C45 32, 42 34, 42 34 C42 34, 41 20, 32 20 C23 20, 22 34, 22 34 C22 34, 19 32, 19 25 Z" fill="#33241b" />
-            <path d="M20 22 C24 16, 40 16, 44 22 C41 18, 35 18, 32 20 C29 18, 23 18, 20 22 Z" fill="#4a3528" />
-            <circle cx="41" cy="21" r="2.2" fill="#fbbf24" />
-          </g>
-        )}
-
-        {preset === 1 && (
-          <g>
-            <path d="M19 24 C19 15, 26 13, 33 14 C40 15, 45 18, 45 24 C45 24, 43 19, 36 18 C28 17, 21 21, 19 24 Z" fill="#1e293b" />
-            <path d="M18 24 C18 19, 21 16, 27 15 C23 18, 21 21, 20 26 Z" fill="#334155" />
-          </g>
-        )}
-
-        {preset === 2 && (
-          <g>
-            <path d="M19 25 C18 16, 28 13, 38 15 C45 17, 46 25, 46 27 C44 22, 38 18, 32 19 C25 20, 21 23, 19 25 Z" fill="#451a03" />
-            <path d="M18 27 C17 21, 20 17, 25 15 C21 18, 19 22, 19 28 Z" fill="#78350f" />
-          </g>
-        )}
-
-        {preset === 3 && (
-          <g>
-            <path d="M18 23 C19 14, 45 14, 46 23 C44 18, 38 17, 32 17 C26 17, 20 18, 18 23 Z" fill="#0f172a" />
-            <path d="M19 23 L45 23 L43 25 L21 25 Z" fill="#38bdf8" opacity="0.9" />
-          </g>
-        )}
-      </svg>
+      {displayUrl ? (
+        <img
+          src={displayUrl}
+          alt={title || normName || 'Avatar'}
+          referrerPolicy="no-referrer"
+          onError={() => setImgFailed(true)}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            display: 'block',
+            borderRadius: '50%',
+          }}
+        />
+      ) : (
+        <span aria-hidden="true">{getInitials(normName)}</span>
+      )}
     </div>
   );
 }

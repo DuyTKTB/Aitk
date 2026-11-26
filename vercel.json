@@ -101,7 +101,23 @@
       "destination": "/bang-xep-hang.html"
     },
     {
-      "source": "/((?!api/|assets/|img/|video/|models/|__/auth/|__/firebase/|sw\\.js|ve\\.wasm|offline\\.html|elec\\.svg|robots\\.txt|sitemap\\.xml|llms\\.txt|llms-full\\.txt|elecai2026indexnowkey771a44e1ad93\\.txt|BingSiteAuth\\.xml|nha-sang-lap(?:\\.html)?|gioi-thieu(?:\\.html)?|chinh-sach-bao-mat(?:\\.html)?|dieu-khoan-su-dung(?:\\.html)?|tro-ly-ai-giai-hoa(?:\\.html)?|phong-thi-ao(?:\\.html)?|bang-tuan-hoan(?:\\.html)?|can-bang-phuong-trinh-hoa-hoc(?:\\.html)?|lo-trinh-on-thi-thpt-quoc-gia(?:\\.html)?|cong-thuc-hoa-hoc(?:\\.html)?|tai-lieu-hoa-hoc(?:\\.html)?|tinh-diem-xet-tuyen-dai-hoc(?:\\.html)?|tra-cuu-diem-chuan(?:\\.html)?|dinh-huong-nghe-nghiep(?:\\.html)?|tro-choi-khoa-hoc(?:\\.html)?|ai-doc-studio(?:\\.html)?|bang-phan-tuong-tac(?:\\.html)?|quiz(?:\\.html)?|bang-xep-hang(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
+      "source": "/sitemap-community.xml",
+      "destination": "/api/sitemap-community"
+    },
+    {
+      "source": "/cong-dong",
+      "destination": "/api/community-seo?mode=hub"
+    },
+    {
+      "source": "/cong-dong/:slug",
+      "destination": "/api/community-seo?mode=post&slug=:slug"
+    },
+    {
+      "source": "/chu-de/:tag",
+      "destination": "/api/community-seo?mode=topic&tag=:tag"
+    },
+    {
+      "source": "/((?!api/|assets/|img/|video/|models/|__/auth/|__/firebase/|sw\\.js|ve\\.wasm|offline\\.html|elec\\.svg|robots\\.txt|sitemap\\.xml|sitemap-community\\.xml|cong-dong(?:/.*)?|chu-de(?:/.*)?|llms\\.txt|llms-full\\.txt|elecai2026indexnowkey771a44e1ad93\\.txt|BingSiteAuth\\.xml|nha-sang-lap(?:\\.html)?|gioi-thieu(?:\\.html)?|chinh-sach-bao-mat(?:\\.html)?|dieu-khoan-su-dung(?:\\.html)?|tro-ly-ai-giai-hoa(?:\\.html)?|phong-thi-ao(?:\\.html)?|bang-tuan-hoan(?:\\.html)?|can-bang-phuong-trinh-hoa-hoc(?:\\.html)?|lo-trinh-on-thi-thpt-quoc-gia(?:\\.html)?|cong-thuc-hoa-hoc(?:\\.html)?|tai-lieu-hoa-hoc(?:\\.html)?|tinh-diem-xet-tuyen-dai-hoc(?:\\.html)?|tra-cuu-diem-chuan(?:\\.html)?|dinh-huong-nghe-nghiep(?:\\.html)?|tro-choi-khoa-hoc(?:\\.html)?|ai-doc-studio(?:\\.html)?|bang-phan-tuong-tac(?:\\.html)?|quiz(?:\\.html)?|bang-xep-hang(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
       "destination": "/index.html"
     }
   ],

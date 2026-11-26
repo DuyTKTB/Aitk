@@ -6,13 +6,14 @@ import { isValidStreakMessage } from '../lib/chatStreak.js';
 import { syncMyPublicStats, getProfile } from '../lib/social.js';
 import { getTopStreakClasses } from '../lib/classroom.js';
 import VerifiedBadge from './VerifiedBadge.jsx';
-import ProfileCard from './social/ProfileCard.jsx';
+import SocialFeedPanel from './social/SocialFeedPanel.jsx';
+import MessengerNotesBar from './social/MessengerNotesBar.jsx';
 import ClassChat from './social/ClassChat.jsx';
 import DmPanel from './social/DmPanel.jsx';
-import UserAvatar from './UserAvatar.jsx';
 import StudentAvatar from './StudentAvatar.jsx';
 import './chat-widget.css';
-import './pet-widget.css';
+import '../styles/elec-messenger.css';
+import '../styles/elec-social-hub.css';
 
 /* ============ CẤU HÌNH ============ */
 const DB = (import.meta.env.VITE_FIREBASE_DB_URL || '').replace(/\/$/, '');
@@ -23,7 +24,6 @@ const STREAM = `${URL_MSG}?${QUERY}&limitToLast=50`;
 const PAGE = 30;
 const MAX_TEXT = 500;
 const MAX_IMG = 300000;
-const rid = () => Math.random().toString(36).slice(2, 10);
 const sortById = (a) => a.sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
 
 /* ============ ICON SVG ============ */
@@ -36,73 +36,121 @@ const mk = (body) => function Icon(props) {
   return <svg {...base} {...props}>{body}</svg>;
 };
 const dot = (x, y) => <circle cx={x} cy={y} r="1.1" fill="currentColor" stroke="none" />;
-const eyes = <>{dot(8.8, 10)}{dot(15.2, 10)}</>;
-const ring = <circle cx="12" cy="12" r="9.5" />;
-const openMouth = <path d="M7.8 13.5h8.4c0 2.6-1.9 4.2-4.2 4.2s-4.2-1.6-4.2-4.2Z" />;
 
-/* Icon giao diện */
 const IcChat = mk(<><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.7-4.9A8.5 8.5 0 1 1 21 11.5Z" />{dot(8.5, 11.5)}{dot(12.5, 11.5)}{dot(16.5, 11.5)}</>);
 const IcClose = mk(<path d="M6 6l12 12M18 6L6 18" />);
 const IcSearch = mk(<><circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4.2-4.2" /></>);
-const IcImage = mk(<><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="M21 16l-5-5-8 9" /></>);
-const IcSend = mk(<path d="M21 3L10 14M21 3l-7 18-4-7-7-4 18-7Z" />);
+const IcImage = mk(<><rect x="3" y="4" width="18" height="16" rx="2.5" /><circle cx="9" cy="10" r="1.6" /><path d="M21 16l-5-5-8 9" /></>);
 const IcReply = mk(<><path d="M9 14L4 9l5-5" /><path d="M4 9h10a6 6 0 0 1 6 6v3" /></>);
 const IcTrash = mk(<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />);
-const IcUsers = mk(<><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><path d="M16 5a3.2 3.2 0 0 1 0 6M18 14.4c1.8.8 3 2.6 3 5.6" /></>);
-const IcSvgSchool = mk(<><path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c3 3 9 3 12 0v-5" /></>);
-const IcSvgFlame = ({ size = 14, color = '#f97316' }) => (
+const IcDown = mk(<path d="M12 5v14M6 13l6 6 6-6" />);
+const IcUp = mk(<path d="M6 15l6-6 6 6" />);
+const IcSmile = mk(<><circle cx="12" cy="12" r="9.5" /><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none" /><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none" /><path d="M8.5 14.5c1 1.5 2.2 2.2 3.5 2.2s2.5-.7 3.5-2.2" /></>);
+const IcEdit = mk(<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></>);
+
+const IcSvgFlame = ({ size = 13, color = '#f97316' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke="none" aria-hidden="true" style={{ display: 'inline-block', verticalAlign: 'middle' }}>
     <path d="M12 2c1.2 4 5 5 5 10a5 5 0 0 1-10 0c0-3 2-5 3-7 0 2 1 3 2 3 0-2 0-4 0-6z" />
   </svg>
 );
-const IcUser = mk(<><circle cx="12" cy="8" r="3.6" /><path d="M4.5 20c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5" /></>);
-const IcCheck = mk(<path d="M5 12.5l4.5 4.5L19 7.5" />);
-const IcDown = mk(<path d="M12 5v14M6 13l6 6 6-6" />);
-const IcUp = mk(<path d="M6 15l6-6 6 6" />);
-const IcHeart = mk(<path d="M12 20.5S3.5 15.4 3.5 9.2A4.7 4.7 0 0 1 12 6.8a4.7 4.7 0 0 1 8.5 2.4c0 6.2-8.5 11.3-8.5 11.3Z" />);
-const thumb = 'M7 10v12M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z';
-const IcLike = mk(<path d={thumb} />);
-const IcDislike = mk(<g transform="rotate(180 12 12)"><path d={thumb} /></g>);
 
-/* Sticker */
-const S = {
-  smile: ['Cười', mk(<>{ring}{eyes}<path d="M8 14.2c1 1.6 2.4 2.4 4 2.4s3-.8 4-2.4" /></>)],
-  grin: ['Cười tươi', mk(<>{ring}{eyes}{openMouth}</>)],
-  laugh: ['Cười lớn', mk(<>{ring}<path d="M7.5 10.6q1.3-1.8 2.6 0M13.9 10.6q1.3-1.8 2.6 0" />{openMouth}</>)],
-  wink: ['Nháy mắt', mk(<>{ring}{dot(8.8, 10)}<path d="M13.9 10.4q1.3-1.6 2.6 0" /><path d="M8 14.2c1 1.6 2.4 2.4 4 2.4s3-.8 4-2.4" /></>)],
-  cool: ['Ngầu', mk(<>{ring}<path d="M6 9h5v3H6zM13 9h5v3h-5zM11 10.4h2" /><path d="M8.5 15c1 1.4 2.1 2 3.5 2s2.5-.6 3.5-2" /></>)],
-  think: ['Suy nghĩ', mk(<>{ring}{eyes}<path d="M9 15.8c1.2-.8 2.4.6 3.6 0s1.6-.4 2.4-.2" /></>)],
-  neutral: ['Bình thường', mk(<>{ring}{eyes}<path d="M8.8 15.5h6.4" /></>)],
-  sleepy: ['Buồn ngủ', mk(<>{ring}<path d="M7.5 10q1.3 1.6 2.6 0M13.9 10q1.3 1.6 2.6 0" /><path d="M10.6 15.6h2.8" /></>)],
-  cry: ['Khóc', mk(<>{ring}{eyes}<path d="M8.2 16.6c1-1.4 2.4-2 3.8-2s2.8.6 3.8 2" /><path d="M8.8 12.4c-.7 1-1 1.6-1 2a1 1 0 0 0 2 0c0-.4-.3-1-1-2Z" /></>)],
-  angry: ['Giận', mk(<>{ring}<path d="M7 8l3.2 1.4M17 8l-3.2 1.4" />{dot(9, 11.4)}{dot(15, 11.4)}<path d="M8.6 16.6c1-1.2 2.2-1.8 3.4-1.8s2.4.6 3.4 1.8" /></>)],
-  wow: ['Wow', mk(<>{ring}{eyes}<circle cx="12" cy="15.8" r="1.8" /></>)],
-  heart: ['Tim', IcHeart],
-  like: ['Thích', IcLike],
-  dislike: ['Không thích', IcDislike],
-  fire: ['Lửa', mk(<path d="M12 3c.5 3-2 4.5-3.5 6.5A6 6 0 0 0 7 13.5a5 5 0 0 0 10 0c0-2-1-3.5-2-4.5-.3 1.2-.9 2-1.8 2.4C13.6 8.6 13 5.5 12 3Z" />)],
-  star: ['Sao', mk(<path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 16.9 6.6 19.8l1.1-6.1L3.2 9.4l6.1-.8Z" />)],
-  flask: ['Hóa học', mk(<><path d="M9 3h6M10 3v6l-5.5 9.5A2 2 0 0 0 6.2 21.5h11.6a2 2 0 0 0 1.7-3L14 9V3" /><path d="M7.5 15h9" /></>)],
-  book: ['Sách', mk(<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />)],
+/* ============ STICKER ĐỘC QUYỀN ELEC AI + EMOJI CHUẨN MESSENGER/TIKTOK ============ */
+const ELEC_STICKERS = {
+  elec_hello:       { label: 'Chào bạn',    src: '/img/elec/elec-hello.png' },
+  elec_love:        { label: 'Thả tim',     src: '/img/elec/elec-love.png' },
+  elec_cool:        { label: 'Quá ngầu',    src: '/img/elec/elec-cool.png' },
+  elec_fighting:    { label: 'Quyết tâm',   src: '/img/elec/elec-fighting.png' },
+  elec_happy:       { label: 'Vui quá',     src: '/img/elec/elec-happy.png' },
+  elec_celebrate:   { label: 'Ăn mừng',     src: '/img/elec/elec-celebrate.png' },
+  elec_super_saiyan:{ label: 'Bứt phá',     src: '/img/elec/elec-super-saiyan.png' },
+  elec_heart_eyes:  { label: 'Mê chữ ê',    src: '/img/elec/elec-heart-eyes.png' },
+  elec_think:       { label: 'Suy nghĩ',    src: '/img/elec/elec-think.png' },
+  elec_wink:        { label: 'Nháy mắt',    src: '/img/elec/elec-wink.png' },
+  elec_shocked:     { label: 'Bất ngờ',     src: '/img/elec/elec-shocked.png' },
+  elec_shy:         { label: 'Ngại quá',    src: '/img/elec/elec-shy.png' },
+  elec_plead:       { label: 'Năn nỉ',      src: '/img/elec/elec-plead.png' },
+  elec_crying:      { label: 'Hu hu',       src: '/img/elec/elec-crying.png' },
+  elec_angry:       { label: 'Căng rồi',    src: '/img/elec/elec-angry.png' },
+  elec_sleepy:      { label: 'Buồn ngủ',    src: '/img/elec/elec-sleepy.png' },
 };
-const STICKERS = Object.fromEntries(Object.entries(S).map(([k, [label, Icon]]) => [k, { label, Icon }]));
+
+/* Tương thích ngược toàn bộ token cũ (:smile:, :heart:, ...) nhưng hiển thị emoji màu sắc nét */
+const LEGACY_EMOJI = {
+  smile:   { label: 'Cười',        emoji: '😊' },
+  grin:    { label: 'Cười tươi',   emoji: '😄' },
+  laugh:   { label: 'Haha',        emoji: '😂' },
+  wink:    { label: 'Nháy mắt',    emoji: '😉' },
+  cool:    { label: 'Ngầu',        emoji: '😎' },
+  think:   { label: 'Suy nghĩ',    emoji: '🤔' },
+  neutral: { label: 'Bình thường', emoji: '😐' },
+  sleepy:  { label: 'Buồn ngủ',    emoji: '😴' },
+  cry:     { label: 'Khóc',        emoji: '😭' },
+  angry:   { label: 'Giận',        emoji: '😤' },
+  wow:     { label: 'Wow',         emoji: '😮' },
+  heart:   { label: 'Tim',         emoji: '❤️' },
+  like:    { label: 'Thích',       emoji: '👍' },
+  dislike: { label: 'Không thích', emoji: '👎' },
+  fire:    { label: 'Cháy quá',    emoji: '🔥' },
+  star:    { label: 'Xuất sắc',    emoji: '⭐' },
+  flask:   { label: 'Hóa học',     emoji: '🧪' },
+  book:    { label: 'Ôn bài',      emoji: '📚' },
+};
 
 const REACTIONS = [
-  { key: 'heart', label: 'Yêu thích', Icon: IcHeart },
-  { key: 'like', label: 'Thích', Icon: IcLike },
-  { key: 'haha', label: 'Haha', Icon: STICKERS.laugh.Icon },
-  { key: 'wow', label: 'Wow', Icon: STICKERS.wow.Icon },
+  { key: 'heart', label: 'Yêu thích', emoji: '❤️' },
+  { key: 'haha',  label: 'Haha',      emoji: '😂' },
+  { key: 'wow',   label: 'Wow',       emoji: '😮' },
+  { key: 'fire',  label: 'Đỉnh',      emoji: '🔥' },
+  { key: 'like',  label: 'Thích',     emoji: '👍' },
+];
+
+const ICEBREAKERS = [
+  { label: 'Hỏi bài Hóa · Lý', text: 'Có bạn nào giúp mình câu Hóa / Lý này với!' },
+  { label: 'Tìm bạn học 27+',  text: 'Tìm bạn đồng hành giữ chuỗi mục tiêu 27+ năm nay 🔥' },
+  { label: 'Mẹo bấm Casio',    text: 'Chia sẻ mẹo giải nhanh & bấm máy Casio đi mọi người!' },
 ];
 
 /* ============ TIỆN ÍCH ============ */
-const TOKEN = /(:[a-z]+:|https?:\/\/[^\s<>"']+)/g;
+const TOKEN = /(:[a-z0-9_]+:|https?:\/\/[^\s<>"']+)/g;
 
-function Rich({ text }) {
+const isOnlyStickerMessage = (t = '') => {
+  const s = t.trim();
+  if (!s) return false;
+  const parts = s.split(/\s+/);
+  if (parts.length > 3) return false;
+  return parts.every((p) => {
+    if (!/^:[a-z0-9_]+:$/.test(p)) return false;
+    const key = p.slice(1, -1);
+    return !!(ELEC_STICKERS[key] || LEGACY_EMOJI[key]);
+  });
+};
+
+function Rich({ text, solo = false }) {
   return text.split(TOKEN).map((p, i) => {
     if (!p) return null;
-    if (/^:[a-z]+:$/.test(p) && STICKERS[p.slice(1, -1)]) {
-      const { Icon, label } = STICKERS[p.slice(1, -1)];
-      return <span key={i} className="cw-st" title={label}><Icon width="100%" height="100%" /></span>;
+    if (/^:[a-z0-9_]+:$/.test(p)) {
+      const key = p.slice(1, -1);
+      if (ELEC_STICKERS[key]) {
+        const st = ELEC_STICKERS[key];
+        return (
+          <img
+            key={i}
+            src={st.src}
+            alt={st.label}
+            title={`Sticker ELEC AI · ${st.label}`}
+            className={solo ? 'ec-elec-sticker' : 'ec-elec-sticker-inline'}
+            draggable={false}
+          />
+        );
+      }
+      if (LEGACY_EMOJI[key]) {
+        const em = LEGACY_EMOJI[key];
+        return (
+          <span key={i} className={solo ? 'ec-emoji-solo' : 'ec-emoji-inline'} title={em.label}>
+            {em.emoji}
+          </span>
+        );
+      }
     }
     if (/^https?:\/\//.test(p)) {
       return <a key={i} href={p} target="_blank" rel="noopener noreferrer nofollow">{p}</a>;
@@ -111,46 +159,18 @@ function Rich({ text }) {
   });
 }
 
-const onlyStickers = (t) => {
-  const s = t.trim();
-  if (!/^(:[a-z]+:\s*){1,3}$/.test(s)) return false;
-  return s.match(/:[a-z]+:/g).every((k) => STICKERS[k.slice(1, -1)]);
-};
-
 const fmtTime = (t) => new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
 const dayKey = (t) => new Date(t).toDateString();
-const dayLabel = (t) => {
+const dayStampLabel = (t) => {
   const d = new Date(t);
   const n = new Date();
   const y = new Date();
   y.setDate(n.getDate() - 1);
-  if (d.toDateString() === n.toDateString()) return 'Hôm nay';
-  if (d.toDateString() === y.toDateString()) return 'Hôm qua';
-  return d.toLocaleDateString('vi-VN');
+  const hm = fmtTime(t);
+  if (d.toDateString() === n.toDateString()) return `Hôm nay · ${hm}`;
+  if (d.toDateString() === y.toDateString()) return `Hôm qua · ${hm}`;
+  return `${d.toLocaleDateString('vi-VN')} · ${hm}`;
 };
-
-const BG_PALETTE = [
-  'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-  'linear-gradient(135deg, #10b981, #047857)',
-  'linear-gradient(135deg, #f59e0b, #d97706)',
-  'linear-gradient(135deg, #ec4899, #be185d)',
-  'linear-gradient(135deg, #8b5cf6, #6d28d9)',
-  'linear-gradient(135deg, #06b6d4, #0e7490)',
-];
-
-function getAvatarBg(str = '') {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  const idx = Math.abs(hash) % BG_PALETTE.length;
-  return BG_PALETTE[idx];
-}
-
-function getInitials(name = '') {
-  const parts = String(name).trim().split(/\s+/);
-  if (!parts.length || !parts[0]) return 'E';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
 
 async function shrink(file) {
   const b = await createImageBitmap(file);
@@ -170,18 +190,6 @@ async function shrink(file) {
   return null;
 }
 
-/* ============================================================
-   AuthorName — Tên tác giả kèm tick xanh nếu VIP
-   ============================================================ */
-function AuthorName({ name, uid, className = '' }) {
-  return (
-    <span className={'cw-author ' + className}>
-      {String(name || '').slice(0, 20)}
-      <VerifiedBadge uid={uid} size={12} />
-    </span>
-  );
-}
-
 /* ============ LIGHTBOX ============ */
 function Lightbox({ src, onClose }) {
   useEffect(() => {
@@ -198,171 +206,233 @@ function Lightbox({ src, onClose }) {
   );
 }
 
-/* ============ MỘT TIN NHẮN (CHUẨN GIAO DIỆN HỘI THOẠI CỘT 3) ============ */
-function Message({ m, prev, uid, user, userProfileMap = {}, active, armed, onToggle, onReact, onReply, onDel, onImg, onJump, onImgLoad, onOpenProfile }) {
+/* ============ MỘT TIN NHẮN (CHUẨN MESSENGER × TIKTOK × ELEC AI) ============ */
+function Message({
+  m,
+  prev,
+  next,
+  uid,
+  user,
+  userProfileMap = {},
+  active,
+  armed,
+  onToggle,
+  onReact,
+  onReply,
+  onDel,
+  onImg,
+  onJump,
+  onImgLoad,
+  onOpenProfile,
+}) {
+  const [heartPop, setHeartPop] = useState(false);
+
   const isMe = m.uid === uid || (m.name && user?.displayName && m.name === user.displayName);
   const t = Number(m.t) || 0;
   const pt = prev ? Number(prev.t) || 0 : 0;
-  const newDay = !prev || dayKey(pt) !== dayKey(t);
-  const head = newDay || prev.uid !== m.uid || t - pt > 300000;
+  const nt = next ? Number(next.t) || 0 : 0;
+
+  const showTimeSep = !prev || dayKey(pt) !== dayKey(t) || t - pt > 900000; // >15 phút hoặc sang ngày mới
+  const isFirstInGroup = showTimeSep || !prev || prev.uid !== m.uid || t - pt > 180000;
+  const isLastInGroup =
+    !next ||
+    dayKey(nt) !== dayKey(t) ||
+    next.uid !== m.uid ||
+    nt - t > 180000;
+
   const reactions = m.reactions || {};
   const chips = REACTIONS.map((r) => ({
     ...r,
     count: Object.keys(reactions[r.key] || {}).length,
     mine: !!reactions[r.key]?.[uid],
   })).filter((r) => r.count > 0);
+
   const text = typeof m.text === 'string' ? m.text : '';
   const hasImg = typeof m.img === 'string' && m.img.startsWith('data:image/');
+  const stickerOnly = !hasImg && isOnlyStickerMessage(text);
+  const imageOnly = hasImg && !text.trim();
+
+  const handleDoubleClick = (e) => {
+    e.stopPropagation();
+    onReact(m, 'heart');
+    setHeartPop(true);
+    setTimeout(() => setHeartPop(false), 700);
+  };
 
   return (
     <>
-      {newDay && (
-        <div className="ns9-chat-day-divider">
-          <span>{dayLabel(t)}</span>
+      {showTimeSep && (
+        <div className="ec-time-sep">
+          <span>{dayStampLabel(t)}</span>
         </div>
       )}
+
       <div
         id={'cw-m-' + m.id}
-        className={`ns9-msg-line ${isMe ? 'is-user-line' : 'is-ai-line'} ${active ? 'is-active' : ''}`}
+        className={[
+          'ec-msg',
+          isMe ? 'is-me' : '',
+          isFirstInGroup ? 'is-first' : '',
+          isLastInGroup ? 'is-last' : '',
+          active ? 'is-active' : '',
+          chips.length > 0 ? 'has-chips' : '',
+        ].filter(Boolean).join(' ')}
       >
+        {/* Avatar chỉ hiện ở tin cuối nhóm của người khác (chuẩn Messenger/TikTok) */}
         {!isMe && (
-          <div
-            className="ns9-c-avatar-circle"
-            style={{
-              background: 'transparent',
-              padding: 0,
-              overflow: 'hidden',
-              boxShadow: 'none',
-              border: 'none',
-            }}
-            onClick={() => onOpenProfile?.(m.uid, m.name)}
-            title={m.name || 'Học sinh'}
-          >
-            <StudentAvatar
-              name={m.name}
-              uid={m.uid}
-              photoURL={m.photoURL || userProfileMap?.[m.uid] || null}
-              size={32}
-              title={m.name}
-            />
+          <div className="ec-avatar-slot">
+            {isLastInGroup && (
+              <button
+                type="button"
+                className="ec-avatar-btn"
+                onClick={() => onOpenProfile?.(m.uid, m.name)}
+                title={m.name || 'Học sinh'}
+              >
+                <StudentAvatar
+                  name={m.name}
+                  uid={m.uid}
+                  photoURL={m.photoURL || userProfileMap?.[m.uid] || null}
+                  size={28}
+                  title={m.name}
+                />
+              </button>
+            )}
           </div>
         )}
 
-        <div className="ns9-msg-bubble" onClick={onToggle}>
-          {!isMe && head && (
-            <div className="ns9-msg-sender-row">
+        <div className="ec-msg-col">
+          {/* Tên người gửi nằm NGOÀI phía trên bong bóng đầu nhóm */}
+          {!isMe && isFirstInGroup && (
+            <div className="ec-sender-meta">
               <button
                 type="button"
-                className="cw-author-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenProfile?.(m.uid, m.name);
-                }}
-                title="Bấm để xem hồ sơ"
+                className="ec-sender-btn"
+                onClick={() => onOpenProfile?.(m.uid, m.name)}
+                title="Xem hồ sơ"
               >
-                <AuthorName name={m.name} uid={m.uid} />
+                <span>{String(m.name || 'Học sinh').slice(0, 22)}</span>
+                <VerifiedBadge uid={m.uid} size={12} />
               </button>
               {Number(m.streak) >= 3 && (
-                <span className="cw-streak-badge" title={`Chuỗi ${m.streak} ngày học liên tiếp`}>
-                  <IcSvgFlame size={12} /> {m.streak}
+                <span className="ec-streak-tag" title={`Chuỗi ${m.streak} ngày học`}>
+                  <IcSvgFlame size={10} /> {m.streak}
                 </span>
               )}
-              <span className="ns9-msg-time">{fmtTime(t)}</span>
             </div>
           )}
 
+          {/* Reply quote kiểu Messenger phía trên bong bóng */}
           {m.reply && (
             <button
               type="button"
-              className="cw-quote"
+              className="ec-reply-preview"
               onClick={(e) => {
                 e.stopPropagation();
                 onJump(m.reply.id);
               }}
             >
-              <b>
-                {String(m.reply.name || '').slice(0, 20)}
-                {m.reply.uid && <VerifiedBadge uid={m.reply.uid} size={11} />}
-              </b>
-              <span>{String(m.reply.text || '') || (m.reply.img ? 'Ảnh' : '')}</span>
+              <b>Trả lời {String(m.reply.name || '').slice(0, 20)}</b>
+              <span>{String(m.reply.text || '') || (m.reply.img ? '📷 Hình ảnh' : '')}</span>
             </button>
           )}
 
-          {text && (
-            <div className={`ns9-msg-text ${onlyStickers(text) ? 'is-only-stickers' : ''}`}>
-              <Rich text={text} />
+          <div className="ec-bubble-row">
+            <div
+              className={[
+                'ec-bubble',
+                stickerOnly ? 'is-sticker-only' : '',
+                imageOnly ? 'is-image-only' : '',
+              ].filter(Boolean).join(' ')}
+              onClick={onToggle}
+              onDoubleClick={handleDoubleClick}
+              title={`Nhấp đúp để thả tim · ${fmtTime(t)}`}
+            >
+              {heartPop && <span className="ec-doubletap-heart" aria-hidden="true">❤️</span>}
+
+              {text && <Rich text={text} solo={stickerOnly} />}
+
+              {hasImg && (
+                <img
+                  className="ec-msg-img"
+                  src={m.img}
+                  alt="Ảnh đã gửi"
+                  loading="lazy"
+                  onLoad={onImgLoad}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onImg(m.img);
+                  }}
+                />
+              )}
             </div>
-          )}
 
-          {hasImg && (
-            <img
-              className="ns9-chat-attached-img"
-              src={m.img}
-              alt="Ảnh đã gửi"
-              loading="lazy"
-              onLoad={onImgLoad}
-              onClick={(e) => {
-                e.stopPropagation();
-                onImg(m.img);
-              }}
-            />
-          )}
+            {/* Thanh thả cảm xúc + trả lời + giờ nổi bên cạnh kiểu Messenger/TikTok */}
+            <div
+              className="ec-hover-actions"
+              role="toolbar"
+              aria-label="Thao tác tin nhắn"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="ec-hover-pill">
+                {REACTIONS.map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    className={'ec-act-btn' + (reactions[r.key]?.[uid] ? ' is-mine' : '')}
+                    onClick={() => onReact(m, r.key)}
+                    title={r.label}
+                    aria-label={r.label}
+                  >
+                    {r.emoji}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="ec-act-btn"
+                  onClick={() => onReply(m)}
+                  title="Trả lời"
+                  aria-label="Trả lời"
+                >
+                  <IcReply width="13" height="13" />
+                </button>
+                {isMe && (
+                  <button
+                    type="button"
+                    className={'ec-act-btn is-danger' + (armed ? ' is-armed' : '')}
+                    onClick={() => onDel(m.id)}
+                    title={armed ? 'Bấm lần nữa để xóa' : 'Thu hồi / Xóa'}
+                    aria-label={armed ? 'Xác nhận xóa' : 'Xóa'}
+                  >
+                    {armed ? 'Xóa?' : <IcTrash width="13" height="13" />}
+                  </button>
+                )}
+              </div>
+              <span className="ec-hover-time">{fmtTime(t)}</span>
+            </div>
+          </div>
 
+          {/* Reaction pills nổi chồng góc dưới bong bóng */}
           {chips.length > 0 && (
-            <div className="cw-chips">
+            <div className="ec-react-pills">
               {chips.map((r) => (
                 <button
                   key={r.key}
                   type="button"
-                  className={'cw-chip' + (r.mine ? ' mine' : '')}
+                  className={'ec-react-chip' + (r.mine ? ' is-mine' : '')}
                   onClick={(e) => {
                     e.stopPropagation();
                     onReact(m, r.key);
                   }}
                   aria-pressed={r.mine}
-                  aria-label={`${r.label}: ${r.count}`}
+                  title={`${r.label}: ${r.count}`}
                 >
-                  <r.Icon /> {r.count}
+                  <span>{r.emoji}</span>
+                  {r.count > 1 && <span>{r.count}</span>}
                 </button>
               ))}
             </div>
           )}
-
-          <div className="cw-tools" role="toolbar" aria-label="Thao tác tin nhắn" onClick={(e) => e.stopPropagation()}>
-            {REACTIONS.map((r) => (
-              <button
-                key={r.key}
-                type="button"
-                className={'cw-tool' + (reactions[r.key]?.[uid] ? ' mine' : '')}
-                onClick={() => onReact(m, r.key)}
-                title={r.label}
-                aria-label={r.label}
-              >
-                <r.Icon />
-              </button>
-            ))}
-            <button type="button" className="cw-tool" onClick={() => onReply(m)} title="Trả lời" aria-label="Trả lời">
-              <IcReply />
-            </button>
-            {isMe && (
-              <button
-                type="button"
-                className={'cw-tool danger' + (armed ? ' armed' : '')}
-                onClick={() => onDel(m.id)}
-                title={armed ? 'Bấm lần nữa để xóa' : 'Xóa'}
-                aria-label={armed ? 'Xác nhận xóa' : 'Xóa'}
-              >
-                {armed ? 'Xóa?' : <IcTrash />}
-              </button>
-            )}
-          </div>
-
-          {isMe && <span className="ns9-msg-time-me">{fmtTime(t)}</span>}
         </div>
-
-        {isMe && (
-          <UserAvatar user={user} size={32} title="Bạn" />
-        )}
       </div>
     </>
   );
@@ -384,6 +454,8 @@ export default function ChatWidget() {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [pickerTab, setPickerTab] = useState('elec'); // 'elec' | 'emoji'
+  const [showNameEdit, setShowNameEdit] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const [activeId, setActiveId] = useState(null);
   const [delArm, setDelArm] = useState(null);
@@ -393,10 +465,18 @@ export default function ChatWidget() {
   const [dragging, setDragging] = useState(false);
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState('community'); // 'community' | 'class' | 'friends'
-  const [showChannelDropdown, setShowChannelDropdown] = useState(false);
   const [activeDmThread, setActiveDmThread] = useState(null);
   const [profileTarget, setProfileTarget] = useState(null);
+  const [showSocialPane, setShowSocialPane] = useState(true);
+  const [mobilePane, setMobilePane] = useState('social'); // 'social' | 'chat'
   const [topClasses, setTopClasses] = useState([]);
+
+  const openUserProfile = (tUid, tName) => {
+    if (!tUid) return;
+    setProfileTarget({ uid: tUid, name: tName });
+    setShowSocialPane(true);
+    setMobilePane('social');
+  };
 
   const { count: streakCount, isToday } = useLiveStreak();
   const toast = useToast();
@@ -408,6 +488,7 @@ export default function ChatWidget() {
       const detail = e?.detail;
       setOpen(true);
       setActiveTab('friends');
+      setMobilePane('chat');
       if (detail?.peerUid) {
         setActiveDmThread({
           dmId: detail.dmId,
@@ -479,35 +560,108 @@ export default function ChatWidget() {
   useEffect(() => {
     if (!DB || !open) return undefined;
 
-    const es = new EventSource(STREAM);
-    es.onopen = () => setConnected(true);
-    es.onerror = () => setConnected(false);
-    es.addEventListener('cancel', () => setConnected(false));
-    es.addEventListener('put', (e) => {
-      let p;
-      try { p = JSON.parse(e.data); } catch { return; }
-      const { path, data } = p;
+    let es = null;
+    let reconnectTimer = null;
+    let fallbackPoll = null;
+    let closed = false;
 
-      setMsgs((m) => {
-        if (path === '/') {
-          const fresh = data ? sortById(Object.entries(data).map(([id, v]) => ({ id, ...v }))) : [];
-          const first = fresh[0]?.id;
-          return first ? [...m.filter((x) => x.id < first), ...fresh] : [];
-        }
-        const [id, sub] = path.slice(1).split('/');
-        if (sub === undefined) {
-          if (data === null) return m.filter((x) => x.id !== id);
-          return m.some((x) => x.id === id)
-            ? m.map((x) => (x.id === id ? { id, ...data } : x))
-            : sortById([...m, { id, ...data }]);
-        }
-        if (sub === 'reactions') {
-          return m.map((x) => (x.id === id ? { ...x, reactions: data || {} } : x));
-        }
-        return m;
+    const applySnapshot = (data) => {
+      const fresh = data ? sortById(Object.entries(data).map(([id, v]) => ({ id, ...v }))) : [];
+      const first = fresh[0]?.id;
+      setMsgs((m) => (first ? [...m.filter((x) => x.id < first), ...fresh] : []));
+    };
+
+    const syncOnce = async () => {
+      try {
+        const r = await fetch(STREAM);
+        if (!r.ok) return;
+        const data = await r.json();
+        if (!closed) applySnapshot(data);
+      } catch { /* ignore */ }
+    };
+
+    const connect = () => {
+      if (closed) return;
+      try { es?.close(); } catch { /* ignore */ }
+      es = new EventSource(STREAM);
+      es.onopen = () => {
+        if (!closed) setConnected(true);
+      };
+      es.onerror = () => {
+        if (closed) return;
+        setConnected(false);
+        try { es?.close(); } catch { /* ignore */ }
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(() => {
+          syncOnce();
+          connect();
+        }, 4000);
+      };
+      es.addEventListener('cancel', () => {
+        if (!closed) setConnected(false);
       });
-    });
-    return () => es.close();
+      es.addEventListener('put', (e) => {
+        let p;
+        try { p = JSON.parse(e.data); } catch { return; }
+        const { path, data } = p;
+
+        setMsgs((m) => {
+          if (path === '/') {
+            const fresh = data ? sortById(Object.entries(data).map(([id, v]) => ({ id, ...v }))) : [];
+            const first = fresh[0]?.id;
+            return first ? [...m.filter((x) => x.id < first), ...fresh] : [];
+          }
+          const [id, sub] = path.slice(1).split('/');
+          if (sub === undefined) {
+            if (data === null) return m.filter((x) => x.id !== id);
+            return m.some((x) => x.id === id)
+              ? m.map((x) => (x.id === id ? { id, ...data } : x))
+              : sortById([...m, { id, ...data }]);
+          }
+          if (sub === 'reactions') {
+            return m.map((x) => (x.id === id ? { ...x, reactions: data || {} } : x));
+          }
+          return m;
+        });
+      });
+      es.addEventListener('patch', (e) => {
+        let p;
+        try { p = JSON.parse(e.data); } catch { return; }
+        const { path, data } = p;
+        if (!data || typeof data !== 'object') return;
+        if (path === '/') {
+          setMsgs((m) => {
+            const map = new Map(m.map((x) => [x.id, x]));
+            for (const [id, v] of Object.entries(data)) {
+              if (v === null) map.delete(id);
+              else map.set(id, { ...(map.get(id) || {}), id, ...v });
+            }
+            return sortById([...map.values()]);
+          });
+        } else {
+          const [id] = path.slice(1).split('/');
+          setMsgs((m) => m.map((x) => (x.id === id ? { ...x, ...data } : x)));
+        }
+      });
+    };
+
+    connect();
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') syncOnce();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    fallbackPoll = setInterval(() => {
+      if (!es || es.readyState !== 1) syncOnce();
+    }, 10000);
+
+    return () => {
+      closed = true;
+      clearTimeout(reconnectTimer);
+      clearInterval(fallbackPoll);
+      document.removeEventListener('visibilitychange', onVis);
+      try { es?.close(); } catch { /* ignore */ }
+    };
   }, [open]);
 
   useEffect(() => {
@@ -560,7 +714,7 @@ export default function ChatWidget() {
 
   useLayoutEffect(() => {
     if (open) { stick.current = true; prevLast.current = null; toBottom(false); }
-  }, [open]);
+  }, [open, activeTab]);
 
   useEffect(() => {
     if (!lastId) return;
@@ -626,15 +780,15 @@ export default function ChatWidget() {
   };
   const onDrop = (e) => { e.preventDefault(); setDragging(false); pickFile(e.dataTransfer.files[0]); };
 
-  const send = async (e) => {
-    e?.preventDefault();
-    const t = text.trim().slice(0, MAX_TEXT);
-    if ((!t && !img) || sending) return;
-    if (Date.now() - lastSend.current < 1200) { setErr('Gửi chậm lại một chút nhé.'); return; }
+  const sendPayloadText = async (overrideText = null) => {
+    const raw = overrideText !== null ? overrideText : text;
+    const t = String(raw || '').trim().slice(0, MAX_TEXT);
+    const attachedImg = overrideText !== null ? null : img;
+    if ((!t && !attachedImg) || sending) return;
+    if (Date.now() - lastSend.current < 450) { setErr('Gửi chậm lại một chút nhé.'); return; }
     lastSend.current = Date.now();
     setSending(true);
     try {
-      // Đánh giá tin nhắn hợp lệ để giữ chuỗi cá nhân hôm nay
       const isStreakMsg = isValidStreakMessage(t, lastSentText.current);
       if (isStreakMsg) {
         lastSentText.current = t;
@@ -653,7 +807,7 @@ export default function ChatWidget() {
       const payload = {
         name: (name.trim() || 'Ẩn danh').slice(0, 20),
         text: t,
-        img: img || null,
+        img: attachedImg || null,
         uid,
         photoURL: user?.photoURL || null,
         t: Date.now(),
@@ -670,13 +824,33 @@ export default function ChatWidget() {
       }
       const r = await fetch(URL_MSG, { method: 'POST', body: JSON.stringify(payload) });
       if (!r.ok) throw new Error();
+      const resp = await r.json().catch(() => null);
+      if (resp?.name) {
+        const newId = resp.name;
+        setMsgs((prev) =>
+          prev.some((x) => x.id === newId)
+            ? prev
+            : sortById([...prev, { id: newId, ...payload }])
+        );
+      }
       stick.current = true;
-      setText(''); setImg(null); setErr(''); setReplyTo(null); setShowPicker(false);
+      if (overrideText === null) {
+        setText('');
+        setImg(null);
+      }
+      setErr('');
+      setReplyTo(null);
+      setShowPicker(false);
     } catch {
       setErr('Gửi thất bại. Kiểm tra mạng.');
     } finally {
       setSending(false);
     }
+  };
+
+  const send = (e) => {
+    e?.preventDefault();
+    sendPayloadText(null);
   };
 
   const onKeyDown = (e) => {
@@ -686,14 +860,7 @@ export default function ChatWidget() {
     }
   };
 
-  useEffect(() => {
-    const el = inputRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 110) + 'px';
-  }, [text, open]);
-
-  useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
+  useEffect(() => { if (open && activeTab === 'community') inputRef.current?.focus(); }, [open, activeTab]);
 
   const removeMsg = async (id) => {
     try {
@@ -741,22 +908,32 @@ export default function ChatWidget() {
     setTimeout(() => el.classList.remove('flash'), 1400);
   };
 
-  const addSticker = (k) => {
-    setText((t) => (t + (t && !/\s$/.test(t) ? ' ' : '') + `:${k}: `).slice(0, MAX_TEXT));
-    inputRef.current?.focus();
-  };
-
   const onPaneKey = (e) => {
     if (e.key !== 'Escape' || lightbox) return;
     e.stopPropagation();
     if (showPicker) setShowPicker(false);
+    else if (showNameEdit) setShowNameEdit(false);
     else if (showSearch) { setShowSearch(false); setSearch(''); }
     else if (replyTo) setReplyTo(null);
     else { setOpen(false); fabRef.current?.focus(); }
   };
 
-  const onlineCount = Object.keys(onlineUsers).length;
-  const onlineNames = Object.values(onlineUsers).join(', ');
+  const onlineCount = Math.max(Object.keys(onlineUsers).length, connected ? 1 : 0);
+  const channelTitle =
+    activeTab === 'community'
+      ? 'ELEC Cộng Đồng'
+      : activeTab === 'class'
+      ? 'Lớp học ELEC'
+      : 'Tin nhắn & Bạn bè';
+
+  const channelStatus =
+    activeTab === 'community'
+      ? connected
+        ? `${onlineCount} bạn đang hoạt động`
+        : 'Đang kết nối kênh ELEC…'
+      : activeTab === 'class'
+      ? 'Thảo luận & giữ chuỗi cùng lớp'
+      : 'Nhắn tin 1:1 trực tiếp';
 
   return (
     <>
@@ -765,7 +942,7 @@ export default function ChatWidget() {
         className={'cw-fab' + (open ? ' is-open' : '')}
         onClick={() => setOpen((o) => !o)}
         type="button"
-        aria-label={open ? 'Đóng chat' : 'Mở chat cộng đồng'}
+        aria-label={open ? 'Đóng chat' : 'Mở ELEC Messenger'}
         aria-expanded={open}
       >
         <IcChat className="cw-i-chat" width="26" height="26" />
@@ -774,157 +951,165 @@ export default function ChatWidget() {
 
       {open && (
         <div
-          className="ns9-comm-overlay-backdrop"
+          className="ec-chat-backdrop"
           onClick={(e) => {
             if (e.target === e.currentTarget) setOpen(false);
           }}
         >
           <div
-            className={`ns9-pcol ns9-pcol-chat ns9-comm-card ${isExpanded ? 'is-expanded' : ''}`}
+            className={`esh-split-frame ${!showSocialPane ? 'is-chat-only' : ''} ${isExpanded ? 'is-expanded' : ''} ${mobilePane === 'social' ? 'mob-show-social' : 'mob-show-chat'}`}
             role="dialog"
-            aria-label="Chat cộng đồng"
+            aria-label="ELEC Social & Messenger"
             onKeyDown={onPaneKey}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false);
-            }}
-            onDrop={onDrop}
           >
-            {/* 1. Header Bar matching Image 3 Column 3 */}
-            <div className="ns9-chat-header-bar">
-              <button
-                type="button"
-                className="ns9-chat-action-icon"
-                onClick={() => {
-                  setText('');
-                  setReplyTo(null);
-                  setImg(null);
-                  inputRef.current?.focus();
-                }}
-                title="Tạo tin mới / Làm mới đoạn chat"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-              </button>
-
-              <div className="ns9-chat-title-dropdown">
+            {/* THANH CHUYỂN NHANH TRÊN MOBILE (<920px) */}
+            {showSocialPane && (
+              <div className="esh-mobile-bar" role="tablist" aria-label="Chuyển Mạng xã hội và Nhắn tin">
                 <button
                   type="button"
-                  className="ns9-chat-title-btn"
-                  onClick={() => setShowChannelDropdown((p) => !p)}
+                  role="tab"
+                  aria-selected={mobilePane === 'social'}
+                  className={`esh-mob-tab ${mobilePane === 'social' ? 'is-active' : ''}`}
+                  onClick={() => setMobilePane('social')}
                 >
-                  <span>
-                    {activeTab === 'community'
-                      ? 'Chat cộng đồng'
-                      : activeTab === 'class'
-                      ? 'Lớp học của tôi'
-                      : 'Bạn bè & Tin riêng'}
-                  </span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="6 9 12 15 18 9" />
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1">
+                    <rect x="3" y="4" width="18" height="16" rx="3" />
+                    <path d="M7 9h10M7 13h7" />
+                  </svg>
+                  <span>Mạng xã hội</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mobilePane === 'chat'}
+                  className={`esh-mob-tab ${mobilePane === 'chat' ? 'is-active' : ''}`}
+                  onClick={() => setMobilePane('chat')}
+                >
+                  <IcChat width="14" height="14" />
+                  <span>Nhắn tin</span>
+                </button>
+              </div>
+            )}
+
+            {/* BÊN TRÁI: TRANG MẠNG XÃ HỘI ELEC AI (BẢNG TIN · HỌC CHUNG · TRANG CÁ NHÂN) */}
+            {showSocialPane && (
+              <SocialFeedPanel
+                profileTarget={profileTarget}
+                onSelectProfile={(t) => setProfileTarget(t)}
+                onClearProfile={() => setProfileTarget(null)}
+                onOpenDm={(dmIdStr, peerUid, peerName) => {
+                  setActiveTab('friends');
+                  setActiveDmThread({ dmId: dmIdStr, peerUid, peerName });
+                  setMobilePane('chat');
+                }}
+                onNavigateAway={() => setOpen(false)}
+              />
+            )}
+
+            {/* BÊN PHẢI: NHẮN TIN ELEC MESSENGER */}
+            <div
+              className="ec-chat-shell is-in-split"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget)) setDragging(false);
+              }}
+              onDrop={onDrop}
+            >
+            {/* 1. MESSENGER × TIKTOK HEADER CÓ BẢN QUYỀN ELEC AI */}
+            <header className="ec-head">
+              <div className="ec-head-brand">
+                <div className="ec-brand-avatar">
+                  <img src="/img/elec/elec-hello.png" alt="ELEC AI" draggable={false} />
+                  <span className={`ec-live-dot ${connected ? '' : 'is-off'}`} />
+                </div>
+                <div className="ec-brand-meta">
+                  <div className="ec-brand-title-row">
+                    <span className="ec-brand-title">{channelTitle}</span>
+                    <span className="ec-verified-chip">ELEC AI</span>
+                  </div>
+                  <span className="ec-brand-status">{channelStatus}</span>
+                </div>
+              </div>
+
+              <div className="ec-head-actions">
+                <button
+                  type="button"
+                  className={`ec-icon-btn ${showSocialPane ? 'is-active' : ''}`}
+                  onClick={() => setShowSocialPane((v) => !v)}
+                  title={showSocialPane ? 'Ẩn cột Mạng xã hội (chỉ xem Nhắn tin)' : 'Hiện 2 cột: Mạng xã hội + Nhắn tin'}
+                  aria-label={showSocialPane ? 'Ẩn cột Mạng xã hội' : 'Hiện cột Mạng xã hội'}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="16" rx="2.5" />
+                    <line x1="12" y1="4" x2="12" y2="20" />
                   </svg>
                 </button>
 
-                {showChannelDropdown && (
-                  <div className="ns9-comm-channel-popover">
-                    <div className="ns9-popover-title">Chọn phòng trò chuyện:</div>
-                    <button
-                      type="button"
-                      className={`ns9-comm-channel-item ${activeTab === 'community' ? 'is-selected' : ''}`}
-                      onClick={() => {
-                        setActiveTab('community');
-                        setShowChannelDropdown(false);
-                      }}
-                    >
-                      <span className="ns9-chan-icon"><IcChat width="18" height="18" /></span>
-                      <div className="ns9-chan-info">
-                        <span className="ns9-chan-name">Kênh chung cộng đồng</span>
-                        <span className="ns9-chan-desc">1.428 bạn đang online thảo luận</span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`ns9-comm-channel-item ${activeTab === 'class' ? 'is-selected' : ''}`}
-                      onClick={() => {
-                        setActiveTab('class');
-                        setShowChannelDropdown(false);
-                      }}
-                    >
-                      <span className="ns9-chan-icon"><IcSvgSchool width="18" height="18" /></span>
-                      <div className="ns9-chan-info">
-                        <span className="ns9-chan-name">Lớp học của tôi</span>
-                        <span className="ns9-chan-desc">Trao đổi cùng bạn bè trong lớp</span>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={`ns9-comm-channel-item ${activeTab === 'friends' ? 'is-selected' : ''}`}
-                      onClick={() => {
-                        setActiveTab('friends');
-                        setShowChannelDropdown(false);
-                      }}
-                    >
-                      <span className="ns9-chan-icon"><IcUsers width="18" height="18" /></span>
-                      <div className="ns9-chan-info">
-                        <span className="ns9-chan-name">Bạn bè & Tin riêng</span>
-                        <span className="ns9-chan-desc">Nhắn tin trực tiếp 1:1</span>
-                      </div>
-                    </button>
-
-                    <div style={{ height: 1, background: 'rgba(226, 232, 240, 0.8)', margin: '6px 0' }} />
-
-                    <button
-                      type="button"
-                      className="ns9-comm-channel-item"
-                      onClick={() => {
-                        setShowChannelDropdown(false);
-                        setShowSearch((s) => !s);
-                      }}
-                    >
-                      <span className="ns9-chan-icon"><IcSearch width="18" height="18" /></span>
-                      <div className="ns9-chan-info">
-                        <span className="ns9-chan-name">Tìm kiếm tin nhắn</span>
-                        <span className="ns9-chan-desc">Tra cứu nội dung cũ trong nhóm</span>
-                      </div>
-                    </button>
-
-                    <div className="ns9-pop-name-edit">
-                      <span style={{ fontSize: 11, color: '#64748b' }}>Tên bạn:</span>
-                      <input
-                        value={name}
-                        maxLength={20}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Tên hiển thị..."
-                        className="ns9-pop-name-input"
-                      />
-                    </div>
-                  </div>
+                {user?.uid && (
+                  <button
+                    type="button"
+                    className="ec-icon-btn"
+                    onClick={() =>
+                      openUserProfile(user.uid, user.displayName || name || 'Trang cá nhân')
+                    }
+                    title="Trang cá nhân & Đăng cap của tôi"
+                    aria-label="Trang cá nhân của tôi"
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="8" r="3.6" />
+                      <path d="M4.5 20c0-4 3.4-6.5 7.5-6.5s7.5 2.5 7.5 6.5" />
+                    </svg>
+                  </button>
                 )}
-              </div>
 
-              <div className="ns9-chat-header-right">
+                {activeTab === 'community' && (
+                  <>
+                    <button
+                      type="button"
+                      className={`ec-icon-btn ${showSearch ? 'is-active' : ''}`}
+                      onClick={() => {
+                        setShowSearch((s) => !s);
+                        setShowNameEdit(false);
+                      }}
+                      title="Tìm kiếm tin nhắn"
+                      aria-label="Tìm kiếm tin nhắn"
+                    >
+                      <IcSearch width="17" height="17" />
+                    </button>
+                    <button
+                      type="button"
+                      className={`ec-icon-btn ${showNameEdit ? 'is-active' : ''}`}
+                      onClick={() => {
+                        setShowNameEdit((p) => !p);
+                        setShowSearch(false);
+                      }}
+                      title="Đổi tên hiển thị"
+                      aria-label="Đổi tên hiển thị"
+                    >
+                      <IcEdit width="16" height="16" />
+                    </button>
+                  </>
+                )}
+
                 <button
                   type="button"
-                  className="ns9-chat-action-icon"
+                  className="ec-icon-btn"
                   onClick={() => setIsExpanded((e) => !e)}
                   title={isExpanded ? 'Thu nhỏ' : 'Phóng to'}
+                  aria-label={isExpanded ? 'Thu nhỏ' : 'Phóng to'}
                 >
                   {isExpanded ? (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1">
                       <polyline points="4 14 10 14 10 20" />
                       <polyline points="20 10 14 10 14 4" />
                       <line x1="14" y1="10" x2="21" y2="3" />
                       <line x1="3" y1="21" x2="10" y2="14" />
                     </svg>
                   ) : (
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1">
                       <polyline points="15 3 21 3 21 9" />
                       <polyline points="9 21 3 21 3 15" />
                       <line x1="21" y1="3" x2="14" y2="10" />
@@ -932,67 +1117,117 @@ export default function ChatWidget() {
                     </svg>
                   )}
                 </button>
+
                 <button
                   type="button"
-                  className="ns9-chat-action-icon ns9-close-x"
+                  className="ec-icon-btn"
                   onClick={() => setOpen(false)}
-                  title="Đóng chat cộng đồng"
+                  title="Đóng"
+                  aria-label="Đóng chat"
                 >
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+                  <IcClose width="18" height="18" strokeWidth="2.3" />
                 </button>
               </div>
-            </div>
 
-            {/* Horizontal Sub-tabs matching Image 3: [Cộng đồng] [Lớp] [Bạn bè] [Trợ lý AI] */}
-            <div className="ns9-chat-subtabs-bar">
+              {showNameEdit && (
+                <form
+                  className="ec-name-popover"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setShowNameEdit(false);
+                    toast('Đã cập nhật tên hiển thị!');
+                  }}
+                >
+                  <label htmlFor="ec-nick-input">Tên hiển thị của bạn trong kênh ELEC</label>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <input
+                      id="ec-nick-input"
+                      value={name}
+                      maxLength={20}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Nhập tên của bạn…"
+                      autoFocus
+                    />
+                    <button
+                      type="submit"
+                      style={{
+                        height: 34,
+                        padding: '0 12px',
+                        borderRadius: 10,
+                        border: 0,
+                        background: '#0084ff',
+                        color: '#fff',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    >
+                      Lưu
+                    </button>
+                  </div>
+                </form>
+              )}
+            </header>
+
+            {/* 2. THANH CHUYỂN KÊNH GỌN KIỂU TIKTOK / MESSENGER */}
+            <nav className="ec-tabs" aria-label="Kênh trò chuyện">
               <button
                 type="button"
-                className={`ns9-subtab-btn ${activeTab === 'community' ? 'is-active' : ''}`}
+                className={`ec-tab ${activeTab === 'community' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('community')}
               >
                 Cộng đồng
               </button>
               <button
                 type="button"
-                className={`ns9-subtab-btn ${activeTab === 'class' ? 'is-active' : ''}`}
+                className={`ec-tab ${activeTab === 'class' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('class')}
               >
                 Lớp
               </button>
               <button
                 type="button"
-                className={`ns9-subtab-btn ${activeTab === 'friends' ? 'is-active' : ''}`}
+                className={`ec-tab ${activeTab === 'friends' ? 'is-active' : ''}`}
                 onClick={() => setActiveTab('friends')}
               >
                 Bạn bè
               </button>
+
               <button
                 type="button"
-                className="ns9-subtab-btn is-ai-pill"
+                className="ec-tab-ai"
                 onClick={() => {
                   setOpen(false);
                   window.dispatchEvent(new CustomEvent('elec-open-companion-modal'));
                 }}
-                title="Mở Trợ lý ELEC AI"
+                title="Mở Trợ lý học tập ELEC AI"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="ns9-ai-sparkle">
-                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                </svg>
+                <img src="/img/elec/elec-cool.png" alt="" />
                 <span>Trợ lý AI</span>
               </button>
-            </div>
+            </nav>
 
-            {/* Search row if opened */}
-            {showSearch && (
-              <div className="cw-search">
-                <IcSearch width="16" height="16" />
+            {/* THANH CAP MESSENGER 24H GIỐNG FACEBOOK MESSENGER */}
+            {!(activeTab === 'friends' && activeDmThread) && (
+              <MessengerNotesBar
+                onOpenProfile={(tUid, tName) => openUserProfile(tUid, tName)}
+                onOpenDm={(dmIdStr, peerUid, peerName) => {
+                  setActiveTab('friends');
+                  setActiveDmThread({ dmId: dmIdStr, peerUid, peerName });
+                }}
+                onNavigateAway={() => setOpen(false)}
+              />
+            )}
+
+            {/* Thanh tìm kiếm */}
+            {showSearch && activeTab === 'community' && (
+              <div className="ec-searchbar">
+                <IcSearch width="15" height="15" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tìm tin nhắn…"
+                  placeholder="Tìm tin nhắn hoặc tên bạn học…"
                   autoFocus
                 />
                 {search && <small>{filtered.length} kết quả</small>}
@@ -1000,7 +1235,7 @@ export default function ChatWidget() {
             )}
 
             {activeTab === 'class' && (
-              <ClassChat onOpenProfile={(tUid, tName) => setProfileTarget({ uid: tUid, name: tName })} />
+              <ClassChat onOpenProfile={(tUid, tName) => openUserProfile(tUid, tName)} />
             )}
 
             {activeTab === 'friends' && (
@@ -1009,124 +1244,77 @@ export default function ChatWidget() {
                   me={user}
                   thread={activeDmThread}
                   setThread={setActiveDmThread}
-                  onOpenProfile={(tUid, tName) => setProfileTarget({ uid: tUid, name: tName })}
+                  onOpenProfile={(tUid, tName) => openUserProfile(tUid, tName)}
+                  onNavigateAway={() => setOpen(false)}
                   unreadMap={{}}
                 />
               ) : (
-                <div style={{ padding: '2rem 1rem', textAlign: 'center', color: 'var(--sw-ink2, #64748b)', fontSize: '.85rem' }}>
-                  Vui lòng đăng nhập để kết bạn và nhắn tin riêng.
+                <div style={{ padding: '2.5rem 1.2rem', textAlign: 'center', color: 'var(--ec-ink-2)', fontSize: '13.5px' }}>
+                  Vui lòng đăng nhập để kết bạn và nhắn tin riêng trên ELEC AI.
                 </div>
               )
             )}
 
             {activeTab === 'community' && (
               <>
-                {/* 2. Scroll Area matching Image 3 Column 3 */}
-                <div className="ns9-chat-scroll-area" ref={listRef} onScroll={onScroll}>
-                  {/* Mascot greeting row */}
-                  <div className="ns9-chat-ai-row">
-                    <img src="/img/elec/elec-hello.png" alt="ELEC AI" className="ns9-c-avatar" />
-                    <div className="ns9-c-bubble-group">
-                      <div className="ns9-c-persona-badge">
-                        <span className="ns9-c-name">ELEC AI</span>
-                        <span className="ns9-c-mood-tag">Cộng đồng học sinh 2026</span>
+                <div className="ec-stream" ref={listRef} onScroll={onScroll}>
+                  {/* Channel Intro kiểu Messenger/TikTok — Gọn, chính chủ ELEC AI */}
+                  {!search && (
+                    <div className="ec-channel-hero">
+                      <div className="ec-hero-badge">
+                        <img src="/img/elec/elec-hello.png" alt="ELEC AI" draggable={false} />
                       </div>
-                      <div className="ns9-c-speech-card">
-                        <div className="ns9-c-speech-txt">
-                          Chào buổi tối, {name || 'Duyyy'} nè! Chào mừng bạn đến với kênh Chat Cộng Đồng ELEC AI. Cùng nhau trao đổi bài tập khó và chia sẻ kinh nghiệm ôn thi nhé.
+                      <h3 className="ec-hero-title">
+                        <span>Cộng đồng ELEC AI · 2026</span>
+                        <span className="ec-verified-chip">CHÍNH CHỦ</span>
+                      </h3>
+                      <p className="ec-hero-sub">
+                        Chào {name || 'bạn'}! Nơi hỏi bài nhanh, giữ chuỗi học tập & thả sticker linh vật ELEC độc quyền.
+                      </p>
+
+                      {filtered.length < 4 && (
+                        <div className="ec-icebreakers">
+                          {ICEBREAKERS.map((chip) => (
+                            <button
+                              key={chip.label}
+                              type="button"
+                              className="ec-ice-chip"
+                              onClick={() => {
+                                setText(chip.text);
+                                inputRef.current?.focus();
+                              }}
+                            >
+                              {chip.label}
+                            </button>
+                          ))}
                         </div>
-                      </div>
+                      )}
                     </div>
-                  </div>
+                  )}
 
-                  {/* 5 Quick Action suggestion pills matching Image 3 */}
-                  <div className="ns9-quick-pills-container">
-                    <button
-                      type="button"
-                      className="ns9-pill-item-btn"
-                      onClick={() => {
-                        setText('Thảo luận phương pháp giải nhanh bài tập Hóa / Lý 2026');
-                        inputRef.current?.focus();
-                      }}
-                    >
-                      <span className="ns9-pill-dot" style={{ background: '#3b82f6' }} />
-                      <span className="ns9-pill-txt">Gợi ý một việc vừa sức để bắt đầu</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="ns9-pill-item-btn"
-                      onClick={() => {
-                        setText('Có bạn nào đang vướng bài tập phần Este - Lipit này không?');
-                        inputRef.current?.focus();
-                      }}
-                    >
-                      <span className="ns9-pill-dot" style={{ background: '#10b981' }} />
-                      <span className="ns9-pill-txt">Giải chậm một bài mình đang vướng</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="ns9-pill-item-btn"
-                      onClick={() => {
-                        setText('Tìm bạn cùng tiến target 27+ Bách Khoa / Y Hà Nội');
-                        inputRef.current?.focus();
-                      }}
-                    >
-                      <span className="ns9-pill-dot" style={{ background: '#f59e0b' }} />
-                      <span className="ns9-pill-txt">Lập kế hoạch nhẹ nhàng hôm nay</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="ns9-pill-item-btn"
-                      onClick={() => {
-                        setText('Chia sẻ kinh nghiệm tránh bẫy câu hỏi lý thuyết THPT 2026');
-                        inputRef.current?.focus();
-                      }}
-                    >
-                      <span className="ns9-pill-dot" style={{ background: '#ef4444' }} />
-                      <span className="ns9-pill-txt">Phân tích Sổ lỗi sai & Khắc phục</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="ns9-pill-item-btn"
-                      onClick={() => {
-                        setText('Hỏi đáp phương pháp giải nhanh & kỹ thuật Casio');
-                        inputRef.current?.focus();
-                      }}
-                    >
-                      <span className="ns9-pill-dot" style={{ background: '#8b5cf6' }} />
-                      <span className="ns9-pill-txt">Cân bằng PTHH & Tính toán khoa học</span>
-                    </button>
-                  </div>
-
-                  {/* Top streak classes if any */}
+                  {/* Dải BXH chuỗi lớp siêu gọn 1 dòng */}
                   {topClasses.length > 0 && !search && (
-                    <div className="cw-top-classes-card">
-                      <div className="cw-top-head">
-                        <span><IcSvgFlame size={14} /> Lớp có chuỗi dài nhất hôm nay</span>
-                        <a href="#leaderboard" className="cw-top-link">
-                          BXH Chuỗi →
-                        </a>
-                      </div>
+                    <div className="ec-streak-strip">
+                      <span className="ec-streak-label">
+                        <IcSvgFlame size={13} /> Top chuỗi lớp
+                      </span>
                       {topClasses.map((cls, idx) => (
-                        <div key={cls.id || idx} className="cw-top-row">
-                          <span className="cw-top-rank">#{idx + 1}</span>
-                          <span className="cw-top-name">{cls.name || 'Lớp học'}</span>
-                          <span className="cw-top-fire"><IcSvgFlame size={12} /> {cls.streak?.count || 0} ngày</span>
-                        </div>
+                        <span key={cls.id || idx} className="ec-streak-pill">
+                          #{idx + 1} {cls.name || 'Lớp'} <b>{cls.streak?.count || 0}🔥</b>
+                        </span>
                       ))}
                     </div>
                   )}
 
                   {msgs.length >= 50 && !search && !noMore && (
-                    <button className="cw-more" type="button" onClick={loadOlder} disabled={loadingOld}>
-                      <IcUp width="14" height="14" /> {loadingOld ? 'Đang tải…' : 'Tải tin cũ hơn'}
+                    <button className="ec-load-old" type="button" onClick={loadOlder} disabled={loadingOld}>
+                      <IcUp width="14" height="14" /> {loadingOld ? 'Đang tải…' : 'Xem tin cũ hơn'}
                     </button>
                   )}
 
                   {filtered.length === 0 && (
-                    <div className="cw-empty">
-                      <STICKERS.smile.Icon width="32" height="32" />
-                      {search ? 'Không tìm thấy tin nhắn nào.' : 'Chưa có tin nhắn. Hãy là người mở lời đầu tiên!'}
+                    <div style={{ textAlign: 'center', padding: '28px 16px', color: 'var(--ec-ink-3)', fontSize: 13 }}>
+                      {search ? 'Không tìm thấy tin nhắn nào.' : 'Chưa có tin nhắn. Nhấn gửi Sticker ELEC để mở lời ngay!'}
                     </div>
                   )}
 
@@ -1135,6 +1323,7 @@ export default function ChatWidget() {
                       key={m.id}
                       m={m}
                       prev={filtered[i - 1]}
+                      next={filtered[i + 1]}
                       uid={uid}
                       user={user}
                       userProfileMap={userProfileMap}
@@ -1147,126 +1336,184 @@ export default function ChatWidget() {
                       onImg={setLightbox}
                       onJump={jumpTo}
                       onImgLoad={() => stick.current && toBottom(false)}
-                      onOpenProfile={(tUid, tName) => setProfileTarget({ uid: tUid, name: tName })}
+                      onOpenProfile={(tUid, tName) => openUserProfile(tUid, tName)}
                     />
                   ))}
                 </div>
 
                 {newBelow > 0 && (
-                  <button className="cw-jump" type="button" onClick={() => { toBottom(true); setNewBelow(0); }}>
+                  <button className="ec-jump-down" type="button" onClick={() => { toBottom(true); setNewBelow(0); }}>
                     <IcDown width="14" height="14" /> {newBelow} tin mới
                   </button>
                 )}
 
                 {dragging && (
-                  <div className="cw-drop">
-                    <span><IcImage /> Thả ảnh để gửi</span>
+                  <div className="ec-drop-overlay">
+                    <span><IcImage width="18" height="18" /> Thả ảnh vào đây để gửi</span>
                   </div>
                 )}
 
-                {err && <p className="cw-err" role="alert">{err}</p>}
+                {err && <p className="ec-err-toast" role="alert">{err}</p>}
 
-                {/* 3. Footer Bar matching Image 3 Column 3 */}
+                {/* 3. KHAY REPLY / ẢNH / STICKER ĐỘC QUYỀN ELEC + COMPOSER MESSENGER */}
                 <div style={{ position: 'relative' }}>
                   {replyTo && (
-                    <div className="cw-attach">
+                    <div className="ec-attach-bar">
                       <IcReply width="16" height="16" />
-                      <div>
-                        <b>Trả lời {String(replyTo.name || '').slice(0, 20)}</b>
-                        <span>{replyTo.text || (replyTo.img ? 'Ảnh' : '')}</span>
+                      <div className="ec-attach-info">
+                        <b>Đang trả lời {String(replyTo.name || '').slice(0, 20)}</b>
+                        <span>{replyTo.text || (replyTo.img ? '📷 Hình ảnh' : '')}</span>
                       </div>
-                      <button className="cw-ib ghost" onClick={() => setReplyTo(null)} type="button">
-                        <IcClose width="16" height="16" />
+                      <button className="ec-icon-btn" onClick={() => setReplyTo(null)} type="button" aria-label="Hủy trả lời">
+                        <IcClose width="15" height="15" />
                       </button>
                     </div>
                   )}
 
                   {img && (
-                    <div className="cw-attach">
+                    <div className="ec-attach-bar">
                       <img src={img} alt="Ảnh đính kèm" />
-                      <div><b>Ảnh đính kèm</b><span>Sẽ gửi cùng tin nhắn</span></div>
-                      <button className="cw-ib ghost" onClick={() => setImg(null)} type="button">
-                        <IcClose width="16" height="16" />
+                      <div className="ec-attach-info">
+                        <b>Ảnh đính kèm</b>
+                        <span>Nhấn gửi để chia sẻ vào kênh</span>
+                      </div>
+                      <button className="ec-icon-btn" onClick={() => setImg(null)} type="button" aria-label="Bỏ ảnh">
+                        <IcClose width="15" height="15" />
                       </button>
                     </div>
                   )}
 
                   {showPicker && (
-                    <div className="cw-picker" role="group">
-                      <div className="ns9-popover-title" style={{ padding: '6px 8px 4px', fontWeight: 700 }}>Chọn Sticker & Biểu cảm:</div>
-                      <div className="cw-picker-grid">
-                        {Object.entries(STICKERS).map(([k, { Icon, label }]) => (
-                          <button key={k} className="cw-st-btn" type="button" onClick={() => addSticker(k)} title={label}>
-                            <Icon width="100%" height="100%" />
-                          </button>
-                        ))}
+                    <div className="ec-sticker-tray" role="group" aria-label="Sticker ELEC AI và Emoji">
+                      <div className="ec-tray-tabs">
+                        <button
+                          type="button"
+                          className={`ec-tray-tab ${pickerTab === 'elec' ? 'is-active' : ''}`}
+                          onClick={() => setPickerTab('elec')}
+                        >
+                          Sticker ELEC
+                        </button>
+                        <button
+                          type="button"
+                          className={`ec-tray-tab ${pickerTab === 'emoji' ? 'is-active' : ''}`}
+                          onClick={() => setPickerTab('emoji')}
+                        >
+                          Biểu cảm
+                        </button>
+                        <span className="ec-tray-hint">
+                          {pickerTab === 'elec' ? 'Chạm để gửi ngay' : 'Chạm để chèn'}
+                        </span>
+                        <button
+                          type="button"
+                          className="ec-icon-btn"
+                          style={{ width: 26, height: 26 }}
+                          onClick={() => setShowPicker(false)}
+                          aria-label="Đóng khay sticker"
+                        >
+                          <IcClose width="14" height="14" />
+                        </button>
                       </div>
+
+                      {pickerTab === 'elec' ? (
+                        <div className="ec-elec-grid">
+                          {Object.entries(ELEC_STICKERS).map(([k, st]) => (
+                            <button
+                              key={k}
+                              type="button"
+                              className="ec-elec-item"
+                              onClick={() => sendPayloadText(`:${k}:`)}
+                              title={`Gửi sticker ${st.label}`}
+                            >
+                              <img src={st.src} alt={st.label} loading="lazy" draggable={false} />
+                              <span>{st.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="ec-emoji-grid">
+                          {Object.entries(LEGACY_EMOJI).map(([k, em]) => (
+                            <button
+                              key={k}
+                              type="button"
+                              className="ec-emoji-btn"
+                              onClick={() => {
+                                setText((prevText) => (prevText + em.emoji).slice(0, MAX_TEXT));
+                                inputRef.current?.focus();
+                              }}
+                              title={em.label}
+                            >
+                              {em.emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  <form className="ns9-chat-footer-bar" onSubmit={send}>
-                    <button
-                      type="button"
-                      className="ns9-cf-tool-btn"
-                      onClick={() => setShowPicker((p) => !p)}
-                      title="Thêm sticker hoặc biểu cảm"
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                    </button>
-
-                    <label className="ns9-cf-tool-btn" style={{ cursor: 'pointer' }} title="Gửi ảnh bài tập">
-                      <IcImage width="18" height="18" />
+                  <form className="ec-composer" onSubmit={send}>
+                    <label className="ec-tool-btn" title="Gửi ảnh" aria-label="Gửi ảnh">
+                      <IcImage width="19" height="19" />
                       <input type="file" accept="image/*" hidden onChange={onPickInput} />
                     </label>
 
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={text}
-                      maxLength={MAX_TEXT}
-                      placeholder='Gõ câu hỏi bài tập, hoặc ấn "+" để gửi ảnh...'
-                      className="ns9-cf-input"
-                      onChange={(e) => setText(e.target.value)}
-                      onKeyDown={onKeyDown}
-                      onPaste={onPaste}
-                    />
-
                     <button
-                      type="submit"
-                      className="ns9-cf-send-btn"
-                      disabled={sending || (!text.trim() && !img)}
-                      aria-label="Gửi tin nhắn"
+                      type="button"
+                      className={`ec-tool-btn ${showPicker ? 'is-active' : ''}`}
+                      onClick={() => setShowPicker((p) => !p)}
+                      title="Sticker ELEC AI & Emoji"
+                      aria-label="Sticker ELEC AI và Emoji"
                     >
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <line x1="12" y1="19" x2="12" y2="5" />
-                        <polyline points="5 12 12 5 19 12" />
-                      </svg>
+                      <IcSmile width="19" height="19" />
                     </button>
+
+                    <div className="ec-input-pill">
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={text}
+                        maxLength={MAX_TEXT}
+                        placeholder="Nhắn tin tới Cộng đồng ELEC..."
+                        className="ec-input"
+                        onChange={(e) => setText(e.target.value)}
+                        onKeyDown={onKeyDown}
+                        onPaste={onPaste}
+                      />
+                    </div>
+
+                    {text.trim() || img ? (
+                      <button
+                        type="submit"
+                        className="ec-send-btn"
+                        disabled={sending}
+                        aria-label="Gửi tin nhắn"
+                      >
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="12" y1="19" x2="12" y2="5" />
+                          <polyline points="5 12 12 5 19 12" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ec-quick-like"
+                        disabled={sending}
+                        onClick={() => sendPayloadText(':elec_love:')}
+                        title="Gửi nhanh Sticker Thả tim ELEC AI"
+                        aria-label="Gửi nhanh Sticker Thả tim ELEC AI"
+                      >
+                        ❤️
+                      </button>
+                    )}
                   </form>
                 </div>
               </>
             )}
+            </div>
           </div>
         </div>
       )}
 
       {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
-
-      {profileTarget && (
-        <ProfileCard
-          targetUid={profileTarget.uid}
-          fallbackName={profileTarget.name}
-          onClose={() => setProfileTarget(null)}
-          onOpenDm={(dmId) => {
-            setProfileTarget(null);
-            setActiveTab('friends');
-            setActiveDmThread({ dmId, peerUid: profileTarget.uid, peerName: profileTarget.name });
-          }}
-        />
-      )}
     </>
   );
 }

@@ -71,17 +71,15 @@ export default function ApiUsagePanel() {
       <div className="vt-card">
         <header className="vt-card-head">
           <h3 className="vt-card-title">
-            <IconActivity size={16} className="vt-title-ico" />
             Hạn mức API hôm nay ({usage.day})
           </h3>
           <button type="button" className="vt-btn sm" onClick={() => handleReset()} disabled={!entries.length}>
-            <IconRefresh size={13} /> Reset tất cả
+            Reset tất cả
           </button>
         </header>
 
         {entries.length === 0 ? (
           <div className="vt-empty" style={{ padding: '2rem 1rem' }}>
-            <span><IconBulb size={30} /></span>
             <h3 style={{ fontSize: '1rem' }}>Chưa có lượt gọi API nào</h3>
             <p>Bộ đếm ghi nhận trên trình duyệt này. Khi bạn dùng tính năng AI, số liệu sẽ hiển thị ở đây.</p>
           </div>
@@ -94,7 +92,6 @@ export default function ApiUsagePanel() {
         )}
 
         <p className="vt-muted" style={{ marginTop: '1rem', fontSize: '.78rem' }}>
-          <IconBulb size={13} style={{ verticalAlign: '-2px', marginRight: 4 }} />
           Số liệu được đếm trên trình duyệt này; thiết bị khác dùng chung API key sẽ có số liệu riêng.
           Khi gần hết hạn mức, thay key mới trong file <code>.env</code> rồi build lại.
         </p>

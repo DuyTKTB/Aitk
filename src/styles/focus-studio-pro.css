@@ -798,26 +798,29 @@
   gap: 8px;
   padding: 8px 16px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.11);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: inherit;
+  background: rgba(12, 18, 38, 0.56);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #f8fafc;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  backdrop-filter: blur(14px);
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.36);
   max-width: min(520px, 90vw);
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .fs9-active-task-pill:hover {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(15, 23, 42, 0.72);
 }
 
 .fs9-stage.is-light-scene .fs9-active-task-pill {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(37, 99, 235, 0.2);
-  color: #1e293b;
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.1);
+  color: #1d1d1f;
+  box-shadow: 0 4px 16px -4px rgba(15, 23, 42, 0.1);
 }
 
 .fs9-atp-text {
@@ -827,18 +830,18 @@
 }
 
 .fs9-atp-pomo {
-  padding: 2px 8px;
+  padding: 2px 9px;
   border-radius: 999px;
-  background: rgba(52, 211, 153, 0.22);
-  color: #6ee7b7;
+  background: rgba(48, 209, 88, 0.22);
+  color: #86efac;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   flex-shrink: 0;
 }
 
 .fs9-stage.is-light-scene .fs9-atp-pomo {
-  background: rgba(16, 185, 129, 0.14);
-  color: #059669;
+  background: rgba(52, 199, 89, 0.14);
+  color: #15803d;
 }
 
 /* Primary Controls */
@@ -852,25 +855,28 @@
   width: 46px;
   height: 46px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.11);
-  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(12, 18, 38, 0.52);
+  color: #f8fafc;
   display: grid;
   place-items: center;
   cursor: pointer;
-  backdrop-filter: blur(14px);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, 0.35);
   transition: transform 0.16s ease, background 0.16s ease;
 }
 
 .fs9-ctrl-circle:hover {
   transform: scale(1.06);
-  background: rgba(255, 255, 255, 0.22);
+  background: rgba(15, 23, 42, 0.72);
 }
 
 .fs9-stage.is-light-scene .fs9-ctrl-circle {
-  background: rgba(255, 255, 255, 0.86);
-  border-color: rgba(37, 99, 235, 0.2);
-  color: #1e293b;
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(15, 23, 42, 0.1);
+  color: #1d1d1f;
+  box-shadow: 0 4px 12px -4px rgba(15, 23, 42, 0.12);
 }
 
 .fs9-ctrl-primary {
@@ -880,23 +886,31 @@
   padding: 13px 34px;
   border-radius: 999px;
   border: none;
-  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 55%, #7c3aed 100%);
+  background: linear-gradient(180deg, #0a84ff 0%, #0071e3 100%);
   color: #ffffff;
   font-size: 15.5px;
-  font-weight: 850;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   cursor: pointer;
-  box-shadow: 0 14px 32px rgba(79, 70, 229, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.28);
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+  box-shadow: 0 12px 28px rgba(0, 113, 227, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, background 0.16s ease;
 }
 
 .fs9-ctrl-primary:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 18px 38px rgba(79, 70, 229, 0.56);
+  background: linear-gradient(180deg, #2997ff 0%, #0077ed 100%);
+  box-shadow: 0 16px 36px rgba(0, 113, 227, 0.52);
 }
 
 .fs9-ctrl-primary.is-pause {
-  background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
-  box-shadow: 0 14px 32px rgba(239, 68, 68, 0.38);
+  background: linear-gradient(180deg, #ff9f0a 0%, #ff3b30 100%);
+  box-shadow: 0 14px 32px rgba(255, 59, 48, 0.38);
+}
+
+/* Đảm bảo độ tương phản đồng hồ luôn sắc nét kể cả khi nền Video YouTube sáng */
+.fs9-stage.has-video-bg .fs9-ring-disc {
+  background: radial-gradient(circle at 35% 30%, rgba(15, 23, 42, 0.58), rgba(6, 10, 26, 0.72));
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .fs9-ctrl-break-btn {
@@ -3892,4 +3906,917 @@
     padding: 7px 10px;
     font-size: 10.5px;
   }
+}
+
+/* ============================================================
+   EMIL KOWALSKI × APPLE LIQUID GLASS MOTION & TACTILE PASS
+   ============================================================ */
+.fs9-clock-digits,
+.fs9-digital-digits,
+.fs9-stat-pill,
+.fs9-atp-pomo {
+  font-variant-numeric: tabular-nums;
+}
+
+.fs9-home-back-btn,
+.fs9-main-tab,
+.fs9-phase-btn,
+.fs9-active-task-pill,
+.fs9-ctrl-circle,
+.fs9-ctrl-primary,
+.fs9-yt-btn,
+.fs9-yt-search-trigger,
+.fs9-dock-btn {
+  transition: transform 0.16s cubic-bezier(0.23, 1, 0.32, 1), background 0.18s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.18s cubic-bezier(0.23, 1, 0.32, 1) !important;
+}
+
+.fs9-home-back-btn:active,
+.fs9-main-tab:active,
+.fs9-phase-btn:active,
+.fs9-active-task-pill:active,
+.fs9-ctrl-circle:active,
+.fs9-ctrl-primary:active,
+.fs9-yt-btn:active,
+.fs9-yt-search-trigger:active,
+.fs9-dock-btn:active {
+  transform: scale(0.96) !important;
+}
+
+.fs9-main-tabs,
+.fs9-phase-switcher,
+.fs9-yt-player-bar,
+.fs9-bottom-dock {
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.18), 0 12px 32px -10px rgba(0, 0, 0, 0.42);
+}
+
+/* ============================================================
+   VISIONOS CINEMA × 60FPS YOUTUBE SMOOTHNESS × SPATIAL LAYOUT
+   ============================================================ */
+
+/* 1. True Full-Bleed Cinema Crop (eliminates 2.39:1 letterbox bars & YT chrome) + Smooth Crossfade */
+.elec-global-yt-host.is-video-bg {
+  width: max(118vw, 210vh) !important;
+  height: max(118vh, 66.4vw) !important;
+  opacity: 0 !important;
+  background: #05070e !important;
+  transition: opacity 0.65s cubic-bezier(0.23, 1, 0.32, 1) !important;
+  will-change: opacity, transform !important;
+  contain: strict !important;
+}
+
+.elec-global-yt-host.is-video-bg.is-video-ready {
+  opacity: 1 !important;
+}
+
+/* Edge-only Cinema Scrim: keeps center cityscape clear & vibrant while HUD stays razor-sharp */
+.fs9-stage.has-video-bg .fs9-dim-layer {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(4, 6, 14, 0.68) 0%,
+      rgba(4, 6, 14, 0.14) 22%,
+      rgba(4, 6, 14, 0.16) 72%,
+      rgba(4, 6, 14, 0.78) 100%
+    ) !important;
+  opacity: 1 !important;
+}
+
+/* GPU 60fps Compositor Optimization over live YouTube iframe (lighter blur = zero frame drops) */
+.fs9-stage.has-video-bg .fs9-home-back-btn,
+.fs9-stage.has-video-bg .fs9-brand-pill,
+.fs9-stage.has-video-bg .fs9-main-tabs,
+.fs9-stage.has-video-bg .fs9-stat-pill,
+.fs9-stage.has-video-bg .fs9-top-icon-btn,
+.fs9-stage.has-video-bg .fs9-phase-switcher,
+.fs9-stage.has-video-bg .fs9-active-task-pill,
+.fs9-stage.has-video-bg .fs9-ctrl-circle,
+.fs9-stage.has-video-bg .fs9-yt-player-bar,
+.fs9-stage.has-video-bg .fs9-bottom-dock,
+.fs9-stage.has-video-bg .fs9-ring-disc {
+  backdrop-filter: saturate(150%) blur(14px) !important;
+  -webkit-backdrop-filter: saturate(150%) blur(14px) !important;
+  contain: layout style;
+}
+
+/* 2. Unified Apple System Blue Accent & Liquid Glass Specular Surfaces */
+.fs9-stage {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Be Vietnam Pro', 'Inter', sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+.fs9-topbar {
+  padding: 2px 0;
+}
+
+.fs9-home-back-btn,
+.fs9-brand-pill,
+.fs9-stat-pill,
+.fs9-top-icon-btn,
+.fs9-main-tabs,
+.fs9-phase-switcher {
+  background: rgba(12, 14, 22, 0.56) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 24px -10px rgba(0, 0, 0, 0.45) !important;
+}
+
+.fs9-stage.is-light-scene .fs9-home-back-btn,
+.fs9-stage.is-light-scene .fs9-brand-pill,
+.fs9-stage.is-light-scene .fs9-stat-pill,
+.fs9-stage.is-light-scene .fs9-top-icon-btn,
+.fs9-stage.is-light-scene .fs9-main-tabs,
+.fs9-stage.is-light-scene .fs9-phase-switcher {
+  background: rgba(255, 255, 255, 0.86) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 8px 24px -10px rgba(0, 0, 0, 0.08) !important;
+}
+
+.fs9-main-tab.is-active,
+.fs9-phase-btn.is-active,
+.fs9-dock-btn.is-active {
+  background: linear-gradient(180deg, #1a88ff 0%, #0071e3 100%) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 4px 14px -3px rgba(0, 113, 227, 0.55) !important;
+}
+
+/* 3. Serene Monumental Center Stage & Precision Apple Watch Timer Ring */
+.fs9-center-stage {
+  gap: 16px !important;
+  padding: 8px 0 !important;
+}
+
+.fs9-ring-wrap {
+  width: 268px !important;
+  height: 268px !important;
+}
+
+.fs9-ring-disc {
+  inset: 20px !important;
+  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.12) 0%, rgba(10, 12, 20, 0.56) 65%, rgba(6, 8, 15, 0.72) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 28px 64px -16px rgba(0, 0, 0, 0.58) !important;
+}
+
+.fs9-stage.is-light-scene .fs9-ring-disc {
+  background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.96) 0%, rgba(245, 245, 247, 0.88) 100%) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  box-shadow: inset 0 1px 0 #ffffff, 0 22px 54px -16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.fs9-ring-track {
+  stroke: rgba(255, 255, 255, 0.13) !important;
+  stroke-width: 5.5 !important;
+}
+
+.fs9-stage.is-light-scene .fs9-ring-track {
+  stroke: rgba(0, 0, 0, 0.08) !important;
+}
+
+.fs9-ring-fill {
+  stroke-width: 6.5 !important;
+  filter: drop-shadow(0 0 10px rgba(10, 132, 255, 0.55)) !important;
+}
+
+.fs9-clock-phase-badge {
+  padding: 4px 12px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+
+.fs9-clock-digits {
+  font-size: 64px !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.045em !important;
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Integrated Mascot + Active Task Pill */
+.fs9-active-task-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 5px 12px 5px 6px !important;
+  border-radius: 9999px !important;
+  background: rgba(12, 14, 22, 0.62) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 10px 28px -10px rgba(0, 0, 0, 0.5) !important;
+  max-width: min(520px, 92vw);
+}
+
+.fs9-stage.is-light-scene .fs9-active-task-pill {
+  background: rgba(255, 255, 255, 0.90) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1d1d1f !important;
+}
+
+.fs9-atp-mascot-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1), background 0.16s ease;
+}
+
+.fs9-atp-mascot-btn:hover {
+  transform: scale(1.12);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.fs9-atp-mascot {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+
+.fs9-atp-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: 600 12.8px/1.3 inherit;
+  padding: 2px 0;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.fs9-atp-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 340px;
+}
+
+.fs9-ctrl-primary {
+  height: 46px !important;
+  padding: 0 28px !important;
+  border-radius: 9999px !important;
+  background: linear-gradient(180deg, #1b88ff 0%, #0071e3 100%) !important;
+  border: 0 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 10px 26px -6px rgba(0, 113, 227, 0.62) !important;
+  font-size: 14.5px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.fs9-ctrl-primary:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.fs9-ctrl-circle {
+  width: 42px !important;
+  height: 42px !important;
+  background: rgba(12, 14, 22, 0.56) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
+
+.fs9-stage.is-light-scene .fs9-ctrl-circle {
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  color: #1d1d1f !important;
+}
+
+/* 4. Unified Bottom Spatial Bar (Side-by-Side YouTube Now-Playing + Studio Dock) */
+.fs9-bottom-spatial {
+  position: relative;
+  z-index: 4;
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.fs9-bottom-spatial .fs9-yt-player-bar {
+  flex: 1 1 460px;
+  width: auto !important;
+  min-width: 320px;
+  max-width: 560px;
+  min-height: 58px;
+  padding: 8px 12px !important;
+  border-radius: 20px !important;
+  background: rgba(12, 14, 22, 0.64) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 16px 38px -12px rgba(0, 0, 0, 0.55) !important;
+}
+
+.fs9-stage.is-light-scene .fs9-bottom-spatial .fs9-yt-player-bar {
+  background: rgba(255, 255, 255, 0.90) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 14px 32px -12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.fs9-yt-thumb-box {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 10px !important;
+}
+
+/* GPU-accelerated smooth progress scrubber */
+.fs9-yt-seek {
+  height: 4px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  overflow: hidden;
+  transition: height 0.16s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.fs9-yt-seek:hover {
+  height: 6px !important;
+}
+
+.fs9-yt-seek span {
+  display: block;
+  width: 100% !important;
+  height: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #5ac8fa, #0a84ff) !important;
+  border-radius: 999px !important;
+  transition: transform 0.35s linear;
+  will-change: transform;
+}
+
+.fs9-yt-btn.is-main {
+  background: #0071e3 !important;
+  box-shadow: 0 4px 12px -2px rgba(0, 113, 227, 0.55) !important;
+}
+
+.fs9-yt-btn.is-on {
+  background: rgba(48, 209, 88, 0.22) !important;
+  border-color: rgba(48, 209, 88, 0.55) !important;
+  color: #30d158 !important;
+}
+
+.fs9-bottom-spatial .fs9-bottom-dock {
+  flex: 0 0 auto;
+  min-height: 58px;
+  padding: 5px 8px !important;
+  border-radius: 20px !important;
+  gap: 4px !important;
+  background: rgba(12, 14, 22, 0.64) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 16px 38px -12px rgba(0, 0, 0, 0.55) !important;
+}
+
+.fs9-stage.is-light-scene .fs9-bottom-spatial .fs9-bottom-dock {
+  background: rgba(255, 255, 255, 0.90) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 14px 32px -12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.fs9-bottom-spatial .fs9-dock-btn {
+  padding: 6px 12px !important;
+  border-radius: 14px !important;
+  gap: 3px !important;
+  font-size: 10.8px !important;
+  font-weight: 650 !important;
+}
+
+@media (max-width: 1040px) {
+  .fs9-bottom-spatial {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .fs9-bottom-spatial .fs9-yt-player-bar {
+    width: min(560px, 94vw) !important;
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .fs9-brand-copy span {
+    display: none;
+  }
+  .fs9-bottom-spatial .fs9-yt-player-bar {
+    width: 100% !important;
+  }
+  .fs9-yt-search-trigger kbd {
+    display: none !important;
+  }
+  .fs9-bottom-spatial .fs9-bottom-dock {
+    width: 100% !important;
+    justify-content: space-between;
+    padding: 5px 4px !important;
+    gap: 2px !important;
+    overflow-x: visible !important;
+  }
+  .fs9-bottom-spatial .fs9-dock-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 6px 2px !important;
+    font-size: 10px !important;
+  }
+}
+
+@media (max-height: 740px) {
+  .fs9-ring-wrap {
+    width: 224px !important;
+    height: 224px !important;
+  }
+  .fs9-clock-digits {
+    font-size: 52px !important;
+  }
+  .fs9-center-stage {
+    gap: 10px !important;
+  }
+}
+
+/* ============================================================
+   VISIONOS DARK FROSTED GLASS SHEETS (ALL FOCUS STUDIO MODALS)
+   Matches the dark/cinema stage seamlessly instead of blinding white
+   ============================================================ */
+.fs9-modal-backdrop {
+  background: rgba(3, 5, 12, 0.56) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* Dark/Cinema Stage -> Apple visionOS Obsidian Liquid Glass Sheet */
+.fs9-stage:not(.is-light-scene) .fs9-panel,
+.fs9-stage:not(.is-light-scene) .fs9-panel.fs9-panel-spotlight {
+  background: rgba(20, 22, 29, 0.86) !important;
+  backdrop-filter: saturate(180%) blur(32px) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(32px) !important;
+  color: #f5f5f7 !important;
+  border: 0 !important;
+  border-radius: 26px !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.13),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 36px 96px -14px rgba(0, 0, 0, 0.76) !important;
+  animation: fs9SheetPop 0.22s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes fs9SheetPop {
+  from { opacity: 0; transform: translateY(10px) scale(0.975); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-panel-head {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 14px 18px !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-panel-title-wrap h3 {
+  color: #f5f5f7 !important;
+  letter-spacing: -0.02em;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-panel-title-wrap span {
+  color: rgba(235, 235, 245, 0.56) !important;
+}
+
+/* Header Segmented Tabs (YouTube Music | Tiếng ồn nền) */
+.fs9-panel-tabs {
+  padding: 3px !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 3px !important;
+}
+
+.fs9-stage.is-light-scene .fs9-panel-tabs {
+  background: rgba(0, 0, 0, 0.05) !important;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ptab {
+  padding: 6px 14px !important;
+  color: rgba(235, 235, 245, 0.68) !important;
+  font-size: 12.8px !important;
+  font-weight: 650 !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ptab:hover {
+  color: #ffffff !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ptab.is-active {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+
+.fs9-stage.is-light-scene .fs9-ptab.is-active {
+  background: #ffffff !important;
+  color: #1d1d1f !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.fs9-ptab svg {
+  display: none !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-panel-close {
+  width: 32px !important;
+  height: 32px !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.14s ease;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-panel-close:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+/* macOS Spotlight Search Bar */
+.fs9-stage:not(.is-light-scene) .fs9-spotlight-search,
+.fs9-stage:not(.is-light-scene) .fs9-yt-search-form {
+  background: rgba(255, 255, 255, 0.065) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-radius: 16px !important;
+  padding: 6px 7px 6px 13px !important;
+  box-shadow: none !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-spotlight-search:focus-within,
+.fs9-stage:not(.is-light-scene) .fs9-yt-search-form:focus-within {
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(10, 132, 255, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.22) !important;
+}
+
+.fs9-sp-yt-ico {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: rgba(235, 235, 245, 0.52) !important;
+}
+
+.fs9-stage.is-light-scene .fs9-sp-yt-ico {
+  color: #86868b !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-spotlight-search input {
+  color: #f5f5f7 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-spotlight-search input::placeholder {
+  color: rgba(235, 235, 245, 0.42) !important;
+}
+
+.fs9-sp-go-btn,
+.fs9-yt-go-btn {
+  height: 34px !important;
+  min-width: 68px !important;
+  padding: 0 15px !important;
+  border-radius: 11px !important;
+  background: #0a84ff !important;
+  color: #ffffff !important;
+  font-size: 12.8px !important;
+  font-weight: 650 !important;
+  box-shadow: none !important;
+}
+
+.fs9-sp-go-btn svg {
+  display: none !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-sp-go-btn:disabled {
+  background: rgba(255, 255, 255, 0.09) !important;
+  color: rgba(255, 255, 255, 0.42) !important;
+  opacity: 1 !important;
+}
+
+/* Single Sleek Scrollable Row of Quick Search Chips */
+.fs9-spotlight-search,
+.fs9-subtab-row,
+.fs9-chip-row {
+  flex-shrink: 0 !important;
+}
+
+.fs9-chip-row {
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  scrollbar-width: none;
+  padding: 2px 0 !important;
+  gap: 6px !important;
+}
+
+.fs9-chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-quick-chip,
+.fs9-stage:not(.is-light-scene) .fs9-cat-pill,
+.fs9-stage:not(.is-light-scene) .fs9-mix-preset-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 5px 12px !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: rgba(235, 235, 245, 0.78) !important;
+  font-size: 11.8px !important;
+  font-weight: 600 !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-quick-chip:hover,
+.fs9-stage:not(.is-light-scene) .fs9-quick-chip.is-selected,
+.fs9-stage:not(.is-light-scene) .fs9-cat-pill.is-active,
+.fs9-stage:not(.is-light-scene) .fs9-mix-preset-btn:hover {
+  background: #0a84ff !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px -2px rgba(10, 132, 255, 0.45) !important;
+}
+
+/* Apple Segmented Sub-tabs */
+.fs9-stage:not(.is-light-scene) .fs9-subtab-row {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 3px !important;
+  border-radius: 12px !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-subtab {
+  color: rgba(235, 235, 245, 0.62) !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  border-radius: 9px !important;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-subtab:hover {
+  color: #ffffff !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-subtab.is-active {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28) !important;
+}
+
+/* Apple Music Flush Borderless Track Rows */
+.fs9-track-list {
+  gap: 2px !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-track-item {
+  border: 0 !important;
+  background: transparent !important;
+  border-radius: 14px !important;
+  padding: 8px 10px !important;
+  gap: 12px !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-track-item:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-track-item.is-playing {
+  background: rgba(10, 132, 255, 0.15) !important;
+  box-shadow: inset 0 0 0 1px rgba(10, 132, 255, 0.34);
+}
+
+.fs9-ti-thumb-wrap {
+  width: 78px !important;
+  height: 44px !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg, #1f2433 0%, #2a3146 100%) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ti-title {
+  color: #f5f5f7 !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ti-meta {
+  color: rgba(235, 235, 245, 0.54) !important;
+  font-size: 11.5px !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ti-fav {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 0 !important;
+  color: rgba(235, 235, 245, 0.65) !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ti-fav:hover {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ti-fav.is-fav {
+  background: rgba(255, 55, 95, 0.18) !important;
+  color: #ff375f !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ti-play {
+  background: rgba(255, 255, 255, 0.11) !important;
+  border: 0 !important;
+  color: #ffffff !important;
+  transition: background 0.15s ease, transform 0.14s ease;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-track-item:hover .fs9-ti-play,
+.fs9-stage:not(.is-light-scene) .fs9-track-item.is-playing .fs9-ti-play {
+  background: #0a84ff !important;
+}
+
+/* Sticky Dark Glass Footer Controls */
+.fs9-stage:not(.is-light-scene) .fs9-panel-player-foot {
+  background: rgba(12, 14, 20, 0.72) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 11px 18px 14px !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ppf-vol {
+  color: rgba(235, 235, 245, 0.82) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ppf-vol input[type='range'] {
+  accent-color: #0a84ff;
+  height: 4px;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ppf-chip {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  color: rgba(235, 235, 245, 0.82) !important;
+  padding: 6px 13px !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-ppf-chip.is-on {
+  background: #0a84ff !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+/* Cohesive Dark Glass for ALL Other Focus Modals (Noise, Tasks, Notes, Themes, Settings, Leaderboard) */
+.fs9-stage:not(.is-light-scene) .fs9-noise-card,
+.fs9-stage:not(.is-light-scene) .fs9-task-card,
+.fs9-stage:not(.is-light-scene) .fs9-note-item,
+.fs9-stage:not(.is-light-scene) .fs9-lb-row,
+.fs9-stage:not(.is-light-scene) .fs9-mascot-opt,
+.fs9-stage:not(.is-light-scene) .fs9-opt-card {
+  background: rgba(255, 255, 255, 0.055) !important;
+  border: 1px solid rgba(255, 255, 255, 0.09) !important;
+  color: #f5f5f7 !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-noise-card.is-on,
+.fs9-stage:not(.is-light-scene) .fs9-task-card.is-pinned,
+.fs9-stage:not(.is-light-scene) .fs9-opt-card.is-active,
+.fs9-stage:not(.is-light-scene) .fs9-mascot-opt.is-active,
+.fs9-stage:not(.is-light-scene) .fs9-lb-row.is-me {
+  background: rgba(10, 132, 255, 0.15) !important;
+  border-color: rgba(10, 132, 255, 0.45) !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-task-add-row input,
+.fs9-stage:not(.is-light-scene) .fs9-note-form textarea,
+.fs9-stage:not(.is-light-scene) .fs9-num-grid input,
+.fs9-stage:not(.is-light-scene) .fs9-sound-select-row select {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #f5f5f7 !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-opt-card span,
+.fs9-stage:not(.is-light-scene) .fs9-hint-txt,
+.fs9-stage:not(.is-light-scene) .fs9-lb-info span,
+.fs9-stage:not(.is-light-scene) .fs9-empty-msg {
+  color: rgba(235, 235, 245, 0.56) !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-switch {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-switch.is-on {
+  background: #30d158 !important;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-panel-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.fs9-stage:not(.is-light-scene) .fs9-panel-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 99px;
+}
+
+/* ── STUDY TOGETHER (HỌC CHUNG) ACTIVE BANNER ── */
+.fs9-study-together-bar {
+  position: relative;
+  z-index: 6;
+  margin: 8px auto 0;
+  width: min(860px, calc(100% - 28px));
+  padding: 9px 14px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.62);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.fs9-stage.is-light-scene .fs9-study-together-bar {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #0f172a;
+}
+
+.fs9-st-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  flex: 1;
+}
+
+.fs9-st-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 10px #34d399;
+  flex-shrink: 0;
+}
+
+.fs9-st-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.fs9-st-copy b {
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.fs9-st-copy span {
+  font-size: 11.5px;
+  opacity: 0.82;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs9-st-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs9-st-btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 0;
+  background: linear-gradient(135deg, #059669 0%, #0071e3 100%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fs9-st-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.14);
+  color: inherit;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.fs9-stage.is-light-scene .fs9-st-close {
+  background: rgba(15, 23, 42, 0.08);
 }

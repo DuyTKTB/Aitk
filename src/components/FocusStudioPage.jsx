@@ -34,6 +34,7 @@ import {
 import {
   youtubeMusic,
   useYouTubeMusic,
+  useYouTubeProgress,
   CURATED_YOUTUBE_MUSIC,
   QUICK_SEARCH_CHIPS,
   formatTrackTime,
@@ -48,6 +49,7 @@ import {
   publishFocusPresence,
   subscribeRealFocusUsers,
 } from '../lib/focusLiveService.js';
+import { consumeStudyTogetherHandoff } from '../lib/socialWall.js';
 import StudyDeskIllustration from './StudyDeskIllustration.jsx';
 import '../styles/focus-studio-pro.css';
 
@@ -87,6 +89,43 @@ function formatHMS(totalSeconds) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 }
 
+/** Thanh tiến trình YouTube tách riêng để chỉ re-render đúng thanh tua (60fps mượt cho Video nền) */
+function YouTubeProgressRow({ track }) {
+  const { currentTime, duration } = useYouTubeProgress();
+  const hasDur = duration > 0 && !track?.isLive;
+  const ratio = hasDur ? Math.max(0, Math.min(1, currentTime / duration)) : 0;
+
+  return (
+    <>
+      <div className="fs9-yt-sub-row">
+        <span className="fs9-yt-channel">{track?.channel || 'YouTube'}</span>
+        {hasDur && (
+          <span className="fs9-yt-times">
+            {formatTrackTime(currentTime)} / {formatTrackTime(duration)}
+          </span>
+        )}
+      </div>
+      {hasDur && (
+        <div
+          className="fs9-yt-seek"
+          role="slider"
+          aria-label="Tua nhạc"
+          aria-valuemin={0}
+          aria-valuemax={Math.round(duration)}
+          aria-valuenow={Math.round(currentTime)}
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const r = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            youtubeMusic.seek(r * duration);
+          }}
+        >
+          <span style={{ transform: `scaleX(${ratio})` }} />
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function FocusStudioPage({ onOpenUtilities }) {
   const { user } = useAuth();
   const uid = user?.uid || user?.id || 'guest';
@@ -113,6 +152,7 @@ export default function FocusStudioPage({ onOpenUtilities }) {
   const [mainTab, setMainTab] = useState('focus');
   const [deskGroup, setDeskGroup] = useState('all'); // 'all' | 'my_group'
   const [deskFilter, setDeskFilter] = useState('all'); // 'all' | 'online'
+  const [studyTogetherSession, setStudyTogetherSession] = useState(null);
 
   // 100% REAL Firestore Classroom & Leaderboard state
   const [liveUsers, setLiveUsers] = useState([]);
@@ -205,6 +245,43 @@ export default function FocusStudioPage({ onOpenUtilities }) {
     window.addEventListener('elec-weekly-plan-changed', sync);
     return () => window.removeEventListener('elec-weekly-plan-changed', sync);
   }, [uid]);
+
+  // ── NHẬN PHIÊN "HỌC CHUNG" TỪ TRANG CÁ NHÂN (ProfileCard) ──
+  useEffect(() => {
+    const applyStudyHandoff = (payload) => {
+      if (!payload) return;
+      const mins = Math.max(15, Math.min(120, Number(payload.durationMin) || 25));
+      const topic = String(payload.topic || 'Cùng tập trung ôn thi').trim();
+      const partnerName = String(payload.partnerName || '').trim();
+      const taskLabel = partnerName ? `Học chung cùng ${partnerName}: ${topic}` : `Học chung: ${topic}`;
+
+      focusSession.applyPreset(mins, mins >= 45 ? 10 : 5, 15);
+      focusSession.setMode('focus');
+      focusSession.setActiveTask('study_together', taskLabel);
+      focusSession.start();
+
+      setStudyTogetherSession({
+        partnerUid: payload.partnerUid || null,
+        partnerName,
+        topic,
+        durationMin: mins,
+      });
+      if (payload.openClassroom) {
+        setMainTab('classroom');
+        setZenHud(false);
+      }
+    };
+
+    const initial = consumeStudyTogetherHandoff();
+    if (initial) applyStudyHandoff(initial);
+
+    const onLaunch = (e) => {
+      const consumed = consumeStudyTogetherHandoff();
+      applyStudyHandoff(consumed || e?.detail);
+    };
+    window.addEventListener('elec-study-together-launch', onLaunch);
+    return () => window.removeEventListener('elec-study-together-launch', onLaunch);
+  }, []);
 
   // ── REAL FIRESTORE LIVE SUBSCRIPTION (0 FAKE DATA) ──
   useEffect(() => {
@@ -393,9 +470,9 @@ export default function FocusStudioPage({ onOpenUtilities }) {
     }
     return {
       label: isFlowFocus ? 'Flowmodoro Tự do' : 'Tập trung',
-      color: activeTheme.accent || '#6366f1',
-      gradStart: '#38bdf8',
-      gradEnd: '#6366f1',
+      color: '#0a84ff',
+      gradStart: '#5ac8fa',
+      gradEnd: '#0071e3',
     };
   }, [focus.mode, isFlowFocus, activeTheme.accent]);
 
@@ -581,7 +658,9 @@ export default function FocusStudioPage({ onOpenUtilities }) {
     return list.filter((t) => t.category === noiseCat);
   }, [noiseCat]);
 
-  const isVideoBgActive = yt.videoBgEnabled && Boolean(yt.currentTrack?.videoId);
+  // Chỉ bật nền trong suốt cho Video YouTube khi video thực sự đang phát —
+  // tránh trường hợp reload/tạm dừng bị lộ nền xám nhạt làm mất tương phản chữ trắng
+  const isVideoBgActive = Boolean(yt.videoBgEnabled && yt.currentTrack?.videoId && yt.isPlaying);
   const isLightScene = Boolean(activeTheme.isLight) && !isVideoBgActive;
 
   const R = 136;
@@ -759,6 +838,50 @@ export default function FocusStudioPage({ onOpenUtilities }) {
         </header>
       )}
 
+      {/* BANNER PHIÊN "HỌC CHUNG" ĐANG HOẠT ĐỘNG */}
+      {!zenHud && studyTogetherSession && (
+        <div className="fs9-study-together-bar" role="status">
+          <div className="fs9-st-left">
+            <span className="fs9-st-dot" />
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="3.5" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a3.5 3.5 0 0 1 0 6.75" />
+            </svg>
+            <span className="fs9-st-copy">
+              <b>
+                {studyTogetherSession.partnerName
+                  ? `Đang học chung cùng ${studyTogetherSession.partnerName}`
+                  : 'Đang mở phòng Học chung ELEC'}
+              </b>
+              <span>
+                {studyTogetherSession.topic} · {studyTogetherSession.durationMin} phút
+              </span>
+            </span>
+          </div>
+          <div className="fs9-st-actions">
+            <button
+              type="button"
+              className="fs9-st-btn"
+              onClick={() => setMainTab(mainTab === 'classroom' ? 'focus' : 'classroom')}
+            >
+              {mainTab === 'classroom' ? 'Xem đồng hồ' : 'Xem bàn học'}
+            </button>
+            <button
+              type="button"
+              className="fs9-st-close"
+              onClick={() => setStudyTogetherSession(null)}
+              aria-label="Đóng thanh học chung"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── 2. NỘI DUNG THEO 2 TAB: TAB 1 (TẬP TRUNG) | TAB 2 (LỚP HỌC BÀN HỌC) ── */}
       {mainTab === 'focus' ? (
         <main className="fs9-center-stage">
@@ -815,36 +938,6 @@ export default function FocusStudioPage({ onOpenUtilities }) {
             </div>
           )}
 
-          {!zenHud && (
-            <div className="fs9-companion-row">
-              <button
-                type="button"
-                className="fs9-companion-mascot-btn"
-                onClick={handleCycleMascot}
-                title="Bấm để đổi biểu cảm Bé Elec"
-              >
-                <img
-                  src={activeMascot.src}
-                  alt={activeMascot.label}
-                  className={`fs9-companion-img ${focus.status === 'running' ? 'is-bobbing' : ''}`}
-                  draggable={false}
-                />
-              </button>
-              <div className="fs9-companion-speech">
-                <span className={`fs9-status-dot ${focus.status === 'running' ? 'is-live' : ''}`} />
-                <span>
-                  {focus.status === 'running'
-                    ? focus.mode === 'focus'
-                      ? `${activeMascot.label} đang tập trung cùng ${studentName} — giữ vững nhịp nhé!`
-                      : 'Giờ giải lao thư giãn — uống ngụm nước và thả lỏng vai nào!'
-                    : focus.status === 'paused'
-                      ? 'Đang tạm dừng — bấm Tiếp tục học để chạy tiếp nhé!'
-                      : `${activeMascot.label} sẵn sàng đồng hành cùng bạn!`}
-                </span>
-              </div>
-            </div>
-          )}
-
           {/* Đồng hồ trung tâm theo 3 kiểu: Gradient Ring / Digital / Flip */}
           <div className={`fs9-clock-showcase style-${focus.settings.clockStyle}`}>
             {focus.settings.clockStyle === 'ring' && !isFlowFocus ? (
@@ -857,8 +950,6 @@ export default function FocusStudioPage({ onOpenUtilities }) {
                       <stop offset="100%" stopColor={phaseMeta.gradEnd} />
                     </linearGradient>
                   </defs>
-                  <circle cx="160" cy="160" r={R + 12} className="fs9-ring-outer" />
-                  <circle cx="160" cy="160" r={R - 14} className="fs9-ring-ticks" />
                   <circle cx="160" cy="160" r={R} className="fs9-ring-track" />
                   <circle
                     cx="160"
@@ -877,11 +968,11 @@ export default function FocusStudioPage({ onOpenUtilities }) {
                     <circle
                       cx={tipX}
                       cy={tipY}
-                      r="6"
+                      r="5"
                       className="fs9-ring-tip-dot"
                       fill="#ffffff"
                       stroke={phaseMeta.gradStart}
-                      strokeWidth="3"
+                      strokeWidth="2.5"
                     />
                   )}
                 </svg>
@@ -948,28 +1039,38 @@ export default function FocusStudioPage({ onOpenUtilities }) {
             )}
           </div>
 
-          {/* Active Task Target Pill */}
+          {/* Active Task Target Pill (kèm linh vật gọn gàng bấm đổi trạng thái) */}
           {!zenHud && (
-            <button
-              type="button"
-              className="fs9-active-task-pill"
-              onClick={() => setActivePanel('tasks')}
-              title="Chọn hoặc thêm nhiệm vụ đang tập trung (đồng bộ Kế hoạch tuần)"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-                <circle cx="12" cy="12" r="10" />
-                <circle cx="12" cy="12" r="6" />
-                <circle cx="12" cy="12" r="2" />
-              </svg>
-              <span className="fs9-atp-text">
-                {focus.activeTaskText ? `Đang tập trung: ${focus.activeTaskText}` : 'Chọn nhiệm vụ cho phiên học này...'}
-              </span>
-              {focus.activeTaskId && (
-                <span className="fs9-atp-pomo">
-                  {(focus.taskPomodoros[focus.activeTaskId]?.done || 0)}/{(focus.taskPomodoros[focus.activeTaskId]?.est || 2)} phiên
+            <div className="fs9-active-task-pill">
+              <button
+                type="button"
+                className="fs9-atp-mascot-btn"
+                onClick={handleCycleMascot}
+                title={`${activeMascot.label} — Bấm để đổi biểu cảm`}
+              >
+                <img
+                  src={activeMascot.src}
+                  alt={activeMascot.label}
+                  className="fs9-atp-mascot"
+                  draggable={false}
+                />
+              </button>
+              <button
+                type="button"
+                className="fs9-atp-trigger"
+                onClick={() => setActivePanel('tasks')}
+                title="Chọn hoặc thêm nhiệm vụ đang tập trung (đồng bộ Kế hoạch tuần)"
+              >
+                <span className="fs9-atp-text">
+                  {focus.activeTaskText ? focus.activeTaskText : 'Chọn nhiệm vụ cho phiên học này…'}
                 </span>
-              )}
-            </button>
+                {focus.activeTaskId && (
+                  <span className="fs9-atp-pomo">
+                    {(focus.taskPomodoros[focus.activeTaskId]?.done || 0)}/{(focus.taskPomodoros[focus.activeTaskId]?.est || 2)} phiên
+                  </span>
+                )}
+              </button>
+            </div>
           )}
 
           {/* Primary Action Controls */}
@@ -1032,143 +1133,6 @@ export default function FocusStudioPage({ onOpenUtilities }) {
               </button>
             )}
           </div>
-
-          {/* Dynamic Island YouTube Player + Spotlight Search Trigger */}
-          {!zenHud && (
-            <div className={`fs9-yt-player-bar ${yt.currentTrack ? 'has-track' : ''}`}>
-              {yt.currentTrack ? (
-                <>
-                  <div className="fs9-yt-thumb-box">
-                    <img
-                      src={yt.currentTrack.thumbnail}
-                      alt={yt.currentTrack.title}
-                      className="fs9-yt-thumb"
-                    />
-                    {yt.isPlaying && (
-                      <span className="fs9-yt-eq" aria-hidden="true">
-                        <i /><i /><i />
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="fs9-yt-meta">
-                    <div className="fs9-yt-title-line">
-                      <span className="fs9-yt-title" title={yt.currentTrack.title}>{yt.currentTrack.title}</span>
-                      {yt.isBuffering && <span className="fs9-yt-tag">Đang nạp...</span>}
-                      {yt.currentTrack.isLive && <span className="fs9-yt-tag is-live">LIVE</span>}
-                    </div>
-                    <div className="fs9-yt-sub-row">
-                      <span className="fs9-yt-channel">{yt.currentTrack.channel}</span>
-                      {yt.duration > 0 && !yt.currentTrack.isLive && (
-                        <span className="fs9-yt-times">
-                          {formatTrackTime(yt.currentTime)} / {formatTrackTime(yt.duration)}
-                        </span>
-                      )}
-                    </div>
-                    {yt.duration > 0 && !yt.currentTrack.isLive && (
-                      <div
-                        className="fs9-yt-seek"
-                        role="slider"
-                        aria-label="Tua nhạc"
-                        aria-valuemin={0}
-                        aria-valuemax={Math.round(yt.duration)}
-                        aria-valuenow={Math.round(yt.currentTime)}
-                        onClick={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                          youtubeMusic.seek(ratio * yt.duration);
-                        }}
-                      >
-                        <span style={{ width: `${Math.min(100, (yt.currentTime / yt.duration) * 100)}%` }} />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="fs9-yt-actions">
-                    <button type="button" className="fs9-yt-btn" onClick={() => youtubeMusic.prev()} title="Bài trước">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <polygon points="19 20 9 12 19 4 19 20" />
-                        <rect x="5" y="5" width="2.5" height="14" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      className="fs9-yt-btn is-main"
-                      onClick={() => youtubeMusic.togglePlay()}
-                      title={yt.isPlaying ? 'Tạm dừng nhạc' : 'Phát nhạc'}
-                    >
-                      {yt.isPlaying ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <rect x="6" y="4" width="4" height="16" rx="1" />
-                          <rect x="14" y="4" width="4" height="16" rx="1" />
-                        </svg>
-                      ) : (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <polygon points="6 4 20 12 6 20 6 4" />
-                        </svg>
-                      )}
-                    </button>
-                    <button type="button" className="fs9-yt-btn" onClick={() => youtubeMusic.next()} title="Bài tiếp theo">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                        <polygon points="5 4 15 12 5 20 5 4" />
-                        <rect x="16.5" y="5" width="2.5" height="14" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      className={`fs9-yt-btn ${yt.videoBgEnabled ? 'is-on' : ''}`}
-                      onClick={() => youtubeMusic.setVideoBgEnabled(!yt.videoBgEnabled)}
-                      title={yt.videoBgEnabled ? 'Tắt Video nền YouTube' : 'Bật Video nền toàn màn hình'}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                        <rect x="2" y="4" width="20" height="16" rx="2.5" />
-                        <polygon points="10 9 15 12 10 15 10 9" fill="currentColor" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      className="fs9-yt-search-trigger"
-                      onClick={() => {
-                        setSoundTab('music');
-                        setActivePanel('sounds');
-                        setTimeout(() => searchInputRef.current?.focus(), 60);
-                      }}
-                      title="Tìm bài hát YouTube khác (phím /)"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                      </svg>
-                      <span>Tìm bài</span>
-                      <kbd>/</kbd>
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="fs9-yt-empty-trigger"
-                  onClick={() => {
-                    setSoundTab('music');
-                    setActivePanel('sounds');
-                    setTimeout(() => searchInputRef.current?.focus(), 60);
-                  }}
-                >
-                  <span className="fs9-yt-red-badge">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                      <polygon points="8 5 19 12 8 19 8 5" />
-                    </svg>
-                  </span>
-                  <span className="fs9-yt-empty-copy">
-                    Tìm &amp; phát bất kỳ bài nhạc YouTube nào (Lofi, HIEUTHUHAI, Sơn Tùng, Ghibli...)
-                  </span>
-                  <span className="fs9-yt-cta">
-                    Tìm nhạc <kbd>/</kbd>
-                  </span>
-                </button>
-              )}
-            </div>
-          )}
         </main>
       ) : (
         /* ── TAB 2: PHÒNG BÀN HỌC TẬP TRUNG (CHUẨN 9STUDY + 100% DỮ LIỆU THỰC TẾ) ── */
@@ -1472,9 +1436,117 @@ export default function FocusStudioPage({ onOpenUtilities }) {
         </section>
       )}
 
-      {/* ── 3. BOTTOM FLOATING GLASS DOCK (TINH GỌN 5 NÚT SẠCH SẼ) ── */}
+      {/* ── 3. UNIFIED BOTTOM SPATIAL BAR (YOUTUBE NOW-PLAYING + STUDIO DOCK NGANG GỌN) ── */}
       {!zenHud && mainTab === 'focus' && (
-        <nav className="fs9-bottom-dock" aria-label="Thanh công cụ Phòng Tập Trung">
+        <div className="fs9-bottom-spatial">
+          {/* Dynamic Island YouTube Player + Spotlight Search Trigger */}
+          <div className={`fs9-yt-player-bar ${yt.currentTrack ? 'has-track' : ''}`}>
+            {yt.currentTrack ? (
+              <>
+                <div className="fs9-yt-thumb-box">
+                  <img
+                    src={yt.currentTrack.thumbnail}
+                    alt={yt.currentTrack.title}
+                    className="fs9-yt-thumb"
+                  />
+                  {yt.isPlaying && (
+                    <span className="fs9-yt-eq" aria-hidden="true">
+                      <i /><i /><i />
+                    </span>
+                  )}
+                </div>
+
+                <div className="fs9-yt-meta">
+                  <div className="fs9-yt-title-line">
+                    <span className="fs9-yt-title" title={yt.currentTrack.title}>{yt.currentTrack.title}</span>
+                    {yt.isBuffering && <span className="fs9-yt-tag">Đang nạp…</span>}
+                    {yt.currentTrack.isLive && <span className="fs9-yt-tag is-live">LIVE</span>}
+                  </div>
+                  <YouTubeProgressRow track={yt.currentTrack} />
+                </div>
+
+                <div className="fs9-yt-actions">
+                  <button type="button" className="fs9-yt-btn" onClick={() => youtubeMusic.prev()} title="Bài trước">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                      <polygon points="19 20 9 12 19 4 19 20" />
+                      <rect x="5" y="5" width="2.5" height="14" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="fs9-yt-btn is-main"
+                    onClick={() => youtubeMusic.togglePlay()}
+                    title={yt.isPlaying ? 'Tạm dừng nhạc' : 'Phát nhạc'}
+                  >
+                    {yt.isPlaying ? (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16" rx="1" />
+                        <rect x="14" y="4" width="4" height="16" rx="1" />
+                      </svg>
+                    ) : (
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="6 4 20 12 6 20 6 4" />
+                      </svg>
+                    )}
+                  </button>
+                  <button type="button" className="fs9-yt-btn" onClick={() => youtubeMusic.next()} title="Bài tiếp theo">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                      <polygon points="5 4 15 12 5 20 5 4" />
+                      <rect x="16.5" y="5" width="2.5" height="14" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className={`fs9-yt-btn ${yt.videoBgEnabled ? 'is-on' : ''}`}
+                    onClick={() => youtubeMusic.setVideoBgEnabled(!yt.videoBgEnabled)}
+                    title={yt.videoBgEnabled ? 'Tắt Video nền YouTube' : 'Bật Video nền toàn màn hình'}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <rect x="2" y="4" width="20" height="16" rx="2.5" />
+                      <polygon points="10 9 15 12 10 15 10 9" fill="currentColor" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    className="fs9-yt-search-trigger"
+                    onClick={() => {
+                      setSoundTab('music');
+                      setActivePanel('sounds');
+                      setTimeout(() => searchInputRef.current?.focus(), 60);
+                    }}
+                    title="Tìm bài hát YouTube khác (phím /)"
+                  >
+                    <span>Tìm bài</span>
+                    <kbd>/</kbd>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="fs9-yt-empty-trigger"
+                onClick={() => {
+                  setSoundTab('music');
+                  setActivePanel('sounds');
+                  setTimeout(() => searchInputRef.current?.focus(), 60);
+                }}
+              >
+                <span className="fs9-yt-red-badge">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="8 5 19 12 8 19 8 5" />
+                  </svg>
+                </span>
+                <span className="fs9-yt-empty-copy">
+                  Tìm &amp; phát nhạc YouTube (Lofi, V-Pop, Ghibli…)
+                </span>
+                <span className="fs9-yt-cta">
+                  Tìm <kbd>/</kbd>
+                </span>
+              </button>
+            )}
+          </div>
+
+          <nav className="fs9-bottom-dock" aria-label="Thanh công cụ Phòng Tập Trung">
           <button
             type="button"
             className={`fs9-dock-btn ${activePanel === 'sounds' ? 'is-active' : ''}`}
@@ -1554,6 +1626,7 @@ export default function FocusStudioPage({ onOpenUtilities }) {
             <span>Cài đặt</span>
           </button>
         </nav>
+        </div>
       )}
 
       {/* ── 4. FLOATING SPOTLIGHT & STUDIO PANELS ── */}
@@ -1607,8 +1680,9 @@ export default function FocusStudioPage({ onOpenUtilities }) {
                       }}
                     >
                       <span className="fs9-sp-yt-ico" aria-hidden="true">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                          <polygon points="8 5 19 12 8 19 8 5" />
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
                         </svg>
                       </span>
                       <input
@@ -1757,7 +1831,15 @@ export default function FocusStudioPage({ onOpenUtilities }) {
                               onClick={() => youtubeMusic.playTrack(track, list)}
                             >
                               <div className="fs9-ti-thumb-wrap">
-                                <img src={track.thumbnail} alt={track.title} className="fs9-ti-thumb" loading="lazy" />
+                                <img
+                                  src={track.thumbnail}
+                                  alt={track.title}
+                                  className="fs9-ti-thumb"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    e.currentTarget.style.opacity = '0';
+                                  }}
+                                />
                                 <span className="fs9-ti-hover-play">
                                   {isCurrent && yt.isPlaying ? (
                                     <span className="fs9-yt-eq"><i /><i /><i /></span>

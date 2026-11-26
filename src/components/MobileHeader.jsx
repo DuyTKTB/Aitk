@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useLiveStreak } from '../hooks.js';
 import UserProfileNavDropdown from './UserProfileNavDropdown.jsx';
+import NavNotificationPopover from './NavNotificationPopover.jsx';
 import SubjectSwitcher from './SubjectSwitcher.jsx';
 import { LOGO_GLIDE_TRANSITION, useElecIntro } from './ElecIntroLoader.jsx';
 import '../styles/nav-dropdowns.css';
@@ -143,19 +144,8 @@ export default function MobileHeader({ page, theme, userRole = 'student', isPro 
               <span>{formatCompactCredits(credits)}</span>
             </button>
 
-            {/* Nút Chat cộng đồng học tập ELEC AI trên Mobile */}
-            <button
-              type="button"
-              className="mhead-btn mhead-icon-circle"
-              onClick={() => window.dispatchEvent(new CustomEvent('elec-open-community-chat'))}
-              aria-label="Chat cộng đồng học tập ELEC AI"
-              title="Chat cộng đồng học tập ELEC AI"
-            >
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M16.8 11.8a2.2 2.2 0 0 1-2.2 2.2H7L3.5 17V5.2A2.2 2.2 0 0 1 5.7 3h8.9a2.2 2.2 0 0 1 2.2 2.2v6.6Z" />
-                <path d="M7.2 7.6h5.6M7.2 10.3h3.6" />
-              </svg>
-            </button>
+            {/* Trung tâm Thông báo ELEC AI trên Mobile */}
+            <NavNotificationPopover compact />
 
             {/* Nút tìm kiếm nhanh mở Command Palette toàn màn hình */}
             <button

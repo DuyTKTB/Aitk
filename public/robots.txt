@@ -3,6 +3,9 @@ Allow: /
 Allow: /llms.txt
 Allow: /llms-full.txt
 Allow: /sitemap.xml
+Allow: /sitemap-community.xml
+Allow: /cong-dong
+Allow: /chu-de
 Disallow: /api/
 Disallow: /admin
 
@@ -125,3 +128,4 @@ Disallow: /admin
 
 Host: https://www.elecai.id.vn/
 Sitemap: https://www.elecai.id.vn/sitemap.xml
+Sitemap: https://www.elecai.id.vn/sitemap-community.xml

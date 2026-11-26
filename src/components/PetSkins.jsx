@@ -78,7 +78,7 @@ export function getUniversityMascotOutfits() {
       region: s.region || 'Miền Bắc',
       group: s.group || 'Đa ngành',
       color: s.coverColor || '#2563eb',
-      src: `/img/elec/outfits/${fileKey}.webp`,
+      src: `/img/elec/outfits/${fileKey}.webp?v=2`,
     };
   });
 }
@@ -90,7 +90,7 @@ export function getUniversityMascotOutfitSrc(schoolCode) {
   if (!schoolCode) return null;
   const info = getUniversityInfo(schoolCode);
   const canonicalId = String(info?.id || schoolCode).trim().toLowerCase();
-  return `/img/elec/outfits/${canonicalId}.webp`;
+  return `/img/elec/outfits/${canonicalId}.webp?v=2`;
 }
 
 export const MASCOT_OUTFIT_CHANGE_EVENT = 'elec-mascot-outfit-changed';
@@ -143,7 +143,7 @@ export function resolveCornerMascotOutfit({ outfitConfig, nv1SchoolCode, isOpen 
       badge: info?.code || id,
       label: info?.shortName || info?.name || id,
       fullName: info?.name || id,
-      src: `/img/elec/outfits/${id.toLowerCase()}.webp`,
+      src: `/img/elec/outfits/${id.toLowerCase()}.webp?v=2`,
       color: info?.accentColor || '#2563eb',
     };
   }
@@ -157,7 +157,7 @@ export function resolveCornerMascotOutfit({ outfitConfig, nv1SchoolCode, isOpen 
       badge: `NV1 · ${info?.code || id}`,
       label: info?.shortName || info?.name || id,
       fullName: info?.name || id,
-      src: `/img/elec/outfits/${id.toLowerCase()}.webp`,
+      src: `/img/elec/outfits/${id.toLowerCase()}.webp?v=2`,
       color: info?.accentColor || '#2563eb',
     };
   }

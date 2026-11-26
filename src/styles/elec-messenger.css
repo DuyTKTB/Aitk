@@ -1,0 +1,1410 @@
+/* ============================================================================
+   elec-messenger.css — ELEC AI Signature Messenger × TikTok Chat
+   Clean, Branded, Fluid Messaging Experience (Light & OLED Dark Mode)
+   Scoped strictly under .ec-chat-backdrop / .ec-chat-shell
+   ============================================================================ */
+
+.ec-chat-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(9, 13, 24, 0.48);
+  backdrop-filter: saturate(160%) blur(10px);
+  -webkit-backdrop-filter: saturate(160%) blur(10px);
+  animation: ecFadeIn 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes ecFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.ec-chat-shell {
+  --ec-bg: #ffffff;
+  --ec-surface: #f8f9fb;
+  --ec-bubble-other: #f0f2f5;
+  --ec-bubble-other-hover: #e6e9ef;
+  --ec-bubble-me: linear-gradient(135deg, #0084ff 0%, #2563eb 56%, #4f46e5 100%);
+  --ec-ink: #0f172a;
+  --ec-ink-2: #65676b;
+  --ec-ink-3: #8a8d91;
+  --ec-border: rgba(15, 23, 42, 0.08);
+  --ec-accent: #0084ff;
+  --ec-pill-bg: #f0f2f5;
+  --ec-shadow: 0 28px 72px -12px rgba(15, 23, 42, 0.28), 0 0 0 1px rgba(15, 23, 42, 0.08);
+
+  width: min(440px, calc(100vw - 24px));
+  height: min(680px, calc(100dvh - 36px));
+  background: var(--ec-bg);
+  color: var(--ec-ink);
+  border-radius: 26px;
+  box-shadow: var(--ec-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Be Vietnam Pro', 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  animation: ecPopIn 0.24s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: width 0.24s cubic-bezier(0.23, 1, 0.32, 1), height 0.24s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+[data-theme="dark"] .ec-chat-shell {
+  --ec-bg: #121318;
+  --ec-surface: #181a22;
+  --ec-bubble-other: #24262f;
+  --ec-bubble-other-hover: #2d303b;
+  --ec-bubble-me: linear-gradient(135deg, #0a84ff 0%, #2563eb 54%, #5856d6 100%);
+  --ec-ink: #f5f5f7;
+  --ec-ink-2: #a1a6b4;
+  --ec-ink-3: #717684;
+  --ec-border: rgba(255, 255, 255, 0.09);
+  --ec-accent: #0a84ff;
+  --ec-pill-bg: #20222b;
+  --ec-shadow: 0 32px 84px -10px rgba(0, 0, 0, 0.72), 0 0 0 1px rgba(255, 255, 255, 0.11);
+}
+
+.ec-chat-shell.is-expanded {
+  width: min(760px, calc(100vw - 28px));
+  height: min(820px, calc(100dvh - 28px));
+}
+
+@keyframes ecPopIn {
+  from { opacity: 0; transform: scale(0.955) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── 1. MESSENGER × TIKTOK BRANDED HEADER ── */
+.ec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px 10px;
+  background: var(--ec-bg);
+  border-bottom: 1px solid var(--ec-border);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 20;
+}
+
+.ec-head-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ec-brand-avatar {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #e0f2fe 0%, #dbeafe 55%, #e0e7ff 100%);
+  box-shadow: 0 0 0 1.5px rgba(0, 132, 255, 0.25), 0 4px 10px -2px rgba(0, 132, 255, 0.22);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .ec-brand-avatar {
+  background: linear-gradient(145deg, rgba(14, 165, 233, 0.26) 0%, rgba(79, 70, 229, 0.34) 100%);
+  box-shadow: 0 0 0 1.5px rgba(56, 189, 248, 0.36);
+}
+
+.ec-brand-avatar img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  display: block;
+}
+
+.ec-live-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #31a24c;
+  border: 2px solid var(--ec-bg);
+  box-shadow: 0 0 0 1px rgba(49, 162, 76, 0.25);
+}
+
+.ec-live-dot.is-off {
+  background: #94a3b8;
+}
+
+.ec-brand-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ec-brand-title-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ec-brand-title {
+  font-size: 14.5px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--ec-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ec-verified-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(0, 132, 255, 0.14), rgba(79, 70, 229, 0.14));
+  color: #0071e3;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .ec-verified-chip {
+  background: rgba(10, 132, 255, 0.22);
+  color: #60a5fa;
+}
+
+.ec-brand-status {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ec-ink-2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ec-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.ec-icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--ec-ink-2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease, transform 0.12s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ec-icon-btn:hover {
+  background: var(--ec-pill-bg);
+  color: var(--ec-ink);
+}
+
+.ec-icon-btn.is-active {
+  background: rgba(0, 132, 255, 0.14);
+  color: var(--ec-accent);
+}
+
+.ec-icon-btn:active {
+  transform: scale(0.92);
+}
+
+/* Name settings popover */
+.ec-name-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 14px;
+  width: 248px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--ec-bg);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.2), 0 0 0 1px var(--ec-border);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: ecPopIn 0.16s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ec-name-popover label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ec-ink-2);
+}
+
+.ec-name-popover input {
+  width: 100% !important;
+  height: 34px;
+  padding: 0 12px !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--ec-border) !important;
+  background: var(--ec-pill-bg) !important;
+  color: var(--ec-ink) !important;
+  font-size: 13px !important;
+  font-weight: 600;
+  outline: none;
+}
+
+.ec-name-popover input:focus {
+  border-color: var(--ec-accent) !important;
+  box-shadow: 0 0 0 3px rgba(0, 132, 255, 0.16) !important;
+}
+
+/* ── 2. TIKTOK-STYLE INBOX TABS ── */
+.ec-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px;
+  background: var(--ec-bg);
+  border-bottom: 1px solid var(--ec-border);
+  flex-shrink: 0;
+}
+
+.ec-tab {
+  position: relative;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--ec-ink-2);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+.ec-tab:hover {
+  background: var(--ec-pill-bg);
+  color: var(--ec-ink);
+}
+
+.ec-tab.is-active {
+  background: rgba(0, 132, 255, 0.11);
+  color: var(--ec-accent);
+  font-weight: 750;
+}
+
+.ec-tab:active {
+  transform: scale(0.96);
+}
+
+.ec-tab-ai {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 132, 255, 0.22);
+  background: linear-gradient(135deg, rgba(0, 132, 255, 0.08), rgba(79, 70, 229, 0.1));
+  color: #0071e3;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+[data-theme="dark"] .ec-tab-ai {
+  border-color: rgba(56, 189, 248, 0.3);
+  background: linear-gradient(135deg, rgba(10, 132, 255, 0.2), rgba(88, 86, 214, 0.22));
+  color: #7dd3fc;
+}
+
+.ec-tab-ai:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px -2px rgba(0, 132, 255, 0.24);
+}
+
+.ec-tab-ai img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Search Bar */
+.ec-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--ec-surface);
+  border-bottom: 1px solid var(--ec-border);
+  flex-shrink: 0;
+}
+
+.ec-searchbar input {
+  flex: 1;
+  min-width: 0;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ec-ink) !important;
+  font-size: 13px !important;
+  padding: 2px 0 !important;
+  outline: none;
+  box-shadow: none !important;
+}
+
+.ec-searchbar small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ec-ink-3);
+}
+
+/* ── 3. MESSAGE STREAM (MESSENGER × TIKTOK FLUID CANVAS) ── */
+.ec-stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  background: var(--ec-bg);
+  scroll-behavior: smooth;
+}
+
+.ec-stream::-webkit-scrollbar {
+  width: 5px;
+}
+
+.ec-stream::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border-radius: 99px;
+}
+
+/* Branded Channel Welcome Header (Messenger / TikTok Profile Intro Style) */
+.ec-channel-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 16px 18px;
+  margin-bottom: 6px;
+}
+
+.ec-hero-badge {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 22px;
+  background: linear-gradient(145deg, #e0f2fe 0%, #dbeafe 55%, #e0e7ff 100%);
+  box-shadow:
+    0 12px 26px -8px rgba(0, 132, 255, 0.32),
+    0 0 0 1px rgba(0, 132, 255, 0.18);
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+}
+
+[data-theme="dark"] .ec-hero-badge {
+  background: linear-gradient(145deg, rgba(14, 165, 233, 0.22) 0%, rgba(79, 70, 229, 0.28) 100%);
+  box-shadow: 0 12px 28px -8px rgba(0, 132, 255, 0.42), 0 0 0 1px rgba(56, 189, 248, 0.3);
+}
+
+.ec-hero-badge img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+}
+
+.ec-hero-title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--ec-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ec-hero-sub {
+  margin: 4px 0 0;
+  font-size: 12.2px;
+  line-height: 1.45;
+  color: var(--ec-ink-2);
+  max-width: 300px;
+}
+
+.ec-icebreakers {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.ec-ice-chip {
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--ec-border);
+  background: var(--ec-surface);
+  color: var(--ec-ink);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+}
+
+.ec-ice-chip:hover {
+  background: rgba(0, 132, 255, 0.08);
+  border-color: rgba(0, 132, 255, 0.32);
+  color: var(--ec-accent);
+  transform: translateY(-1px);
+}
+
+.ec-ice-chip:active {
+  transform: scale(0.96);
+}
+
+/* Compact Top Streak Strip */
+.ec-streak-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  margin: 0 0 12px;
+  border-radius: 14px;
+  background: var(--ec-surface);
+  border: 1px solid var(--ec-border);
+  font-size: 11.5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.ec-streak-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.ec-streak-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 750;
+  color: #ea580c;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ec-streak-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ec-bg);
+  border: 1px solid var(--ec-border);
+  color: var(--ec-ink);
+  font-weight: 650;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.ec-streak-pill b {
+  color: #f97316;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Time / Day Divider (Messenger / TikTok style — NO ugly box!) */
+.ec-time-sep {
+  display: flex;
+  justify-content: center;
+  margin: 14px 0 8px;
+}
+
+.ec-time-sep span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ec-ink-3);
+  letter-spacing: 0.01em;
+}
+
+/* ── MESSAGE ROW (TRUE MESSENGER × TIKTOK GROUPING) ── */
+.ec-msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+  position: relative;
+}
+
+.ec-msg.is-first {
+  margin-top: 10px;
+}
+
+.ec-msg.has-chips {
+  margin-bottom: 12px;
+}
+
+.ec-msg.has-chips .ec-avatar-slot {
+  margin-bottom: 14px;
+}
+
+.ec-msg.is-me {
+  flex-direction: row-reverse;
+}
+
+.ec-msg.flash .ec-bubble {
+  animation: ecFlash 1.2s ease;
+}
+
+@keyframes ecFlash {
+  0%, 100% { filter: brightness(1); }
+  35% { filter: brightness(1.18); box-shadow: 0 0 0 3px rgba(0, 132, 255, 0.35); }
+}
+
+.ec-avatar-slot {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.ec-avatar-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.14s ease;
+}
+
+.ec-avatar-btn:hover {
+  transform: scale(1.08);
+}
+
+.ec-msg-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 76%;
+  min-width: 0;
+}
+
+.ec-msg.is-me .ec-msg-col {
+  align-items: flex-end;
+}
+
+/* Sender Meta ABOVE the bubble (never stuffed inside!) */
+.ec-sender-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 3px 10px;
+  font-size: 11.5px;
+  color: var(--ec-ink-2);
+}
+
+.ec-sender-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--ec-ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.ec-sender-btn:hover {
+  color: var(--ec-accent);
+  text-decoration: underline;
+}
+
+.ec-streak-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.12);
+  color: #ea580c;
+  font-size: 10px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Messenger-style Reply Preview ABOVE the bubble */
+.ec-reply-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 100%;
+  margin-bottom: -8px;
+  padding: 6px 12px 12px;
+  border-radius: 16px 16px 6px 6px;
+  border: 0;
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--ec-ink-2);
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+[data-theme="dark"] .ec-reply-preview {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ec-reply-preview:hover {
+  background: rgba(148, 163, 184, 0.22);
+}
+
+.ec-reply-preview b {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ec-ink-2);
+  margin-bottom: 1px;
+}
+
+.ec-reply-preview span {
+  display: block;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+/* Bubble + Floating Side Hover Toolbar */
+.ec-bubble-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  position: relative;
+}
+
+.ec-msg.is-me .ec-bubble-row {
+  flex-direction: row-reverse;
+}
+
+.ec-bubble {
+  position: relative;
+  padding: 8px 13px;
+  font-size: 14px;
+  line-height: 1.42;
+  word-break: break-word;
+  white-space: pre-wrap;
+  background: var(--ec-bubble-other);
+  color: var(--ec-ink);
+  border-radius: 20px;
+  cursor: pointer;
+  user-select: text;
+  transition: transform 0.14s cubic-bezier(0.23, 1, 0.32, 1), background 0.14s ease;
+}
+
+.ec-bubble:active {
+  transform: scale(0.985);
+}
+
+/* Dynamic Messenger / TikTok Stacked Corner Radii — Incoming */
+.ec-msg:not(.is-me).is-first:not(.is-last) .ec-bubble {
+  border-radius: 20px 20px 20px 6px;
+}
+.ec-msg:not(.is-me):not(.is-first):not(.is-last) .ec-bubble {
+  border-radius: 6px 20px 20px 6px;
+}
+.ec-msg:not(.is-me):not(.is-first).is-last .ec-bubble {
+  border-radius: 6px 20px 20px 20px;
+}
+
+/* Dynamic Messenger / TikTok Stacked Corner Radii — Outgoing (ELEC Gradient) */
+.ec-msg.is-me .ec-bubble {
+  background: var(--ec-bubble-me);
+  color: #ffffff;
+  box-shadow: 0 2px 10px -2px rgba(0, 132, 255, 0.28);
+}
+.ec-msg.is-me.is-first:not(.is-last) .ec-bubble {
+  border-radius: 20px 20px 6px 20px;
+}
+.ec-msg.is-me:not(.is-first):not(.is-last) .ec-bubble {
+  border-radius: 20px 6px 6px 20px;
+}
+.ec-msg.is-me:not(.is-first).is-last .ec-bubble {
+  border-radius: 20px 6px 20px 20px;
+}
+
+.ec-bubble a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Sticker-only or Image-only = Borderless Messenger / TikTok Look */
+.ec-bubble.is-sticker-only {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 2px 0 !important;
+}
+
+.ec-bubble.is-image-only {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: hidden;
+  border-radius: 18px !important;
+}
+
+/* Exclusive ELEC Mascot Sticker */
+.ec-elec-sticker {
+  display: inline-block;
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.16));
+  animation: ecStickerPop 0.32s cubic-bezier(0.22, 1.4, 0.36, 1);
+  transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+  vertical-align: middle;
+}
+
+.ec-elec-sticker:hover {
+  transform: scale(1.08) rotate(-2deg);
+}
+
+.ec-elec-sticker-inline {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  vertical-align: -7px;
+  margin: 0 2px;
+}
+
+@keyframes ecStickerPop {
+  from { opacity: 0; transform: scale(0.65); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.ec-emoji-solo {
+  font-size: 38px;
+  line-height: 1.15;
+  display: inline-block;
+  animation: ecStickerPop 0.28s cubic-bezier(0.22, 1.4, 0.36, 1);
+}
+
+.ec-emoji-inline {
+  font-size: 16.5px;
+  line-height: 1;
+  vertical-align: -1px;
+}
+
+.ec-msg-img {
+  display: block;
+  max-width: 230px;
+  max-height: 260px;
+  border-radius: 16px;
+  object-fit: cover;
+  margin-top: 6px;
+  cursor: zoom-in;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.ec-bubble.is-image-only .ec-msg-img {
+  margin-top: 0;
+  border-radius: 18px;
+}
+
+/* Double-tap Floating Heart Animation */
+.ec-doubletap-heart {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  pointer-events: none;
+  z-index: 10;
+  animation: ecHeartBurst 0.68s cubic-bezier(0.22, 1.4, 0.36, 1) forwards;
+}
+
+@keyframes ecHeartBurst {
+  0% { opacity: 0; transform: scale(0.3) translateY(6px); }
+  35% { opacity: 1; transform: scale(1.25) translateY(-6px); }
+  100% { opacity: 0; transform: scale(1.45) translateY(-24px); }
+}
+
+/* Overlapping Reaction Pill Badge (Signature Messenger & TikTok) */
+.ec-react-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: -9px;
+  margin-left: 10px;
+  position: relative;
+  z-index: 4;
+}
+
+.ec-msg.is-me .ec-react-pills {
+  margin-left: 0;
+  margin-right: 10px;
+}
+
+.ec-react-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ec-bg);
+  background: var(--ec-bg);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12), 0 0 0 1px var(--ec-border);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ec-ink);
+  cursor: pointer;
+  line-height: 1.2;
+  transition: transform 0.14s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ec-react-chip:hover {
+  transform: scale(1.1);
+}
+
+.ec-react-chip.is-mine {
+  background: rgba(0, 132, 255, 0.14);
+  color: var(--ec-accent);
+  box-shadow: 0 2px 8px rgba(0, 132, 255, 0.18), 0 0 0 1px rgba(0, 132, 255, 0.35);
+}
+
+/* Floating Hover Actions ABOVE bubble (NEVER clips or squishes!) + Subtle Hover Bridge */
+.ec-hover-actions {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  padding-bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 25;
+  transform: translateY(4px) scale(0.95);
+  transition: opacity 0.14s ease, transform 0.14s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ec-msg.is-me .ec-hover-actions {
+  left: auto;
+  right: 0;
+  flex-direction: row-reverse;
+}
+
+.ec-bubble-row:hover .ec-hover-actions,
+.ec-msg.is-active .ec-hover-actions {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.ec-hover-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 4px;
+  border-radius: 999px;
+  background: var(--ec-bg);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.12), 0 0 0 1px var(--ec-border);
+}
+
+.ec-act-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--ec-ink-2);
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.14s cubic-bezier(0.23, 1, 0.32, 1), background 0.12s ease;
+}
+
+.ec-act-btn:hover {
+  background: var(--ec-pill-bg);
+  transform: scale(1.2);
+}
+
+.ec-act-btn.is-mine {
+  background: rgba(0, 132, 255, 0.14);
+}
+
+.ec-act-btn.is-danger:hover,
+.ec-act-btn.is-danger.is-armed {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.ec-act-btn.is-armed {
+  width: auto;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.ec-hover-time {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ec-ink-3);
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Load Older & Jump Down */
+.ec-load-old {
+  align-self: center;
+  margin: 4px 0 10px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--ec-border);
+  background: var(--ec-surface);
+  color: var(--ec-ink-2);
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ec-jump-down {
+  position: absolute;
+  left: 50%;
+  bottom: 72px;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--ec-accent);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 8px 20px rgba(0, 132, 255, 0.36);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  z-index: 15;
+}
+
+/* ── 4. EXCLUSIVE ELEC STICKER & EMOJI TRAY ── */
+.ec-sticker-tray {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% + 8px);
+  background: var(--ec-bg);
+  border-radius: 20px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22), 0 0 0 1px var(--ec-border);
+  z-index: 40;
+  overflow: hidden;
+  animation: ecPopIn 0.16s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ec-tray-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 10px 7px;
+  border-bottom: 1px solid var(--ec-border);
+}
+
+.ec-tray-tab {
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--ec-ink-2);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ec-tray-tab.is-active {
+  background: rgba(0, 132, 255, 0.12);
+  color: var(--ec-accent);
+}
+
+.ec-tray-hint {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--ec-ink-3);
+}
+
+.ec-elec-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 10px;
+  max-height: 230px;
+  overflow-y: auto;
+}
+
+.ec-elec-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 4px;
+  border-radius: 14px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ec-ink-2);
+  transition: background 0.14s ease, transform 0.15s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ec-elec-item:hover {
+  background: var(--ec-pill-bg);
+  transform: scale(1.06);
+  color: var(--ec-ink);
+}
+
+.ec-elec-item:active {
+  transform: scale(0.94);
+}
+
+.ec-elec-item img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.ec-elec-item span {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.ec-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  padding: 10px;
+}
+
+.ec-emoji-btn {
+  height: 38px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.12s ease, transform 0.14s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ec-emoji-btn:hover {
+  background: var(--ec-pill-bg);
+  transform: scale(1.18);
+}
+
+/* Reply / Image Attachment Preview Banner */
+.ec-attach-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--ec-surface);
+  border-top: 1px solid var(--ec-border);
+  font-size: 12px;
+}
+
+.ec-attach-bar img {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.ec-attach-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ec-attach-info b {
+  font-size: 11.5px;
+  color: var(--ec-ink);
+}
+
+.ec-attach-info span {
+  font-size: 11.5px;
+  color: var(--ec-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 5. MESSENGER × TIKTOK COMPOSER BAR ── */
+.ec-composer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px 11px;
+  background: var(--ec-bg);
+  border-top: 1px solid var(--ec-border);
+  flex-shrink: 0;
+}
+
+.ec-chat-shell .ec-tool-btn,
+.ec-chat-shell label.ec-tool-btn {
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 50% !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ec-accent) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.14s ease, transform 0.12s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.ec-chat-shell .ec-tool-btn:hover,
+.ec-chat-shell label.ec-tool-btn:hover {
+  background: rgba(0, 132, 255, 0.1) !important;
+}
+
+.ec-chat-shell .ec-tool-btn.is-active {
+  background: rgba(0, 132, 255, 0.16) !important;
+}
+
+.ec-tool-btn:active {
+  transform: scale(0.92);
+}
+
+.ec-input-pill {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  background: var(--ec-pill-bg);
+  border-radius: 999px;
+  padding: 0 14px;
+  height: 38px;
+  border: 1.5px solid transparent;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.ec-input-pill:focus-within {
+  border-color: rgba(0, 132, 255, 0.42);
+  background: var(--ec-bg);
+  box-shadow: 0 0 0 3px rgba(0, 132, 255, 0.1);
+}
+
+.ec-input {
+  width: 100% !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--ec-ink) !important;
+  font-size: 13.5px !important;
+  font-weight: 450;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.ec-input::placeholder {
+  color: var(--ec-ink-3);
+}
+
+.ec-send-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--ec-bubble-me);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px -2px rgba(0, 132, 255, 0.42);
+  transition: transform 0.14s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.14s ease;
+}
+
+.ec-send-btn:hover {
+  transform: scale(1.06);
+}
+
+.ec-send-btn:active {
+  transform: scale(0.92);
+}
+
+.ec-send-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ec-quick-like {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.16s cubic-bezier(0.22, 1.4, 0.36, 1), background 0.14s ease;
+}
+
+.ec-quick-like:hover {
+  background: rgba(244, 63, 94, 0.1);
+  transform: scale(1.16);
+}
+
+.ec-quick-like:active {
+  transform: scale(0.88);
+}
+
+.ec-err-toast {
+  margin: 0 14px 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.ec-drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 132, 255, 0.14);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.ec-drop-overlay span {
+  padding: 12px 22px;
+  border-radius: 999px;
+  background: var(--ec-bg);
+  color: var(--ec-accent);
+  font-size: 14px;
+  font-weight: 750;
+  box-shadow: 0 12px 32px rgba(0, 132, 255, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Mobile Sheet */
+@media (max-width: 640px) {
+  .ec-chat-backdrop {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .ec-chat-shell,
+  .ec-chat-shell.is-expanded {
+    width: 100%;
+    height: 92dvh;
+    border-radius: 22px 22px 0 0;
+  }
+
+  .ec-msg-col {
+    max-width: 82%;
+  }
+
+  .ec-elec-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ── 6. COHESIVE ELEC MESSENGER STYLING FOR LỚP (ClassChat) & BẠN BÈ (DmPanel) ── */
+.ec-chat-shell .sw-root {
+  flex: 1 1 0% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: hidden;
+  background: var(--ec-bg);
+}
+
+.ec-chat-shell .sw-col {
+  flex: 1 1 0% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  background: var(--ec-bg);
+}
+
+.ec-chat-shell .sw-msgs {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+}
+
+.ec-chat-shell .sw-bubble {
+  border-radius: 20px;
+  font-size: 13.8px;
+  line-height: 1.42;
+}
+
+.ec-chat-shell .sw-msg.me .sw-bubble {
+  background: var(--ec-bubble-me);
+  color: #ffffff;
+  box-shadow: 0 2px 10px -2px rgba(0, 132, 255, 0.28);
+}
+
+.ec-chat-shell .sw-msg:not(.me) .sw-bubble {
+  background: var(--ec-bubble-other);
+  color: var(--ec-ink);
+}
+
+.ec-chat-shell .sw-form {
+  flex-shrink: 0;
+  background: var(--ec-bg);
+  border-top: 1px solid var(--ec-border);
+}
+
+.ec-chat-shell .sw-send {
+  background: var(--ec-bubble-me);
+}
+

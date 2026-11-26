@@ -180,17 +180,61 @@
   align-items: center !important;
   justify-content: space-between !important;
   flex-wrap: wrap !important;
-  gap: 10px !important;
+  gap: 8px 10px !important;
+}
+
+.rm-pro-page .rm-pro-toolbar-v2 .rm-pro-tb-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  flex-shrink: 0 !important;
 }
 
 .rm-pro-page .rm-pro-toolbar-v2 .rm-pro-search-box {
-  width: 220px !important;
-  flex-shrink: 0;
+  width: 224px !important;
+  flex: 0 1 224px !important;
+  min-width: 195px !important;
+  padding: 6px 12px !important;
+  border-radius: 9999px !important;
+  background: #f5f5f7 !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 720px) {
+  .rm-pro-page .rm-pro-toolbar-v2 .rm-pro-tb-right {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+  .rm-pro-page .rm-pro-toolbar-v2 .rm-pro-search-box {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+}
+
+.rm-pro-page .rm-pro-toolbar-v2 .rm-pro-search-box:focus-within {
+  background: #ffffff !important;
+  border-color: #0071e3 !important;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.14) !important;
+}
+
+.rm-pro-page .rm-pro-toolbar-v2 .rm-pro-search-box input {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  font-size: 13px !important;
 }
 
 .rm-pro-page .rm-pro-toolbar-v2 .rm-pro-filter-select {
-  width: 156px !important;
+  width: 146px !important;
   flex-shrink: 0;
+  border-radius: 9999px !important;
 }
 
 /* ── 3. LỘ TRÌNH 5 CHẶNG & CỘT THANH TRA (LIGHT MODE) ── */
@@ -498,26 +542,26 @@
   user-select: none;
 }
 
-/* Command Deck Right: Mission Card + Floating Corner Mascot */
+/* Command Deck Right: Mission Card + Neatly Tucked Corner Mascot */
 .rm-pro-page .rm-pro-mission-card {
   position: relative;
-  overflow: visible !important;
+  overflow: hidden !important;
   background:
-    radial-gradient(circle at 92% 10%, rgba(99, 102, 241, 0.12), transparent 46%),
+    radial-gradient(circle at 92% 10%, rgba(99, 102, 241, 0.1), transparent 46%),
     linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
-  border: 1.5px solid rgba(147, 197, 253, 0.58) !important;
-  box-shadow: 0 16px 38px -14px rgba(37, 99, 235, 0.14) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.08) !important;
 }
 
 .rm-pro-mission-mascot {
   position: absolute;
-  top: -18px;
+  top: 12px;
   right: 16px;
-  width: 66px;
-  height: 66px;
+  width: 52px;
+  height: 52px;
   object-fit: contain;
-  filter: drop-shadow(0 8px 16px rgba(37, 99, 235, 0.28));
-  animation: rmMascotFloatAlt 3.2s ease-in-out infinite;
+  filter: drop-shadow(0 6px 12px rgba(37, 99, 235, 0.22));
+  animation: rmMascotFloatAlt 3.4s ease-in-out infinite;
   pointer-events: none;
   user-select: none;
   z-index: 3;
@@ -646,11 +690,11 @@
   user-select: none;
 }
 
-/* Sticky Inspector Card with Floating Mascot Mentor */
+/* Sticky Inspector Card with Neatly Seated Mascot Mentor */
 .rm-pro-page .rm-pro-inspector {
-  overflow: visible !important;
-  border: 1.5px solid rgba(147, 197, 253, 0.5) !important;
-  box-shadow: 0 16px 36px -14px rgba(37, 99, 235, 0.14) !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.08) !important;
 }
 
 .rm-pro-insp-card {
@@ -659,20 +703,20 @@
 
 .rm-pro-insp-mascot {
   position: absolute;
-  top: 2px;
-  right: 4px;
-  width: 58px;
-  height: 58px;
+  top: 6px;
+  right: 8px;
+  width: 46px;
+  height: 46px;
   object-fit: contain;
-  filter: drop-shadow(0 6px 12px rgba(37, 99, 235, 0.24));
-  animation: rmMascotFloatAlt 3.3s ease-in-out infinite;
+  filter: drop-shadow(0 5px 10px rgba(37, 99, 235, 0.2));
+  animation: rmMascotFloatAlt 3.4s ease-in-out infinite;
   pointer-events: none;
   user-select: none;
   z-index: 4;
 }
 
 .rm-pro-insp-head.is-with-mascot {
-  padding-right: 64px;
+  padding-right: 58px;
   min-height: 36px;
 }
 
@@ -735,4 +779,86 @@
   .rm-pro-insp-empty-mascot {
     animation: none !important;
   }
+}
+
+/* ============================================================
+   6. EMIL KOWALSKI × APPLE HIG CRAFT PASS
+   - Layered shadow-borders (border: 0) instead of harsh gray lines
+   - Concentric radii (20px outer -> 12px inner)
+   - Calm posture (no perpetual distracting bounce; subtle hover lift)
+   - Snappy cubic-bezier(0.23, 1, 0.32, 1) & tactile scale(0.97)
+   ============================================================ */
+.rm-pro-page .rm-pro-deck-left,
+.rm-pro-page .rm-pro-mission-card,
+.rm-pro-page .rm-pro-toolbar-v2,
+.rm-pro-page .rm-pro-stage-card,
+.rm-pro-page .rm-pro-inspector {
+  border: 0 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.055), 0 1px 2px rgba(0, 0, 0, 0.035), 0 8px 24px -10px rgba(0, 0, 0, 0.06) !important;
+}
+
+[data-theme='dark'] .rm-pro-page .rm-pro-deck-left,
+[data-theme='dark'] .rm-pro-page .rm-pro-mission-card,
+[data-theme='dark'] .rm-pro-page .rm-pro-toolbar-v2,
+[data-theme='dark'] .rm-pro-page .rm-pro-stage-card,
+[data-theme='dark'] .rm-pro-page .rm-pro-inspector {
+  border: 0 !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.085), inset 0 0.5px 0 rgba(255, 255, 255, 0.08), 0 10px 30px -10px rgba(0, 0, 0, 0.55) !important;
+}
+
+.rm-pro-page .rm-pro-node-card,
+.rm-pro-page .rm-pro-stage-pill,
+.rm-pro-page .rm-pro-deck-left .rm-pro-part-chip {
+  border: 0 !important;
+  border-radius: 13px !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.055), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.18s cubic-bezier(0.23, 1, 0.32, 1), background 0.16s ease !important;
+}
+
+[data-theme='dark'] .rm-pro-page .rm-pro-node-card,
+[data-theme='dark'] .rm-pro-page .rm-pro-stage-pill,
+[data-theme='dark'] .rm-pro-page .rm-pro-deck-left .rm-pro-part-chip {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+.rm-pro-page .rm-pro-mission-title,
+.rm-pro-page .rm-pro-stage-title {
+  text-wrap: balance;
+}
+
+.rm-pro-page .rm-pro-score-num strong,
+.rm-pro-page .rm-pro-part-head b,
+.rm-pro-page .rm-pro-stage-pill {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Frequency & Purpose test: stop perpetual idle mascot bobbing */
+.rm-pro-deck-mascot img,
+.rm-pro-mission-mascot,
+.rm-pro-stage-mascot img,
+.rm-pro-insp-mascot {
+  animation: none !important;
+  transition: transform 0.22s cubic-bezier(0.23, 1, 0.32, 1) !important;
+}
+
+.rm-pro-deck-left:hover .rm-pro-deck-mascot img,
+.rm-pro-mission-card:hover .rm-pro-mission-mascot,
+.rm-pro-stage-head:hover .rm-pro-stage-mascot img,
+.rm-pro-inspector:hover .rm-pro-insp-mascot {
+  transform: translateY(-3px) scale(1.03);
+}
+
+.rm-pro-page .rm-pro-cta-primary,
+.rm-pro-page .rm-pro-ghost-btn,
+.rm-pro-page .rm-pro-mode-btn,
+.rm-pro-page .rm-pro-stage-pill {
+  transition: transform 0.15s cubic-bezier(0.23, 1, 0.32, 1), background 0.16s ease, box-shadow 0.16s ease !important;
+}
+
+.rm-pro-page .rm-pro-cta-primary:active,
+.rm-pro-page .rm-pro-ghost-btn:active,
+.rm-pro-page .rm-pro-mode-btn:active,
+.rm-pro-page .rm-pro-stage-pill:active {
+  transform: scale(0.97) !important;
 }

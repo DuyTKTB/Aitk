@@ -836,5 +836,35 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ===============================================================
+    // 21. COMMUNITY POSTS — Bài đăng Cộng đồng ELEC công khai (SEO / AEO / GEO)
+    //     • Đọc công khai: chỉ bài status == 'published' (cho Googlebot & khách)
+    //       hoặc chủ bài / Admin đọc được mọi trạng thái.
+    //     • Tạo: người dùng đăng nhập với authorUid == auth.uid.
+    //     • Sửa / Xóa: chủ bài (không được tự đặt featuredByAdmin/pinnedGlobal)
+    //       hoặc Admin toàn quyền kiểm duyệt & Đẩy Xu Hướng.
+    // ===============================================================
+    match /communityPosts/{postId} {
+      allow read: if resource.data.status == 'published'
+        || isAdmin()
+        || (signedIn() && resource.data.authorUid == request.auth.uid);
+
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == 'published'
+        && (!('featuredByAdmin' in request.resource.data) || request.resource.data.featuredByAdmin == false)
+        && (!('pinnedGlobal' in request.resource.data) || request.resource.data.pinnedGlobal == false);
+
+      allow update: if isAdmin()
+        || (signedIn()
+            && resource.data.authorUid == request.auth.uid
+            && request.resource.data.authorUid == resource.data.authorUid
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['featuredByAdmin', 'pinnedGlobal', 'hiddenByAdmin']));
+
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.authorUid == request.auth.uid);
+    }
+
   }
 }

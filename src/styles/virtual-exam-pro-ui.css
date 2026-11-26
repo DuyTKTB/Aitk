@@ -442,7 +442,7 @@
 /* ── 2. BỐ CỤC 2 CỘT: ĐỀ THI BÊN TRÁI · TÌM KIẾM & BỘ LỌC BÊN PHẢI ── */
 .vex-split-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 292px;
+  grid-template-columns: minmax(0, 1fr) 308px;
   gap: 20px;
   align-items: start;
   width: 100%;
@@ -460,10 +460,10 @@
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  border-radius: 20px;
+  border-radius: 22px;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.06);
   padding: 16px 16px 18px;
   display: flex;
   flex-direction: column;
@@ -481,17 +481,21 @@
 }
 
 .vex-side-block .vex-chip-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  width: 100%;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  width: 100% !important;
+  overflow: visible !important;
 }
 
 .vex-side-block .vex-mini-chip {
   max-width: 100%;
-  white-space: normal;
-  text-align: left;
+  padding: 5px 10px !important;
+  font-size: 11.5px !important;
+  white-space: nowrap;
+  text-align: center;
   line-height: 1.25;
+  flex: 0 1 auto;
 }
 
 .vex-side-head {
@@ -646,19 +650,43 @@
 
 .s9-vex-preview-btn {
   white-space: nowrap !important;
-  padding: 7px 11px !important;
+  padding: 7px 12px !important;
+  border-radius: 9999px !important;
   font-size: 12px !important;
+  font-weight: 600 !important;
 }
 
 .ns9-vex-start-btn {
-  border-radius: 11px !important;
-  font-weight: 700 !important;
-  padding: 8px 13px !important;
+  border-radius: 9999px !important;
+  background: linear-gradient(180deg, #0077ed 0%, #0071e3 100%) !important;
+  border: 0 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  padding: 8px 15px !important;
   font-size: 12.5px !important;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
   line-height: 1.2 !important;
   height: auto !important;
+  box-shadow: 0 4px 12px -2px rgba(0, 113, 227, 0.36) !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease !important;
+}
+
+.ns9-vex-start-btn:hover {
+  background: linear-gradient(180deg, #1b88ff 0%, #0077ed 100%) !important;
+  box-shadow: 0 8px 18px -4px rgba(0, 113, 227, 0.45) !important;
+  transform: translateY(-1px) !important;
+}
+
+.ns9-vex-hot-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 4px 10px !important;
+  border-radius: 9999px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.15 !important;
 }
 
 @media (max-width: 1020px) {
@@ -793,4 +821,74 @@
 [data-theme='dark'] .vex-metrics-head span {
   background: rgba(56, 189, 248, 0.16) !important;
   color: #7dd3fc !important;
+}
+
+/* ============================================================
+   5. EMIL KOWALSKI × APPLE HIG CRAFT PASS
+   - Multi-layered shadow-borders instead of flat gray outlines
+   - Concentric radii (20px outer -> 12px inner) & tighter vertical rhythm
+   - Tabular numerals, balanced headlines & tactile press physics
+   ============================================================ */
+.ns9-vex-page {
+  padding: 14px 0 72px !important;
+}
+
+.vex-studio-top {
+  margin-bottom: 14px !important;
+}
+
+.vex-studio-hero,
+.vex-studio-metrics,
+.vex-right-sidebar,
+.ns9-vex-card {
+  border: 0 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.055), 0 1px 2px rgba(0, 0, 0, 0.035), 0 8px 24px -10px rgba(0, 0, 0, 0.06) !important;
+}
+
+.ns9-vex-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 0 0 1px rgba(0, 113, 227, 0.22), 0 14px 32px -10px rgba(0, 113, 227, 0.16) !important;
+}
+
+[data-theme='dark'] .vex-studio-hero,
+[data-theme='dark'] .vex-studio-metrics,
+[data-theme='dark'] .vex-right-sidebar,
+[data-theme='dark'] .ns9-vex-card {
+  border: 0 !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.085), inset 0 0.5px 0 rgba(255, 255, 255, 0.08), 0 10px 30px -10px rgba(0, 0, 0, 0.55) !important;
+}
+
+.vex-metric-box {
+  border: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04) !important;
+}
+
+.vex-metric-box b,
+.ns9-vex-stats {
+  font-variant-numeric: tabular-nums;
+}
+
+.vex-studio-hero h1,
+.ns9-vex-sec-head h3,
+.ns9-vex-title {
+  text-wrap: balance;
+}
+
+.vex-btn-primary,
+.vex-btn-outline,
+.vex-mini-chip,
+.s9-vex-preview-btn,
+.ns9-vex-start-btn {
+  border-radius: 9999px !important;
+  transition: transform 0.15s cubic-bezier(0.23, 1, 0.32, 1), background 0.16s ease, box-shadow 0.16s ease !important;
+}
+
+.vex-btn-primary:active,
+.vex-btn-outline:active,
+.vex-mini-chip:active,
+.s9-vex-preview-btn:active,
+.ns9-vex-start-btn:active {
+  transform: scale(0.97) !important;
 }

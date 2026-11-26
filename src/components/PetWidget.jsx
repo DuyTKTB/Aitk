@@ -155,8 +155,24 @@ export default function PetWidget() {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
-  // Floating reminder note bubble
+  // Floating reminder note bubble + Hover Quick-Action Dock
   const [noteDismissed, setNoteDismissed] = useState(false);
+  const [fabMenuOpen, setFabMenuOpen] = useState(false);
+  const fabCloseTimerRef = useRef(null);
+
+  const openFabMenu = () => {
+    clearTimeout(fabCloseTimerRef.current);
+    setFabMenuOpen(true);
+  };
+
+  const scheduleCloseFabMenu = () => {
+    clearTimeout(fabCloseTimerRef.current);
+    fabCloseTimerRef.current = setTimeout(() => setFabMenuOpen(false), 180);
+  };
+
+  useEffect(() => () => {
+    clearTimeout(fabCloseTimerRef.current);
+  }, []);
 
   // Chat conversation
   const [chatLog, setChatLog] = useState([
@@ -1058,10 +1074,15 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
   return (
     <>
       {/* ============================================================
-          1. LINH VẬT NỔI & BONG BÓNG NHẮC NHỞ GÓC MÀN HÌNH
+          1. LINH VẬT NỔI & MENU HOVER 3 NÚT VIÊN THUỐC CHUẨN ELEC AI
           ============================================================ */}
-      <div className="ns9-mascot-fab-wrap" ref={mascotBtnRef}>
-        {!noteDismissed && !isOpen && (
+      <div
+        className={`ns9-mascot-fab-wrap ${fabMenuOpen && !isOpen ? 'is-menu-open' : ''}`}
+        ref={mascotBtnRef}
+        onMouseEnter={openFabMenu}
+        onMouseLeave={scheduleCloseFabMenu}
+      >
+        {!noteDismissed && !isOpen && !fabMenuOpen && (
           <div className="ns9-fab-note-bubble" onClick={() => setIsOpen(true)}>
             <div className="ns9-fab-note-header">
               <span className="ns9-fab-note-dot" />
@@ -1100,12 +1121,88 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
           </div>
         )}
 
+        {/* MENU HOVER 3 TÁC VỤ GỌN ĐỀU NHAU — PHONG CÁCH ELEC FROSTED GLASS */}
+        {!isOpen && (
+          <div
+            className={`ns9-fab-hover-menu ${fabMenuOpen ? 'is-open' : ''}`}
+            role="menu"
+            aria-label="Tác vụ nhanh Bé Elec"
+            onMouseEnter={openFabMenu}
+            onMouseLeave={scheduleCloseFabMenu}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              className="ns9-fab-pill-item"
+              onClick={() => {
+                setFabMenuOpen(false);
+                window.dispatchEvent(new CustomEvent('elec-open-community-chat'));
+              }}
+            >
+              <span className="ns9-fab-pill-ico is-blue" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.7-4.9A8.5 8.5 0 1 1 21 11.5z" />
+                  <path d="M8.5 11.5h7M8.5 14.5h4.5" />
+                </svg>
+              </span>
+              <span className="ns9-fab-pill-label">Cộng đồng ELEC</span>
+              <span className="ns9-fab-pill-live" aria-hidden="true" />
+            </button>
+
+            <button
+              type="button"
+              role="menuitem"
+              className="ns9-fab-pill-item"
+              onClick={() => {
+                setFabMenuOpen(false);
+                setSelectedDayIdx(getCurrentDayIndex());
+                setMobileTab('plan');
+                setIsOpen(true);
+              }}
+            >
+              <span className="ns9-fab-pill-ico is-emerald" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3.5" y="3.5" width="7" height="7" rx="1.6" />
+                  <rect x="13.5" y="3.5" width="7" height="7" rx="1.6" />
+                  <rect x="3.5" y="13.5" width="7" height="7" rx="1.6" />
+                  <rect x="13.5" y="13.5" width="7" height="7" rx="1.6" />
+                </svg>
+              </span>
+              <span className="ns9-fab-pill-label">Nhiệm vụ hôm nay</span>
+              {pendingToday.length > 0 ? (
+                <span className="ns9-fab-pill-count">{pendingToday.length}</span>
+              ) : (
+                <svg className="ns9-fab-pill-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><path d="M9 6l6 6-6 6" /></svg>
+              )}
+            </button>
+
+            <button
+              type="button"
+              role="menuitem"
+              className="ns9-fab-pill-item"
+              onClick={() => {
+                setFabMenuOpen(false);
+                setWardrobeOpen(true);
+              }}
+            >
+              <span className="ns9-fab-pill-ico is-violet" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z" />
+                </svg>
+              </span>
+              <span className="ns9-fab-pill-label">Đổi trang phục Bé Elec</span>
+              <svg className="ns9-fab-pill-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3"><path d="M9 6l6 6-6 6" /></svg>
+            </button>
+          </div>
+        )}
+
         <div className="ns9-fab-mascot-stage">
           <button
             type="button"
             className="ns9-fab-wardrobe-trigger"
             onClick={(e) => {
               e.stopPropagation();
+              setFabMenuOpen(false);
               setWardrobeOpen(true);
             }}
             title="Mở Tủ đồ Linh vật (105 Trường Đại học & 21 Biểu cảm)"
@@ -1120,7 +1217,10 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
           <button
             type="button"
             className="ns9-fab-mascot-button"
-            onClick={() => setIsOpen((prev) => !prev)}
+            onClick={() => {
+              setFabMenuOpen(false);
+              setIsOpen((prev) => !prev);
+            }}
             title={`Mở Trợ lý ELEC AI (${activeCornerOutfit.fullName})`}
             aria-label="Mở Trợ lý ELEC AI"
           >
@@ -1976,60 +2076,79 @@ HƯỚNG DẪN TRẢ LỜI GIẢI BÀI TẬP VÀ ĐỒNG HÀNH:
                   </div>
                 </div>
 
-                {/* Vùng tin nhắn chat & Quick Pills */}
+                {/* Vùng tin nhắn chat & Gợi ý mở đầu chuẩn Apple Intelligence */}
                 <div className="ns9-chat-scroll-area" ref={chatScrollRef}>
-                  {/* Tin nhắn mở đầu chuẩn ảnh mẫu */}
-                  <div className="ns9-chat-ai-row">
-                    <button
-                      type="button"
-                      className="ns9-c-avatar-stage"
-                      onClick={() => setWardrobeOpen(true)}
-                      title="Bấm để đổi trang phục 105 Trường ĐH cho linh vật"
-                    >
-                      <img
-                        src={activeCornerOutfit.src}
-                        alt="ELEC AI"
-                        className="ns9-c-avatar"
-                        draggable={false}
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = ELEC_SRC.hello;
-                        }}
-                      />
-                    </button>
-                    <div className="ns9-c-bubble-group">
-                      <div className="ns9-c-persona-badge">
-                        <span className="ns9-c-online-dot" />
-                        <span className="ns9-c-name">ELEC AI</span>
-                        <span className="ns9-c-mood-tag">
-                          {PERSONAS.find((p) => p.id === persona)?.label || 'Dịu dàng'}
-                        </span>
-                      </div>
-                      <div className="ns9-c-speech-card">
-                        <div className="ns9-c-speech-txt">
-                          <MarkdownLike text={chatLog[0]?.text || `Chào buổi tối, ${studentName}! Mình cùng chọn một việc vừa sức để bắt đầu thật nhẹ nhàng nhé.`} />
+                  {chatLog.length <= 1 ? (
+                    <div className="ns9-chat-welcome-stage">
+                      <div className="ns9-chat-hero-block">
+                        <button
+                          type="button"
+                          className="ns9-c-avatar-stage"
+                          onClick={() => setWardrobeOpen(true)}
+                          title="Bấm để đổi trang phục 105 Trường ĐH cho linh vật"
+                        >
+                          <img
+                            src={activeCornerOutfit.src}
+                            alt="ELEC AI"
+                            className="ns9-c-avatar"
+                            draggable={false}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = ELEC_SRC.hello;
+                            }}
+                          />
+                        </button>
+                        <div className="ns9-c-persona-badge">
+                          <span className="ns9-c-online-dot" />
+                          <span className="ns9-c-name">ELEC AI</span>
+                          <span className="ns9-c-mood-tag">
+                            {PERSONAS.find((p) => p.id === persona)?.label || 'Dịu dàng'}
+                          </span>
                         </div>
+                        <h4 className="ns9-chat-hero-greeting">Chào {studentName}!</h4>
+                        <p className="ns9-chat-hero-sub">
+                          {chatLog[0]?.text || 'Mình cùng chọn một việc vừa sức để bắt đầu thật nhẹ nhàng nhé.'}
+                        </p>
+                      </div>
+
+                      {/* Gợi ý nhanh gọn gàng (ẩn tự động khi bắt đầu hội thoại) */}
+                      <div className="ns9-quick-pills-container">
+                        {QUICK_PILLS.map((qp) => (
+                          <button
+                            key={qp.id}
+                            type="button"
+                            className="ns9-pill-item-btn"
+                            onClick={() => handleSendChat(qp.text)}
+                          >
+                            <span className="ns9-pill-txt">{qp.text}</span>
+                            <svg className="ns9-pill-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                              <polyline points="9 18 15 12 9 6" />
+                            </svg>
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  </div>
-
-                  {/* 7 Quick Action Pills */}
-                  <div className="ns9-quick-pills-container">
-                    {QUICK_PILLS.map((qp) => (
-                      <button
-                        key={qp.id}
-                        type="button"
-                        className="ns9-pill-item-btn"
-                        onClick={() => handleSendChat(qp.text)}
-                      >
-                        <span className="ns9-pill-dot" style={{ background: qp.dotColor }} />
-                        <span className="ns9-pill-txt">{qp.text}</span>
-                        <svg className="ns9-pill-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      </button>
-                    ))}
-                  </div>
+                  ) : (
+                    <>
+                      {/* Tin nhắn mở đầu rút gọn khi đang trong hội thoại */}
+                      <div className="ns9-msg-line is-ai-line">
+                        <img
+                          src={activeCornerOutfit.src}
+                          alt="ELEC AI"
+                          className="ns9-c-avatar-sm"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = ELEC_SRC.hello;
+                          }}
+                        />
+                        <div className="ns9-msg-bubble">
+                          <div className="ns9-msg-text">
+                            <MarkdownLike text={chatLog[0]?.text || `Chào ${studentName}! Mình sẵn sàng hỗ trợ bạn rồi đây.`} />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   {/* Lịch sử hội thoại tiếp theo */}
                   {chatLog.slice(1).map((msg) => (

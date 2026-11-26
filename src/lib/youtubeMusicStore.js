@@ -15,13 +15,12 @@ const HIST_KEY = 'elec-yt-music-hist-v1';
 
 export const CURATED_YOUTUBE_MUSIC = [
   {
-    videoId: 'jfKfPfyJRdk',
-    title: 'lofi hip hop radio — beats to relax/study to',
+    videoId: 'lTRiuFIWV54',
+    title: '1 A.M Study Session — lofi hip hop / chill beats',
     channel: 'Lofi Girl',
-    duration: 'LIVE',
+    duration: '1:01:13',
     category: 'lofi',
-    thumbnail: 'https://i.ytimg.com/vi/jfKfPfyJRdk/hqdefault.jpg',
-    isLive: true,
+    thumbnail: 'https://i.ytimg.com/vi/lTRiuFIWV54/hqdefault.jpg',
   },
   {
     videoId: '9kzE8isXlQY',
@@ -189,11 +188,16 @@ class YouTubeMusicStore {
     };
 
     this.listeners = new Set();
+    this.progressListeners = new Set();
     this.player = null;
     this.playerReady = false;
     this.pendingVideoId = null;
     this.hostEl = null;
     this.progressTimer = null;
+    this.videoReadyTimer = null;
+    this.videoReady = false;
+    this.lastShowVideoBg = null;
+    this.lastVideoReady = null;
     this.consecutiveErrors = 0;
   }
 
@@ -213,16 +217,32 @@ class YouTubeMusicStore {
     return () => this.listeners.delete(cb);
   }
 
-  _emit() {
+  /** Kênh tiến trình nhẹ — chỉ cập nhật thanh tua & giờ phát, KHÔNG re-render toàn trang */
+  subscribeProgress(cb) {
+    this.progressListeners.add(cb);
+    cb({ currentTime: this.state.currentTime, duration: this.state.duration });
+    return () => this.progressListeners.delete(cb);
+  }
+
+  _emitProgress() {
+    const snap = { currentTime: this.state.currentTime, duration: this.state.duration };
+    this.progressListeners.forEach((cb) => {
+      try { cb(snap); } catch { /* ignore */ }
+    });
+  }
+
+  _emit(persist = true) {
     const snapshot = { ...this.state };
     this.state = snapshot;
-    writeJson(STATE_KEY, {
-      currentTrack: snapshot.currentTrack,
-      volume: snapshot.volume,
-      muted: snapshot.muted,
-      loop: snapshot.loop,
-      videoBgEnabled: snapshot.videoBgEnabled,
-    });
+    if (persist) {
+      writeJson(STATE_KEY, {
+        currentTrack: snapshot.currentTrack,
+        volume: snapshot.volume,
+        muted: snapshot.muted,
+        loop: snapshot.loop,
+        videoBgEnabled: snapshot.videoBgEnabled,
+      });
+    }
     this.listeners.forEach((cb) => {
       try { cb(snapshot); } catch { /* ignore */ }
     });
@@ -249,10 +269,19 @@ class YouTubeMusicStore {
     const showVideoBg =
       this.state.videoBgEnabled &&
       this.state.inFocusStage &&
-      Boolean(this.state.currentTrack?.videoId);
+      Boolean(this.state.currentTrack?.videoId) &&
+      (this.state.isPlaying || this.state.isBuffering);
+    const ready = showVideoBg && this.videoReady && this.state.isPlaying;
 
-    this.hostEl.classList.toggle('is-video-bg', showVideoBg);
-    this.hostEl.classList.toggle('is-hidden', !showVideoBg);
+    if (this.lastShowVideoBg !== showVideoBg) {
+      this.lastShowVideoBg = showVideoBg;
+      this.hostEl.classList.toggle('is-video-bg', showVideoBg);
+      this.hostEl.classList.toggle('is-hidden', !showVideoBg);
+    }
+    if (this.lastVideoReady !== ready) {
+      this.lastVideoReady = ready;
+      this.hostEl.classList.toggle('is-video-ready', ready);
+    }
   }
 
   setInFocusStage(flag) {
@@ -310,16 +339,28 @@ class YouTubeMusicStore {
               this.state.error = null;
               try {
                 const dur = e.target.getDuration?.() || 0;
+                const cur = e.target.getCurrentTime?.() || 0;
                 if (dur > 0) this.state.duration = dur;
+                this.state.currentTime = cur;
               } catch { /* ignore */ }
-              this._emit();
+              clearTimeout(this.videoReadyTimer);
+              this.videoReadyTimer = setTimeout(() => {
+                if (this.state.isPlaying) {
+                  this.videoReady = true;
+                  this._syncHostPresentation();
+                }
+              }, 220);
+              this._emit(false);
+              this._emitProgress();
             } else if (e.data === YTState.BUFFERING) {
               this.state.isBuffering = true;
-              this._emit();
+              this._emit(false);
             } else if (e.data === YTState.PAUSED) {
+              clearTimeout(this.videoReadyTimer);
+              this.videoReady = false;
               this.state.isPlaying = false;
               this.state.isBuffering = false;
-              this._emit();
+              this._emit(false);
             } else if (e.data === YTState.ENDED) {
               if (this.state.loop && this.state.currentTrack?.videoId) {
                 try {
@@ -360,10 +401,10 @@ class YouTubeMusicStore {
       try {
         const cur = this.player.getCurrentTime?.() || 0;
         const dur = this.player.getDuration?.() || this.state.duration;
-        if (Math.abs(cur - this.state.currentTime) >= 0.4 || dur !== this.state.duration) {
+        if (Math.abs(cur - this.state.currentTime) >= 0.35 || dur !== this.state.duration) {
           this.state.currentTime = cur;
           if (dur > 0) this.state.duration = dur;
-          this._emit();
+          this._emitProgress();
         }
       } catch { /* ignore */ }
     }, 500);
@@ -404,13 +445,16 @@ class YouTubeMusicStore {
       this.state.queue = [normalized, ...this.state.queue].slice(0, 30);
     }
 
+    clearTimeout(this.videoReadyTimer);
+    this.videoReady = false;
     this.state.currentTrack = normalized;
     this.state.currentTime = 0;
     this.state.duration = 0;
     this.state.isBuffering = true;
     this.state.error = null;
     this._pushHistory(normalized);
-    this._emit();
+    this._emit(true);
+    this._emitProgress();
 
     if (!this.player) {
       this.pendingVideoId = normalized.videoId;
@@ -420,9 +464,10 @@ class YouTubeMusicStore {
 
     if (this.playerReady) {
       try {
-        this.player.loadVideoById(normalized.videoId);
-        this.player.playVideo();
-      } catch { /* ignore */ }
+        this.player.loadVideoById({ videoId: normalized.videoId, startSeconds: 0 });
+      } catch {
+        try { this.player.loadVideoById(normalized.videoId); } catch { /* ignore */ }
+      }
     } else {
       this.pendingVideoId = normalized.videoId;
     }
@@ -493,7 +538,7 @@ class YouTubeMusicStore {
     try {
       this.player?.seekTo?.(sec, true);
     } catch { /* ignore */ }
-    this._emit();
+    this._emitProgress();
   }
 
   setVolume(vol) {
@@ -523,7 +568,10 @@ class YouTubeMusicStore {
 
   setVideoBgEnabled(enabled) {
     this.state.videoBgEnabled = Boolean(enabled);
-    this._emit();
+    if (this.state.videoBgEnabled && this.state.isPlaying && !this.state.isBuffering) {
+      this.videoReady = true;
+    }
+    this._emit(true);
   }
 
   toggleFavorite(track) {
@@ -607,4 +655,13 @@ export function useYouTubeMusic() {
   const [state, setState] = useState(() => youtubeMusic.getState());
   useEffect(() => youtubeMusic.subscribe(setState), []);
   return state;
+}
+
+export function useYouTubeProgress() {
+  const [prog, setProg] = useState(() => ({
+    currentTime: youtubeMusic.getState().currentTime,
+    duration: youtubeMusic.getState().duration,
+  }));
+  useEffect(() => youtubeMusic.subscribeProgress(setProg), []);
+  return prog;
 }

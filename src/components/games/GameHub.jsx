@@ -479,86 +479,42 @@ export default function GameHub() {
           Thiết kế chuẩn máy chiếu lớp học & phòng lab. Giáo viên dễ dàng tùy biến ngân hàng câu hỏi theo từng bài giảng. Không cần tạo tài khoản hay cài đặt rườm rà.
         </p>
 
-        {/* Nút Cài đặt trung tâm */}
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginTop: '1.25rem', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="cg-action-btn"
-            style={{
-              padding: '0.55rem 1.35rem',
-              borderColor: userIsAdmin ? '#ef4444' : 'var(--line, rgba(0,0,0,0.1))',
-              background: userIsAdmin ? 'rgba(239, 68, 68, 0.08)' : 'var(--panel, #ffffff)',
-              fontWeight: 700,
-            }}
-            onClick={() => setSettingsOpen(true)}
-          >
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><IconSettings size={15} /> Cài đặt & Quản lý trò chơi</span>
-            {userIsAdmin && (
-              <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: '4px', background: '#ef4444', color: '#fff', marginLeft: '0.35rem' }}>
-                Admin
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* Thanh tìm kiếm nhanh phong cách Apple Glassmorphism */}
-        <div style={{ maxWidth: 440, width: '100%', margin: '1.25rem auto 0', position: 'relative' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: 'var(--panel, #ffffff)',
-            border: '1px solid var(--line, rgba(0,0,0,0.1))',
-            borderRadius: '16px',
-            padding: '0.5rem 0.9rem',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.03)',
-            transition: 'border-color 0.2s, box-shadow 0.2s',
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--mut, #64748b)', marginRight: '0.6rem', flexShrink: 0 }}>
+        {/* Thanh điều khiển hợp nhất: Spotlight Search + Cài đặt */}
+        <div className="gh-command-row">
+          <label className="gh-search-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" className="gh-search-ico" aria-hidden="true">
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <input
               type="text"
+              className="gh-search-input"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm trò chơi (Kéo co, Dò mìn, Triệu phú, Lab 3D...)..."
-              style={{
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                width: '100%',
-                fontSize: '0.92rem',
-                color: 'var(--ink, #0f172a)',
-              }}
+              placeholder="Tìm trò chơi (Kéo co, Dò mìn, Triệu phú, Lab 3D...)"
               aria-label="Tìm kiếm trò chơi"
             />
             {searchQuery && (
               <button
                 type="button"
+                className="gh-search-clear"
                 onClick={() => setSearchQuery('')}
-                style={{
-                  border: 'none',
-                  background: 'var(--surface-2, #e2e8f0)',
-                  color: 'var(--mut, #64748b)',
-                  borderRadius: '50%',
-                  width: 20,
-                  height: 20,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  lineHeight: 1,
-                  padding: 0,
-                  marginLeft: '0.4rem',
-                  flexShrink: 0,
-                }}
                 aria-label="Xóa tìm kiếm"
               >
                 ✕
               </button>
             )}
-          </div>
+          </label>
+
+          <button
+            type="button"
+            className={`cg-action-btn gh-settings-btn ${userIsAdmin ? 'is-admin' : ''}`}
+            onClick={() => setSettingsOpen(true)}
+          >
+            <IconSettings size={15} />
+            <span>Cài đặt</span>
+            {userIsAdmin && <span className="gh-admin-pill">Admin</span>}
+          </button>
         </div>
 
         {/* Category Tabs Filter */}

@@ -1710,75 +1710,19 @@
     justify-content: center !important;
   }
 
-  /* Sổ tay lỗi sai (#notebook): Thu gọn Header, 4 ô chỉ số 1 hàng & dải chip vuốt ngang */
-  .nb {
-    padding: 12px 12px 84px !important;
+  /* Sổ tay lỗi sai (#notebook): Apple HIG Mobile Layout */
+  .nb.nb-studio {
+    padding: 14px 14px 96px !important;
   }
 
-  .nb-head {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 12px !important;
-    padding: 14px !important;
-    border-radius: 20px !important;
+  .nb.nb-studio .nb-hero {
+    padding: 4px 0 18px !important;
+    border-radius: 0 !important;
   }
 
-  .nb-head-l img {
-    width: 52px !important;
-    height: 52px !important;
-  }
-
-  .nb-head-r {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    gap: 7px !important;
-    scrollbar-width: none !important;
-  }
-
-  .nb-head-r::-webkit-scrollbar {
-    display: none !important;
-  }
-
-  .nb-head-r .nb-btn {
-    flex: 0 0 auto !important;
-    white-space: nowrap !important;
-    padding: 8px 12px !important;
-    font-size: 12px !important;
-    border-radius: 12px !important;
-  }
-
-  .nb-stats {
-    display: grid !important;
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 7px !important;
-  }
-
-  .nb-stat {
-    flex-direction: column !important;
-    align-items: center !important;
-    text-align: center !important;
-    padding: 10px 6px !important;
-    border-radius: 15px !important;
-    gap: 4px !important;
-  }
-
-  .nb-filters {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    gap: 6px !important;
-    scrollbar-width: none !important;
-    padding-bottom: 2px !important;
-  }
-
-  .nb-filters::-webkit-scrollbar {
-    display: none !important;
-  }
-
-  .nb-filters .nb-chip {
-    flex: 0 0 auto !important;
-    white-space: nowrap !important;
+  .nb.nb-studio .nb-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
   }
 
   /* Bảng 4 ô hành động & Header trong #ai trên điện thoại nhỏ */
