@@ -48,6 +48,7 @@ export default function OmrPrintStudioModal({ open, onClose, paper = null, onPri
   const [prefillCodeBubbles, setPrefillCodeBubbles] = useState(false);
   const [colorMode, setColorMode] = useState('rose');
   const [previewIdx, setPreviewIdx] = useState(0);
+  const [previewZoom, setPreviewZoom] = useState(100); // 100 | 125 | 150
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
@@ -300,25 +301,45 @@ export default function OmrPrintStudioModal({ open, onClose, paper = null, onPri
               <span className="pg-preview-badge">
                 <IcoCheck size={13} /> Bản quyền {serialTag} · Khớp 55 vạch OMR
               </span>
-              {parsedCodes.length > 1 && (
-                <div className="pg-preview-tabs">
-                  {parsedCodes.map((c, idx) => (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <div className="pg-preview-zoom" role="group" aria-label="Phóng to xem trước phiếu OMR">
+                  {[100, 125, 155].map((z) => (
                     <button
-                      key={`${c}-${idx}`}
+                      key={z}
                       type="button"
-                      className={idx === previewIdx ? 'on' : ''}
-                      onClick={() => setPreviewIdx(idx)}
+                      className={previewZoom === z ? 'on' : ''}
+                      onClick={() => setPreviewZoom(z)}
                     >
-                      Mã {c}
+                      {z === 100 ? 'Vừa khung' : `${z}%`}
                     </button>
                   ))}
                 </div>
-              )}
+                {parsedCodes.length > 1 && (
+                  <div className="pg-preview-tabs">
+                    {parsedCodes.map((c, idx) => (
+                      <button
+                        key={`${c}-${idx}`}
+                        type="button"
+                        className={idx === previewIdx ? 'on' : ''}
+                        onClick={() => setPreviewIdx(idx)}
+                      >
+                        Mã {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="pg-preview-paper-wrap">
               <div
                 className="pg-preview-paper"
+                style={{
+                  width:
+                    previewZoom === 100
+                      ? 'min(100%, 660px)'
+                      : `${Math.round((660 * previewZoom) / 100)}px`,
+                }}
                 // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: previewSvg }}
               />

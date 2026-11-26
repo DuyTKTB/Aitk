@@ -1454,7 +1454,7 @@
 .pg-print-studio {
   display: flex;
   flex-direction: column;
-  width: min(1220px, 96vw);
+  width: min(1340px, 96vw);
   max-height: 94vh;
   border-radius: 24px;
   background: var(--panel, #ffffff);
@@ -1466,7 +1466,7 @@
 
 .pg-studio-body {
   display: grid;
-  grid-template-columns: minmax(340px, 460px) minmax(0, 1fr);
+  grid-template-columns: minmax(340px, 440px) minmax(0, 1fr);
   min-height: 0;
   flex: 1;
   overflow: hidden;
@@ -1608,23 +1608,56 @@
   color: #ffffff;
 }
 
+.pg-preview-zoom {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--surface-2, #e2e8f0);
+  border: 1px solid var(--line, rgba(15, 23, 42, 0.08));
+  gap: 2px;
+}
+
+.pg-preview-zoom button {
+  border: 0;
+  background: transparent;
+  color: var(--mut, #475569);
+  border-radius: 8px;
+  padding: 0.24rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pg-preview-zoom button.on {
+  background: var(--panel, #ffffff);
+  color: #0284c7;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+}
+
 .pg-preview-paper-wrap {
   flex: 1;
   overflow: auto;
-  padding: 1rem;
+  padding: 1.15rem;
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  background: radial-gradient(circle at top, rgba(2, 132, 199, 0.05), transparent 60%), var(--surface-2, #e8edf5);
 }
 
 .pg-preview-paper {
-  width: min(100%, 560px);
+  flex-shrink: 0;
+  width: min(100%, 660px);
   aspect-ratio: 2480 / 3508;
   background: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.2);
+  border-radius: 10px;
+  box-shadow:
+    0 20px 48px -12px rgba(15, 23, 42, 0.24),
+    0 0 0 1px rgba(15, 23, 42, 0.07);
   overflow: hidden;
-  padding: 6px;
+  padding: 8px;
+  transition: width 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .pg-preview-paper .omr-svg {
