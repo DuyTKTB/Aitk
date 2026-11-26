@@ -206,6 +206,9 @@ export default function OmrCameraModal({
   const captureCanvasRef = useRef(null);
   const probeCanvasRef = useRef(null);
   const streamRef = useRef(null);
+  const openRef = useRef(open);
+  openRef.current = open;
+  const streamReqIdRef = useRef(0);
   const busyScanRef = useRef(false);
   const readyStreakRef = useRef(0);
   const cooldownUntilRef = useRef(0);
@@ -240,6 +243,7 @@ export default function OmrCameraModal({
   }, []);
 
   const startStream = useCallback(async (deviceId = '') => {
+    const reqId = ++streamReqIdRef.current;
     setLoading(true);
     setFeedback(null);
     stopStream();
@@ -267,6 +271,12 @@ export default function OmrCameraModal({
         });
       }
 
+      // Chống rò rỉ đèn camera nếu modal đã đóng hoặc người dùng vừa bấm Đổi Cam trong lúc chờ khởi động
+      if (!openRef.current || reqId !== streamReqIdRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
       streamRef.current = stream;
       const track = stream.getVideoTracks()[0];
       if (track) {
@@ -287,25 +297,33 @@ export default function OmrCameraModal({
 
       if (navigator.mediaDevices.enumerateDevices) {
         const all = await navigator.mediaDevices.enumerateDevices();
-        setDevices(all.filter((d) => d.kind === 'videoinput'));
+        if (openRef.current && reqId === streamReqIdRef.current) {
+          setDevices(all.filter((d) => d.kind === 'videoinput'));
+        }
       }
 
-      if (videoRef.current) {
+      if (videoRef.current && openRef.current && reqId === streamReqIdRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play?.().catch(() => {});
       }
     } catch (err) {
-      setFeedback({ ok: false, msg: `Không thể mở camera: ${err?.message || 'Vui lòng cấp quyền camera.'}` });
+      if (openRef.current && reqId === streamReqIdRef.current) {
+        setFeedback({ ok: false, msg: `Không thể mở camera: ${err?.message || 'Vui lòng cấp quyền camera.'}` });
+      }
     } finally {
-      setLoading(false);
+      if (reqId === streamReqIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [stopStream]);
 
   useEffect(() => {
     if (!open) {
+      streamReqIdRef.current += 1;
       stopStream();
       try { window.speechSynthesis?.cancel?.(); } catch {}
       setProbe(null);
+      setZoom(1);
       setLastCapture(null);
       setRecentHistory([]);
       setShowHistory(false);
@@ -474,7 +492,13 @@ export default function OmrCameraModal({
         const roiRead = readSheet(roiImg);
         if (roiRead.ok) {
           read = roiRead;
-          camQ = measureImageQuality(roiImg, { ...IMG_LIMITS, minWidth: 460, minHeight: 580, maxBrightness: 252 });
+          const isLandscapeRoi = rw > rh;
+          camQ = measureImageQuality(roiImg, {
+            ...IMG_LIMITS,
+            minWidth: isLandscapeRoi ? 580 : 460,
+            minHeight: isLandscapeRoi ? 460 : 580,
+            maxBrightness: 252,
+          });
           usedCrop = info.roi;
         }
       }
@@ -641,15 +665,15 @@ export default function OmrCameraModal({
         };
       };
 
-      // Ưu tiên thăm dò vùng khung ngắm A4 (giữ độ phân giải cao cho 4 ô vuông góc dù cam 16:9);
-      // nếu chưa thấy đủ, mở rộng quét toàn khung hình.
+      // Ưu tiên thăm dò vùng khung ngắm A4; nếu chưa khóa chuẩn 4 góc (ready),
+      // tự động quét mở rộng toàn khung hình để bắt chuẩn nhanh hơn trên cả webcam ngang 16:9.
       let scaledRes = info.roi
         ? probeRegion(info.srcX + info.roi.rx, info.srcY + info.roi.ry, info.roi.rw, info.roi.rh, info.roi.rx, info.roi.ry)
         : probeRegion(info.srcX, info.srcY, info.srcW, info.srcH, 0, 0);
 
-      if (info.roi && !scaledRes.ready && !scaledRes.detected) {
+      if (info.roi && !scaledRes.ready) {
         const fullRes = probeRegion(info.srcX, info.srcY, info.srcW, info.srcH, 0, 0);
-        if (fullRes.ready || fullRes.detected || (fullRes.hits || 0) > (scaledRes.hits || 0)) {
+        if (fullRes.ready || (!scaledRes.detected && fullRes.detected) || (fullRes.hits || 0) > (scaledRes.hits || 0) + 4) {
           scaledRes = fullRes;
         }
       }
