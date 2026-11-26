@@ -7,10 +7,12 @@
    - Bấm vào banner mở ngay Cộng đồng ELEC / Lớp học tương ứng
    ============================================================================ */
 import { useEffect, useRef, useState } from 'react';
+import { getPushPermission, requestPushPermission } from '../lib/mentionPush.js';
 import '../styles/nav-notifications.css';
 
 export default function GlobalPushBanner() {
   const [banner, setBanner] = useState(null);
+  const [perm, setPerm] = useState(() => getPushPermission());
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -18,9 +20,12 @@ export default function GlobalPushBanner() {
       const detail = e?.detail;
       if (!detail?.title) return;
       clearTimeout(timerRef.current);
+      setPerm(getPushPermission());
       setBanner(detail);
-      timerRef.current = setTimeout(() => setBanner(null), 6500);
+      timerRef.current = setTimeout(() => setBanner(null), 7000);
     };
+
+    const onPerm = (e) => setPerm(e?.detail || getPushPermission());
 
     const onSwMessage = (e) => {
       if (e?.data?.type === 'OPEN_COMMUNITY') {
@@ -33,10 +38,12 @@ export default function GlobalPushBanner() {
     };
 
     window.addEventListener('elec-live-push-banner', onLivePush);
+    window.addEventListener('elec-push-perm-changed', onPerm);
     navigator.serviceWorker?.addEventListener?.('message', onSwMessage);
     return () => {
       clearTimeout(timerRef.current);
       window.removeEventListener('elec-live-push-banner', onLivePush);
+      window.removeEventListener('elec-push-perm-changed', onPerm);
       navigator.serviceWorker?.removeEventListener?.('message', onSwMessage);
     };
   }, []);
@@ -65,6 +72,19 @@ export default function GlobalPushBanner() {
           </div>
           <strong>{banner.title}</strong>
           {banner.body && <p>{banner.body}</p>}
+          {perm === 'default' && (
+            <button
+              type="button"
+              className="epush-banner-optin"
+              onClick={async (e) => {
+                e.stopPropagation();
+                const res = await requestPushPermission();
+                setPerm(res);
+              }}
+            >
+              Bật thông báo đẩy ra màn hình máy →
+            </button>
+          )}
         </div>
         <button
           type="button"

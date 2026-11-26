@@ -189,8 +189,24 @@ export default function NavNotificationPopover({ compact = false }) {
     const unsub = subscribeEveryoneMentions(user?.uid || null, (list) => {
       setMentionAlerts(Array.isArray(list) ? list : []);
     });
-    return () => unsub?.();
+    const onPerm = (e) => setPushPerm(e?.detail || getPushPermission());
+    window.addEventListener('elec-push-perm-changed', onPerm);
+    return () => {
+      unsub?.();
+      window.removeEventListener('elec-push-perm-changed', onPerm);
+    };
   }, [user?.uid]);
+
+  const handleTestPush = () => {
+    fireElecPushNotification({
+      id: `push_test_${Date.now()}`,
+      title: 'Thông báo đẩy ELEC AI đang hoạt động!',
+      body: 'Khi có ai nhắc @mọi người trên Cộng đồng hoặc Lớp học, thông báo sẽ bật lên ngay lập tức.',
+      tag: 'elec-push-test',
+      channel: 'community',
+      force: true,
+    });
+  };
 
   const handleEnablePush = async () => {
     if (enablingPush) return;
@@ -532,7 +548,14 @@ export default function NavNotificationPopover({ compact = false }) {
                   {enablingPush ? 'Đang bật…' : 'Bật đẩy'}
                 </button>
               ) : pushPerm === 'granted' ? (
-                <span className="enotif-push-status">Đang bật</span>
+                <button
+                  type="button"
+                  className="enotif-push-status is-clickable"
+                  onClick={handleTestPush}
+                  title="Bấm để kiểm tra thử thông báo đẩy trên máy"
+                >
+                  Đang bật · Thử
+                </button>
               ) : null}
             </div>
           )}

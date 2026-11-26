@@ -866,5 +866,22 @@ service cloud.firestore {
         || (signedIn() && resource.data.authorUid == request.auth.uid);
     }
 
+    // ===============================================================
+    // 22. COMMUNITY MENTIONS — Thông báo đẩy @mọi người thời gian thực
+    //     • Mọi tài khoản đã đăng nhập đọc & tạo lượt nhắc @mọi người của chính mình
+    //     • Không cho phép sửa; chỉ Admin hoặc chính chủ được xóa
+    // ===============================================================
+    match /communityMentions/{mentionId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 300;
+      allow update: if false;
+      allow delete: if isAdmin()
+        || (signedIn() && resource.data.authorUid == request.auth.uid);
+    }
+
   }
 }
