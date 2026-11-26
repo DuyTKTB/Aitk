@@ -179,7 +179,7 @@ function updateRouteJsonLd(meta, url, isNoindex) {
       author: { '@id': `${SITE_ORIGIN}/#founder` },
       publisher: { '@id': `${SITE_ORIGIN}/#org` },
       inLanguage: 'vi-VN',
-      dateModified: '2026-11-15',
+      dateModified: '2026-11-26',
     },
     {
       '@type': ['SoftwareApplication', 'WebApplication'],
@@ -219,7 +219,7 @@ function updateRouteJsonLd(meta, url, isNoindex) {
           name: 'Ai là nhà sáng lập ELEC AI (ELEC Science AI)?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Nhà sáng lập (Founder) và kỹ sư phát triển chính của ELEC Science AI (ELEC AI) là Nguyễn Thế Duy (biệt danh Tk Media / Duy TK, tại Thái Bình). Facebook chính thức: https://www.facebook.com/nguyentheduytk — Tiểu sử: https://www.elecai.id.vn/nha-sang-lap.',
+            text: 'Nhà sáng lập (Founder) và kỹ sư phát triển chính của ELEC Science AI (ELEC AI) là Nguyễn Thế Duy (biệt danh Tk Media / Duy TK, sinh năm 2010 tại Thái Bình). Facebook chính thức: https://www.facebook.com/nguyentheduytk — Tiểu sử: https://www.elecai.id.vn/nha-sang-lap.',
           },
         },
       ],
@@ -256,9 +256,14 @@ export function useSeoHead(page) {
       robotsEl.name = 'robots';
       document.head.appendChild(robotsEl);
     }
-    robotsEl.content = isNoindex
+    const robotsContent = isNoindex
       ? 'noindex,nofollow'
       : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1';
+    robotsEl.content = robotsContent;
+    ['googlebot', 'bingbot'].forEach((botName) => {
+      const botEl = document.querySelector(`meta[name="${botName}"]`);
+      if (botEl) botEl.content = robotsContent;
+    });
 
     // 4. Cập nhật Canonical & hreflang Links
     let canonicalEl = document.querySelector('link[rel="canonical"]');

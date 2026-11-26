@@ -1,42 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
   <!-- Trang chủ & Landing tổng quan -->
   <url>
     <loc>https://www.elecai.id.vn/</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/og-image.png</image:loc>
+      <image:title>ELEC Science AI — Nền tảng Học &amp; Luyện Thi Khoa Học Tự Nhiên Lý Hóa Sinh</image:title>
+      <image:caption>Hệ sinh thái trợ lý AI giải bài tập từng bước, phòng thi ảo THPTQG &amp; ĐGNL, bảng tuần hoàn 118 nguyên tố IUPAC và lộ trình Elo trên ELEC Science AI.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/logo.png</image:loc>
+      <image:title>Logo chính thức ELEC Science AI (ELEC AI)</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/so_do_kien_truc_tong_the_elec_ai.png</image:loc>
+      <image:title>Sơ đồ kiến trúc tổng thể hệ thống ELEC Science AI</image:title>
+    </image:image>
   </url>
 
   <!-- Tiểu sử Nhà sáng lập ELEC Science AI: Nguyễn Thế Duy (Duy TK / Tk Media) -->
   <url>
     <loc>https://www.elecai.id.vn/nha-sang-lap</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.9</priority>
+    <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/nguyen-the-duy.jpg?v=2</image:loc>
+      <image:title>Nguyễn Thế Duy (Duy TK / Tk Media) — Nhà sáng lập ELEC Science AI</image:title>
+      <image:caption>Chân dung chính thức của Nguyễn Thế Duy (Duy TK / Tk Media, sinh năm 2010 tại Thái Bình) — Nhà sáng lập &amp; Kỹ sư phát triển chính nền tảng ELEC Science AI (elecai.id.vn) và PhotobothNe.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/nguyen-the-duy-tk-media.webp</image:loc>
+      <image:title>Nguyễn Thế Duy (Tk Media) — Nhà sáng lập ELEC Science AI</image:title>
+      <image:caption>Ảnh hoạt động sáng tạo chính thức của Nguyễn Thế Duy (Duy TK / Tk Media, sinh năm 2010 tại Thái Bình).</image:caption>
+    </image:image>
   </url>
 
   <!-- Giới thiệu chi tiết về nền tảng ELEC Science AI (ELEC AI) -->
   <url>
     <loc>https://www.elecai.id.vn/gioi-thieu</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/og-image.png</image:loc>
+      <image:title>Giới thiệu tổng quan ELEC Science AI (ELEC AI)</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/so_do_kien_truc_tong_the_elec_ai.png</image:loc>
+      <image:title>Kiến trúc công nghệ AI &amp; Khảo thí ELEC Science AI</image:title>
+    </image:image>
+  </url>
+
+  <!-- Cộng đồng Hỏi đáp KHTN & Diễn đàn Ôn thi THPTQG -->
+  <url>
+    <loc>https://www.elecai.id.vn/cong-dong</loc>
+    <lastmod>2026-11-26</lastmod>
+    <changefreq>hourly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <!-- Tài liệu ngữ cảnh chuẩn GEO (llms.txt & llms-full.txt) cho AI Search & LLMs -->
   <url>
     <loc>https://www.elecai.id.vn/llms.txt</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
     <loc>https://www.elecai.id.vn/llms-full.txt</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
@@ -44,13 +84,13 @@
   <!-- Chính sách bảo mật & Điều khoản sử dụng -->
   <url>
     <loc>https://www.elecai.id.vn/chinh-sach-bao-mat</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
     <loc>https://www.elecai.id.vn/dieu-khoan-su-dung</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -58,7 +98,7 @@
   <!-- Trợ lý AI giải bài tập KHTN (Vật lí - Hóa học - Sinh học) từng bước -->
   <url>
     <loc>https://www.elecai.id.vn/tro-ly-ai-giai-hoa</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
@@ -66,15 +106,23 @@
   <!-- Phòng thi ảo THPT Quốc Gia & ĐGNL (HSA, TSA, V-ACT) chuẩn cấu trúc Bộ GD&ĐT -->
   <url>
     <loc>https://www.elecai.id.vn/phong-thi-ao</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.95</priority>
+  </url>
+
+  <!-- Phòng thí nghiệm Vật lí ảo lớp 8–12 & Olympiad (7 mô phỏng thời gian thực) -->
+  <url>
+    <loc>https://www.elecai.id.vn/phong-thi-nghiem-vat-li</loc>
+    <lastmod>2026-11-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
   </url>
 
   <!-- Bảng tuần hoàn 118 nguyên tố hóa học tương tác chuẩn IUPAC -->
   <url>
     <loc>https://www.elecai.id.vn/bang-tuan-hoan</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -82,7 +130,7 @@
   <!-- Máy cân bằng phương trình hóa học (PTHH) trực tuyến -->
   <url>
     <loc>https://www.elecai.id.vn/can-bang-phuong-trinh-hoa-hoc</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -90,7 +138,7 @@
   <!-- Lộ trình kiến thức KHTN & ôn thi THPT Quốc gia theo điểm Elo -->
   <url>
     <loc>https://www.elecai.id.vn/lo-trinh-on-thi-thpt-quoc-gia</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
@@ -98,7 +146,7 @@
   <!-- Sổ tay công thức Khoa học Tự nhiên (Vật lí - Hóa học - Sinh học) -->
   <url>
     <loc>https://www.elecai.id.vn/cong-thuc-hoa-hoc</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
@@ -106,7 +154,7 @@
   <!-- Kho tài liệu và công cụ KHTN -->
   <url>
     <loc>https://www.elecai.id.vn/tai-lieu-hoa-hoc</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
@@ -114,7 +162,7 @@
   <!-- Công cụ tính điểm xét tuyển Đại học (A00, A01, B00, D07) -->
   <url>
     <loc>https://www.elecai.id.vn/tinh-diem-xet-tuyen-dai-hoc</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -122,7 +170,7 @@
   <!-- Tra cứu điểm chuẩn Đại học -->
   <url>
     <loc>https://www.elecai.id.vn/tra-cuu-diem-chuan</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -130,7 +178,7 @@
   <!-- Định hướng nghề nghiệp AI (RIASEC) -->
   <url>
     <loc>https://www.elecai.id.vn/dinh-huong-nghe-nghiep</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.75</priority>
   </url>
@@ -138,7 +186,7 @@
   <!-- Trò chơi Khoa học & Phòng thí nghiệm 3D -->
   <url>
     <loc>https://www.elecai.id.vn/tro-choi-khoa-hoc</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -146,7 +194,7 @@
   <!-- AI Doc Studio: Tóm tắt PDF, Flashcard & Quiz tự động -->
   <url>
     <loc>https://www.elecai.id.vn/ai-doc-studio</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
@@ -154,7 +202,7 @@
   <!-- Bảng phấn tương tác KHTN -->
   <url>
     <loc>https://www.elecai.id.vn/bang-phan-tuong-tac</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.75</priority>
   </url>
@@ -162,7 +210,7 @@
   <!-- Luyện tập Quiz KHTN & Ghi nhớ lặp lại ngắt quãng (SRS) -->
   <url>
     <loc>https://www.elecai.id.vn/quiz</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.85</priority>
   </url>
@@ -170,7 +218,7 @@
   <!-- Bảng xếp hạng chuỗi học & thành tích KHTN -->
   <url>
     <loc>https://www.elecai.id.vn/bang-xep-hang</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-26</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.75</priority>
   </url>

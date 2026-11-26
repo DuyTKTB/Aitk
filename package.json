@@ -2,6 +2,18 @@
   "name": "elec-science-ai",
   "private": true,
   "version": "1.0.0",
+  "description": "ELEC Science AI — Nền tảng học tập, trợ lý AI và khảo thí trực tuyến Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) cho THCS & THPT.",
+  "author": {
+    "name": "Nguyễn Thế Duy (Duy TK / Tk Media)",
+    "email": "duyfamabo@gmail.com",
+    "url": "https://www.elecai.id.vn/nha-sang-lap"
+  },
+  "license": "UNLICENSED",
+  "homepage": "https://www.elecai.id.vn/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DuyTKTB/Aitk.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +22,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "import:questions": "node scripts/import-questions.mjs",
-    "zalo:bot": "node scripts/zalo-bot/server.mjs"
+    "zalo:bot": "node scripts/zalo-bot/server.mjs",
+    "copyright:manifest": "node scripts/generate-copyright-manifest.mjs",
+    "copyright:verify": "node scripts/generate-copyright-manifest.mjs --verify",
+    "copyright:cov-dossier": "node scripts/build-cov-dossier.mjs",
+    "seo:ping-indexnow": "node scripts/ping-indexnow.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",

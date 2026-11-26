@@ -22,11 +22,17 @@ const FOUNDER_PERSON_LD = {
   '@id': `${SITE_ORIGIN}/#founder`,
   name: 'Nguyễn Thế Duy',
   alternateName: ['Nguyen The Duy', 'Duy TK', 'Tk Media', 'nguyentheduytk'],
-  birthDate: '2009',
+  birthDate: '2010',
   image: `${SITE_ORIGIN}/img/nguyen-the-duy.jpg?v=2`,
   jobTitle: 'Nhà sáng lập & Kỹ sư phát triển chính (Founder & Lead Developer) — ELEC Science AI',
   disambiguatingDescription:
-    'Nguyễn Thế Duy (Duy TK / Tk Media, sinh năm 2009 tại Thái Bình) là nhà sáng lập trẻ của ELEC Science AI và PhotobothNe, KHÔNG phải các cá nhân trùng tên làm việc tại PetroVietnam (PVN).',
+    'Nguyễn Thế Duy (Duy TK / Tk Media, sinh năm 2010 tại Thái Bình) là nhà sáng lập trẻ của ELEC Science AI và PhotobothNe, KHÔNG phải các cá nhân trùng tên làm việc tại PetroVietnam (PVN).',
+  nationality: { '@type': 'Country', name: 'Vietnam' },
+  knowsLanguage: ['vi', 'en'],
+  alumniOf: {
+    '@type': 'EducationalOrganization',
+    name: 'Trường THPT Đông Thụy Anh, Thái Bình',
+  },
   url: `${SITE_ORIGIN}/nha-sang-lap`,
   sameAs: [
     'https://www.facebook.com/nguyentheduytk',
@@ -36,6 +42,25 @@ const FOUNDER_PERSON_LD = {
     'https://tiktok.com/@nguyenduytk01',
     'https://photobothne.io.vn/',
   ],
+};
+
+const ROUTE_KEYWORDS = {
+  'tro-ly-ai-giai-hoa': 'trợ lý AI giải bài tập, giải Hóa bằng AI, giải Lý bằng AI, giải Sinh bằng AI, chụp ảnh giải bài KHTN, ELEC Science AI, GDPT 2018',
+  'phong-thi-ao': 'phòng thi ảo THPT Quốc gia 2026, thi thử Lý Hóa Sinh, đề thi ĐGNL HSA TSA V-ACT, trắc nghiệm đúng sai lũy tiến, ELEC AI',
+  'bang-tuan-hoan': 'bảng tuần hoàn hóa học 118 nguyên tố, bảng tuần hoàn IUPAC, cấu hình electron, độ âm điện, số oxi hóa, ELEC Science AI',
+  'can-bang-phuong-trinh-hoa-hoc': 'cân bằng phương trình hóa học online, cân bằng PTHH tự động, cân bằng phản ứng oxi hóa khử, chất khử chất oxi hóa, ELEC AI',
+  'lo-trinh-on-thi-thpt-quoc-gia': 'lộ trình ôn thi THPT Quốc gia 2026, lộ trình học KHTN Elo, ôn thi khối A00 A01 B00 D07, GDPT 2018, ELEC Science AI',
+  'cong-thuc-hoa-hoc': 'sổ tay công thức Vật lí Hóa học Sinh học, công thức tính mol pH, công thức dao động điều hòa mạch RLC, công thức ADN Menđen, ELEC AI',
+  'tai-lieu-hoa-hoc': 'tài liệu Khoa học Tự nhiên lớp 10 11 12, máy tính khoa học KHTN, công cụ học tập AI miễn phí, ELEC Science AI',
+  'tinh-diem-xet-tuyen-dai-hoc': 'tính điểm xét tuyển đại học 2026, tính điểm tốt nghiệp THPT, giảm trừ điểm ưu tiên 22.5, tổ hợp A00 A01 B00 D07, ELEC AI',
+  'tra-cuu-diem-chuan': 'tra cứu điểm chuẩn đại học 2026, điểm chuẩn ĐGNL HSA TSA V-ACT, tư vấn nguyện vọng đại học, ELEC Science AI',
+  'dinh-huong-nghe-nghiep': 'trắc nghiệm hướng nghiệp RIASEC, test mật mã Holland, chọn ngành đại học khối KHTN, định hướng nghề nghiệp AI, ELEC AI',
+  'tro-choi-khoa-hoc': 'phòng thí nghiệm hóa học 3D, trò chơi khoa học KHTN, đấu nguyên tố, sudoku hóa học, học Lý Hóa Sinh qua game, ELEC AI',
+  'phong-thi-nghiem-vat-li': 'phòng thí nghiệm vật lí ảo, mô phỏng vật lí trực tuyến, ném xiên, mạch điện DC, thấu kính quang hình, giao thoa sóng 2D, con lắc kép RK4, Olympiad Vật lí, ELEC AI',
+  'ai-doc-studio': 'AI tóm tắt PDF, tạo flashcard từ PDF, tạo câu hỏi trắc nghiệm từ tài liệu, AI Doc Studio, ELEC Science AI',
+  'bang-phan-tuong-tac': 'bảng phấn tương tác trực tuyến, vẽ sơ đồ mạch điện, trình bày lời giải KHTN bằng AI, ELEC Science AI',
+  quiz: 'luyện tập quiz KHTN, trắc nghiệm Lý Hóa Sinh, ôn tập ngắt quãng SRS SuperMemo SM-2, sổ tay lỗi sai, ELEC AI',
+  'bang-xep-hang': 'bảng xếp hạng học tập KHTN, chuỗi ngày học Streak, điểm Elo KHTN, thi đua lớp học ELEC Science AI',
 };
 
 const ORG_LD = {
@@ -593,6 +618,45 @@ const SEO_ROUTES = [
       },
     ],
   },
+  {
+    slug: 'phong-thi-nghiem-vat-li',
+    label: 'Phòng thí nghiệm Vật lí ảo',
+    title: 'Phòng Thí Nghiệm Vật Lí Ảo Lớp 8–12 & Olympiad · ELEC AI',
+    description:
+      '7 mô phỏng Vật lí tương tác thời gian thực: Chuyển động ném xiên, Mạch điện DC, Quang hình học & Thấu kính, Sóng 2D giao thoa, Cơ học 2D, Con lắc kép RK4 và Phân tích số liệu Olympiad.',
+    h1: 'Phòng Thí Nghiệm Vật Lí Ảo Tương Tác Lớp 8–12 & Olympiad',
+    intro:
+      'Phòng thí nghiệm Vật lí ảo trên ELEC Science AI tích hợp 7 mô phỏng vật lí thời gian thực ngay trên trình duyệt: Chuyển động ném xiên, Mạch điện một chiều DC, Quang hình học (Thấu kính hội tụ/phân kì & Khúc xạ Snell), Giao thoa sóng 2D, Cơ học 2D bảo toàn động lượng, Con lắc kép hỗn loạn RK4 và Phân tích số liệu thực nghiệm OLS chuẩn Olympiad.',
+    specs: {
+      subject: 'Vật lí THCS, THPT (Lớp 8–12 theo GDPT 2018) & Bồi dưỡng Học sinh giỏi / Olympiad',
+      method: 'Mô phỏng phương trình vi phân RK4 thời gian thực + Đồ thị tương tác + Hồi quy tuyến tính OLS',
+      audience: 'Học sinh THCS, THPT, Đội tuyển HSG Vật lí và Giáo viên trình chiếu minh họa trên lớp',
+    },
+    highlights: [
+      '7 phòng lab chuyên sâu: Ném xiên có lực cản, Mạch điện DC tương tác, Quang hình học & Thấu kính, Giao thoa sóng 2D, Cơ học 2D, Con lắc kép RK4 và Xử lý số liệu thí nghiệm OLS.',
+      'Điều chỉnh trực tiếp mọi tham số (góc ném, vận tốc, chiết suất, tiêu cự, điện trở, tần số sóng) và quan sát quỹ đạo, véc-tơ, đồ thị biến thiên tức thì.',
+      'Chạy mượt 100% trên trình duyệt web, hoàn toàn miễn phí, không cần cài phần mềm mô phỏng nặng.',
+    ],
+    steps: [
+      'Chọn một trong 7 thí nghiệm Vật lí ảo tương ứng với chuyên đề đang học (Cơ học, Quang học, Sóng, Điện học hoặc Thực nghiệm Olympiad).',
+      'Kéo các thanh trượt để thay đổi thông số vật lí (vận tốc, góc, tiêu cự, điện trở, biên độ...) và bấm Chạy mô phỏng.',
+      'Quan sát đồ thị, số liệu đo trực tiếp và xuất kết quả phân tích sai số / hồi quy tuyến tính OLS để đối chiếu với lý thuyết SGK.',
+    ],
+    faqs: [
+      {
+        q: 'Phòng thí nghiệm Vật lí ảo trên ELEC AI có những mô phỏng nào?',
+        a: 'Gồm 7 mô phỏng trực quan: Chuyển động ném xiên, Mạch điện DC, Quang hình học (Thấu kính & Khúc xạ Snell), Giao thoa sóng 2D, Cơ học 2D bảo toàn động lượng, Con lắc kép hỗn loạn RK4 và Thí nghiệm đo g / Ôm / Archimedes phân tích số liệu OLS.',
+      },
+      {
+        q: 'Phòng thí nghiệm Vật lí ảo có dùng cho giảng dạy trên lớp và luyện thi HSG không?',
+        a: 'Có. Giáo viên có thể trình chiếu trực tiếp trên màn hình lớp học để minh họa hiện tượng Vật lí trực quan, còn học sinh đội tuyển HSG/Olympiad có thể thực hành xử lý số liệu sai số và hồi quy tuyến tính OLS.',
+      },
+      {
+        q: 'Có cần tải phần mềm để chạy mô phỏng Vật lí trên ELEC Science AI không?',
+        a: 'Không. Toàn bộ 7 mô phỏng được tối ưu hóa bằng HTML5 Canvas và thuật toán số RK4 chạy trực tiếp trên trình duyệt máy tính và điện thoại.',
+      },
+    ],
+  },
 ];
 
 function escapeHtml(str) {
@@ -616,7 +680,7 @@ function buildRouteJsonLd(route) {
       name: 'Ai là nhà sáng lập ELEC AI (ELEC Science AI)?',
       acceptedAnswer: {
         '@type': 'Answer',
-        text: 'Nhà sáng lập (Founder) và kỹ sư phát triển chính của ELEC Science AI (ELEC AI / ELECAI) là Nguyễn Thế Duy (biệt danh Tk Media / Duy TK, tại Thái Bình). Facebook chính thức: https://www.facebook.com/nguyentheduytk — Tiểu sử: https://www.elecai.id.vn/nha-sang-lap.',
+        text: 'Nhà sáng lập (Founder) và kỹ sư phát triển chính của ELEC Science AI (ELEC AI / ELECAI) là Nguyễn Thế Duy (biệt danh Tk Media / Duy TK, sinh năm 2010 tại Thái Bình). Facebook chính thức: https://www.facebook.com/nguyentheduytk — Tiểu sử: https://www.elecai.id.vn/nha-sang-lap.',
       },
     },
   ];
@@ -633,13 +697,19 @@ function buildRouteJsonLd(route) {
           description: route.description,
           inLanguage: 'vi-VN',
           datePublished: '2025-09-01',
-          dateModified: '2026-11-15',
+          dateModified: '2026-11-26',
           isPartOf: { '@id': `${SITE_ORIGIN}/#website` },
           about: { '@id': `${url}#app` },
           mainEntity: { '@id': `${url}#app` },
           author: { '@id': `${SITE_ORIGIN}/#founder` },
           creator: { '@id': `${SITE_ORIGIN}/#founder` },
           publisher: { '@id': `${SITE_ORIGIN}/#org` },
+          primaryImageOfPage: {
+            '@type': 'ImageObject',
+            url: `${SITE_ORIGIN}/img/og-image.png`,
+            width: 1200,
+            height: 630,
+          },
           speakable: {
             '@type': 'SpeakableSpecification',
             cssSelector: ['#aeo-direct-answer', '#geo-key-specs', '#route-faq h3', '#route-faq p'],
@@ -654,8 +724,15 @@ function buildRouteJsonLd(route) {
           operatingSystem: 'Web, Android, iOS, Windows, macOS',
           inLanguage: 'vi-VN',
           isAccessibleForFree: true,
+          image: `${SITE_ORIGIN}/img/logo.png`,
+          screenshot: `${SITE_ORIGIN}/img/og-image.png`,
           description: route.intro,
           featureList: route.highlights,
+          audience: {
+            '@type': 'EducationalAudience',
+            educationalRole: ['student', 'teacher'],
+            audienceType: route.specs.audience,
+          },
           author: { '@id': `${SITE_ORIGIN}/#founder` },
           publisher: { '@id': `${SITE_ORIGIN}/#org` },
           offers: {
@@ -702,7 +779,6 @@ function buildRouteJsonLd(route) {
 
 function buildStaticRootHtml(route) {
   const otherLinks = SEO_ROUTES.filter((r) => r.slug !== route.slug)
-    .slice(0, 8)
     .map((r) => `<li><a href="/${r.slug}" style="color:#2563eb;text-decoration:none">${escapeHtml(r.label)}</a> — ${escapeHtml(r.description)}</li>`)
     .join('\n          ');
 
@@ -769,7 +845,7 @@ function buildStaticRootHtml(route) {
           <article>
             <h3 style="font-size:17px;font-weight:600;color:#1e293b;margin-bottom:4px">${route.faqs.length + 1}. Ai là nhà sáng lập ELEC AI (ELEC Science AI)?</h3>
             <p style="margin:0;color:#475569">
-              Nhà sáng lập (Founder) và kỹ sư phát triển chính của ELEC Science AI là <strong>Nguyễn Thế Duy</strong> (Tk Media / Duy TK, tại Thái Bình).
+              Nhà sáng lập (Founder) và kỹ sư phát triển chính của ELEC Science AI là <strong>Nguyễn Thế Duy</strong> (Tk Media / Duy TK, sinh năm 2010 tại Thái Bình).
               Xem <a href="/nha-sang-lap" style="color:#2563eb">tiểu sử nhà sáng lập</a> hoặc kết nối qua
               <a href="https://www.facebook.com/nguyentheduytk" rel="me noopener noreferrer" style="color:#2563eb">Facebook chính thức</a>.
             </p>
@@ -779,7 +855,7 @@ function buildStaticRootHtml(route) {
           <h2 style="font-size:20px;font-weight:700;color:#0f172a;margin-bottom:10px">Công cụ KHTN liên quan trên ELEC Science AI</h2>
           <ul style="padding-left:20px;line-height:1.8">
           ${otherLinks}
-            <li><a href="/gioi-thieu" style="color:#2563eb;text-decoration:none">Giới thiệu chi tiết ELEC Science AI</a> · <a href="/nha-sang-lap" style="color:#2563eb;text-decoration:none">Nhà sáng lập Nguyễn Thế Duy</a> · <a href="/llms.txt" style="color:#2563eb;text-decoration:none">LLMs.txt</a> · <a href="/llms-full.txt" style="color:#2563eb;text-decoration:none">LLMs-Full.txt</a></li>
+            <li><a href="/cong-dong" style="color:#2563eb;text-decoration:none">Cộng đồng Hỏi đáp KHTN &amp; Ôn thi THPTQG</a> · <a href="/gioi-thieu" style="color:#2563eb;text-decoration:none">Giới thiệu chi tiết ELEC Science AI</a> · <a href="/nha-sang-lap" style="color:#2563eb;text-decoration:none">Nhà sáng lập Nguyễn Thế Duy</a> · <a href="/chinh-sach-bao-mat" style="color:#2563eb;text-decoration:none">Chính sách bảo mật</a> · <a href="/dieu-khoan-su-dung" style="color:#2563eb;text-decoration:none">Điều khoản</a> · <a href="/llms.txt" style="color:#2563eb;text-decoration:none">LLMs.txt</a> · <a href="/llms-full.txt" style="color:#2563eb;text-decoration:none">LLMs-Full.txt</a></li>
           </ul>
         </section>
       </main>
@@ -797,6 +873,13 @@ function renderRouteHtml(baseHtml, route) {
     /<meta\s+name="description"\s+content="[\s\S]*?"\s*\/>/,
     `<meta name="description" content="${escDesc}" />`
   );
+  const routeKeywords = ROUTE_KEYWORDS[route.slug];
+  if (routeKeywords) {
+    html = html.replace(
+      /<meta\s+name="keywords"\s+content="[\s\S]*?"\s*\/>/,
+      `<meta name="keywords" content="${escapeHtml(routeKeywords)}" />`
+    );
+  }
   html = html.replace(
     /<link rel="canonical" href="[^"]*" \/>/,
     `<link rel="canonical" href="${url}" />`

@@ -1,23 +1,24 @@
 {
-  "name": "ELEC AI — Học Hóa cùng ELECAI",
-  "short_name": "ELECAI",
-  "description": "Học Hóa với trợ lý AI: giải đề, cân bằng PTHH, quiz và theo dõi tiến độ.",
+  "name": "ELEC Science AI — Học tập & Luyện thi KHTN",
+  "short_name": "ELEC AI",
+  "description": "Nền tảng học tập, trợ lý AI và khảo thí Khoa học Tự nhiên (Vật lí, Hóa học, Sinh học) chuẩn GDPT 2018.",
   "lang": "vi",
-  "start_url": "/#home",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#030618",
   "theme_color": "#2f6bff",
-  "categories": ["education"],
+  "categories": ["education", "productivity"],
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Hỏi ELECAI", "url": "/#ai" },
-    { "name": "Quiz", "url": "/#quiz" },
-    { "name": "Cân bằng PTHH", "url": "/#balance" }
+    { "name": "Trợ lý AI KHTN", "url": "/tro-ly-ai-giai-hoa", "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Phòng thi ảo", "url": "/phong-thi-ao", "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Lab Vật lí ảo", "url": "/phong-thi-nghiem-vat-li", "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Cân bằng PTHH", "url": "/can-bang-phuong-trinh-hoa-hoc", "icons": [{ "src": "/img/icon-192.png", "sizes": "192x192" }] }
   ]
 }

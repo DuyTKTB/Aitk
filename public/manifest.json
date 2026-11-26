@@ -44,16 +44,11 @@
   ],
   "screenshots": [
     {
-      "src": "/img/screenshot-wide.png",
-      "sizes": "1280x720",
+      "src": "/img/og-image.png",
+      "sizes": "1200x630",
       "type": "image/png",
-      "form_factor": "wide"
-    },
-    {
-      "src": "/img/screenshot-mobile.png",
-      "sizes": "720x1280",
-      "type": "image/png",
-      "form_factor": "narrow"
+      "form_factor": "wide",
+      "label": "ELEC Science AI — Nền tảng học & luyện thi Khoa học Tự nhiên"
     }
   ]
 }
