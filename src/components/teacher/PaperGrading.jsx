@@ -22,7 +22,7 @@ import {
 import TeacherVipLock from './TeacherVipLock.jsx';
 import { readSheet, fileToImageData } from '../../lib/omr.js';
 import {
-  measureImageQuality, duplicateSbdIds, duplicateSbdMessage,
+  measureImageQuality, paperRegionFromCorners, IMG_LIMITS, duplicateSbdIds, duplicateSbdMessage,
 } from '../../lib/omrQuality.js';
 import {
   DEFAULT_SCORING, DEFAULT_COUNTS, MAX_COUNTS,
@@ -1370,9 +1370,10 @@ function PaperGrade({
       try {
          const img = await fileToImageData(f);
          await tick();
-         /* Đo chất lượng ảnh TRƯỚC khi đọc: ảnh mờ/lóa vẫn "đọc ra" nhưng dễ sai ô */
-         const imgQ = measureImageQuality(img);
          const r = readSheet(img);
+         /* Đo chất lượng trực tiếp trên vùng tờ giấy A4 đã định vị (bỏ lề bàn tối làm sai lệch độ nét/sáng) */
+         const paperBox = r.ok ? paperRegionFromCorners(img.width, img.height, r.quality?.cornersNorm) : null;
+         const imgQ = measureImageQuality(img, IMG_LIMITS, paperBox);
         if (!r.ok) {
           item = { id, fileName: f.name, url, status: 'error', error: r.error, sbd: '', code: '', read: null, issues: [], needsReview: true };
         } else {

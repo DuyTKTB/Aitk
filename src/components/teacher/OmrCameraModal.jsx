@@ -1,24 +1,37 @@
 /* ============================================================
-   OmrCameraModal.jsx — Camera Chấm Phiếu A4 Theo Đề Chuẩn Bộ GD&ĐT
+   OmrCameraModal.jsx — Camera Chấm Phiếu A4 Chuẩn Studio (Desktop & Mobile)
    ------------------------------------------------------------
    Tính năng:
-   - Khung ngắm A4 hiển thị trực tiếp cấu trúc đề đang chấm (P.I, P.II, P.III).
-   - Nhận dạng vạch định vị thời gian thực (probeSheetAlignment) + vẽ khung AR 4 góc.
+   - Toàn màn hình chuẩn Camera Pro (HUD nổi kính mờ, tối ưu thao tác 1 tay trên điện thoại).
+   - Khung ngắm A4 đồng bộ 100% cấu trúc đề (P.I, P.II, P.III) + chế độ lưới tinh gọn.
+   - Nhận dạng 4 ô định vị góc thời gian thực (probeSheetAlignment) + vẽ khung AR 4 góc.
    - Chế độ Tự Chụp Khi Khóa Chuẩn 4 góc (Auto-Capture) + chống quét trùng liên tiếp.
-   - Quét 2 tầng: toàn khung hình + vùng cắt gọn trong khung ngắm để loại nhiễu bàn.
-   - Chọn camera (sau / doc-cam / webcam), bật Flash/Torch, zoom, khóa Mã đề nhanh.
+   - Quét 2 tầng: vùng cắt gọn trong khung ngắm + toàn khung hình để loại nhiễu bàn.
+   - Chọn camera, bật Flash/Torch, zoom nhanh (1x / 1.5x / 2x), khóa Mã đề, đọc điểm giọng nói.
    ============================================================ */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { probeSheetAlignment, readSheet, TEMPLATE } from '../../lib/omr.js';
-import { IMG_LIMITS, measureImageQuality } from '../../lib/omrQuality.js';
+import { IMG_LIMITS, measureImageQuality, paperRegionFromCorners } from '../../lib/omrQuality.js';
 import { answerKeyFromSheetRead, gradeSheet, maxScore, round2 } from '../../lib/paperGrade.js';
 
-const Svg = ({ size = 16, children }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+const Svg = ({ size = 16, children, className }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    {children}
+  </svg>
 );
-const IcoCamera = (p) => <Svg {...p}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></Svg>;
+
 const IcoX = (p) => <Svg {...p}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></Svg>;
 const IcoRotate = (p) => <Svg {...p}><path d="M21 12a9 9 0 1 1-3-6.7" /><polyline points="21 4 21 10 15 10" /></Svg>;
 const IcoBolt = (p) => <Svg {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></Svg>;
@@ -27,6 +40,10 @@ const IcoCheck = (p) => <Svg {...p}><polyline points="20 6 9 17 4 12" /></Svg>;
 const IcoEdit = (p) => <Svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></Svg>;
 const IcoTrash = (p) => <Svg {...p}><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /></Svg>;
 const IcoVolume = (p) => <Svg {...p}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /></Svg>;
+const IcoSliders = (p) => <Svg {...p}><line x1="4" y1="21" x2="4" y2="14" /><line x1="4" y1="10" x2="4" y2="3" /><line x1="12" y1="21" x2="12" y2="12" /><line x1="12" y1="8" x2="12" y2="3" /><line x1="20" y1="21" x2="20" y2="16" /><line x1="20" y1="12" x2="20" y2="3" /><line x1="2" y1="14" x2="6" y2="14" /><line x1="10" y1="8" x2="14" y2="8" /><line x1="18" y1="16" x2="22" y2="16" /></Svg>;
+const IcoGrid = (p) => <Svg {...p}><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></Svg>;
+const IcoLayers = (p) => <Svg {...p}><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></Svg>;
+const IcoSpark = (p) => <Svg {...p}><path d="M12 3l1.8 4.4L18 9.2l-4.2 1.8L12 15.4l-1.8-4.4L6 9.2l4.2-1.8L12 3z" /></Svg>;
 
 function speakVi(text) {
   if (typeof window === 'undefined' || !window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== 'function') return;
@@ -41,10 +58,9 @@ function speakVi(text) {
 
 const fmt = (n) => (n == null || Number.isNaN(n) ? '—' : String(round2(n)).replace('.', ','));
 
-/** Hình khung ngắm vector đồng bộ 100% với cấu trúc đề đang chấm + 4 ô định vị góc kiểu TNMaker. */
-function ExamViewfinderGuide({ counts, lockedCode, landscape, ready, detected, cornerMatched = {} }) {
-  const accent = ready ? '#10b981' : detected ? '#38bdf8' : 'rgba(255,255,255,0.65)';
-  const dimOpacity = 0.2;
+/** Khung ngắm vector tinh gọn: 4 ô định vị góc sắc nét + lớp lưới đề mờ thoáng (có thể ẩn/hiện). */
+function ExamViewfinderGuide({ counts, lockedCode, landscape, ready, detected, cornerMatched = {}, showGrid = true }) {
+  const accent = ready ? '#10b981' : detected ? '#38bdf8' : 'rgba(255,255,255,0.58)';
   const p1Blocks = [148, 708, 1268, 1828];
 
   return (
@@ -55,113 +71,135 @@ function ExamViewfinderGuide({ counts, lockedCode, landscape, ready, detected, c
       aria-hidden="true"
     >
       <g transform={landscape ? `translate(0, ${TEMPLATE.width}) rotate(-90)` : undefined}>
-      {/* 4 ô vuông định vị góc kiểu TNMaker (khớp 1:1 với 4 ô đen 56x56 trên giấy A4) */}
-      {Object.entries(TEMPLATE.corners).map(([key, [cx, cy]]) => {
-        const isHit = Boolean(ready || cornerMatched?.[key]);
-        const cColor = isHit ? '#10b981' : '#38bdf8';
-        return (
-          <g key={key}>
-            {/* Vòng ngắm vuông ngoài */}
+        {/* 4 ô vuông định vị góc chuẩn giấy A4 (khớp 1:1 với TEMPLATE.corners) */}
+        {Object.entries(TEMPLATE.corners).map(([key, [cx, cy]]) => {
+          const isHit = Boolean(ready || cornerMatched?.[key]);
+          const cColor = isHit ? '#10b981' : 'rgba(255,255,255,0.86)';
+          return (
+            <g key={key}>
+              {/* Vòng định vị ngoài */}
+              <rect
+                x={cx - 62}
+                y={cy - 62}
+                width="124"
+                height="124"
+                rx="18"
+                fill={isHit ? 'rgba(16,185,129,0.22)' : 'rgba(6,10,20,0.42)'}
+                stroke={cColor}
+                strokeWidth="7"
+              />
+              {/* Ô vuông mục tiêu ở tâm */}
+              <rect
+                x={cx - 30}
+                y={cy - 30}
+                width="60"
+                height="60"
+                rx="8"
+                fill={isHit ? '#10b981' : 'rgba(255,255,255,0.16)'}
+                fillOpacity={isHit ? '0.92' : '0.42'}
+                stroke={isHit ? '#d1fae5' : '#ffffff'}
+                strokeWidth="4"
+              />
+            </g>
+          );
+        })}
+
+        {showGrid && (
+          <g opacity="0.62">
+            {/* Khung SBD & Mã đề góc trên phải */}
             <rect
-              x={cx - 64}
-              y={cy - 64}
-              width="128"
-              height="128"
-              rx="14"
-              fill={isHit ? 'rgba(16,185,129,0.22)' : 'rgba(15,23,42,0.52)'}
-              stroke={cColor}
-              strokeWidth="6"
-            />
-            {/* Khung ô đen 56x56 chuẩn giấy đặt lọt vào giữa */}
-            <rect
-              x={cx - 32}
-              y={cy - 32}
-              width="64"
-              height="64"
-              rx="6"
-              fill={isHit ? '#10b981' : 'rgba(255,255,255,0.16)'}
-              fillOpacity={isHit ? '0.9' : '0.45'}
-              stroke="#ffffff"
+              x="1792" y="260" width="298" height="785" rx="14"
+              fill="rgba(255,255,255,0.03)"
+              stroke={accent}
               strokeWidth="4"
+              strokeDasharray="16 12"
             />
-          </g>
-        );
-      })}
-
-      {/* Khung SBD & Mã đề góc trên phải */}
-      <rect x="1792" y="260" width="298" height="785" rx="12" fill="none" stroke={accent} strokeWidth="5" strokeDasharray="16 10" />
-      <text x="1941" y="242" textAnchor="middle" fill="#ffffff" fontSize="34" fontWeight="800">7. SBD</text>
-
-      <rect x="2168" y="260" width="154" height="785" rx="12" fill="rgba(56,189,248,0.12)" stroke={accent} strokeWidth="5" />
-      <text x="2245" y="242" textAnchor="middle" fill="#ffffff" fontSize="32" fontWeight="800">
-        {lockedCode !== 'auto' ? `MÃ ${lockedCode}` : '8. MÃ ĐỀ'}
-      </text>
-
-      {/* PHẦN I theo đúng số câu của đề */}
-      {p1Blocks.map((fx, b) => {
-        const startQ = b * 10 + 1;
-        const activeRows = Math.max(0, Math.min(10, (counts.p1 || 0) - b * 10));
-        const activeH = activeRows > 0 ? 58 + (activeRows / 10) * 618 : 0;
-        return (
-          <g key={b} opacity={activeRows > 0 ? 0.92 : dimOpacity}>
-            <rect x={fx} y="1170" width="470" height="676" rx="10" fill="none" stroke={accent} strokeWidth="4" strokeDasharray="14 10" />
-            {activeRows > 0 && (
-              <rect x={fx} y="1170" width="470" height={activeH} rx="10" fill="rgba(16,185,129,0.12)" stroke="#34d399" strokeWidth="5" />
-            )}
-            <text x={fx + 235} y="1152" textAnchor="middle" fill="#e2e8f0" fontSize="28" fontWeight="800">
-              {activeRows > 0 ? `P.I: Câu ${startQ}–${startQ + activeRows - 1}` : `Khối ${startQ}–${startQ + 9} (trống)`}
+            <text x="1941" y="236" textAnchor="middle" fill="rgba(255,255,255,0.88)" fontSize="34" fontWeight="700">
+              SBD
             </text>
-          </g>
-        );
-      })}
 
-      {/* PHẦN II theo số câu Đúng/Sai của đề */}
-      {p1Blocks.map((fx, b) => {
-        const q1 = b * 2 + 1;
-        const activeInBlock = Math.max(0, Math.min(2, (counts.p2 || 0) - b * 2));
-        return (
-          <g key={`p2-${b}`} opacity={activeInBlock > 0 ? 0.92 : dimOpacity}>
             <rect
-              x={fx}
-              y="1940"
-              width={activeInBlock === 1 ? 235 : 470}
-              height="385"
-              rx="10"
-              fill={activeInBlock > 0 ? 'rgba(56,189,248,0.12)' : 'none'}
-              stroke={activeInBlock > 0 ? '#38bdf8' : accent}
+              x="2168" y="260" width="154" height="785" rx="14"
+              fill="rgba(56,189,248,0.08)"
+              stroke={accent}
               strokeWidth="4"
             />
-            {activeInBlock > 0 && (
-              <text x={fx + 16} y="1928" fill="#bae6fd" fontSize="26" fontWeight="800">
-                P.II C.{q1}{activeInBlock === 2 ? `–${q1 + 1}` : ''}
-              </text>
-            )}
-          </g>
-        );
-      })}
-
-      {/* PHẦN III theo số câu Trả lời ngắn của đề */}
-      {[0, 1, 2, 3, 4, 5].map((k) => {
-        const x = 148 + k * 358;
-        const active = k < (counts.p3 || 0);
-        return (
-          <g key={`p3-${k}`} opacity={active ? 0.92 : dimOpacity}>
-            <rect
-              x={x}
-              y="2424"
-              width="350"
-              height="900"
-              rx="10"
-              fill={active ? 'rgba(245,158,11,0.10)' : 'none'}
-              stroke={active ? '#fbbf24' : accent}
-              strokeWidth="4"
-            />
-            <text x={x + 175} y="2412" textAnchor="middle" fill={active ? '#fde68a' : '#94a3b8'} fontSize="26" fontWeight="800">
-              {active ? `P.III C.${k + 1}` : '—'}
+            <text x="2245" y="236" textAnchor="middle" fill="#bae6fd" fontSize="32" fontWeight="700">
+              {lockedCode !== 'auto' ? `MÃ ${lockedCode}` : 'MÃ ĐỀ'}
             </text>
+
+            {/* PHẦN I: chỉ hiển thị các khối có câu hỏi để màn hình thoáng sạch */}
+            {p1Blocks.map((fx, b) => {
+              const startQ = b * 10 + 1;
+              const activeRows = Math.max(0, Math.min(10, (counts.p1 || 0) - b * 10));
+              if (activeRows <= 0) return null;
+              const activeH = 58 + (activeRows / 10) * 618;
+              return (
+                <g key={b}>
+                  <rect
+                    x={fx} y="1170" width="470" height={activeH} rx="12"
+                    fill="rgba(16,185,129,0.07)"
+                    stroke="#34d399"
+                    strokeWidth="4"
+                    strokeDasharray="14 10"
+                  />
+                  <text x={fx + 235} y="1148" textAnchor="middle" fill="#a7f3d0" fontSize="28" fontWeight="700">
+                    P.I · {startQ}–{startQ + activeRows - 1}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* PHẦN II: chỉ hiển thị các khối có câu Đúng/Sai */}
+            {p1Blocks.map((fx, b) => {
+              const q1 = b * 2 + 1;
+              const activeInBlock = Math.max(0, Math.min(2, (counts.p2 || 0) - b * 2));
+              if (activeInBlock <= 0) return null;
+              return (
+                <g key={`p2-${b}`}>
+                  <rect
+                    x={fx}
+                    y="1940"
+                    width={activeInBlock === 1 ? 235 : 470}
+                    height="385"
+                    rx="12"
+                    fill="rgba(56,189,248,0.07)"
+                    stroke="#38bdf8"
+                    strokeWidth="4"
+                    strokeDasharray="14 10"
+                  />
+                  <text x={fx + 14} y="1922" fill="#bae6fd" fontSize="26" fontWeight="700">
+                    P.II · C.{q1}{activeInBlock === 2 ? `–${q1 + 1}` : ''}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* PHẦN III: chỉ hiển thị các cột có câu Trả lời ngắn */}
+            {[0, 1, 2, 3, 4, 5].map((k) => {
+              if (k >= (counts.p3 || 0)) return null;
+              const x = 148 + k * 358;
+              return (
+                <g key={`p3-${k}`}>
+                  <rect
+                    x={x}
+                    y="2424"
+                    width="350"
+                    height="900"
+                    rx="12"
+                    fill="rgba(251,191,36,0.06)"
+                    stroke="#fbbf24"
+                    strokeWidth="4"
+                    strokeDasharray="14 10"
+                  />
+                  <text x={x + 175} y="2406" textAnchor="middle" fill="#fde68a" fontSize="26" fontWeight="700">
+                    P.III · {k + 1}
+                  </text>
+                </g>
+              );
+            })}
           </g>
-        );
-      })}
+        )}
       </g>
     </svg>
   );
@@ -224,14 +262,22 @@ export default function OmrCameraModal({
   const [landscapeGuide, setLandscapeGuide] = useState(false);
   const [autoCapture, setAutoCapture] = useState(true);
   const [voiceReadback, setVoiceReadback] = useState(false);
+  const [showGuideGrid, setShowGuideGrid] = useState(true);
+  const [showSettingsSheet, setShowSettingsSheet] = useState(false);
   const [lockedCode, setLockedCode] = useState('auto');
   const [probe, setProbe] = useState(null);
   const [lastCapture, setLastCapture] = useState(null);
   const [recentHistory, setRecentHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [flashPulse, setFlashPulse] = useState(false);
 
   const maxPts = useMemo(() => maxScore(counts, scoring), [counts, scoring]);
+  const maxZoom = useMemo(() => (zoomCap ? Math.min(3, zoomCap.max) : 2.2), [zoomCap]);
+  const zoomPresets = useMemo(() => {
+    const base = [1, 1.5, 2];
+    return base.filter((z) => z <= maxZoom + 0.05);
+  }, [maxZoom]);
 
   const stopStream = useCallback(() => {
     if (streamRef.current) {
@@ -271,7 +317,6 @@ export default function OmrCameraModal({
         });
       }
 
-      // Chống rò rỉ đèn camera nếu modal đã đóng hoặc người dùng vừa bấm Đổi Cam trong lúc chờ khởi động
       if (!openRef.current || reqId !== streamReqIdRef.current) {
         stream.getTracks().forEach((t) => t.stop());
         return;
@@ -289,7 +334,6 @@ export default function OmrCameraModal({
         }
         const activeId = track.getSettings?.()?.deviceId;
         if (activeId) setSelectedDeviceId(activeId);
-        // Kích hoạt lấy nét liên tục nếu phần cứng hỗ trợ
         if (Array.isArray(caps.focusMode) && caps.focusMode.includes('continuous')) {
           track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
         }
@@ -327,6 +371,7 @@ export default function OmrCameraModal({
       setLastCapture(null);
       setRecentHistory([]);
       setShowHistory(false);
+      setShowSettingsSheet(false);
       setFeedback(null);
       readyStreakRef.current = 0;
       return;
@@ -334,7 +379,11 @@ export default function OmrCameraModal({
     setLockedCode('auto');
     startStream('');
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose?.();
+      if (e.key === 'Escape') {
+        if (showSettingsSheet) setShowSettingsSheet(false);
+        else if (showHistory) setShowHistory(false);
+        else onClose?.();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => {
@@ -376,7 +425,7 @@ export default function OmrCameraModal({
     if (next) startStream(next.deviceId);
   };
 
-  /** Trích tọa độ vùng ROI trong khung ngắm (có mở rộng nhẹ 7% để không cắt mất vạch đen ở mép). */
+  /** Trích tọa độ vùng ROI trong khung ngắm (có mở rộng nhẹ 10% để không cắt mất vạch đen ở mép). */
   const computeFrameAndRoi = useCallback((video) => {
     const vw = video.videoWidth || 1920;
     const vh = video.videoHeight || 1080;
@@ -441,7 +490,7 @@ export default function OmrCameraModal({
 
     ctx.save();
     ctx.strokeStyle = pRes.ready ? '#10b981' : '#38bdf8';
-    ctx.fillStyle = pRes.ready ? 'rgba(16, 185, 129, 0.12)' : 'rgba(56, 189, 248, 0.08)';
+    ctx.fillStyle = pRes.ready ? 'rgba(16, 185, 129, 0.14)' : 'rgba(56, 189, 248, 0.08)';
     ctx.lineWidth = pRes.ready ? 3.5 : 2.5;
     ctx.beginPath();
     quad.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
@@ -462,6 +511,11 @@ export default function OmrCameraModal({
     ctx.restore();
   }, []);
 
+  const triggerShutterFlash = () => {
+    setFlashPulse(true);
+    setTimeout(() => setFlashPulse(false), 220);
+  };
+
   const captureAndScan = useCallback(async (source = 'manual') => {
     if (busyScanRef.current) return;
     if (mode === 'grade' && !vipUnlocked && omrRemaining <= 0) {
@@ -472,6 +526,7 @@ export default function OmrCameraModal({
     if (!video || video.readyState < 2) return;
 
     busyScanRef.current = true;
+    triggerShutterFlash();
     try {
       const info = computeFrameAndRoi(video);
       const canvas = captureCanvasRef.current || document.createElement('canvas');
@@ -485,7 +540,7 @@ export default function OmrCameraModal({
       let camQ = null;
       let usedCrop = null;
 
-      // Tầng 1 (Ưu tiên): cắt gọn trong khung ngắm A4 để loại bỏ đồ vật trên bàn và giữ 4 ô góc rõ nhất
+      // Tầng 1 (Ưu tiên): cắt gọn trong khung ngắm A4 để loại bỏ đồ vật trên bàn
       if (info.roi) {
         const { rx, ry, rw, rh } = info.roi;
         const roiImg = ctx.getImageData(rx, ry, rw, rh);
@@ -493,24 +548,33 @@ export default function OmrCameraModal({
         if (roiRead.ok) {
           read = roiRead;
           const isLandscapeRoi = rw > rh;
+          const paperBox = paperRegionFromCorners(rw, rh, roiRead.quality?.cornersNorm);
           camQ = measureImageQuality(roiImg, {
             ...IMG_LIMITS,
             minWidth: isLandscapeRoi ? 580 : 460,
             minHeight: isLandscapeRoi ? 460 : 580,
             maxBrightness: 252,
-          });
+            minSharpness: 7.5,
+          }, paperBox);
           usedCrop = info.roi;
         }
       }
 
-      // Tầng 2: Nếu khung ngắm chưa khớp >= 75%, thử thêm toàn khung hình và chọn bản có độ khớp cao hơn
+      // Tầng 2: Nếu khung ngắm chưa khớp >= 75%, thử thêm toàn khung hình và chọn bản tốt hơn
       if (!read || !read.ok || (read.quality?.markFit ?? 0) < 0.75) {
         const fullImg = ctx.getImageData(0, 0, info.srcW, info.srcH);
         const fullRead = readSheet(fullImg);
         const scoreOf = (r) => (r?.ok ? (r.quality?.markFit ?? 0) + (r.quality?.alignment ?? 0) * 0.5 : -1);
         if (!read || scoreOf(fullRead) > scoreOf(read)) {
           read = fullRead;
-          camQ = measureImageQuality(fullImg, { ...IMG_LIMITS, minWidth: 640, minHeight: 480, maxBrightness: 252 });
+          const paperBox = paperRegionFromCorners(info.srcW, info.srcH, fullRead.quality?.cornersNorm);
+          camQ = measureImageQuality(fullImg, {
+            ...IMG_LIMITS,
+            minWidth: 640,
+            minHeight: 480,
+            maxBrightness: 252,
+            minSharpness: 7.5,
+          }, paperBox);
           usedCrop = null;
         }
       }
@@ -519,29 +583,33 @@ export default function OmrCameraModal({
         if (source === 'manual') {
           setFeedback({
             ok: false,
-            msg: read?.error || 'Chưa nhận đủ 4 góc & vạch mép phiếu A4. Hãy đưa phiếu khít khung hơn!',
+            msg: read?.error || 'Chưa nhận đủ 4 ô vuông đen ở 4 góc phiếu A4. Đưa phiếu khít khung hơn!',
           });
         }
         return;
       }
 
-      // Chế độ QUÉT ĐÁP ÁN GỐC (nhập đáp án bằng cách quét tờ tô chuẩn của giáo viên)
+      // Chế độ QUÉT ĐÁP ÁN GỐC
       if (mode === 'key') {
+        if (source === 'auto' && read.quality?.warn) {
+          return;
+        }
         const keyRes = answerKeyFromSheetRead(read, counts);
         const targetCode = keyRes.code || (lockedCode !== 'auto' ? lockedCode : '');
         const resolved = { ...keyRes, code: targetCode };
         cooldownUntilRef.current = Date.now() + 2600;
         readyStreakRef.current = 0;
         setFeedback({
-          ok: true,
-          msg: `Đã đọc Phiếu Đáp Án Gốc${targetCode ? ` (Mã ${targetCode})` : ''}: P.I ${resolved.filledCount.p1} câu · P.II ${resolved.filledCount.p2} câu · P.III ${resolved.filledCount.p3} câu`,
+          ok: !read.quality?.warn,
+          msg: read.quality?.warn
+            ? `Đã đọc Phiếu Đáp Án Gốc nhưng ${read.quality.warn} (P.I ${resolved.filledCount.p1} · P.II ${resolved.filledCount.p2} · P.III ${resolved.filledCount.p3})`
+            : `Đã đọc Phiếu Đáp Án Gốc${targetCode ? ` (Mã ${targetCode})` : ''}: P.I ${resolved.filledCount.p1} · P.II ${resolved.filledCount.p2} · P.III ${resolved.filledCount.p3}`,
         });
         if (voiceReadback) speakVi(`Đã nhận đáp án gốc, phần một ${resolved.filledCount.p1} câu`);
         onKeyCaptured?.(resolved);
         return;
       }
 
-      // Khóa Mã đề nếu giáo viên chọn sẵn trên Camera, hoặc dùng mã đọc từ phiếu
       let finalCode = read.code;
       if (lockedCode !== 'auto' && keys[lockedCode]) {
         finalCode = lockedCode;
@@ -550,7 +618,6 @@ export default function OmrCameraModal({
       }
       const codeKnown = Boolean(keys[finalCode]);
 
-      // Chống tự chụp trùng đúng 1 tờ đang để nguyên trên bàn trong 7 giây
       const sig = `${read.sbd || '?'}|${finalCode || '?'}|${(read.p1 || []).slice(0, 10).join('')}`;
       const now = Date.now();
       if (source === 'auto' && lastSignatureRef.current.sig === sig && now - lastSignatureRef.current.at < 7000) {
@@ -562,7 +629,6 @@ export default function OmrCameraModal({
       cooldownUntilRef.current = now + 2600;
       readyStreakRef.current = 0;
 
-      // Ảnh xem lại: cắt đúng khung nếu chụp thành công từ ROI
       let thumbUrl;
       if (usedCrop) {
         const cropCv = document.createElement('canvas');
@@ -615,8 +681,8 @@ export default function OmrCameraModal({
       setFeedback({
         ok: codeKnown,
         msg: codeKnown
-          ? `Đã chấm (${source === 'auto' ? 'Tự chụp' : 'Thủ công'}) · SBD ${read.sbd || '---'} · Mã ${finalCode} · ${fmt(grade?.score10)} điểm`
-          : `Đã chụp SBD ${read.sbd || '---'} nhưng Mã đề "${read.code || '---'}" chưa có trong bài chấm — cần kiểm tra!`,
+          ? `Đã chấm (${source === 'auto' ? 'Tự chụp' : 'Thủ công'}) · SBD ${read.sbd || '---'} · Mã ${finalCode} · ${fmt(grade?.score10)}đ`
+          : `Đã chụp SBD ${read.sbd || '---'} nhưng Mã đề "${read.code || '---'}" chưa có trong bài chấm!`,
       });
 
       onScanned?.({ item, grade, read, codeKnown });
@@ -643,7 +709,7 @@ export default function OmrCameraModal({
       const pCtx = pCanvas.getContext('2d', { willReadFrequently: true });
 
       const probeRegion = (sx, sy, sw, sh, ox, oy) => {
-        const scale = Math.min(1, 680 / Math.max(sw, sh));
+        const scale = Math.min(1, 820 / Math.max(sw, sh));
         const pw = Math.max(64, Math.round(sw * scale));
         const ph = Math.max(64, Math.round(sh * scale));
         if (pCanvas.width !== pw || pCanvas.height !== ph) {
@@ -652,7 +718,7 @@ export default function OmrCameraModal({
         }
         pCtx.drawImage(video, sx, sy, sw, sh, 0, 0, pw, ph);
         const pImg = pCtx.getImageData(0, 0, pw, ph);
-        const res = probeSheetAlignment(pImg, { detectMaxDim: 680 });
+        const res = probeSheetAlignment(pImg, { detectMaxDim: 820 });
         const invS = 1 / scale;
         return {
           ...res,
@@ -665,8 +731,6 @@ export default function OmrCameraModal({
         };
       };
 
-      // Ưu tiên thăm dò vùng khung ngắm A4; nếu chưa khóa chuẩn 4 góc (ready),
-      // tự động quét mở rộng toàn khung hình để bắt chuẩn nhanh hơn trên cả webcam ngang 16:9.
       let scaledRes = info.roi
         ? probeRegion(info.srcX + info.roi.rx, info.srcY + info.roi.ry, info.roi.rw, info.roi.rh, info.roi.rx, info.roi.ry)
         : probeRegion(info.srcX, info.srcY, info.srcW, info.srcH, 0, 0);
@@ -697,99 +761,25 @@ export default function OmrCameraModal({
 
   if (!open) return null;
 
+  const cornersCount = probe?.cornersCount || 0;
+  const cornerKeys = ['TL', 'TR', 'BL', 'BR'];
+  const statusText = probe?.ready
+    ? (autoCapture ? 'Khóa chuẩn 4 góc — Đang tự chấm…' : 'Khóa chuẩn 4 góc — Bấm chụp ngay!')
+    : (probe?.hint || 'Căn 4 ô vuông đen ở 4 góc phiếu vào 4 ô ngắm');
+
   return (
     <div
-      className="pg-cam-modal animate-pop"
+      className="pg-cam-modal"
       role="dialog"
       aria-modal="true"
       aria-label="Camera chấm phiếu A4 theo đề"
     >
-      {/* Header theo đề thi hiện tại */}
-      <header className="pg-cam-head">
-        <div className="pg-cam-titlebox">
-          <IcoCamera size={21} color={mode === 'key' ? '#f59e0b' : '#38bdf8'} />
-          <div>
-            <strong>
-              {mode === 'key'
-                ? 'QUÉT PHIẾU ĐÁP ÁN MẪU (Tạo đáp án tự động)'
-                : (paper?.title || 'Camera Chấm Phiếu OMR Theo Đề')}
-            </strong>
-            <div className="pg-cam-exam-pills">
-              <span className="pg-cam-pill">Cấu trúc {counts.p1}·{counts.p2}·{counts.p3}</span>
-              {mode === 'grade' && <span className="pg-cam-pill">Thang {fmt(maxPts)}đ</span>}
-              {mode === 'grade' && (
-                <button
-                  type="button"
-                  className="pg-cam-pill ok"
-                  style={{ cursor: 'pointer', border: '1px solid rgba(16,185,129,0.5)' }}
-                  onClick={() => setShowHistory((v) => !v)}
-                  title="Xem nhanh các phiếu vừa quét trong phiên này"
-                >
-                  Đã quét: {scannedCount} phiếu {recentHistory.length > 0 ? (showHistory ? '▲' : '▼') : ''}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="pg-cam-head-tools">
-          {mode === 'grade' && codeList.length > 0 && (
-            <label className="pg-cam-code-select">
-              <span>Mã đề:</span>
-              <select value={lockedCode} onChange={(e) => setLockedCode(e.target.value)}>
-                <option value="auto">Tự đọc từ phiếu ({codeList.join(', ')})</option>
-                {codeList.map((c) => (
-                  <option key={c} value={c}>Khóa cố định Mã {c}</option>
-                ))}
-              </select>
-            </label>
-          )}
-
-          {devices.length > 1 && (
-            <button type="button" className="pg-cam-toolbtn" onClick={handleCycleCamera} title="Đổi camera (Trước / Sau / Webcam)">
-              <IcoSwitch size={15} /> Đổi Cam
-            </button>
-          )}
-          {torchSupported && (
-            <button type="button" className={'pg-cam-toolbtn' + (torchOn ? ' on' : '')} onClick={handleToggleTorch} title="Bật / tắt đèn Flash">
-              <IcoBolt size={15} /> {torchOn ? 'Tắt Đèn' : 'Đèn'}
-            </button>
-          )}
-          <button
-            type="button"
-            className={'pg-cam-toolbtn' + (landscapeGuide ? ' on' : '')}
-            onClick={() => setLandscapeGuide((v) => !v)}
-            title="Xoay khung ngắm A4 Đứng / Ngang"
-          >
-            <IcoRotate size={15} /> {landscapeGuide ? 'A4 Ngang' : 'A4 Đứng'}
-          </button>
-          <button
-            type="button"
-            className={'pg-cam-toolbtn' + (voiceReadback ? ' on' : '')}
-            onClick={() => setVoiceReadback((v) => !v)}
-            title="Đọc to điểm số bằng giọng nói tiếng Việt sau mỗi bài chấm"
-          >
-            <IcoVolume size={15} /> {voiceReadback ? 'Đọc điểm: BẬT' : 'Đọc điểm'}
-          </button>
-          <button
-            type="button"
-            className={'pg-cam-toolbtn' + (autoCapture ? ' on' : '')}
-            onClick={() => setAutoCapture((v) => !v)}
-            title="Tự động chụp & chấm ngay khi 4 góc A4 khớp chuẩn"
-          >
-            <IcoCheck size={15} /> {autoCapture ? 'Tự chụp: BẬT' : 'Tự chụp: TẮT'}
-          </button>
-          <button type="button" className="vt-btn sm" onClick={onClose}>
-            Đóng <IcoX size={13} />
-          </button>
-        </div>
-      </header>
-
-      {/* Thân Camera + Khung A4 theo đề + AR Overlay */}
+      {/* Toàn màn hình Camera + AR Overlay */}
       <div className="pg-cam-body">
         {loading && (
           <div className="pg-cam-loading">
-            Đang khởi động camera độ phân giải cao…
+            <span className="pg-cam-spinner" aria-hidden="true" />
+            <span>Đang khởi động camera…</span>
           </div>
         )}
 
@@ -804,20 +794,155 @@ export default function OmrCameraModal({
             autoPlay
             muted
           />
-          {/* Canvas vẽ 4 góc định vị & tứ giác nhận dạng thời gian thực */}
           <canvas ref={overlayCanvasRef} className="pg-cam-ar-canvas" />
         </div>
 
-        {/* Thanh trạng thái căn chỉnh trực tiếp phía trên khung ngắm */}
-        <div className={'pg-cam-status' + (probe?.ready ? ' ready' : probe?.detected ? ' warn' : '')}>
-          <span className="pg-cam-dot" />
-          <span>{probe?.hint || 'Đưa 4 ô vuông đen ở 4 góc phiếu khít vào 4 ô ngắm…'}</span>
-          {probe && (
-            <strong className="pg-cam-fit">{probe.cornersCount || 0}/4 ô góc · {probe.hits}/{probe.totalMarks}</strong>
-          )}
+        {flashPulse && <div className="pg-cam-flash" aria-hidden="true" />}
+
+        {/* ===== TOP FLOATING GLASS BAR ===== */}
+        <header className="pg-cam-head">
+          <div className="pg-cam-head-left">
+            <button
+              type="button"
+              className="pg-cam-iconbtn is-close"
+              onClick={onClose}
+              aria-label="Đóng camera"
+              title="Đóng (Esc)"
+            >
+              <IcoX size={18} />
+            </button>
+
+            <div className="pg-cam-titlebox">
+              <strong>
+                {mode === 'key'
+                  ? 'Quét phiếu đáp án mẫu'
+                  : (paper?.title || 'Camera chấm phiếu A4')}
+              </strong>
+              <div className="pg-cam-meta-line">
+                <span>{counts.p1}·{counts.p2}·{counts.p3}</span>
+                {mode === 'grade' && (
+                  <>
+                    <i aria-hidden="true">•</i>
+                    <span>Thang {fmt(maxPts)}đ</span>
+                  </>
+                )}
+                {mode === 'grade' && lockedCode !== 'auto' && (
+                  <>
+                    <i aria-hidden="true">•</i>
+                    <span className="pg-cam-meta-accent">Mã {lockedCode}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="pg-cam-head-right">
+            {/* Bộ công cụ nhanh trên Desktop (ẩn trên mobile nhỏ để gom vào bảng Cài đặt) */}
+            <div className="pg-cam-desktop-tools">
+              {mode === 'grade' && codeList.length > 0 && (
+                <label className="pg-cam-code-select" title="Chọn hoặc tự động đọc Mã đề">
+                  <span>Mã đề</span>
+                  <select value={lockedCode} onChange={(e) => setLockedCode(e.target.value)}>
+                    <option value="auto">Tự đọc ({codeList.join(', ')})</option>
+                    {codeList.map((c) => (
+                      <option key={c} value={c}>Khóa mã {c}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              <button
+                type="button"
+                className={'pg-cam-chipbtn' + (showGuideGrid ? ' on' : '')}
+                onClick={() => setShowGuideGrid((v) => !v)}
+                title="Bật / tắt lưới cấu trúc đề trên khung ngắm"
+              >
+                <IcoGrid size={14} />
+                <span>Lưới</span>
+              </button>
+
+              <button
+                type="button"
+                className={'pg-cam-chipbtn' + (landscapeGuide ? ' on' : '')}
+                onClick={() => setLandscapeGuide((v) => !v)}
+                title="Xoay khung ngắm A4 Đứng / Ngang"
+              >
+                <IcoRotate size={14} />
+                <span>{landscapeGuide ? 'A4 Ngang' : 'A4 Đứng'}</span>
+              </button>
+
+              <button
+                type="button"
+                className={'pg-cam-chipbtn' + (voiceReadback ? ' on' : '')}
+                onClick={() => setVoiceReadback((v) => !v)}
+                title="Đọc to điểm số bằng giọng nói tiếng Việt"
+              >
+                <IcoVolume size={14} />
+                <span>Đọc điểm</span>
+              </button>
+            </div>
+
+            {torchSupported && (
+              <button
+                type="button"
+                className={'pg-cam-iconbtn' + (torchOn ? ' is-warn' : '')}
+                onClick={handleToggleTorch}
+                title={torchOn ? 'Tắt đèn Flash' : 'Bật đèn Flash'}
+                aria-label="Đèn Flash"
+              >
+                <IcoBolt size={17} />
+              </button>
+            )}
+
+            {mode === 'grade' && (
+              <button
+                type="button"
+                className={'pg-cam-count-pill' + (showHistory ? ' is-open' : '')}
+                onClick={() => {
+                  setShowSettingsSheet(false);
+                  setShowHistory((v) => !v);
+                }}
+                title="Xem các phiếu đã quét trong phiên này"
+              >
+                <IcoLayers size={14} />
+                <span>{scannedCount}</span>
+                <em className="pg-cam-count-word">phiếu</em>
+              </button>
+            )}
+
+            {/* Nút mở Bảng Cài Đặt Nhanh trên Mobile */}
+            <button
+              type="button"
+              className={'pg-cam-iconbtn pg-cam-mobile-only' + (showSettingsSheet ? ' is-active' : '')}
+              onClick={() => {
+                setShowHistory(false);
+                setShowSettingsSheet((v) => !v);
+              }}
+              aria-label="Tùy chỉnh camera"
+              title="Tùy chỉnh camera"
+            >
+              <IcoSliders size={17} />
+            </button>
+          </div>
+        </header>
+
+        {/* ===== DYNAMIC ISLAND STATUS PILL ===== */}
+        <div className="pg-cam-status-row">
+          <div className={'pg-cam-status' + (probe?.ready ? ' ready' : probe?.detected ? ' warn' : '')}>
+            <div className="pg-cam-corner-leds" aria-label={`Đã khóa ${cornersCount}/4 góc`}>
+              {cornerKeys.map((k) => {
+                const hit = Boolean(probe?.ready || probe?.cornerMatched?.[k]);
+                return <i key={k} className={hit ? 'hit' : ''} />;
+              })}
+            </div>
+            <span className="pg-cam-status-text">{statusText}</span>
+            {probe && (
+              <strong className="pg-cam-fit">{cornersCount}/4</strong>
+            )}
+          </div>
         </div>
 
-        {/* Khung ngắm A4 khớp tỷ lệ đề thi + 4 ô định vị góc TNMaker (không bị thanh trên/dưới che) */}
+        {/* ===== KHUNG NGẮM A4 TRUNG TÂM ===== */}
         <div className="pg-cam-vf-wrap">
           <div
             ref={viewfinderRef}
@@ -830,6 +955,7 @@ export default function OmrCameraModal({
               ready={Boolean(probe?.ready)}
               detected={Boolean(probe?.detected)}
               cornerMatched={probe?.cornerMatched}
+              showGrid={showGuideGrid}
             />
             <div className={'pg-cam-corner tl' + (probe?.ready || probe?.cornerMatched?.[landscapeGuide ? 'TR' : 'TL'] ? ' hit' : '')} />
             <div className={'pg-cam-corner tr' + (probe?.ready || probe?.cornerMatched?.[landscapeGuide ? 'BR' : 'TR'] ? ' hit' : '')} />
@@ -839,124 +965,318 @@ export default function OmrCameraModal({
           </div>
         </div>
 
-        {/* Điều khiển đáy: Zoom & Chụp thủ công */}
-        <div className="pg-cam-hud">
-          <label className="pg-cam-zoom" title="Phóng to khung hình">
-            <span>{zoom.toFixed(1)}×</span>
-            <input
-              type="range"
-              min="1"
-              max={zoomCap ? Math.min(3, zoomCap.max).toFixed(1) : '2.2'}
-              step="0.1"
-              value={zoom}
-              onChange={(e) => handleZoomChange(e.target.value)}
-            />
-          </label>
+        {/* ===== THẺ KẾT QUẢ / FEEDBACK NỔI GỌN TRÊN THANH CHỤP ===== */}
+        {(lastCapture || feedback) && !showSettingsSheet && !showHistory && (
+          <div className="pg-cam-toast-stack">
+            {lastCapture && (
+              <div className={'pg-cam-result-card' + (!lastCapture.codeKnown || lastCapture.needsReview ? ' warn' : '')}>
+                <div className="pg-cam-result-top">
+                  <div className="pg-cam-res-score">
+                    <strong>{lastCapture.grade ? fmt(lastCapture.grade.score10) : '—'}</strong>
+                    <small>/10</small>
+                  </div>
 
-          <button
-            type="button"
-            className={'pg-cam-shutter' + (probe?.ready ? ' ready' : '')}
-            onClick={() => captureAndScan('manual')}
-          >
-            <IcoCamera size={18} />
-            <span>{probe?.ready ? 'Chụp & Chấm Chuẩn' : 'Chụp Thủ Công'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Thẻ Kết Quả Tức Thì Theo Từng Phần Của Đề */}
-      {(lastCapture || feedback) && (
-        <div className="pg-cam-footer">
-          {lastCapture && (
-            <div className={'pg-cam-result-card' + (!lastCapture.codeKnown || lastCapture.needsReview ? ' warn' : '')}>
-              <div className="pg-cam-result-main">
-                <div>
-                  <span className="pg-cam-res-label">SBD {lastCapture.sbd || '---'} · Mã {lastCapture.code || '---'}</span>
-                  <b>{lastCapture.studentName || 'Thí sinh chưa có trong danh sách lớp'}</b>
-                </div>
-                <div className="pg-cam-res-score">
-                  <strong>{lastCapture.grade ? fmt(lastCapture.grade.score10) : '—'}</strong>
-                  <small>/ 10đ</small>
-                </div>
-              </div>
-
-              {lastCapture.grade && (
-                <div className="pg-cam-res-parts">
-                  {counts.p1 > 0 && (
-                    <span>P.I: <b>{lastCapture.grade.correct.p1}/{counts.p1}</b> ({fmt(lastCapture.grade.parts.p1)}đ)</span>
-                  )}
-                  {counts.p2 > 0 && (
-                    <span>P.II: <b>{fmt(lastCapture.grade.parts.p2)}đ</b></span>
-                  )}
-                  {counts.p3 > 0 && (
-                    <span>P.III: <b>{lastCapture.grade.correct.p3}/{counts.p3}</b> ({fmt(lastCapture.grade.parts.p3)}đ)</span>
-                  )}
-                  <span>Khớp vạch: <b>{Math.round((lastCapture.markFit || 0) * 100)}%</b></span>
-                  {lastCapture.p1Dots?.length > 0 && (
-                    <span className="pg-cam-dots" title="Chi tiết từng câu Phần I (Xanh = Đúng · Đỏ = Sai)">
-                      {lastCapture.p1Dots.map((d) => (
-                        <i key={d.q} className={d.ok ? 'ok' : 'bad'}>{d.q}</i>
-                      ))}
+                  <div className="pg-cam-res-info">
+                    <span className="pg-cam-res-label">
+                      SBD {lastCapture.sbd || '---'} · Mã {lastCapture.code || '---'}
                     </span>
-                  )}
-                </div>
-              )}
+                    <b>{lastCapture.studentName || 'Thí sinh chưa có trong danh sách lớp'}</b>
+                  </div>
 
-              <div className="pg-cam-res-actions">
-                <button
-                  type="button"
-                  className="vt-btn sm"
-                  onClick={() => {
-                    const id = lastCapture.id;
-                    onClose?.();
-                    onEditItem?.(id);
-                  }}
-                >
-                  <IcoEdit size={13} /> Xem &amp; Sửa ô
-                </button>
-                <button
-                  type="button"
-                  className="vt-btn sm danger"
-                  onClick={() => {
-                    onRemoveItem?.(lastCapture.id);
-                    setRecentHistory((cur) => cur.filter((x) => x.id !== lastCapture.id));
-                    setLastCapture(null);
-                    cooldownUntilRef.current = Date.now() + 800;
-                    lastSignatureRef.current = { sig: '', at: 0 };
-                    setFeedback({ ok: true, msg: 'Đã hủy phiếu vừa chụp — mời đặt lại phiếu vào khung.' });
-                  }}
-                >
-                  <IcoTrash size={13} /> Chụp lại
-                </button>
-              </div>
-            </div>
-          )}
-
-          {showHistory && recentHistory.length > 0 && (
-            <div className="pg-cam-history">
-              {recentHistory.map((h) => (
-                <div key={h.id} className="pg-cam-hist-chip">
-                  <span>{h.studentName || `SBD ${h.sbd || '---'}`} · Mã {h.code || '—'}</span>
-                  <b>{h.grade ? `${fmt(h.grade.score10)}đ` : '—'}</b>
                   <button
                     type="button"
-                    onClick={() => { onClose?.(); onEditItem?.(h.id); }}
-                    title="Mở chi tiết phiếu này"
+                    className="pg-cam-res-dismiss"
+                    aria-label="Ẩn thẻ điểm"
+                    onClick={() => setLastCapture(null)}
                   >
-                    Sửa
+                    <IcoX size={14} />
                   </button>
                 </div>
-              ))}
-            </div>
-          )}
 
-          {feedback && (
-            <div className={'pg-cam-feedback ' + (feedback.ok ? 'ok' : 'bad')}>
-              {feedback.msg}
+                {lastCapture.grade && (
+                  <div className="pg-cam-res-parts">
+                    {counts.p1 > 0 && (
+                      <span>P.I <b>{lastCapture.grade.correct.p1}/{counts.p1}</b></span>
+                    )}
+                    {counts.p2 > 0 && (
+                      <span>P.II <b>{fmt(lastCapture.grade.parts.p2)}đ</b></span>
+                    )}
+                    {counts.p3 > 0 && (
+                      <span>P.III <b>{lastCapture.grade.correct.p3}/{counts.p3}</b></span>
+                    )}
+                    <span>Khớp <b>{Math.round((lastCapture.markFit || 0) * 100)}%</b></span>
+                  </div>
+                )}
+
+                <div className="pg-cam-res-actions">
+                  <button
+                    type="button"
+                    className="pg-cam-res-btn primary"
+                    onClick={() => {
+                      const id = lastCapture.id;
+                      onClose?.();
+                      onEditItem?.(id);
+                    }}
+                  >
+                    <IcoEdit size={13} /> Xem &amp; Sửa ô
+                  </button>
+                  <button
+                    type="button"
+                    className="pg-cam-res-btn danger"
+                    onClick={() => {
+                      onRemoveItem?.(lastCapture.id);
+                      setRecentHistory((cur) => cur.filter((x) => x.id !== lastCapture.id));
+                      setLastCapture(null);
+                      cooldownUntilRef.current = Date.now() + 800;
+                      lastSignatureRef.current = { sig: '', at: 0 };
+                      setFeedback({ ok: true, msg: 'Đã hủy phiếu vừa chụp — mời đặt lại phiếu vào khung.' });
+                    }}
+                  >
+                    <IcoTrash size={13} /> Chụp lại
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {feedback && !lastCapture && (
+              <div className={'pg-cam-feedback ' + (feedback.ok ? 'ok' : 'bad')}>
+                <span>{feedback.msg}</span>
+                <button
+                  type="button"
+                  className="pg-cam-fb-close"
+                  aria-label="Đóng thông báo"
+                  onClick={() => setFeedback(null)}
+                >
+                  <IcoX size={12} />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===== BOTTOM CAMERA DOCK (PRO SHUTTER + ZOOM PRESETS) ===== */}
+        <div className="pg-cam-dock">
+          {/* Hàng Zoom nhanh 1× · 1.5× · 2× + thanh trượt mịn trên Desktop */}
+          <div className="pg-cam-zoom-bar">
+            <div className="pg-cam-zoom-pills" role="group" aria-label="Mức phóng đại">
+              {zoomPresets.map((z) => {
+                const active = Math.abs(zoom - z) < 0.12;
+                return (
+                  <button
+                    key={z}
+                    type="button"
+                    className={'pg-cam-zpill' + (active ? ' is-active' : '')}
+                    onClick={() => handleZoomChange(z)}
+                  >
+                    {z === 1 ? '1×' : `${z}×`}
+                  </button>
+                );
+              })}
             </div>
-          )}
+            <label className="pg-cam-zoom-slider" title="Chỉnh mức thu phóng chi tiết">
+              <input
+                type="range"
+                min="1"
+                max={maxZoom.toFixed(1)}
+                step="0.1"
+                value={zoom}
+                onChange={(e) => handleZoomChange(e.target.value)}
+              />
+              <span>{zoom.toFixed(1)}×</span>
+            </label>
+          </div>
+
+          {/* Hàng Shutter chính: [Tự chụp] — [NÚT CHỤP TRÒN PRO] — [Đổi Cam / Xoay A4] */}
+          <div className="pg-cam-shutter-row">
+            <div className="pg-cam-dock-side is-left">
+              <button
+                type="button"
+                className={'pg-cam-auto-pill' + (autoCapture ? ' on' : '')}
+                onClick={() => setAutoCapture((v) => !v)}
+                title="Tự động chụp & chấm ngay khi khóa đủ 4 góc phiếu"
+              >
+                <span className="pg-cam-auto-dot" aria-hidden="true" />
+                <IcoSpark size={14} />
+                <span>{autoCapture ? 'Tự chụp' : 'Thủ công'}</span>
+              </button>
+            </div>
+
+            <div className="pg-cam-shutter-center">
+              <button
+                type="button"
+                className={'pg-cam-shutter-ring' + (probe?.ready ? ' ready' : '')}
+                onClick={() => captureAndScan('manual')}
+                aria-label={probe?.ready ? 'Chụp và chấm chuẩn ngay' : 'Chụp thủ công'}
+                title={probe?.ready ? 'Chụp & Chấm chuẩn' : 'Chụp thủ công'}
+              >
+                <span className="pg-cam-shutter-core">
+                  {probe?.ready && <IcoCheck size={24} />}
+                </span>
+              </button>
+              <span className={'pg-cam-shutter-cap' + (probe?.ready ? ' ready' : '')}>
+                {probe?.ready ? 'Chụp & chấm' : 'Chụp tay'}
+              </span>
+            </div>
+
+            <div className="pg-cam-dock-side is-right">
+              {devices.length > 1 ? (
+                <button
+                  type="button"
+                  className="pg-cam-circle-act"
+                  onClick={handleCycleCamera}
+                  title="Đổi camera (Trước / Sau / Webcam)"
+                  aria-label="Đổi camera"
+                >
+                  <IcoSwitch size={19} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={'pg-cam-circle-act' + (landscapeGuide ? ' on' : '')}
+                  onClick={() => setLandscapeGuide((v) => !v)}
+                  title="Xoay khung ngắm A4 Đứng / Ngang"
+                  aria-label="Xoay khung ngắm A4"
+                >
+                  <IcoRotate size={18} />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* ===== MOBILE / QUICK SETTINGS BOTTOM SHEET ===== */}
+        {showSettingsSheet && (
+          <div className="pg-cam-sheet-backdrop" onClick={() => setShowSettingsSheet(false)}>
+            <div className="pg-cam-sheet" onClick={(e) => e.stopPropagation()}>
+              <div className="pg-cam-sheet-grip" />
+              <div className="pg-cam-sheet-head">
+                <strong>Tùy chỉnh Camera chấm phiếu</strong>
+                <button type="button" className="pg-cam-iconbtn sm" onClick={() => setShowSettingsSheet(false)} aria-label="Đóng">
+                  <IcoX size={16} />
+                </button>
+              </div>
+
+              <div className="pg-cam-sheet-body">
+                {mode === 'grade' && codeList.length > 0 && (
+                  <div className="pg-cam-sheet-row">
+                    <div>
+                      <b>Mã đề áp dụng</b>
+                      <small>Tự động đọc trên phiếu hoặc khóa cố định 1 mã</small>
+                    </div>
+                    <select
+                      className="pg-cam-sheet-select"
+                      value={lockedCode}
+                      onChange={(e) => setLockedCode(e.target.value)}
+                    >
+                      <option value="auto">Tự đọc ({codeList.join(', ')})</option>
+                      {codeList.map((c) => (
+                        <option key={c} value={c}>Khóa mã {c}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="pg-cam-sheet-row">
+                  <div>
+                    <b>Hướng khung ngắm A4</b>
+                    <small>Chọn theo chiều đặt tờ giấy trên bàn</small>
+                  </div>
+                  <div className="pg-cam-seg">
+                    <button type="button" className={!landscapeGuide ? 'on' : ''} onClick={() => setLandscapeGuide(false)}>A4 Đứng</button>
+                    <button type="button" className={landscapeGuide ? 'on' : ''} onClick={() => setLandscapeGuide(true)}>A4 Ngang</button>
+                  </div>
+                </div>
+
+                <div className="pg-cam-sheet-row">
+                  <div>
+                    <b>Lưới cấu trúc đề</b>
+                    <small>Hiển thị vùng SBD, Mã đề và P.I–P.III</small>
+                  </div>
+                  <button
+                    type="button"
+                    className={'pg-cam-switch' + (showGuideGrid ? ' on' : '')}
+                    onClick={() => setShowGuideGrid((v) => !v)}
+                    aria-pressed={showGuideGrid}
+                  >
+                    <span />
+                  </button>
+                </div>
+
+                <div className="pg-cam-sheet-row">
+                  <div>
+                    <b>Đọc điểm bằng giọng nói</b>
+                    <small>Phát loa tiếng Việt ngay sau mỗi bài chấm</small>
+                  </div>
+                  <button
+                    type="button"
+                    className={'pg-cam-switch' + (voiceReadback ? ' on' : '')}
+                    onClick={() => setVoiceReadback((v) => !v)}
+                    aria-pressed={voiceReadback}
+                  >
+                    <span />
+                  </button>
+                </div>
+
+                {devices.length > 1 && (
+                  <button
+                    type="button"
+                    className="pg-cam-sheet-fullbtn"
+                    onClick={() => {
+                      handleCycleCamera();
+                      setShowSettingsSheet(false);
+                    }}
+                  >
+                    <IcoSwitch size={16} /> Chuyển đổi ống kính camera
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== SESSION HISTORY SHEET ===== */}
+        {showHistory && (
+          <div className="pg-cam-sheet-backdrop" onClick={() => setShowHistory(false)}>
+            <div className="pg-cam-sheet" onClick={(e) => e.stopPropagation()}>
+              <div className="pg-cam-sheet-grip" />
+              <div className="pg-cam-sheet-head">
+                <strong>Phiếu đã quét phiên này ({recentHistory.length})</strong>
+                <button type="button" className="pg-cam-iconbtn sm" onClick={() => setShowHistory(false)} aria-label="Đóng">
+                  <IcoX size={16} />
+                </button>
+              </div>
+              <div className="pg-cam-sheet-body">
+                {recentHistory.length === 0 ? (
+                  <p className="pg-cam-sheet-empty">
+                    Chưa có phiếu nào được quét trong phiên này. Đưa 4 góc đen phiếu A4 vào khung để bắt đầu chấm.
+                  </p>
+                ) : (
+                  <div className="pg-cam-history-list">
+                    {recentHistory.map((h) => (
+                      <div key={h.id} className="pg-cam-hist-row">
+                        <div className="pg-cam-hist-meta">
+                          <b>{h.studentName || `SBD ${h.sbd || '---'}`}</b>
+                          <small>SBD {h.sbd || '---'} · Mã {h.code || '—'}</small>
+                        </div>
+                        <span className={'pg-cam-hist-score' + (!h.codeKnown || h.needsReview ? ' warn' : '')}>
+                          {h.grade ? `${fmt(h.grade.score10)}đ` : '—'}
+                        </span>
+                        <button
+                          type="button"
+                          className="pg-cam-hist-edit"
+                          onClick={() => { onClose?.(); onEditItem?.(h.id); }}
+                        >
+                          Sửa
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

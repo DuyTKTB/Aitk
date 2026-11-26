@@ -32,7 +32,7 @@ function luma(r, g, b) {
  * Đo chất lượng từ ImageData (hoặc object cùng hình dạng {width,height,data}).
  * Trả về số liệu + danh sách vấn đề bằng tiếng Việt để hiện cho người dùng.
  */
-export function measureImageQuality(imageData, limits = IMG_LIMITS) {
+export function measureImageQuality(imageData, limits = IMG_LIMITS, region = null) {
   const width = Number(imageData?.width) || 0;
   const height = Number(imageData?.height) || 0;
   const data = imageData?.data;
@@ -44,11 +44,24 @@ export function measureImageQuality(imageData, limits = IMG_LIMITS) {
     };
   }
 
-  const stepX = Math.max(1, Math.ceil(width / SAMPLE_MAX));
-  const stepY = Math.max(1, Math.ceil(height / SAMPLE_MAX));
+  let rx0 = 0;
+  let ry0 = 0;
+  let rw = width;
+  let rh = height;
+  if (region && Number.isFinite(region.x) && Number.isFinite(region.y)
+    && Number.isFinite(region.w) && Number.isFinite(region.h)
+    && region.w >= 64 && region.h >= 64) {
+    rx0 = Math.max(0, Math.min(width - 2, Math.floor(region.x)));
+    ry0 = Math.max(0, Math.min(height - 2, Math.floor(region.y)));
+    rw = Math.max(2, Math.min(width - rx0, Math.ceil(region.w)));
+    rh = Math.max(2, Math.min(height - ry0, Math.ceil(region.h)));
+  }
 
-  const cols = Math.floor((width - 1) / stepX) + 1;
-  const rows = Math.floor((height - 1) / stepY) + 1;
+  const stepX = Math.max(1, Math.ceil(rw / SAMPLE_MAX));
+  const stepY = Math.max(1, Math.ceil(rh / SAMPLE_MAX));
+
+  const cols = Math.floor((rw - 1) / stepX) + 1;
+  const rows = Math.floor((rh - 1) / stepY) + 1;
   const grid = new Float32Array(cols * rows);
 
   let sum = 0;
@@ -56,9 +69,9 @@ export function measureImageQuality(imageData, limits = IMG_LIMITS) {
   let n = 0;
 
   for (let gy = 0; gy < rows; gy += 1) {
-    const y = gy * stepY;
+    const y = ry0 + gy * stepY;
     for (let gx = 0; gx < cols; gx += 1) {
-      const x = gx * stepX;
+      const x = rx0 + gx * stepX;
       const i = (y * width + x) * 4;
       const v = luma(data[i], data[i + 1], data[i + 2]);
       grid[gy * cols + gx] = v;
@@ -106,6 +119,25 @@ export function measureImageQuality(imageData, limits = IMG_LIMITS) {
     issues,
     ok: issues.length === 0,
   };
+}
+
+/** Tính vùng bounding-box tờ giấy A4 từ cornersNorm của readSheet để đo nét/sáng đúng trên giấy (bỏ lề bàn tối). */
+export function paperRegionFromCorners(width, height, cornersNorm) {
+  if (!cornersNorm || !width || !height) return null;
+  const pts = Object.values(cornersNorm).filter((p) => Array.isArray(p) && p.length === 2);
+  if (pts.length < 4) return null;
+  let minX = 1, minY = 1, maxX = 0, maxY = 0;
+  pts.forEach(([nx, ny]) => {
+    if (nx < minX) minX = nx;
+    if (ny < minY) minY = ny;
+    if (nx > maxX) maxX = nx;
+    if (ny > maxY) maxY = ny;
+  });
+  const x = Math.max(0, Math.floor(minX * width));
+  const y = Math.max(0, Math.floor(minY * height));
+  const w = Math.min(width - x, Math.ceil((maxX - minX) * width));
+  const h = Math.min(height - y, Math.ceil((maxY - minY) * height));
+  return w >= 64 && h >= 64 ? { x, y, w, h } : null;
 }
 
 /** Điểm 0..100 để hiển thị nhanh mức "ảnh tốt". */
