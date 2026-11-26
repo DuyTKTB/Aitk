@@ -9,6 +9,7 @@ import {
 import { BRAND_EMAIL } from '../lib/emailTemplates.js';
 import { validatePassword } from '../lib/authValidation.js';
 import RegisterFlow from './RegisterFlow.jsx';
+import { PipLoginMascot, OtpVerifySweep } from './ElecEffectsKit.jsx';
 import './login-page.css';
 
 /* ============================================================
@@ -104,6 +105,8 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
   const [err, setErr] = useState('');
   const [info, setInfo] = useState('');
   const [tick, setTick] = useState(false);
+  const [focusField, setFocusField] = useState('idle');
+  const [loginOk, setLoginOk] = useState(false);
   const firstRef = useRef(null);
 
   useEffect(() => {
@@ -166,6 +169,7 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
         setInfo('Đổi mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.');
       } else {
         await login(email, pass);
+        setLoginOk(true);
         onDone?.();
       }
     } catch (e2) {
@@ -242,6 +246,13 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
             />
           ) : (
             <>
+          <PipLoginMascot
+            email={email}
+            focusField={focusField}
+            showPass={showPass}
+            hasError={Boolean(err)}
+            isSuccess={loginOk}
+          />
           <header className="lg-head">
             <h1>
               {isForgot ? (forgotStep === 'otp' ? 'Nhập mã OTP 6 số' : 'Đặt lại mật khẩu') : 'Chào mừng trở lại'}
@@ -279,6 +290,8 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onFocus={() => setFocusField('email')}
+                  onBlur={() => setFocusField('idle')}
                   placeholder="Email"
                   autoComplete="email"
                   required
@@ -296,6 +309,8 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
                     inputMode="numeric"
                     value={otpCode}
                     onChange={(e) => setOtpCode(sanitizeOtpInput(e.target.value))}
+                    onFocus={() => setFocusField('otp')}
+                    onBlur={() => setFocusField('idle')}
                     placeholder="Mã OTP 6 chữ số"
                     autoComplete="one-time-code"
                     maxLength={6}
@@ -303,6 +318,7 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
                     style={{ letterSpacing: '0.2em', fontWeight: 700, fontFamily: 'monospace' }}
                   />
                 </label>
+                <OtpVerifySweep value={otpCode} />
 
                 <label className="lg-field">
                   <span className="lg-field-ic"><IcoLock /></span>
@@ -347,6 +363,8 @@ export default function LoginPage({ initialMode = 'login', onDone }) {
                   type={showPass ? 'text' : 'password'}
                   value={pass}
                   onChange={(e) => setPass(e.target.value)}
+                  onFocus={() => setFocusField('password')}
+                  onBlur={() => setFocusField('idle')}
                   placeholder="Mật khẩu"
                   autoComplete="current-password"
                   minLength={6}

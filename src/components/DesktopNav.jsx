@@ -8,6 +8,7 @@ import NavCreditPopover from './NavCreditPopover.jsx';
 import NavStreakPopover from './NavStreakPopover.jsx';
 import NavNotificationPopover from './NavNotificationPopover.jsx';
 import { LOGO_GLIDE_TRANSITION, useElecIntro } from './ElecIntroLoader.jsx';
+import { AquariumThemeToggle, NavSpotlightBeam } from './ElecEffectsKit.jsx';
 import '../styles/nav-dropdowns.css';
 import '../styles/nav-redesign-v2.css';
 import {
@@ -546,6 +547,7 @@ export default function DesktopNav({
   const [toolSearch, setToolSearch] = useState('');
   const [moreOpen, setMoreOpen] = useState(false);
   const localRef = useRef(null);
+  const navLinksRef = useRef(null);
   const toolOpen = toolOpenProp !== undefined ? toolOpenProp : localToolOpen;
   const setToolOpen = onToolOpen || setLocalToolOpen;
   const wrapRef = navRef || localRef;
@@ -651,7 +653,8 @@ export default function DesktopNav({
         {/* ============ CỤM GIỮA: ORGANIC CENTER NOTCH BRIDGE — 6 MỤC CHÍNH ============ */}
         <div className="nav-center-notch">
           <NavNotchEar side="left" />
-          <div className="nav-links">
+          <div className="nav-links" ref={navLinksRef}>
+          <NavSpotlightBeam containerRef={navLinksRef} activeKey={page} />
           {/* 1. Trang chủ */}
           <a
             href="#home"
@@ -957,25 +960,8 @@ export default function DesktopNav({
               </svg>
             </button>
 
-            {/* 2. Nút Đổi giao diện Sáng / Tối */}
-            <button
-              type="button"
-              className="nav-action-icon-btn nav-theme-btn"
-              onClick={onToggleTheme}
-              aria-label={theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
-              title={theme === 'dark' ? 'Chế độ sáng' : 'Chế độ tối'}
-            >
-              {theme === 'dark' ? (
-                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" className="nav-svg-pro">
-                  <circle cx="10" cy="10" r="3.4" stroke="currentColor" strokeWidth="1.6" />
-                  <path d="M10 2.5v1.6M10 15.9v1.6M4.7 4.7l1.15 1.15M14.15 14.15l1.15 1.15M2.5 10h1.6M15.9 10h1.6M4.7 15.3l1.15-1.15M14.15 5.85 15.3 4.7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                </svg>
-              ) : (
-                <svg width="15" height="15" viewBox="0 0 20 20" fill="none" aria-hidden="true" className="nav-svg-pro">
-                  <path d="M16 11.9a6.2 6.2 0 0 1-7.9-7.9 6.2 6.2 0 1 0 7.9 7.9Z" stroke="currentColor" strokeWidth="1.65" strokeLinejoin="round" />
-                </svg>
-              )}
-            </button>
+            {/* 2. Nút Đổi giao diện Sáng / Tối (Aquarium Lens Toggle) */}
+            <AquariumThemeToggle theme={theme} onToggle={onToggleTheme} />
 
             {/* 3. Trung tâm Thông báo ELEC AI (Admin · Chuỗi · Học chung · Mẹo KHTN) */}
             <NavNotificationPopover />

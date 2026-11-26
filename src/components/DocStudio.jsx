@@ -25,6 +25,7 @@ import { parseJsonLoose } from '../lib/examAiUtils.js';
 import { fsrsSchedule, predictCardRetentionPct } from '../lib/fsrsEngine.js';
 import { gradeClozeAnswers } from '../lib/studentStudyStudio.js';
 import { speak as speakVi, stop as stopVi, isSupported as isTtsSupported } from '../lib/tts.js';
+import { ArcChargeLoader, PdfParseScanner } from './ElecEffectsKit.jsx';
 import {
   extractPptxText,
   chunkDocumentForCitations,
@@ -1445,15 +1446,21 @@ export default function DocStudio() {
           </div>
 
           {busy ? (
-            <div className="dst-busy" role="status">
-              <div className="dst-spin" />
-              <div className="dst-steps">
+            <div className="dst-busy" role="status" style={{ alignItems: 'stretch', gap: 14 }}>
+              <ArcChargeLoader
+                progress={busy.step === 0 ? 38 : busy.step === 1 ? 74 : 96}
+                label={busy.label}
+                sublabel="ELEC NotebookLM Engine · Đang phân tích đa định dạng"
+              />
+              <PdfParseScanner compact />
+              <div className="dst-steps" style={{ justifyContent: 'center' }}>
                 {['Giải mã tài liệu', 'AI biên soạn Notebook', 'Hoàn tất'].map((s, i) => (
                   <span key={s} className={i < busy.step ? 'done' : i === busy.step ? 'now' : ''}>{i + 1}. {s}</span>
                 ))}
               </div>
-              <b>{busy.label}</b>
-              <button type="button" className="dst-ghost" onClick={() => { cancelRef.current++; setBusy(null); }}>Hủy</button>
+              <div style={{ textAlign: 'center' }}>
+                <button type="button" className="dst-ghost" onClick={() => { cancelRef.current++; setBusy(null); }}>Hủy</button>
+              </div>
             </div>
           ) : (
             <>

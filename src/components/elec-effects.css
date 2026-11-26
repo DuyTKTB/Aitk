@@ -1,0 +1,995 @@
+/* ==========================================================================
+   ELEC UI FX STUDIO KIT (elec-effects.css)
+   7 signature interactive effects crafted for ELEC Science AI (Dark & Light)
+   ========================================================================== */
+
+/* 1. AQUARIUM / LENS THEME TOGGLE */
+.efx-aqua-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 52px;
+  height: 28px;
+  padding: 2px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  background: linear-gradient(180deg, #06142e 0%, #0b2447 58%, #073b4c 100%);
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.35s ease,
+    box-shadow 0.35s ease,
+    transform 0.2s ease;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.45), 0 1px 8px rgba(47, 107, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.efx-aqua-toggle:hover {
+  border-color: rgba(96, 165, 250, 0.72);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.35), 0 0 14px rgba(56, 189, 248, 0.35);
+}
+
+.efx-aqua-toggle:active {
+  transform: scale(0.95);
+}
+
+.efx-aqua-toggle.is-light {
+  background: linear-gradient(180deg, #38bdf8 0%, #7dd3fc 56%, #bae6fd 100%);
+  border-color: rgba(14, 165, 233, 0.45);
+  box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.6), 0 2px 10px rgba(56, 189, 248, 0.28);
+}
+
+.efx-aqua-scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.efx-aqua-water {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  bottom: -2px;
+  height: 11px;
+  border-radius: 45% 55% 0 0;
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.45), rgba(14, 116, 144, 0.75));
+  animation: efxWave 3.2s ease-in-out infinite;
+}
+
+.efx-aqua-toggle.is-light .efx-aqua-water {
+  background: linear-gradient(180deg, rgba(2, 132, 199, 0.34), rgba(14, 165, 233, 0.58));
+}
+
+.efx-aqua-star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #e0f2fe;
+  box-shadow: 0 0 4px #38bdf8;
+  opacity: 0.9;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  animation: efxTwinkle 2.4s ease-in-out infinite;
+}
+
+.efx-aqua-star.s1 { top: 5px; left: 10px; animation-delay: 0s; }
+.efx-aqua-star.s2 { top: 9px; left: 19px; animation-delay: 0.8s; }
+.efx-aqua-star.s3 { top: 6px; left: 26px; animation-delay: 1.5s; }
+
+.efx-aqua-toggle.is-light .efx-aqua-star {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.4);
+}
+
+.efx-aqua-bubble {
+  position: absolute;
+  bottom: 3px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(165, 243, 252, 0.9);
+  box-shadow: 0 0 5px rgba(34, 211, 238, 0.9);
+  animation: efxBubble 2.6s ease-in infinite;
+}
+
+.efx-aqua-bubble.b1 { left: 12px; animation-delay: 0.2s; }
+.efx-aqua-bubble.b2 { left: 23px; width: 2px; height: 2px; animation-delay: 1.1s; }
+
+.efx-aqua-cloud {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 12px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.efx-aqua-cloud::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 3px;
+  width: 6px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.efx-aqua-toggle.is-light .efx-aqua-cloud {
+  opacity: 0.92;
+  transform: translateX(0);
+}
+
+.efx-aqua-knob {
+  position: relative;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 35% 30%, #f8fafc 0%, #cbd5e1 65%, #94a3b8 100%);
+  box-shadow: 0 0 10px rgba(147, 197, 253, 0.75), inset 0 1px 2px #fff;
+  transform: translateX(24px);
+  transition: transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.35s ease, box-shadow 0.35s ease;
+}
+
+.efx-aqua-toggle.is-light .efx-aqua-knob {
+  transform: translateX(0);
+  background: radial-gradient(circle at 35% 30%, #fef08a 0%, #facc15 58%, #f59e0b 100%);
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.95), inset 0 1px 2px #fff;
+}
+
+.efx-aqua-knob svg {
+  width: 12px;
+  height: 12px;
+}
+
+@keyframes efxWave {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(3px) translateY(-1.5px); }
+}
+
+@keyframes efxTwinkle {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+@keyframes efxBubble {
+  0% { transform: translateY(0) scale(0.7); opacity: 0; }
+  30% { opacity: 0.95; }
+  100% { transform: translateY(-13px) scale(1.1); opacity: 0; }
+}
+
+/* 2. SPOTLIGHT NAV BEAM (glides seamlessly over DesktopNav center links) */
+.nav-links {
+  position: relative;
+}
+
+.efx-nav-spotlight {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  height: 2.5px;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 6;
+  background: linear-gradient(90deg, transparent 0%, #38bdf8 25%, #60a5fa 50%, #a78bfa 75%, transparent 100%);
+  box-shadow: 0 2px 14px 2px rgba(56, 189, 248, 0.65), 0 0 8px rgba(96, 165, 250, 0.85);
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.25s ease;
+}
+
+.efx-nav-spotlight::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 12%;
+  right: 12%;
+  height: 22px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.24), transparent 72%);
+  pointer-events: none;
+}
+
+/* 3. AI GLOW ORBIT BUTTON + CHARGE PARTICLE BUTTON */
+@property --efx-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.efx-glow-wrap {
+  position: relative;
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--efx-angle),
+    #38bdf8,
+    #3b82f6,
+    #8b5cf6,
+    #ec4899,
+    #22d3ee,
+    #38bdf8
+  );
+  animation: efxOrbitSpin 3.4s linear infinite;
+  box-shadow: 0 0 22px rgba(59, 130, 246, 0.32), 0 0 40px rgba(139, 92, 246, 0.16);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease;
+}
+
+.efx-glow-wrap:hover {
+  transform: translateY(-1.5px) scale(1.015);
+  box-shadow: 0 0 28px rgba(56, 189, 248, 0.5), 0 6px 26px rgba(139, 92, 246, 0.28);
+}
+
+.efx-glow-wrap:active {
+  transform: scale(0.97);
+}
+
+.efx-glow-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  padding: 11px 22px;
+  font: 700 14.5px/1 'Be Vietnam Pro', system-ui, sans-serif;
+  color: #f8fafc;
+  background: linear-gradient(180deg, #0f172a 0%, #090f1f 100%);
+  text-decoration: none;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+[data-theme='light'] .efx-glow-btn {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  color: #ffffff;
+}
+
+.efx-glow-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 25%, rgba(255, 255, 255, 0.18) 50%, transparent 75%);
+  transform: translateX(-120%);
+  transition: transform 0.65s ease;
+}
+
+.efx-glow-wrap:hover .efx-glow-btn::after {
+  transform: translateX(120%);
+}
+
+@keyframes efxOrbitSpin {
+  to { --efx-angle: 360deg; }
+}
+
+/* Charge Particle Field CTA */
+.efx-charge-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 210px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.12), rgba(7, 13, 26, 0.92) 72%);
+}
+
+[data-theme='light'] .efx-charge-stage {
+  background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.14), #f8fafc 78%);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.efx-charge-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.efx-charge-btn {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.5);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+  font: 700 15px/1 'Be Vietnam Pro', system-ui, sans-serif;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.45), 0 0 24px rgba(56, 189, 248, 0.25);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.efx-charge-btn:hover {
+  transform: scale(1.04);
+  border-color: #38bdf8;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.5), 0 0 34px rgba(56, 189, 248, 0.5);
+}
+
+.efx-charge-btn.is-charging {
+  transform: scale(0.96);
+}
+
+.efx-charge-btn.is-done {
+  border-color: #34d399;
+  box-shadow: 0 0 32px rgba(52, 211, 153, 0.45);
+}
+
+.efx-charge-sweep {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.28), rgba(139, 92, 246, 0.35), rgba(52, 211, 153, 0.32));
+  transform-origin: left center;
+  transition: transform 0.12s linear;
+  pointer-events: none;
+}
+
+.efx-charge-shockwave {
+  position: absolute;
+  z-index: 1;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 2px solid rgba(56, 189, 248, 0.75);
+  pointer-events: none;
+  animation: efxShockwave 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes efxShockwave {
+  0% { transform: scale(0.6); opacity: 0.95; }
+  100% { transform: scale(4.2); opacity: 0; }
+}
+
+/* 4. ARC CHARGE ELECTRIC LOADER */
+.efx-arc-card {
+  position: relative;
+  border-radius: 18px;
+  padding: 18px 20px;
+  background: linear-gradient(160deg, #070d1c 0%, #0d162c 100%);
+  border: 1px solid rgba(56, 189, 248, 0.26);
+  color: #f8fafc;
+  overflow: hidden;
+  box-shadow: 0 14px 34px rgba(2, 6, 23, 0.45);
+}
+
+[data-theme='light'] .efx-arc-card {
+  background: linear-gradient(160deg, #0b1326 0%, #111c38 100%);
+}
+
+.efx-arc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.efx-arc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: #7dd3fc;
+}
+
+.efx-arc-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 10px #38bdf8;
+  animation: efxPulseDot 1.2s ease-in-out infinite;
+}
+
+.efx-arc-pct {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 20px;
+  font-weight: 800;
+  background: linear-gradient(90deg, #fbbf24, #38bdf8, #a78bfa, #34d399);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.efx-arc-canvas {
+  display: block;
+  width: 100%;
+  height: 72px;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.96));
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.efx-arc-sub {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+@keyframes efxPulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.55; }
+}
+
+/* 5. PDF PARSE SMART SCANNER */
+.efx-pdf-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+@media (max-width: 780px) {
+  .efx-pdf-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.efx-pdf-sheet {
+  position: relative;
+  border-radius: 16px;
+  padding: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  color: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  overflow: hidden;
+  box-shadow: 0 14px 32px rgba(2, 6, 23, 0.28);
+  min-height: 250px;
+}
+
+.efx-pdf-sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.efx-pdf-region {
+  position: relative;
+  padding: 9px 11px;
+  border-radius: 10px;
+  margin-bottom: 9px;
+  border: 1.5px solid transparent;
+  background: rgba(248, 250, 252, 0.9);
+  transition: border-color 0.28s ease, background 0.28s ease, box-shadow 0.28s ease, transform 0.25s ease;
+  cursor: pointer;
+}
+
+.efx-pdf-region.is-active {
+  border-color: #0284c7;
+  background: rgba(224, 242, 254, 0.72);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.22);
+  transform: translateX(3px);
+}
+
+.efx-pdf-region-tag {
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #0284c7;
+  color: #fff;
+  letter-spacing: 0.03em;
+  opacity: 0;
+  transform: translateY(3px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.efx-pdf-region.is-active .efx-pdf-region-tag,
+.efx-pdf-region.is-scanned .efx-pdf-region-tag {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.efx-pdf-region strong {
+  display: block;
+  font-size: 12.5px;
+  color: #0f172a;
+}
+
+.efx-pdf-region small {
+  display: block;
+  font-size: 11.5px;
+  color: #475569;
+  margin-top: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.efx-pdf-laser {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #38bdf8, #0ea5e9, #38bdf8, transparent);
+  box-shadow: 0 0 18px 4px rgba(56, 189, 248, 0.72), 0 8px 24px rgba(14, 165, 233, 0.32);
+  pointer-events: none;
+  z-index: 4;
+  transition: top 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.efx-pdf-inspector {
+  border-radius: 16px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+[data-theme='light'] .efx-pdf-inspector {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.efx-pdf-tabs {
+  display: inline-flex;
+  gap: 6px;
+  background: rgba(148, 163, 184, 0.14);
+  padding: 4px;
+  border-radius: 10px;
+  align-self: flex-start;
+}
+
+.efx-pdf-tabs button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: 0.72;
+  font: 700 12px/1 'Be Vietnam Pro', system-ui, sans-serif;
+  padding: 6px 11px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.efx-pdf-tabs button.on {
+  background: #2563eb;
+  color: #fff;
+  opacity: 1;
+}
+
+.efx-pdf-field-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(148, 163, 184, 0.08);
+  font-size: 12.5px;
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+
+.efx-pdf-field-row.is-active {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.14);
+}
+
+.efx-pdf-conf {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 800;
+  color: #34d399;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.efx-pdf-json {
+  margin: 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(2, 6, 23, 0.72);
+  color: #93c5fd;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow: auto;
+  max-height: 205px;
+}
+
+[data-theme='light'] .efx-pdf-json {
+  background: #0f172a;
+  color: #bae6fd;
+}
+
+/* 6. ENERGY MORPH & BEAMFALL ANALYTICS WIDGET */
+.efx-morph-card {
+  position: relative;
+  border-radius: 20px;
+  padding: 20px;
+  background: linear-gradient(170deg, rgba(15, 23, 42, 0.94), rgba(7, 13, 28, 0.98));
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #f8fafc;
+  overflow: hidden;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+[data-theme='light'] .efx-morph-card {
+  background: linear-gradient(170deg, #ffffff, #f1f5f9);
+  color: #0f172a;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.efx-beamfall {
+  position: absolute;
+  top: -30%;
+  left: 50%;
+  width: 140px;
+  height: 170%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0) 0%, rgba(56, 189, 248, 0.24) 45%, rgba(139, 92, 246, 0.2) 70%, rgba(56, 189, 248, 0) 100%);
+  filter: blur(18px);
+  pointer-events: none;
+  animation: efxBeamSlide 5.2s ease-in-out infinite;
+}
+
+@keyframes efxBeamSlide {
+  0%, 100% { transform: translateX(-75%) rotate(-4deg); opacity: 0.55; }
+  50% { transform: translateX(-25%) rotate(4deg); opacity: 0.95; }
+}
+
+.efx-morph-head {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.efx-morph-pills {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.efx-morph-pills button {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: 700 11.5px/1 'Be Vietnam Pro', system-ui, sans-serif;
+  color: inherit;
+  opacity: 0.7;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.24s ease;
+}
+
+.efx-morph-pills button.on {
+  opacity: 1;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.efx-morph-body {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 14px 0 6px;
+}
+
+.efx-morph-orb {
+  position: relative;
+  width: 144px;
+  height: 144px;
+  border-radius: 50%;
+  border: 2px solid rgba(56, 189, 248, 0.45);
+  background: radial-gradient(circle at 35% 25%, rgba(56, 189, 248, 0.22), rgba(15, 23, 42, 0.85));
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 32px rgba(56, 189, 248, 0.28), inset 0 0 22px rgba(56, 189, 248, 0.2);
+}
+
+.efx-morph-liquid {
+  position: absolute;
+  left: -25%;
+  width: 150%;
+  height: 150%;
+  top: 22%;
+  border-radius: 42%;
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.65), rgba(37, 99, 235, 0.85));
+  animation: efxLiquidSpin 7s linear infinite;
+}
+
+@keyframes efxLiquidSpin {
+  to { transform: rotate(360deg); }
+}
+
+.efx-morph-orb-val {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(2, 6, 23, 0.6);
+}
+
+.efx-morph-orb-val b {
+  display: block;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.efx-morph-orb-val span {
+  font-size: 11px;
+  opacity: 0.92;
+}
+
+.efx-morph-bars {
+  width: 100%;
+  max-width: 340px;
+  height: 144px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.efx-morph-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.efx-morph-bar-fill {
+  width: 100%;
+  border-radius: 9px 9px 4px 4px;
+  background: linear-gradient(180deg, #38bdf8, #3b82f6 65%, #6366f1);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+  transition: height 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.efx-morph-bar-col small {
+  font-size: 11px;
+  opacity: 0.72;
+  font-weight: 600;
+}
+
+/* 7. PIP LOGIN ROBOT + OTP VERIFY SWEEP */
+.efx-pip-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: -4px 0 10px;
+  user-select: none;
+}
+
+.efx-pip-svg {
+  width: 116px;
+  height: 76px;
+  overflow: visible;
+  filter: drop-shadow(0 8px 18px rgba(37, 99, 235, 0.24));
+}
+
+.efx-pip-status {
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.01em;
+}
+
+[data-theme='dark'] .efx-pip-status {
+  color: #94a3b8;
+}
+
+.efx-otp-boxes {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: 2px;
+}
+
+.efx-otp-cell {
+  height: 44px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(148, 163, 184, 0.32);
+  background: rgba(148, 163, 184, 0.08);
+  display: grid;
+  place-items: center;
+  font: 800 18px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  transition: border-color 0.22s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease;
+}
+
+.efx-otp-cell.filled {
+  border-color: #3b82f6;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.22);
+}
+
+.efx-otp-boxes.is-complete .efx-otp-cell {
+  border-color: #10b981;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.28);
+}
+
+.efx-otp-boxes.is-complete::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 25%, rgba(52, 211, 153, 0.42) 50%, transparent 75%);
+  animation: efxOtpSweep 0.9s ease-out 1;
+  pointer-events: none;
+}
+
+@keyframes efxOtpSweep {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(110%); }
+}
+
+/* LANDING INTERACTIVE FX SHOWCASE SECTION */
+.efx-showcase {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 64px 20px;
+}
+
+.efx-showcase-head {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 28px;
+}
+
+.efx-showcase-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  margin-bottom: 12px;
+}
+
+[data-theme='light'] .efx-showcase-kicker {
+  color: #0284c7;
+  background: rgba(2, 132, 199, 0.1);
+}
+
+.efx-showcase-head h2 {
+  font-size: clamp(26px, 3.6vw, 40px);
+  line-height: 1.2;
+  margin: 0 0 10px;
+  font-weight: 800;
+}
+
+.efx-showcase-head p {
+  margin: 0;
+  opacity: 0.78;
+  font-size: 16px;
+}
+
+.efx-spotlight-tabs {
+  position: relative;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  backdrop-filter: blur(12px);
+  margin: 0 auto 24px;
+}
+
+[data-theme='light'] .efx-spotlight-tabs {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.efx-spotlight-tabs-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.efx-spotlight-tab {
+  position: relative;
+  z-index: 2;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: 0.72;
+  padding: 9px 16px;
+  border-radius: 999px;
+  font: 700 13.5px/1 'Be Vietnam Pro', system-ui, sans-serif;
+  cursor: pointer;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.efx-spotlight-tab.on {
+  opacity: 1;
+  color: #fff;
+}
+
+.efx-spotlight-pill {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2563eb, #0284c7);
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), width 0.36s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.efx-showcase-panel {
+  border-radius: 24px;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  backdrop-filter: blur(14px);
+}
+
+[data-theme='light'] .efx-showcase-panel {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+/* Accessibility: Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .efx-aqua-water,
+  .efx-aqua-star,
+  .efx-aqua-bubble,
+  .efx-glow-wrap,
+  .efx-arc-dot,
+  .efx-beamfall,
+  .efx-morph-liquid {
+    animation: none !important;
+  }
+}

@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import AIMark from './AIMark.jsx';
 import SiteFooter from './SiteFooter.jsx';
 import { LOGO_GLIDE_TRANSITION, useElecIntro } from './ElecIntroLoader.jsx';
+import { AquariumThemeToggle, AiGlowButton, ElecFxShowcase } from './ElecEffectsKit.jsx';
 import './landing-v3.css';
 import './landing-ocean.css';
 import './landing-class.css';
@@ -1085,14 +1086,7 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
         </nav>
 
         <div className="lp-acts">
-          <button
-            type="button"
-            className="lp-ico"
-            onClick={onToggleTheme}
-            aria-label={theme === 'dark' ? 'Giao diện sáng' : 'Giao diện tối'}
-          >
-            {theme === 'dark' ? <IcoSun /> : <IcoMoon />}
-          </button>
+          <AquariumThemeToggle theme={theme} onToggle={onToggleTheme} />
 
           <a className="lp-login" href="#login">Đăng nhập</a>
 
@@ -1206,6 +1200,7 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
         <VideoSection />
         <Story />
         <Tools />
+        <ElecFxShowcase onTryAi={() => { location.hash = 'ai'; }} />
         <Audience kit={KIT} />
         <Bento kit={KIT} />
         <ClassSection />
@@ -1228,7 +1223,7 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
             <p>Tạo tài khoản miễn phí trong vài giây. Không cần thẻ, không cần cài đặt.</p>
             <StartSteps />
             <div className="lp-cta-btns">
-              <MagBtn as="a" className="lp-btn pri lg" href="#register">Đăng ký miễn phí <IcoArrow /></MagBtn>
+              <AiGlowButton as="a" href="#register">Đăng ký miễn phí <IcoArrow /></AiGlowButton>
               <MagBtn as="a" className="lp-btn lg" href="#login">Tôi đã có tài khoản</MagBtn>
             </div>
           </div>
