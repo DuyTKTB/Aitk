@@ -73,11 +73,20 @@ export const TEMPLATE = {
   p3DigitY: [2740.5, 2800.0, 2859.0, 2918.1, 2977.4, 3036.5, 3095.7, 3154.8, 3213.8, 3273.0],
 };
 
-/* ============ NGƯỠNG ============ */
+/* ============ NGƯỠNG & CẤU HÌNH ĐỘ NHẠY ============ */
 const DEFAULTS = {
-  markThreshold: 0.20,   // độ đen >= ngưỡng → coi là đã tô
-  faintBand: 0.07,       // trong vùng ngưỡng ± faintBand → báo "mờ, cần xem lại"
+  markThreshold: 0.20,   // ngưỡng cơ sở khi người dùng chỉ định thủ công
+  faintBand: 0.065,      // trong vùng ngưỡng ± faintBand → báo "mờ, cần xem lại"
   detectMaxDim: 1600,    // giữ độ phân giải sắc nét khi tách 4 ô góc & vạch mép từ webcam/camera
+  adaptive: true,        // tự cân chỉnh ngưỡng theo độ sáng nền giấy & độ đậm bút chì/bút bi
+  sensitivity: 'normal', // 'light' (chì 2B nhạt) | 'normal' (chuẩn) | 'strict' (giấy photo nhiễu)
+  localRefine: true,     // tinh chỉnh lệch vi mô từng vùng (chống cong giấy / co giãn máy in)
+};
+
+const SENSITIVITY_BIAS = {
+  light: -0.032,
+  normal: 0,
+  strict: 0.038,
 };
 
 /* ============ TIỆN ÍCH ẢNH ============ */
@@ -569,7 +578,7 @@ function findBestAlignment(marksInfo, sc, tol, imgW, imgH, chanR, chanG) {
   return best;
 }
 
-/* ============ ĐO Ô TÔ ============ */
+/* ============ ĐO Ô TÔ (CHỐNG LÓA + TINH CHỈNH LỆCH VI MÔ) ============ */
 function makeSampler(chanR, chanG, w, h, H) {
   const R = TEMPLATE.bubbleR;
   const step = 2.4;
@@ -595,42 +604,314 @@ function makeSampler(chanR, chanG, w, h, H) {
     return bilinear(chan, w, h, u, v);
   };
 
-  function measure(cx, cy) {
-    let s = 0;
-    let n = 0;
+  // Trimmed-mean: bỏ top 18% điểm chói sáng nhất trong lõi ô tô để chống phản quang bút chì/đèn tuýp
+  function measure(cx, cy, ox = 0, oy = 0) {
+    const px = cx + ox;
+    const py = cy + oy;
+    const vals = [];
     for (const [dx, dy] of disc) {
-      const v = at(chanR, cx, cy, dx, dy);
-      if (v !== null) { s += v; n++; }
+      const v = at(chanR, px, py, dx, dy);
+      if (v !== null) vals.push(v);
     }
     const refs = [];
     for (const [dx, dy] of ann) {
-      const v = at(chanR, cx, cy, dx, dy);
+      const v = at(chanR, px, py, dx, dy);
       if (v !== null) refs.push(v);
     }
-    if (n < disc.length * 0.7 || refs.length < 8) return { fill: 0, oob: true };
+    if (vals.length < disc.length * 0.7 || refs.length < 8) return { fill: 0, oob: true };
     refs.sort((p, q) => p - q);
-    // trung vị của phần sáng hơn: tránh bị kéo xuống bởi nét bút/chì ngoài ô
+    // trung vị phần sáng quanh ô (70th percentile): tránh bị kéo xuống bởi nét mực/viền ô kế bên
     const ref = refs[Math.floor(refs.length * 0.7)];
-    const mean = s / n;
+
+    vals.sort((p, q) => p - q);
+    // Nếu có chói cục bộ (chênh giữa top và median > 24), bỏ 18% điểm sáng nhất để không mất nét chì bóng
+    const med = vals[Math.floor(vals.length * 0.5)];
+    const topV = vals[vals.length - 1];
+    const trimEnd = (topV - med > 24 && vals.length >= 10)
+      ? Math.max(6, Math.floor(vals.length * 0.82))
+      : vals.length;
+    let s = 0;
+    for (let i = 0; i < trimEnd; i++) s += vals[i];
+    const mean = s / trimEnd;
     const fill = ref > 40 ? Math.max(0, Math.min(1, 1 - mean / ref)) : 0;
     return { fill, oob: false };
   }
 
-  // Điểm "khớp lưới": viền ô in màu hồng-đỏ → kênh G (xanh lá) tối hơn quanh bán kính R
-  function ringScore(cx, cy) {
+  // Điểm "khớp lưới": viền ô in màu hồng-đỏ hoặc đen trắng → kênh G tối hơn quanh bán kính R
+  function ringScore(cx, cy, ox = 0, oy = 0) {
+    const px = cx + ox;
+    const py = cy + oy;
     let ring = 0, rn = 0, around = 0, an = 0;
     for (const [dx, dy] of ringPts) {
-      const v = at(chanG, cx, cy, dx, dy);
+      const v = at(chanG, px, py, dx, dy);
       if (v !== null) { ring += v; rn++; }
     }
     for (const [dx, dy] of ann) {
-      const v = at(chanG, cx, cy, dx, dy);
+      const v = at(chanG, px, py, dx, dy);
       if (v !== null) { around += v; an++; }
     }
     if (!rn || !an) return 0;
     return (around / an - ring / rn) / 255;
   }
-  return { measure, ringScore };
+
+  // Tinh chỉnh lệch vi mô (±5px hệ mẫu) cho từng vùng phiếu khi giấy hơi cong hoặc máy in co giãn nhẹ
+  function refineSectionOffset(anchorPts) {
+    const shifts = [
+      [0, 0],
+      [-5, 0], [5, 0], [0, -5], [0, 5],
+      [-4, -4], [4, -4], [-4, 4], [4, 4],
+    ];
+    let baseScore = 0;
+    for (const [ax, ay] of anchorPts) baseScore += ringScore(ax, ay, 0, 0);
+    baseScore /= anchorPts.length;
+    let bestScore = baseScore;
+    let bestOffset = [0, 0];
+    for (let i = 1; i < shifts.length; i++) {
+      const [ox, oy] = shifts[i];
+      let sc = 0;
+      for (const [ax, ay] of anchorPts) sc += ringScore(ax, ay, ox, oy);
+      sc /= anchorPts.length;
+      if (sc > bestScore) {
+        bestScore = sc;
+        bestOffset = [ox, oy];
+      }
+    }
+    // Chỉ nhận độ dịch khi độ khớp viền ô cải thiện rõ rệt (tránh dịch sai trên phiếu nền trắng/mờ)
+    return bestScore > baseScore + 0.012 ? bestOffset : [0, 0];
+  }
+
+  return { measure, ringScore, refineSectionOffset };
+}
+
+/**
+ * Tính ngưỡng thích ứng theo phân bố độ đen thực tế của từng tờ phiếu:
+ * - Tách nền ô trống (blankP50 / blankP90) và cụm ô tô thật (inkP80).
+ * - Chịu được cả bút chì 2B tô nhạt lẫn giấy photo nền xám/nhiễu.
+ */
+export function computeAdaptiveThreshold(allFills, {
+  baseThreshold = DEFAULTS.markThreshold,
+  sensitivity = 'normal',
+} = {}) {
+  const bias = SENSITIVITY_BIAS[sensitivity] ?? 0;
+  const clean = allFills.filter((v) => Number.isFinite(v) && v >= 0 && v <= 1).sort((a, b) => a - b);
+  if (clean.length < 30) {
+    return {
+      threshold: Math.max(0.12, Math.min(0.36, +(baseThreshold + bias).toFixed(3))),
+      blankFloor: 0.04,
+      inkLevel: 0.45,
+      adapted: false,
+    };
+  }
+  const pct = (p) => clean[Math.min(clean.length - 1, Math.max(0, Math.floor(clean.length * p)))];
+  // Tối đa ~25% tổng số ô trên phiếu có thể được tô → 72% thấp nhất đại diện cho nền ô trống
+  const blankP50 = pct(0.35);
+  const blankP90 = pct(0.68);
+  const noiseGuard = blankP90 + 0.075;
+
+  // Các ứng viên ô tô thật: đậm hơn nền trống ít nhất 0.11 và >= 0.14
+  const strongMarks = clean.filter((v) => v >= Math.max(0.14, blankP90 + 0.10));
+  if (strongMarks.length < 4) {
+    const thr = Math.max(0.13, Math.min(0.34, Math.max(baseThreshold, noiseGuard) + bias));
+    return {
+      threshold: +thr.toFixed(3),
+      blankFloor: +blankP50.toFixed(3),
+      inkLevel: strongMarks.length ? +strongMarks[strongMarks.length - 1].toFixed(3) : 0,
+      adapted: false,
+    };
+  }
+
+  const inkP25 = strongMarks[Math.floor(strongMarks.length * 0.25)];
+  const inkP60 = strongMarks[Math.floor(strongMarks.length * 0.60)];
+  // Điểm chia tối ưu giữa đỉnh nền trống (blankP90) và cụm ô đã tô (inkP25..inkP60)
+  const midSplit = blankP90 + (inkP25 - blankP90) * 0.42;
+  const rawThr = Math.max(noiseGuard, Math.min(midSplit, blankP50 + (inkP60 - blankP50) * 0.45));
+  const clamped = Math.max(0.135, Math.min(0.34, rawThr + bias));
+
+  return {
+    threshold: +clamped.toFixed(3),
+    blankFloor: +blankP50.toFixed(3),
+    inkLevel: +inkP60.toFixed(3),
+    adapted: true,
+  };
+}
+
+/** Giải mã đáp án từ ma trận raw fill (dùng chung cho readSheet đơn lẻ và mergeBurstReads đa khung). */
+export function decodeSheetFills(raw, options = {}) {
+  const { idFill, codeFill, p1Fill, p2Fill, p3Fill } = raw;
+  const band = options.faintBand ?? DEFAULTS.faintBand;
+  const allFills = [
+    ...idFill.flat(),
+    ...codeFill.flat(),
+    ...p1Fill.flat(),
+    ...p2Fill.flat(2),
+    ...p3Fill.flatMap((q) => q.flatMap((c) => [c.minus, c.comma, ...c.digits])),
+  ];
+
+  const useAdaptive = options.adaptive !== false && options.markThreshold == null;
+  const adaptInfo = useAdaptive
+    ? computeAdaptiveThreshold(allFills, {
+      baseThreshold: DEFAULTS.markThreshold,
+      sensitivity: options.sensitivity || 'normal',
+    })
+    : {
+      threshold: +(options.markThreshold ?? DEFAULTS.markThreshold),
+      blankFloor: 0.04,
+      inkLevel: 0.45,
+      adapted: false,
+    };
+
+  const thr = adaptInfo.threshold;
+  const issues = [];
+  const isOn = (f) => f >= thr;
+  const isFaint = (f) => f > thr - band && f < thr + band;
+
+  // Chọn 1 trong n ô với bộ phân tách vết tẩy xóa vs tô 2 ô thực sự
+  const pickOne = (fills) => {
+    const on = [];
+    fills.forEach((f, i) => { if (isOn(f)) on.push(i); });
+    if (!on.length) return { idx: -1, state: 'blank', faint: fills.some(isFaint) };
+    if (on.length === 1) return { idx: on[0], state: 'ok', faint: isFaint(fills[on[0]]) };
+    on.sort((a, b) => fills[b] - fills[a]);
+    const top1 = fills[on[0]];
+    const top2 = fills[on[1]];
+    // 1 ô đen đậm hơn hẳn ô còn lại (tỷ lệ >= 1.65 HOẶC chênh >= 0.14 khi ô chính rất đậm) → vết tẩy chưa sạch
+    if (top1 > top2 * 1.65 || (top1 >= thr + 0.14 && (top1 - top2) >= 0.14)) {
+      return { idx: on[0], state: 'ok', faint: true, dominant: true };
+    }
+    return { idx: on[0], state: 'multi', all: on, faint: true };
+  };
+
+  const digitsOf = (cols, label) => cols.map((col, ci) => {
+    const r = pickOne(col);
+    if (r.state === 'blank') { issues.push({ part: label, pos: ci + 1, type: 'blank' }); return '?'; }
+    if (r.state === 'multi') { issues.push({ part: label, pos: ci + 1, type: 'multi' }); return '?'; }
+    if (r.faint) issues.push({ part: label, pos: ci + 1, type: 'faint' });
+    return String(r.idx);
+  }).join('');
+
+  const sbd = digitsOf(idFill, 'sbd');
+  const code = digitsOf(codeFill, 'code');
+
+  const letters = ['A', 'B', 'C', 'D'];
+  const p1 = p1Fill.map((fills, qi) => {
+    const r = pickOne(fills);
+    if (r.state === 'multi') { issues.push({ part: 'p1', q: qi + 1, type: 'multi' }); return '*'; }
+    if (r.state === 'ok' && r.faint) issues.push({ part: 'p1', q: qi + 1, type: 'faint' });
+    return r.idx >= 0 ? letters[r.idx] : null;
+  });
+
+  const p2 = p2Fill.map((rows, qi) => rows.map((pair, yi) => {
+    const r = pickOne(pair);
+    if (r.state === 'multi') { issues.push({ part: 'p2', q: qi + 1, y: 'abcd'[yi], type: 'multi' }); return '*'; }
+    if (r.state === 'ok' && r.faint) issues.push({ part: 'p2', q: qi + 1, y: 'abcd'[yi], type: 'faint' });
+    return r.idx === 0 ? 'D' : r.idx === 1 ? 'S' : null;
+  }));
+
+  const p3 = p3Fill.map((cols, qi) => {
+    let s = '';
+    cols.forEach((col, ci) => {
+      const labels = [];
+      const fills = [];
+      if (ci === 0) { labels.push('-'); fills.push(col.minus); }
+      if (ci === 1 || ci === 2) { labels.push(','); fills.push(col.comma); }
+      col.digits.forEach((f, d) => { labels.push(String(d)); fills.push(f); });
+      const r = pickOne(fills);
+      if (r.state === 'multi') {
+        issues.push({ part: 'p3', q: qi + 1, pos: ci + 1, type: 'multi' });
+        s += '?';
+      } else if (r.state === 'ok') {
+        if (r.faint) issues.push({ part: 'p3', q: qi + 1, pos: ci + 1, type: 'faint' });
+        s += labels[r.idx];
+      }
+    });
+    return s;
+  });
+
+  const marked = allFills.filter(isOn).length;
+  const uncertain = allFills.filter(isFaint).length;
+
+  return {
+    sbd,
+    code,
+    p1,
+    p2,
+    p3,
+    issues,
+    threshold: thr,
+    blankFloor: adaptInfo.blankFloor,
+    inkLevel: adaptInfo.inkLevel,
+    adapted: adaptInfo.adapted,
+    marked,
+    uncertain,
+  };
+}
+
+/**
+ * Hợp nhất kết quả từ nhiều khung hình liên tiếp (Burst Consensus 2–3 frames):
+ * - Dùng trung vị / trung bình có trọng số độ nét theo từng ô tô.
+ * - Loại bỏ hoàn toàn nhiễu rung tay, chớp sáng hoặc bóng lướt thoáng qua.
+ */
+export function mergeBurstReads(reads = [], options = {}) {
+  const valid = reads.filter((r) => r && r.ok && r.raw);
+  if (!valid.length) return reads[0] || { ok: false, error: 'Không có khung hình hợp lệ.' };
+  if (valid.length === 1) return valid[0];
+
+  const fuseVal = (arr) => {
+    const sorted = [...arr].sort((a, b) => a - b);
+    if (sorted.length >= 3) {
+      // Trung vị loại hẳn giá trị nhiễu ngoại lai (outlier frame)
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+    return (sorted[0] + sorted[1]) / 2;
+  };
+
+  const base = [...valid].sort((a, b) => (
+    ((b.quality?.markFit ?? 0) + (b.quality?.alignment ?? 0))
+    - ((a.quality?.markFit ?? 0) + (a.quality?.alignment ?? 0))
+  ))[0];
+
+  const fuse2D = (getter) => getter(base.raw).map((row, r) => row.map((_, c) => fuseVal(valid.map((v) => getter(v.raw)[r][c]))));
+  const fuse3D = (getter) => getter(base.raw).map((mat, i) => mat.map((row, r) => row.map((_, c) => fuseVal(valid.map((v) => getter(v.raw)[i][r][c])))));
+
+  const fusedRaw = {
+    idFill: fuse2D((raw) => raw.idFill),
+    codeFill: fuse2D((raw) => raw.codeFill),
+    p1Fill: fuse2D((raw) => raw.p1Fill),
+    p2Fill: fuse3D((raw) => raw.p2Fill),
+    p3Fill: base.raw.p3Fill.map((q, qi) => q.map((col, ci) => ({
+      minus: fuseVal(valid.map((v) => v.raw.p3Fill[qi][ci].minus)),
+      comma: fuseVal(valid.map((v) => v.raw.p3Fill[qi][ci].comma)),
+      digits: col.digits.map((_, di) => fuseVal(valid.map((v) => v.raw.p3Fill[qi][ci].digits[di]))),
+    }))),
+  };
+
+  const decoded = decodeSheetFills(fusedRaw, options);
+  const avgFit = valid.reduce((acc, v) => acc + (v.quality?.markFit || 0), 0) / valid.length;
+  const avgAlign = valid.reduce((acc, v) => acc + (v.quality?.alignment || 0), 0) / valid.length;
+
+  return {
+    ...base,
+    sbd: decoded.sbd,
+    code: decoded.code,
+    p1: decoded.p1,
+    p2: decoded.p2,
+    p3: decoded.p3,
+    issues: decoded.issues,
+    quality: {
+      ...base.quality,
+      markFit: +Math.max(base.quality?.markFit || 0, avgFit).toFixed(2),
+      alignment: +Math.max(base.quality?.alignment || 0, avgAlign).toFixed(3),
+      marked: decoded.marked,
+      uncertain: decoded.uncertain,
+      threshold: decoded.threshold,
+      blankFloor: decoded.blankFloor,
+      inkLevel: decoded.inkLevel,
+      adapted: decoded.adapted,
+      burstFrames: valid.length,
+    },
+    raw: fusedRaw,
+  };
 }
 
 /* Căn chỉnh tọa độ phiếu A4 chung cho readSheet & probeSheetAlignment */
@@ -869,21 +1150,76 @@ export function probeSheetAlignment(img, options = {}) {
 
   const detected = validQuad && (hits >= 12 || (aligned.squaresCount >= 4 && hits >= 4));
   const cornersCount = Object.values(aligned.cornerMatched || {}).filter(Boolean).length;
-  const ready = aligned.ok && validQuad && (markFit >= 0.42 || cornersCount === 4) && lightState === 'ok';
+
+  // Đo nhanh độ sắc nét trên kênh G (giữ nguyên viền ô hồng-đỏ + nét chì) & độ nghiêng / khoảng cách
+  let sharpness = 14;
+  let areaRatio = 0;
+  let skewDeg = 0;
+  const gChan = aligned.chanG;
+  if (gChan && gChan.length === w * h && w > 16 && h > 16) {
+    const x0 = Math.floor(w * 0.12);
+    const x1 = Math.floor(w * 0.88);
+    const y0 = Math.floor(h * 0.12);
+    const y1 = Math.floor(h * 0.88);
+    const step = Math.max(2, Math.floor(Math.max(w, h) / 140));
+    let gSum = 0;
+    let gCnt = 0;
+    for (let y = y0; y < y1 - 1; y += step) {
+      const row = y * w;
+      for (let x = x0; x < x1 - 1; x += step) {
+        const v = gChan[row + x];
+        gSum += Math.abs(v - gChan[row + x + 1]) + Math.abs(v - gChan[row + w + x]);
+        gCnt += 2;
+      }
+    }
+    sharpness = gCnt ? +(gSum / gCnt).toFixed(1) : 0;
+  }
+
+  if (validQuad && cornersPx) {
+    const pts = [cornersPx.TL, cornersPx.TR, cornersPx.BR, cornersPx.BL];
+    areaRatio = +(quadArea(pts) / Math.max(1, w * h)).toFixed(3);
+    const topW = Math.hypot(cornersPx.TR[0] - cornersPx.TL[0], cornersPx.TR[1] - cornersPx.TL[1]);
+    const botW = Math.hypot(cornersPx.BR[0] - cornersPx.BL[0], cornersPx.BR[1] - cornersPx.BL[1]);
+    const leftH = Math.hypot(cornersPx.BL[0] - cornersPx.TL[0], cornersPx.BL[1] - cornersPx.TL[1]);
+    const rightH = Math.hypot(cornersPx.BR[0] - cornersPx.TR[0], cornersPx.BR[1] - cornersPx.TR[1]);
+    const perspRatio = Math.max(
+      Math.max(topW, botW) / Math.max(1, Math.min(topW, botW)),
+      Math.max(leftH, rightH) / Math.max(1, Math.min(leftH, rightH)),
+    );
+    // Ước lượng góc nghiêng phối cảnh (0° = song song phẳng)
+    skewDeg = Math.min(45, Math.round(Math.max(0, perspRatio - 1) * 58));
+  }
+
+  // Chỉ gắn cờ ảnh mờ khi gradient kênh G rất thấp (< 2.2) để không báo nhầm phiếu in sáng sạch
+  const blurry = sharpness < 2.2;
+  const distanceState = validQuad && areaRatio < 0.13 ? 'far' : 'ok';
+  const skewState = validQuad && skewDeg > 18 ? 'tilted' : 'ok';
+  const ready = aligned.ok
+    && validQuad
+    && (markFit >= 0.42 || cornersCount === 4)
+    && lightState === 'ok'
+    && !blurry
+    && skewState === 'ok';
 
   let hint;
   if (lightState === 'dark') {
-    hint = 'Ánh sáng hơi tối — hãy bật đèn Flash hoặc tăng sáng bàn thi.';
+    hint = 'Ánh sáng hơi tối — bật đèn Flash hoặc tăng sáng bàn thi.';
   } else if (lightState === 'bright') {
-    hint = 'Phiếu bị lóa sáng — điều chỉnh góc nghiêng nhẹ tránh phản đèn.';
+    hint = 'Phiếu bị lóa sáng — nghiêng nhẹ máy để tránh bóng đèn.';
+  } else if (blurry && detected) {
+    hint = 'Ảnh đang hơi mờ — giữ chắc tay 1 giây để máy lấy nét.';
+  } else if (skewState === 'tilted') {
+    hint = 'Đang nghiêng góc — giữ máy song song với mặt phiếu A4.';
+  } else if (distanceState === 'far' && detected) {
+    hint = 'Phiếu hơi xa — đưa camera lại gần khít khung hơn.';
   } else if (ready) {
-    hint = `Chuẩn 4/4 ô góc (${hits}/${TEMPLATE.marks.length} điểm định vị) — Giữ yên để tự chụp!`;
+    hint = `Khóa chuẩn 4 góc (${hits}/${TEMPLATE.marks.length}) — Giữ yên để tự chấm!`;
   } else if (detected) {
-    hint = `Đã bắt ${cornersCount}/4 ô góc — Đưa 4 ô vuông đen vào khít 4 ô ở góc khung ngắm.`;
+    hint = `Đã bắt ${cornersCount}/4 ô góc — Căn 4 ô vuông đen khít 4 góc khung.`;
   } else if (aligned.marksCount >= 2) {
     hint = `Đã thấy ${aligned.squaresCount || 0} ô đen — Căn đủ 4 ô vuông đen trên giấy vào 4 ô góc.`;
   } else {
-    hint = 'Đưa 4 ô vuông đen ở 4 góc phiếu khít vào 4 ô định vị màu xanh trên màn hình.';
+    hint = 'Đưa 4 ô vuông đen ở 4 góc phiếu vào đúng 4 ô ngắm trên màn hình.';
   }
 
   return {
@@ -898,6 +1234,12 @@ export function probeSheetAlignment(img, options = {}) {
     cornerMatched: aligned.cornerMatched || { TL: false, TR: false, BR: false, BL: false },
     brightness,
     lightState,
+    sharpness,
+    blurry,
+    areaRatio,
+    distanceState,
+    skewDeg,
+    skewState,
     cornersPx,
     paperQuadPx,
     hint,
@@ -919,16 +1261,30 @@ export function readSheet(img, options = {}) {
   }
   const { H, markFit, chanR, chanG } = aligned;
 
-  // 3) Đo mọi ô
+  // 3) Tinh chỉnh vi mô theo vùng (chống cong giấy nhẹ) & đo mọi ô
   const T = TEMPLATE;
   const sampler = makeSampler(chanR, chanG, w, h, H);
-  const grid = (xs, ys) => ys.map((y) => xs.map((x) => sampler.measure(x, y).fill));
+  const useLocalRefine = options.localRefine !== false;
+  const offTop = useLocalRefine
+    ? sampler.refineSectionOffset([[T.idX[1], T.digitY[2]], [T.idX[4], T.digitY[7]], [T.codeX[1], T.digitY[4]]])
+    : [0, 0];
+  const offP1 = useLocalRefine
+    ? sampler.refineSectionOffset([[T.p1X[0][1], T.p1Y[2]], [T.p1X[1][2], T.p1Y[6]], [T.p1X[2][1], T.p1Y[4]], [T.p1X[3][2], T.p1Y[7]]])
+    : [0, 0];
+  const offP2 = useLocalRefine
+    ? sampler.refineSectionOffset([[T.p2X[0][1], T.p2Y[1]], [T.p2X[1][2], T.p2Y[2]], [T.p2X[2][1], T.p2Y[1]], [T.p2X[3][2], T.p2Y[2]]])
+    : [0, 0];
+  const offP3 = useLocalRefine
+    ? sampler.refineSectionOffset([[T.p3X[0][1], T.p3DigitY[2]], [T.p3X[2][2], T.p3DigitY[5]], [T.p3X[4][1], T.p3DigitY[7]]])
+    : [0, 0];
 
-  const idFill = T.idX.map((x) => T.digitY.map((y) => sampler.measure(x, y).fill));       // [col][digit]
-  const codeFill = T.codeX.map((x) => T.digitY.map((y) => sampler.measure(x, y).fill));
+  const grid = (xs, ys, [ox, oy]) => ys.map((y) => xs.map((x) => sampler.measure(x, y, ox, oy).fill));
+
+  const idFill = T.idX.map((x) => T.digitY.map((y) => sampler.measure(x, y, offTop[0], offTop[1]).fill));       // [col][digit]
+  const codeFill = T.codeX.map((x) => T.digitY.map((y) => sampler.measure(x, y, offTop[0], offTop[1]).fill));
   const p1Fill = []; // [q][4]
   for (let b = 0; b < 4; b++) {
-    const g = grid(T.p1X[b], T.p1Y); // [row][col]
+    const g = grid(T.p1X[b], T.p1Y, offP1); // [row][col]
     g.forEach((row) => p1Fill.push(row));
   }
   const p2Fill = []; // [q][ý][2]
@@ -937,99 +1293,35 @@ export function readSheet(img, options = {}) {
       const q = [];
       for (let r = 0; r < 4; r++) {
         q.push([
-          sampler.measure(T.p2X[b][k * 2], T.p2Y[r]).fill,
-          sampler.measure(T.p2X[b][k * 2 + 1], T.p2Y[r]).fill,
+          sampler.measure(T.p2X[b][k * 2], T.p2Y[r], offP2[0], offP2[1]).fill,
+          sampler.measure(T.p2X[b][k * 2 + 1], T.p2Y[r], offP2[0], offP2[1]).fill,
         ]);
       }
       p2Fill.push(q);
     }
   }
   const p3Fill = T.p3X.map((xs) => xs.map((x, c) => ({
-    minus: c === 0 ? sampler.measure(x, T.p3MinusY).fill : 0,
-    comma: c === 1 || c === 2 ? sampler.measure(x, T.p3CommaY).fill : 0,
-    digits: T.p3DigitY.map((y) => sampler.measure(x, y).fill),
+    minus: c === 0 ? sampler.measure(x, T.p3MinusY, offP3[0], offP3[1]).fill : 0,
+    comma: c === 1 || c === 2 ? sampler.measure(x, T.p3CommaY, offP3[0], offP3[1]).fill : 0,
+    digits: T.p3DigitY.map((y) => sampler.measure(x, y, offP3[0], offP3[1]).fill),
   })));
 
   // Chất lượng căn chỉnh: viền ô phải rơi đúng chỗ
   let rs = 0;
   let rn = 0;
   for (let b = 0; b < 4; b++) {
-    for (let r = 0; r < 10; r += 3) for (let c = 0; c < 4; c++) { rs += sampler.ringScore(T.p1X[b][c], T.p1Y[r]); rn++; }
+    for (let r = 0; r < 10; r += 3) for (let c = 0; c < 4; c++) { rs += sampler.ringScore(T.p1X[b][c], T.p1Y[r], offP1[0], offP1[1]); rn++; }
   }
   const alignment = rn ? rs / rn : 0;
 
-  // 4) Giải mã
-  const thr = opt.markThreshold;
-  const band = opt.faintBand;
-  const issues = [];
-  const isOn = (f) => f >= thr;
-  const isFaint = (f) => f > thr - band && f < thr + band;
-
-  // chọn 1 trong n ô: trả { idx, state }  state: ok | blank | multi
-  const pickOne = (fills) => {
-    const on = [];
-    fills.forEach((f, i) => { if (isOn(f)) on.push(i); });
-    if (!on.length) return { idx: -1, state: 'blank', faint: fills.some(isFaint) };
-    if (on.length === 1) return { idx: on[0], state: 'ok', faint: isFaint(fills[on[0]]) };
-    on.sort((a, b) => fills[b] - fills[a]);
-    // 1 ô đen đậm hơn hẳn ô còn lại → coi ô đó là đáp án (ô kia có thể là tẩy chưa sạch)
-    if (fills[on[0]] > fills[on[1]] * 1.7) return { idx: on[0], state: 'ok', faint: true, dominant: true };
-    return { idx: on[0], state: 'multi', all: on, faint: true };
-  };
-
-  const digitsOf = (cols, label) => cols.map((col, ci) => {
-    const r = pickOne(col);
-    if (r.state === 'blank') { issues.push({ part: label, pos: ci + 1, type: 'blank' }); return '?'; }
-    if (r.state === 'multi') { issues.push({ part: label, pos: ci + 1, type: 'multi' }); return '?'; }
-    if (r.faint) issues.push({ part: label, pos: ci + 1, type: 'faint' });
-    return String(r.idx);
-  }).join('');
-  const sbd = digitsOf(idFill, 'sbd');
-  const code = digitsOf(codeFill, 'code');
-
-  const letters = ['A', 'B', 'C', 'D'];
-  const p1 = p1Fill.map((fills, qi) => {
-    const r = pickOne(fills);
-    if (r.state === 'multi') { issues.push({ part: 'p1', q: qi + 1, type: 'multi' }); return '*'; }
-    if (r.state === 'ok' && r.faint) issues.push({ part: 'p1', q: qi + 1, type: 'faint' });
-    return r.idx >= 0 ? letters[r.idx] : null;
+  // 4) Giải mã với ngưỡng thích ứng theo phiếu
+  const raw = { idFill, codeFill, p1Fill, p2Fill, p3Fill };
+  const decoded = decodeSheetFills(raw, {
+    markThreshold: options.markThreshold,
+    faintBand: opt.faintBand,
+    adaptive: options.adaptive,
+    sensitivity: opt.sensitivity,
   });
-
-  const p2 = p2Fill.map((rows, qi) => rows.map((pair, yi) => {
-    const r = pickOne(pair);
-    if (r.state === 'multi') { issues.push({ part: 'p2', q: qi + 1, y: 'abcd'[yi], type: 'multi' }); return '*'; }
-    if (r.state === 'ok' && r.faint) issues.push({ part: 'p2', q: qi + 1, y: 'abcd'[yi], type: 'faint' });
-    return r.idx === 0 ? 'D' : r.idx === 1 ? 'S' : null;
-  }));
-
-  const p3 = p3Fill.map((cols, qi) => {
-    let s = '';
-    cols.forEach((col, ci) => {
-      // ứng viên: các chữ số + ("-" cột 1) + ("," cột 2,3)
-      const labels = [];
-      const fills = [];
-      if (ci === 0) { labels.push('-'); fills.push(col.minus); }
-      if (ci === 1 || ci === 2) { labels.push(','); fills.push(col.comma); }
-      col.digits.forEach((f, d) => { labels.push(String(d)); fills.push(f); });
-      const r = pickOne(fills);
-      if (r.state === 'multi') {
-        issues.push({ part: 'p3', q: qi + 1, pos: ci + 1, type: 'multi' });
-        s += '?';
-      } else if (r.state === 'ok') {
-        if (r.faint) issues.push({ part: 'p3', q: qi + 1, pos: ci + 1, type: 'faint' });
-        s += labels[r.idx];
-      }
-      // blank → cột trống, bỏ qua
-    });
-    return s;
-  });
-
-  // Ngưỡng có hợp lý không: phân bố độ đen toàn phiếu
-  const allFills = [
-    ...idFill.flat(), ...codeFill.flat(), ...p1Fill.flat(), ...p2Fill.flat(2),
-  ];
-  const marked = allFills.filter(isOn).length;
-  const mid = allFills.filter(isFaint).length;
 
   const toNorm = ([ptx, pty]) => {
     const [u, v] = H(ptx, pty);
@@ -1047,20 +1339,27 @@ export function readSheet(img, options = {}) {
 
   return {
     ok: true,
-    sbd, code, p1, p2, p3,
-    issues,
+    sbd: decoded.sbd,
+    code: decoded.code,
+    p1: decoded.p1,
+    p2: decoded.p2,
+    p3: decoded.p3,
+    issues: decoded.issues,
     quality: {
       markFit: +markFit.toFixed(2),
       alignment: +alignment.toFixed(3),
-      marked,
-      uncertain: mid,
-      threshold: thr,
+      marked: decoded.marked,
+      uncertain: decoded.uncertain,
+      threshold: decoded.threshold,
+      blankFloor: decoded.blankFloor,
+      inkLevel: decoded.inkLevel,
+      adapted: decoded.adapted,
       cornersNorm,
       warn: (!fourCornersExact && markFit < 0.5) || alignment < 0.03
         ? 'Ảnh có thể bị lệch/méo — kiểm tra kỹ kết quả hoặc chụp lại.'
         : null,
     },
-    raw: { idFill, codeFill, p1Fill, p2Fill, p3Fill },
+    raw,
   };
 }
 

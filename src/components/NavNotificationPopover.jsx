@@ -64,7 +64,7 @@ function fmtRelTime(ts) {
   return new Date(t).toLocaleDateString('vi-VN');
 }
 
-function NotifIcon({ type, size = 15 }) {
+function NotifIcon({ type, size = 16 }) {
   const p = {
     width: size,
     height: size,
@@ -77,18 +77,56 @@ function NotifIcon({ type, size = 15 }) {
     'aria-hidden': true,
   };
   switch (type) {
+    case 'mention':
+      return (
+        <svg {...p}>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" />
+        </svg>
+      );
     case 'admin':
-      return <svg {...p}><path d="M12 3l7 3v5c0 5-3.2 8.8-7 10-3.8-1.2-7-5-7-10V6l7-3z" /><path d="M9 12l2 2 4-4" /></svg>;
+      return (
+        <svg {...p}>
+          <path d="M12 3l7 3v5c0 5-3.2 8.8-7 10-3.8-1.2-7-5-7-10V6l7-3z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      );
     case 'streak':
-      return <svg {...p}><path d="M12 2.5c1.7 3.2 5.5 4.8 5.5 10a5.5 5.5 0 0 1-11 0c0-3 1.8-5.1 3.2-7.2.2 2 1.2 3 2.3 3.2-.2-2-.1-3.9 0-6z" /></svg>;
+      return (
+        <svg {...p}>
+          <path d="M12 2.5c1.7 3.2 5.5 4.8 5.5 10a5.5 5.5 0 0 1-11 0c0-3 1.8-5.1 3.2-7.2.2 2 1.2 3 2.3 3.2-.2-2-.1-3.9 0-6z" />
+        </svg>
+      );
     case 'task':
-      return <svg {...p}><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></svg>;
+      return (
+        <svg {...p}>
+          <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+          <path d="M8.5 12.2l2.3 2.3 4.7-5" />
+        </svg>
+      );
     case 'study':
-      return <svg {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="3.5" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a3.5 3.5 0 0 1 0 6.75" /></svg>;
+      return (
+        <svg {...p}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="3.5" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a3.5 3.5 0 0 1 0 6.75" />
+        </svg>
+      );
     case 'exam':
-      return <svg {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></svg>;
+      return (
+        <svg {...p}>
+          <path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6-4.6-1.9 4.6-1.9L12 3z" />
+          <path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" />
+        </svg>
+      );
     default:
-      return <svg {...p}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>;
+      return (
+        <svg {...p}>
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+      );
   }
 }
 
@@ -107,7 +145,9 @@ export default function NavNotificationPopover({ compact = false }) {
   const [mentionAlerts, setMentionAlerts] = useState([]);
   const [pushPerm, setPushPerm] = useState(() => getPushPermission());
   const [enablingPush, setEnablingPush] = useState(false);
+  const [testSent, setTestSent] = useState(false);
   const [pendingTasks, setPendingTasks] = useState([]);
+  const testTimerRef = useRef(null);
 
   const todayKey = getTodayKeyLocal();
   const readStorageKey = `elec_notif_read_v1:${uid}:${todayKey}`;
@@ -158,7 +198,9 @@ export default function NavNotificationPopover({ compact = false }) {
   }, [open]);
 
   useEffect(() => {
-    const onCloseAll = () => setOpen(false);
+    const onCloseAll = (e) => {
+      if (e?.detail?.except !== 'notifications') setOpen(false);
+    };
     window.addEventListener('elec-close-nav-dropdowns', onCloseAll);
     return () => window.removeEventListener('elec-close-nav-dropdowns', onCloseAll);
   }, []);
@@ -197,6 +239,8 @@ export default function NavNotificationPopover({ compact = false }) {
     };
   }, [user?.uid]);
 
+  useEffect(() => () => clearTimeout(testTimerRef.current), []);
+
   const handleTestPush = () => {
     fireElecPushNotification({
       id: `push_test_${Date.now()}`,
@@ -206,6 +250,9 @@ export default function NavNotificationPopover({ compact = false }) {
       channel: 'community',
       force: true,
     });
+    setTestSent(true);
+    clearTimeout(testTimerRef.current);
+    testTimerRef.current = setTimeout(() => setTestSent(false), 2400);
   };
 
   const handleEnablePush = async () => {
@@ -255,7 +302,7 @@ export default function NavNotificationPopover({ compact = false }) {
       list.push({
         id,
         category: 'community',
-        icon: 'study',
+        icon: 'mention',
         tone: 'orange',
         tag: isClass ? '@MỌI NGƯỜI · LỚP' : '@MỌI NGƯỜI',
         title: `${m.authorName || 'Thành viên ELEC'} đã nhắc @mọi người`,
@@ -451,19 +498,49 @@ export default function NavNotificationPopover({ compact = false }) {
 
   const totalUnread = useMemo(() => items.filter((i) => i.unread).length, [items]);
 
+  const tabUnreadCounts = useMemo(() => {
+    const counts = { all: 0, admin: 0, streak: 0, community: 0 };
+    items.forEach((i) => {
+      if (!i.unread) return;
+      counts.all += 1;
+      if (counts[i.category] !== undefined) counts[i.category] += 1;
+    });
+    return counts;
+  }, [items]);
+
   const visibleItems = useMemo(() => {
     if (filter === 'all') return items;
     return items.filter((i) => i.category === filter);
   }, [items, filter]);
 
-  const handleClickItem = async (item) => {
-    if (item.dbId && item.unread) {
+  const { unreadItems, readItems } = useMemo(() => {
+    const unread = [];
+    const read = [];
+    visibleItems.forEach((item) => {
+      if (item.unread) unread.push(item);
+      else read.push(item);
+    });
+    return { unreadItems: unread, readItems: read };
+  }, [visibleItems]);
+
+  const markItemReadOnly = (item) => {
+    if (!item?.unread) return;
+    if (item.dbId) {
       markNoticeRead(item.dbId).catch(() => {});
-    } else if (item.unread) {
+    } else {
       persistReadIds([...readIds, item.id]);
     }
+  };
+
+  const handleClickItem = async (item) => {
+    markItemReadOnly(item);
     setOpen(false);
     item.action?.();
+  };
+
+  const handleQuickMarkRead = (e, item) => {
+    e.stopPropagation();
+    markItemReadOnly(item);
   };
 
   const handleMarkAllRead = async () => {
@@ -473,6 +550,66 @@ export default function NavNotificationPopover({ compact = false }) {
       markAllNoticesRead(dbNotices).catch(() => {});
     }
   };
+
+  const renderNotifCard = (item) => (
+    <div
+      key={item.id}
+      role="button"
+      tabIndex={0}
+      className={`enotif-item is-tone-${item.tone} ${item.unread ? 'is-unread' : 'is-read'}`}
+      onClick={() => handleClickItem(item)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClickItem(item);
+        }
+      }}
+    >
+      <span className={`enotif-ico is-${item.tone}`}>
+        <NotifIcon type={item.icon} size={17} />
+      </span>
+
+      <div className="enotif-body">
+        <div className="enotif-meta">
+          <span className={`enotif-tag is-${item.tone}`}>{item.tag}</span>
+          <div className="enotif-meta-right">
+            <span className="enotif-time">{item.time}</span>
+            {item.unread && <span className="enotif-unread-dot" aria-label="Chưa đọc" />}
+          </div>
+        </div>
+        <strong className="enotif-title">{item.title}</strong>
+        <p className="enotif-desc">{item.body}</p>
+      </div>
+
+      <div className="enotif-item-actions">
+        {item.unread ? (
+          <button
+            type="button"
+            className="enotif-item-check"
+            title="Đánh dấu đã đọc"
+            aria-label="Đánh dấu đã đọc"
+            onClick={(e) => handleQuickMarkRead(e, item)}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </button>
+        ) : (
+          <span className="enotif-item-chev" aria-hidden="true">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  const headerSubtitle = liveStudiers.length > 0
+    ? `${liveStudiers.length} bạn đang học trực tiếp`
+    : totalUnread > 0
+      ? 'Lớp học, chuỗi học & Cộng đồng'
+      : 'Bạn đã xem hết tất cả tin mới';
 
   return (
     <div className="enotif-wrap" ref={wrapRef}>
@@ -484,7 +621,11 @@ export default function NavNotificationPopover({ compact = false }) {
             : `nav-action-icon-btn enotif-trigger ${open ? 'is-open' : ''}`
         }
         onClick={() => {
-          if (!open) window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns'));
+          if (!open) {
+            window.dispatchEvent(
+              new CustomEvent('elec-close-nav-dropdowns', { detail: { except: 'notifications' } })
+            );
+          }
           setOpen((v) => !v);
         }}
         aria-label="Thông báo ELEC AI"
@@ -512,120 +653,229 @@ export default function NavNotificationPopover({ compact = false }) {
       </button>
 
       {open && (
-        <div className={`enotif-pop ${compact ? 'is-compact' : ''}`} role="dialog" aria-label="Trung tâm Thông báo">
-          <div className="enotif-head">
-            <div className="enotif-head-left">
-              <img src="/img/elec/elec-hello.png" alt="Bé Elec" draggable={false} />
-              <strong>Thông báo</strong>
-              {totalUnread > 0 && <span className="enotif-head-cnt">{totalUnread} mới</span>}
-            </div>
-            {totalUnread > 0 && (
-              <button type="button" className="enotif-mark-all" onClick={handleMarkAllRead}>
-                Đọc tất cả
-              </button>
-            )}
-          </div>
+        <>
+          <div
+            className="enotif-mobile-backdrop"
+            aria-hidden="true"
+            onClick={() => setOpen(false)}
+          />
+          <div className={`enotif-pop ${compact ? 'is-compact' : ''}`} role="dialog" aria-label="Trung tâm Thông báo">
+            <div className="enotif-sheet-grip" aria-hidden="true" />
 
-          {pushPerm !== 'unsupported' && (
-            <div className={`enotif-push-bar ${pushPerm === 'granted' ? 'is-on' : ''}`}>
-              <div className="enotif-push-copy">
-                <b>{pushPerm === 'granted' ? 'Thông báo đẩy đang bật' : 'Bật thông báo đẩy @mọi người'}</b>
-                <span>
-                  {pushPerm === 'granted'
-                    ? 'Tự động báo trên máy khi có người nhắc @mọi người.'
-                    : pushPerm === 'denied'
-                      ? 'Trình duyệt đang chặn thông báo — hãy bật lại ở biểu tượng ổ khóa.'
-                      : 'Nhận thông báo đẩy tức thì khi có @mọi người, tin lớp & học chung.'}
-                </span>
-              </div>
-              {pushPerm === 'default' ? (
-                <button
-                  type="button"
-                  className="enotif-push-btn"
-                  onClick={handleEnablePush}
-                  disabled={enablingPush}
-                >
-                  {enablingPush ? 'Đang bật…' : 'Bật đẩy'}
-                </button>
-              ) : pushPerm === 'granted' ? (
-                <button
-                  type="button"
-                  className="enotif-push-status is-clickable"
-                  onClick={handleTestPush}
-                  title="Bấm để kiểm tra thử thông báo đẩy trên máy"
-                >
-                  Đang bật · Thử
-                </button>
-              ) : null}
-            </div>
-          )}
-
-          <div className="enotif-tabs" role="tablist">
-            {[
-              { id: 'all', label: 'Tất cả' },
-              { id: 'admin', label: 'Admin' },
-              { id: 'streak', label: 'Chuỗi & Việc' },
-              { id: 'community', label: 'Cộng đồng' },
-            ].map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={filter === t.id}
-                className={`enotif-tab ${filter === t.id ? 'is-active' : ''}`}
-                onClick={() => setFilter(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="enotif-list">
-            {visibleItems.length === 0 ? (
-              <div className="enotif-empty">
-                <img src="/img/elec/elec-happy.png" alt="Bé Elec" draggable={false} />
-                <b>Chưa có thông báo ở mục này</b>
-                <span>Mọi thông báo từ Admin, Chuỗi học và Cộng đồng sẽ hiện tức thì tại đây.</span>
-              </div>
-            ) : (
-              visibleItems.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`enotif-item ${item.unread ? 'is-unread' : ''}`}
-                  onClick={() => handleClickItem(item)}
-                >
-                  <span className={`enotif-ico is-${item.tone}`}>
-                    <NotifIcon type={item.icon} size={15} />
-                  </span>
-                  <div className="enotif-body">
-                    <div className="enotif-meta">
-                      <span className={`enotif-tag is-${item.tone}`}>{item.tag}</span>
-                      <span className="enotif-time">{item.time}</span>
-                    </div>
-                    <strong className="enotif-title">{item.title}</strong>
-                    <p className="enotif-desc">{item.body}</p>
+            <div className="enotif-head">
+              <div className="enotif-head-left">
+                <div className="enotif-mascot-chip">
+                  <img
+                    src={totalUnread > 0 ? '/img/elec/elec-hello.png' : '/img/elec/elec-happy.png'}
+                    alt="Bé Elec"
+                    draggable={false}
+                  />
+                </div>
+                <div className="enotif-head-copy">
+                  <div className="enotif-head-title-row">
+                    <strong>Thông báo</strong>
+                    {totalUnread > 0 ? (
+                      <span className="enotif-head-cnt">
+                        <i aria-hidden="true" />
+                        {totalUnread} mới
+                      </span>
+                    ) : (
+                      <span className="enotif-head-done">Đã xem hết</span>
+                    )}
                   </div>
-                  {item.unread && <span className="enotif-unread-dot" aria-hidden="true" />}
-                </button>
-              ))
-            )}
-          </div>
+                  <span className="enotif-head-sub">{headerSubtitle}</span>
+                </div>
+              </div>
 
-          <div className="enotif-foot">
-            <button
-              type="button"
-              className="enotif-foot-link"
-              onClick={() => {
-                setOpen(false);
-                window.dispatchEvent(new CustomEvent('elec-open-community-chat'));
-              }}
-            >
-              Mở Cộng đồng ELEC →
-            </button>
-            <span className="enotif-copy">© ELEC AI</span>
+              <div className="enotif-head-actions">
+                {totalUnread > 0 && (
+                  <button
+                    type="button"
+                    className="enotif-mark-all"
+                    onClick={handleMarkAllRead}
+                    title="Đánh dấu tất cả là đã đọc"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M18 6 7 17l-5-5" />
+                      <path d="m22 10-7.5 7.5L13 16" />
+                    </svg>
+                    <span>Đọc tất cả</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="enotif-close-btn"
+                  onClick={() => setOpen(false)}
+                  aria-label="Đóng bảng thông báo"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {pushPerm !== 'unsupported' && (
+              <div className={`enotif-push-bar ${pushPerm === 'granted' ? 'is-on' : pushPerm === 'denied' ? 'is-denied' : 'is-prompt'}`}>
+                {pushPerm === 'granted' ? (
+                  <>
+                    <div className="enotif-push-inline" title="Tự động báo trên máy khi có người nhắc @mọi người">
+                      <span className="enotif-live-dot" aria-hidden="true" />
+                      <b>Thông báo đẩy đang bật</b>
+                    </div>
+                    <button
+                      type="button"
+                      className={`enotif-push-status is-clickable ${testSent ? 'is-sent' : ''}`}
+                      onClick={handleTestPush}
+                      title="Bấm để kiểm tra thử thông báo đẩy trên máy"
+                    >
+                      {testSent ? (
+                        <>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          <span>Đã gửi thử</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                          </svg>
+                          <span>Gửi thử</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="enotif-push-lead">
+                      <span className={`enotif-push-ico ${pushPerm === 'denied' ? 'is-denied' : ''}`} aria-hidden="true">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                      </span>
+                      <div className="enotif-push-copy">
+                        <b>{pushPerm === 'denied' ? 'Trình duyệt đang chặn thông báo' : 'Bật thông báo đẩy @mọi người'}</b>
+                        <span>
+                          {pushPerm === 'denied'
+                            ? 'Bấm biểu tượng ổ khóa trên thanh địa chỉ để cho phép.'
+                            : 'Nhận báo tức thì khi có @mọi người, đề mới & học chung.'}
+                        </span>
+                      </div>
+                    </div>
+                    {pushPerm === 'default' && (
+                      <button
+                        type="button"
+                        className="enotif-push-btn"
+                        onClick={handleEnablePush}
+                        disabled={enablingPush}
+                      >
+                        {enablingPush ? 'Đang bật…' : 'Bật ngay'}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            <div className="enotif-tabs-wrap">
+              <div className="enotif-tabs" role="tablist">
+                {[
+                  { id: 'all', label: 'Tất cả' },
+                  { id: 'admin', label: 'Admin' },
+                  { id: 'streak', label: 'Chuỗi & Việc' },
+                  { id: 'community', label: 'Cộng đồng' },
+                ].map((t) => {
+                  const cnt = tabUnreadCounts[t.id] || 0;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={filter === t.id}
+                      className={`enotif-tab ${filter === t.id ? 'is-active' : ''}`}
+                      onClick={() => setFilter(t.id)}
+                    >
+                      <span>{t.label}</span>
+                      {cnt > 0 && <em className="enotif-tab-cnt">{cnt > 9 ? '9+' : cnt}</em>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="enotif-list">
+              {visibleItems.length === 0 ? (
+                <div className="enotif-empty">
+                  <div className="enotif-empty-halo">
+                    <img src="/img/elec/elec-happy.png" alt="Bé Elec" draggable={false} />
+                  </div>
+                  <b>Chưa có thông báo ở mục này</b>
+                  <span>Mọi thông báo từ Admin, Chuỗi học và Cộng đồng sẽ hiện tức thì tại đây.</span>
+                  {filter !== 'all' && items.length > 0 && (
+                    <button
+                      type="button"
+                      className="enotif-empty-btn"
+                      onClick={() => setFilter('all')}
+                    >
+                      Xem tất cả ({items.length})
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {unreadItems.length > 0 && (
+                    <div className="enotif-group">
+                      <div className="enotif-group-head">
+                        <span>Mới nhận</span>
+                        <span className="enotif-group-pill">{unreadItems.length}</span>
+                      </div>
+                      <div className="enotif-group-cards">
+                        {unreadItems.map(renderNotifCard)}
+                      </div>
+                    </div>
+                  )}
+
+                  {readItems.length > 0 && (
+                    <div className="enotif-group">
+                      {unreadItems.length > 0 && (
+                        <div className="enotif-group-head is-muted">
+                          <span>Đã xem gần đây</span>
+                        </div>
+                      )}
+                      <div className="enotif-group-cards">
+                        {readItems.map(renderNotifCard)}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="enotif-foot">
+              <button
+                type="button"
+                className="enotif-foot-link"
+                onClick={() => {
+                  setOpen(false);
+                  window.dispatchEvent(new CustomEvent('elec-open-community-chat'));
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span>Mở Cộng đồng ELEC</span>
+                <svg className="enotif-foot-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </button>
+              <span className="enotif-copy">ELEC AI</span>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
