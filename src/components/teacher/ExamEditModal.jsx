@@ -212,11 +212,11 @@ const Switch = ({ label, checked, onChange, hint }) => (
 
 /* onUploadImage (tuỳ chọn): async (file) => url — nếu có (VD: Firebase Storage) sẽ dùng thay cho lưu ảnh nhúng. */
 export default function ExamEditModal({ exam, classes = [], isTeacherVip = undefined, onRequestUpgrade = null, onClose, onSaved, onUploadImage }) {
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
   const pro = useTeacherPro();
   const vipUnlocked = typeof isTeacherVip === 'boolean'
     ? isTeacherVip
-    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
+    : resolveEntitlements({ user, pro, tier, userRole: 'teacher' }).isTeacherVip;
   const [title, setTitle] = useState(exam.title || '');
   const [description, setDescription] = useState(exam.description || '');
   const [duration, setDuration] = useState(exam.duration || 15);

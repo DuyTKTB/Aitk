@@ -227,7 +227,12 @@ export default function ProUserManager() {
             await adminGrantProDirect({ userId: row.user_id, durationDays: keepDays, note: 'Chuyển sang Giáo viên PRO từ Admin' });
             say(`Đã chuyển ${row.name} sang Giáo viên PRO (giữ ${keepDays} ngày)`);
           } else {
-            await adminGrantVipDirect({ userId: row.user_id, durationDays: keepDays, note: 'Chuyển sang Học sinh VIP từ Admin' });
+            await adminGrantVipDirect({
+              userId: row.user_id,
+              durationDays: keepDays,
+              note: 'Chuyển sang Học sinh VIP từ Admin',
+              allowDowngradeFromTeacherPro: true,
+            });
             say(`Đã chuyển ${row.name} sang Học sinh VIP (giữ ${keepDays} ngày)`);
           }
           logAdminAction({

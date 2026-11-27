@@ -109,6 +109,7 @@ describe('Admin VIP/PRO & Firestore/Supabase Sync', () => {
     expect(isStudentVipRecord({ key_code: 'DIRECT-9999', note: '[STUDENT_VIP:365]' })).toBe(true);
     expect(isStudentVipRecord({ key_code: 'PRO-AAAA-BBBB', note: 'Giáo viên PRO 999k' })).toBe(false);
     expect(isStudentVipRecord({ key_code: 'DIRECT-1234', note: 'Cấp GV tổ Hóa' })).toBe(false);
+    expect(isStudentVipRecord({ key_code: 'VIP-DIRECT-QTPQ', note: '[STUDENT_VIP:365] Nâng từ Giáo viên PRO lên VIP' })).toBe(false);
     expect(isStudentVipRecord(null)).toBe(false);
   });
 

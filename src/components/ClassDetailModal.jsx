@@ -259,11 +259,11 @@ export default function ClassDetailModal({
   onDeleteClass,
   onShareKey,
 }) {
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
   const pro = useTeacherPro();
   const vipUnlocked = typeof isTeacherVip === 'boolean'
     ? isTeacherVip
-    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
+    : resolveEntitlements({ user, pro, tier, userRole: 'teacher' }).isTeacherVip;
   const mapInitialTab = (t) => {
     if (t === 'pending' || t === 'retry') return 'members';
     if (t === 'analytics') return 'scores';

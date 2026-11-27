@@ -80,11 +80,11 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
    MAIN COMPONENT: PaperGrading
    ============================================================ */
 export default function PaperGrading({ classes = [], exams = [], isTeacherVip = undefined, onRequestUpgrade = null }) {
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
   const pro = useTeacherPro();
   const vipUnlocked = typeof isTeacherVip === 'boolean'
     ? isTeacherVip
-    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
+    : resolveEntitlements({ user, pro, tier, userRole: 'teacher' }).isTeacherVip;
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list'); // list | setup | grade | analytics | rubric | pedagogy

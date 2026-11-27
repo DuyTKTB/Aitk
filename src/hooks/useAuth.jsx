@@ -315,19 +315,35 @@ export function AuthProvider({ children }) {
     return () => unsub();
   }, []);
 
-  /* ============ REFRESH CLAIMS KHI QUAY LẠI TAB ============ */
-  /* Tránh trường hợp admin vừa được cấp claim ở tab khác mà không thấy cập nhật */
+  /* ============ REFRESH CLAIMS & TIER KHI QUAY LẠI TAB HOẶC CÓ CẬP NHẬT GÓI ============ */
+  /* Tránh trường hợp admin vừa cấp PRO/VIP ở tab/thiết bị khác mà phiên hiện tại vẫn kẹt Free */
   useEffect(() => {
     if (!isLoggedIn) return undefined;
+    const syncTierLive = async () => {
+      const u = auth.currentUser;
+      if (!u?.uid) return;
+      try {
+        clearTierCache(u.uid);
+        const t = await getTier(u.uid);
+        if (mountedRef.current) setTier(t);
+      } catch { /* ignore */ }
+    };
     const onVisible = async () => {
       if (document.hidden) return;
       const u = auth.currentUser;
       if (!u) return;
       const enriched = await enrichUser(u, true);
       if (mountedRef.current && enriched) setUser({ ...enriched });
+      syncTierLive();
     };
+    window.addEventListener('cs-tier-update', syncTierLive);
+    window.addEventListener('cs-vip-update', syncTierLive);
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('cs-tier-update', syncTierLive);
+      window.removeEventListener('cs-vip-update', syncTierLive);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [isLoggedIn]);
 
   /* ============ REGISTER ============ */

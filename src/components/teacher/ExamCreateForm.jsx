@@ -287,11 +287,11 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
   onCancel,
   saving = false,
 }, ref) {
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
   const pro = useTeacherPro();
   const vipUnlocked = typeof isTeacherVip === 'boolean'
     ? isTeacherVip
-    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
+    : resolveEntitlements({ user, pro, tier, userRole: 'teacher' }).isTeacherVip;
   const [title, setTitle] = useState(initial?.title || '');
   const [description, setDescription] = useState(initial?.description || '');
   const [duration, setDuration] = useState(initial?.duration || 45);

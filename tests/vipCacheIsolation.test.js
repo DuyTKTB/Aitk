@@ -121,4 +121,20 @@ describe('VIP / PRO Cross-Account Cache Isolation', () => {
     expect(freePlan.vip).toBe(false);
     expect(freePlan.plan).toBe('free');
   });
+
+  it('recognizes active Teacher PRO stored in Firestore even when Supabase pro_users row is absent', async () => {
+    const future = new Date(Date.now() + 90 * 86400000).toISOString();
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockGetDoc.mockResolvedValue({
+      exists: () => true,
+      data: () => ({ role: 'teacher', tier: 'pro', plan: 'PRO', pro: true, proUntil: future }),
+    });
+
+    const status = await getProStatus('teacher-fs-pro', 'gv@school.vn');
+    expect(status.isPro).toBe(true);
+    expect(status.isTeacherPro).toBe(true);
+    expect(status.isStudentVip).toBe(false);
+    expect(status.plan).toBe('PRO');
+    expect(status.source).toBe('firestore');
+  });
 });

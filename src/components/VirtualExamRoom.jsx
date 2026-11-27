@@ -2312,7 +2312,7 @@ function VirtualStrictExamSession({ exam: rawExam, uid, onClose, onCompleted }) 
 }
 
 export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
   const pro = useTeacherPro();
   const uid = user?.uid;
 
@@ -2394,8 +2394,8 @@ export default function VirtualExamRoom({ onSwitchToLegacyQuiz }) {
   }, [uid, user?.email, subQuota, pro]);
 
   const ent = useMemo(
-    () => resolveEntitlements({ user, pro, subQuota }),
-    [user, pro, subQuota]
+    () => resolveEntitlements({ user, pro, tier, subQuota }),
+    [user, pro, tier, subQuota]
   );
   const isAdminUser = ent.isAdmin;
   const isTeacher = ent.isTeacherVip;

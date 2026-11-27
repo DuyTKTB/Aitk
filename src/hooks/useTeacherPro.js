@@ -3,24 +3,85 @@ import { getProStatus, activateProKey, adminRevokeProUser } from '../lib/proKeyA
 import { supabase } from '../lib/supabase.js';
 import { useAuth } from './useAuth.jsx';
 
+function readCachedProStatus(uid) {
+  if (!uid || typeof localStorage === 'undefined') return { isPro: false };
+  try {
+    const rawVip = JSON.parse(localStorage.getItem('cs-vip-status') || 'null');
+    if (rawVip && rawVip.uid === uid && (rawVip.isPro || rawVip.vip)) {
+      const expMs = rawVip.expiry ? new Date(rawVip.expiry).getTime() : 0;
+      if (expMs > Date.now()) {
+        const isTeacherPro = rawVip.isTeacherPro !== undefined
+          ? Boolean(rawVip.isTeacherPro)
+          : (rawVip.plan === 'PRO' || rawVip.tier === 'pro');
+        return {
+          isPro: true,
+          isTeacherPro,
+          isStudentVip: !isTeacherPro,
+          plan: isTeacherPro ? 'PRO' : 'VIP',
+          pro: { key: rawVip.key || 'ELEC-PRO', expiry: rawVip.expiry },
+          expiry: rawVip.expiry,
+          daysLeft: Math.max(1, Math.ceil((expMs - Date.now()) / 86400000)),
+          expired: false,
+          source: rawVip.source || 'cache',
+        };
+      }
+    }
+    const rawSub = JSON.parse(localStorage.getItem(`cs-user-subscription:${uid}`) || 'null');
+    if (rawSub && (rawSub.planName === 'PRO' || rawSub.planName === 'VIP')) {
+      const expMs = rawSub.expiry ? new Date(rawSub.expiry).getTime() : 0;
+      if (expMs > Date.now()) {
+        const isTeacherPro = rawSub.planName === 'PRO';
+        return {
+          isPro: true,
+          isTeacherPro,
+          isStudentVip: !isTeacherPro,
+          plan: rawSub.planName,
+          pro: { key: 'ELEC-PRO', expiry: rawSub.expiry },
+          expiry: rawSub.expiry,
+          daysLeft: Math.max(1, Math.ceil((expMs - Date.now()) / 86400000)),
+          expired: false,
+          source: 'subscription',
+        };
+      }
+    }
+  } catch { /* ignore */ }
+  return { isPro: false };
+}
+
 export function useTeacherPro() {
   const { user } = useAuth();
-  const [status, setStatus] = useState({ isPro: false });
+  const [status, setStatus] = useState(() => readCachedProStatus(user?.uid));
+  const [checking, setChecking] = useState(() => Boolean(user?.uid));
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!user?.uid) {
       setStatus({ isPro: false });
+      setChecking(false);
       return;
     }
-    const s = await getProStatus(user.uid, user.email);
-    setStatus(s);
+    try {
+      const s = await getProStatus(user.uid, user.email);
+      setStatus(s);
+    } finally {
+      setChecking(false);
+    }
   }, [user?.uid, user?.email]);
 
   useEffect(() => {
+    if (user?.uid) {
+      setStatus(readCachedProStatus(user.uid));
+      setChecking(true);
+    } else {
+      setStatus({ isPro: false });
+      setChecking(false);
+    }
     refresh();
     const t = setInterval(refresh, 30000);
-    const onTierChange = () => refresh();
+    const onTierChange = (e) => {
+      if (e?.detail?.source === 'getProStatus') return;
+      refresh();
+    };
     const onVisible = () => {
       if (!document.hidden) refresh();
     };
@@ -91,7 +152,8 @@ export function useTeacherPro() {
 
   return {
     ...status,
-    loading,
+    loading: loading || checking,
+    checking,
     activate,
     revoke,
     refresh,

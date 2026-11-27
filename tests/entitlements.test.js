@@ -27,6 +27,7 @@ import {
   buildIdentCode,
 } from '../src/lib/entitlements.js';
 import { canAccessVirtualExam, redeemActivationCode, getSubscriptionAndQuota } from '../src/data/virtualExamsBank.js';
+import { getTier as getQuotaTier, canSend as canSendQuota, consumeQuota, resetQuota } from '../src/lib/quota.js';
 
 describe('Student vs Teacher Free/VIP Entitlements & Pricing', () => {
   beforeEach(() => {
@@ -311,5 +312,25 @@ describe('Student vs Teacher Free/VIP Entitlements & Pricing', () => {
     expect(getManualEntryTrialUsed(uidA)).toBe(30);
     expect(getManualEntryTrialRemaining(uidA, false)).toBe(0);
     expect(getManualEntryTrialRemaining(uidA, true)).toBe(Infinity);
+  });
+
+  it('treats Teacher PRO tier as unlimited in AI Chat quota.js and resolves Teacher PRO from tier fallback', () => {
+    resetQuota();
+    expect(getQuotaTier('pro').key).toBe('pro');
+    expect(getQuotaTier({ key: 'pro' }).quotaText).toBe(Infinity);
+    expect(canSendQuota('teacher-pro-1', { key: 'pro' }, false)).toBe(true);
+    expect(canSendQuota('teacher-pro-1', { key: 'pro' }, true)).toBe(true);
+    const q = consumeQuota('teacher-pro-1', { key: 'pro' }, false);
+    expect(q.textLeft).toBe(Infinity);
+
+    const entFromTier = resolveEntitlements({
+      user: { uid: 'teacher-pro-1', role: 'teacher' },
+      pro: { isPro: false },
+      tier: { key: 'pro' },
+      userRole: 'teacher',
+    });
+    expect(entFromTier.isTeacherVip).toBe(true);
+    expect(entFromTier.hasVipAccess).toBe(true);
+    expect(entFromTier.virtualExamPlan).toBe('VIP');
   });
 });

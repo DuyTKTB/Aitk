@@ -10,6 +10,13 @@ export const TIERS = {
     quotaText: 20,
     quotaImage: 5,
   },
+  pro: {
+    key: 'pro',
+    name: 'Giáo viên PRO',
+    color: '#ffb020',
+    quotaText: Infinity,
+    quotaImage: Infinity,
+  },
   vip: {
     key: 'vip',
     name: 'ELECAI VIP',
@@ -77,7 +84,7 @@ export const getQuota = (uid, tierOrKey) => {
 /* Kiểm tra còn lượt không */
 export const canSend = (uid, tierOrKey, hasImage = false) => {
   const tier = getTier(tierOrKey);
-  if (tier.key === 'vip') return true;
+  if (tier.key === 'vip' || tier.key === 'pro') return true;
 
   const q = getQuota(uid, tier);
   if (hasImage) return q.imageLeft > 0;
@@ -87,7 +94,7 @@ export const canSend = (uid, tierOrKey, hasImage = false) => {
 /* Tiêu thụ 1 lượt — TRẢ VỀ quota mới */
 export const consumeQuota = (uid, tierOrKey, hasImage = false) => {
   const tier = getTier(tierOrKey);
-  if (tier.key === 'vip') return getQuota(uid, tier);
+  if (tier.key === 'vip' || tier.key === 'pro') return getQuota(uid, tier);
 
   const data = readQuota() || { date: today(), textUsed: 0, imageUsed: 0 };
 

@@ -896,11 +896,11 @@ function FloeWorkflowCard({
    MAIN
    ============================================================ */
 export default function TeacherDashboard({ onExit } = {}) {
-  const { user } = useAuth();
+  const { user, tier, refreshTier } = useAuth();
   const pro = useTeacherPro();
   const ent = useMemo(
-    () => resolveEntitlements({ user, pro, userRole: 'teacher' }),
-    [user, pro]
+    () => resolveEntitlements({ user, pro, tier, userRole: 'teacher' }),
+    [user, pro, tier]
   );
   const isTeacherVip = ent.isTeacherVip;
   const [trialQuotaTick, setTrialQuotaTick] = useState(0);
@@ -6311,6 +6311,7 @@ export default function TeacherDashboard({ onExit } = {}) {
               <SubscriptionTiers
                 lockedRole="teacher"
                 isModal={false}
+                isCurrentVip={isTeacherVip}
                 onUpgrade={(pkg) => setVipPaymentPkg({ ...pkg, lockedRole: 'teacher' })}
                 onOpenCreditTopUp={() => {
                   setVipModalOpen(false);
@@ -6339,6 +6340,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                       const status = await getProStatus(user?.uid, user?.email);
                       if (status?.isPro && status?.isTeacherPro !== false) {
                         await pro.refresh?.();
+                        await refreshTier?.();
                         setVipModalOpen(false);
                         setVipPaymentPkg(null);
                         say('Kích hoạt Giáo viên VIP thành công!', 'success');

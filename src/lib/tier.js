@@ -59,9 +59,11 @@ export async function getTier(uid) {
       .eq('user_id', uid)
       .maybeSingle();
     if (proRow && proRow.expiry && new Date(proRow.expiry).getTime() > Date.now()) {
-      const isVip =
-        (proRow.note || '').includes('[STUDENT_VIP') ||
-        String(proRow.key_code || '').startsWith('VIP-');
+      const note = String(proRow.note || '');
+      const isVip = !note.includes('Giáo viên') && (
+        note.includes('[STUDENT_VIP') ||
+        String(proRow.key_code || '').startsWith('VIP-')
+      );
       const resolved = isVip ? TIERS.vip : TIERS.pro;
       cache.set(uid, { tier: resolved, t: Date.now() });
       return resolved;

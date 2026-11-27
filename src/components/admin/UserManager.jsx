@@ -570,7 +570,7 @@ export default function UserManager() {
                             </button>
                           )}
 
-                          {/* Nút Cấp VIP / Bỏ VIP */}
+                          {/* Nút Cấp VIP / Bỏ VIP (ẩn khi đã là GV PRO để tránh ghi đè nhầm mất quyền PRO) */}
                           {activePro && isVip ? (
                             <button
                               type="button"
@@ -581,7 +581,7 @@ export default function UserManager() {
                             >
                               Bỏ VIP
                             </button>
-                          ) : (
+                          ) : !(activePro && !isVip) ? (
                             <button
                               type="button"
                               className="vt-btn sm"
@@ -592,7 +592,7 @@ export default function UserManager() {
                             >
                               <IconSparkle size={12} /> HS VIP
                             </button>
-                          )}
+                          ) : null}
 
                           <button
                             type="button"
@@ -744,12 +744,12 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
             </button>
           )}
 
-          {/* Quản lý VIP */}
+          {/* Quản lý VIP (ẩn khi đang có GV PRO để tránh ghi đè nhầm) */}
           {activePro && isVip ? (
             <button type="button" className="vt-btn danger" onClick={onRevokeVip} title="Hạ khỏi gói Học sinh VIP">
               🚫 Hủy VIP (Về Thường)
             </button>
-          ) : (
+          ) : !(activePro && !isVip) ? (
             <button
               type="button"
               className="vt-btn"
@@ -759,7 +759,7 @@ function UserDetailModal({ user, pro, onClose, onGrantPro, onRevokePro, onGrantV
             >
               <IconSparkle size={13} /> Cấp HS VIP 30d
             </button>
-          )}
+          ) : null}
 
           <button type="button" className="vt-btn primary" onClick={onClose}>Đóng</button>
         </>

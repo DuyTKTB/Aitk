@@ -485,11 +485,11 @@ export default function QuestionBank({
   onSoftExamCreated,
   onOpenAiStudio,
 } = {}) {
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
   const pro = useTeacherPro();
   const vipUnlocked = typeof isTeacherVip === 'boolean'
     ? isTeacherVip
-    : resolveEntitlements({ user, pro, userRole: 'teacher' }).isTeacherVip;
+    : resolveEntitlements({ user, pro, tier, userRole: 'teacher' }).isTeacherVip;
   const [trialTick, setTrialTick] = useState(0);
   useEffect(() => {
     const onChange = () => setTrialTick((n) => n + 1);
