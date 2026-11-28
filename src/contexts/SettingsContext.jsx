@@ -68,27 +68,9 @@ export function SettingsProvider({ children }) {
     }
   }, []);
 
-  const originalTitle = useRef(typeof document !== 'undefined' ? document.title : BASE_TITLE);
   useEffect(() => {
-    const newName = settings.siteName || BASE_TITLE;
-    const currentTitle = document.title || '';
-    if (currentTitle.includes(BASE_TITLE)) {
-      document.title = currentTitle.replace(BASE_TITLE, newName);
-    } else if (currentTitle.includes(settings.siteName) && settings.siteName !== newName) {
-      document.title = currentTitle.replace(settings.siteName, newName);
-    } else if (originalTitle.current.includes(BASE_TITLE)) {
-      document.title = originalTitle.current.replace(BASE_TITLE, newName);
-    }
-    // Chỉ ghi đè meta description nếu admin thực sự tùy chỉnh khác mặc định (tránh ghi đè mô tả SEO chi tiết của từng trang)
-    if (settings.siteDesc && settings.siteDesc !== DEFAULT.siteDesc) {
-      let metaDesc = document.querySelector('meta[name="description"]');
-      if (!metaDesc) {
-        metaDesc = document.createElement('meta');
-        metaDesc.name = 'description';
-        document.head.appendChild(metaDesc);
-      }
-      metaDesc.content = settings.siteDesc;
-    }
+    // Giữ nguyên <title> và <meta name="description"> chuẩn SEO thương hiệu "ELEC AI"
+    // do useSeoHead.js & prerender-seo-routes.mjs quản lý — không ghi đè bằng siteName/siteDesc từ Firestore.
     document.body.classList.toggle('hide-ai', !settings.enableAI);
     document.body.classList.toggle('hide-chat', !settings.enableChat);
     document.body.classList.toggle('hide-pet', !settings.enablePet);

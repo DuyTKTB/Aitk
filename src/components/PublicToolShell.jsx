@@ -2,6 +2,8 @@ import { Suspense, useEffect } from 'react';
 import '../styles/app-shell-styles.js';
 import SystemAnnouncementBanner from './SystemAnnouncementBanner.jsx';
 import SiteFooter from './SiteFooter.jsx';
+import { SeoRouteFooterContent } from './SeoPillarLanding.jsx';
+import { SEO_ROUTE_BY_APP_PAGE } from '../data/seoPillarRoutes.js';
 import { PageLoader } from './ElecIntroLoader.jsx';
 import { initSubmitQueue } from '../lib/submitQueue.js';
 import { initServerClock } from '../lib/serverClock.js';
@@ -80,6 +82,9 @@ export default function PublicToolShell({ page, renderPage }) {
       <Suspense fallback={<PageLoader />}>
         <main id="main" tabIndex="-1" style={{ flex: 1 }}>
           {renderPage({ isTeacherAccount: false, credits: null })}
+          {SEO_ROUTE_BY_APP_PAGE[page]?.kind === 'tool' && (
+            <SeoRouteFooterContent route={SEO_ROUTE_BY_APP_PAGE[page]} />
+          )}
         </main>
       </Suspense>
       <SiteFooter />

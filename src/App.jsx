@@ -6,7 +6,10 @@ import { PageLoader } from './components/ElecIntroLoader.jsx';
 import { useAuth } from './hooks/useAuth.jsx';
 import { useSettings } from './contexts/SettingsContext.jsx';
 import { useSeoHead } from './hooks/useSeoHead.js';
+import { SEO_PILLAR_ROUTES, SEO_ROUTE_BY_APP_PAGE } from './data/seoPillarRoutes.js';
 import { clearPostAuthRedirect } from './lib/userRole.js';
+
+const SeoPillarLanding = lazy(() => import('./components/SeoPillarLanding.jsx'));
 
 /* ============ LAZY SHELLS & WIDGETS ============ */
 const AuthenticatedAppShell = lazy(() => import('./components/AuthenticatedAppShell.jsx'));
@@ -81,6 +84,7 @@ const VALID_PAGES = new Set([
   'admission', 'career', 'schedule', 'pomodoro', 'exam', 'grade', 'leaderboard', 'stats',
   'physics-lab', 'biology-lab', 'sim-lab', 'games', 'table',
   'admin', 'settings', 'feedback', 'classroom', 'my-classes', 'virtual-exams', 'study', 'truong', 'tap-trung',
+  ...SEO_PILLAR_ROUTES.filter((r) => r.kind === 'pillar').map((r) => r.appPage),
 ]);
 
 const GAME_ROUTES = [
@@ -90,6 +94,7 @@ const GAME_ROUTES = [
 ].map((g) => 'games/' + g);
 
 const CLEAN_PATH_MAP = {
+  ...Object.fromEntries(SEO_PILLAR_ROUTES.map((r) => [r.slug, r.appPage])),
   'bang-tuan-hoan': 'table',
   'can-bang-phuong-trinh-hoa-hoc': 'balance',
   'cong-thuc-hoa-hoc': 'formulas',
@@ -120,6 +125,7 @@ const PUBLIC_SEO_PAGES = [
   'ai', 'table', 'balance', 'formulas', 'casio', 'roadmap', 'study', 'grade',
   'virtual-exams', 'tools', 'admission', 'career', 'doc-studio',
   'chalkboard', 'sim-lab', 'physics-lab', 'biology-lab', 'quiz', 'games', 'leaderboard', 'pomodoro', 'tap-trung', 'schedule',
+  ...SEO_PILLAR_ROUTES.filter((r) => r.kind === 'pillar').map((r) => r.appPage),
 ];
 
 const readPage = () => {
@@ -244,6 +250,9 @@ export default function App() {
 
   /* ============ PAGE RENDERER ============ */
   const renderPage = useCallback(({ isTeacherAccount = false, credits = null } = {}) => {
+    if (SEO_ROUTE_BY_APP_PAGE[page]?.kind === 'pillar') {
+      return <SeoPillarLanding route={SEO_ROUTE_BY_APP_PAGE[page]} />;
+    }
     if (page === 'home') return <Home />;
 
     if (page === 'table') {
