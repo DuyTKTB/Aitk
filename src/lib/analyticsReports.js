@@ -135,9 +135,11 @@ export async function listReportVersions({ classId, range = {}, focusSubject = '
   if (!classId) return [];
   const id = reportDocId(classId, range, focusSubject);
   try {
-    const snap = await getDocs(query(collection(db, COL), where('versionsOf', '==', id)));
+    // Lọc theo classId để thỏa Firestore Rules `classOwner(resource.data.classId)` mà không cần composite index
+    const snap = await getDocs(query(collection(db, COL), where('classId', '==', classId)));
     return snap.docs
       .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((d) => d.versionsOf === id)
       .sort((a, b) => (b.generatedAtMs || 0) - (a.generatedAtMs || 0))
       .slice(0, Math.max(1, Math.min(50, max)));
   } catch (e) {

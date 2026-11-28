@@ -31,6 +31,19 @@ ELEC Science AI hợp nhất quy trình "Hỏi — Hiểu — Thực hành — K
 - [Facebook chính thức của Nhà sáng lập Nguyễn Thế Duy](https://www.facebook.com/nguyentheduytk): Kênh liên hệ và cập nhật chính thức.
 - [Portfolio cá nhân Nguyễn Thế Duy (NGUYENDUYTK)](https://nguyenduytk.vercel.app/): Hồ sơ năng lực lập trình web, tự động hóa và thiết kế sáng tạo.
 
+## Các Phân Hệ Pillar Chính (Học Online, AI Giáo Dục, Luyện Thi, LMS Giáo Viên)
+
+- [Học online & Nền tảng học trực tuyến miễn phí](https://www.elecai.id.vn/hoc-online-mien-phi): Website học online miễn phí cho học sinh THCS, THPT tích hợp AI, lộ trình Elo, SRS và 50+ công cụ học tập.
+- [AI Giáo Dục & Ứng dụng trí tuệ nhân tạo trong học tập](https://www.elecai.id.vn/ai-giao-duc): Hệ sinh thái AI hỗ trợ học tập, chatbot giáo dục chuẩn GDPT 2018 và chuyển đổi số giáo dục Việt Nam.
+- [Gia sư AI & Trợ lý học tập trực tuyến 24/7](https://www.elecai.id.vn/gia-su-ai): Gia sư trí tuệ nhân tạo kèm học 1-1 theo chế độ Socratic (gợi ý từng bước) và kiểm tra bài làm.
+- [Giải bài tập bằng AI & Giải bài tập bằng hình ảnh](https://www.elecai.id.vn/giai-bai-tap-bang-ai): Chụp tối đa 10 ảnh đề bài Hóa học, Vật lí, Sinh học, Toán để nhận lời giải KaTeX chi tiết.
+- [Luyện thi THPT Quốc gia & Ôn thi tốt nghiệp THPT](https://www.elecai.id.vn/luyen-thi-thpt-quoc-gia): Luyện thi đại học online chuẩn cấu trúc 3 phần Bộ GD&ĐT 2026 và ĐGNL (HSA, TSA, V-ACT).
+- [ELEC AI cho Giáo viên & Hệ thống quản lý học tập LMS](https://www.elecai.id.vn/cho-giao-vien): Phần mềm quản lý lớp học, quản lý học sinh, dạy học trực tuyến và giám sát phòng thi MediaPipe.
+- [Phần mềm tạo đề thi trắc nghiệm online bằng AI](https://www.elecai.id.vn/phan-mem-tao-de-thi): Tạo đề kiểm tra online siêu tốc từ Word/PDF/Ảnh, trộn mã đề và hỗ trợ 3 dạng câu hỏi GDPT 2018.
+- [Phần mềm chấm bài trắc nghiệm tự động OMR](https://www.elecai.id.vn/cham-bai-trac-nghiem-tu-dong): Quét chấm phiếu thi giấy A4 bằng camera điện thoại/máy tính, xuất báo cáo Excel tức thì.
+- [Học tập THPT theo khối lớp & bộ môn](https://www.elecai.id.vn/kien-thuc): [Lớp 10](https://www.elecai.id.vn/hoc-tap-lop-10), [Lớp 11](https://www.elecai.id.vn/hoc-tap-lop-11), [Lớp 12](https://www.elecai.id.vn/hoc-tap-lop-12), [Học Hóa học online](https://www.elecai.id.vn/hoc-hoa-hoc-online), [Học Vật lý online](https://www.elecai.id.vn/hoc-vat-ly-online), [Học Sinh học online](https://www.elecai.id.vn/hoc-sinh-hoc-online), [Phòng thí nghiệm Sinh học ảo 3D](https://www.elecai.id.vn/phong-thi-nghiem-sinh-hoc).
+- **Kho Dữ liệu Học thuật Mở (Programmatic SEO — xem `/sitemap-pseo.xml`):** [Kho 66+ Đề thi thử THPT & ĐGNL](/de-thi) · [Thư viện 118 Nguyên tố IUPAC](/nguyen-to) · [Thư viện 65+ Phương trình Hóa học THPT](/phuong-trinh) · [Kho 125 Chuyên đề 12 môn THPT](/kien-thuc).
+
 ## Phân hệ học tập & Công cụ Khoa học Tự nhiên (Dành cho Học sinh)
 
 - [Trang chủ ELEC Science AI](https://www.elecai.id.vn/): Trung tâm truy cập toàn bộ trợ lý AI, công cụ KHTN, phòng thi ảo và lộ trình học tập.

@@ -90,12 +90,7 @@ export default function QuestionBankForm({
   /* ⭐ FIX: Chuyên đề đổi theo môn */
   const availableTopics = useMemo(() => getTopicsForSubject(subject), [subject]);
 
-  /* Reset chuyên đề nếu không thuộc môn mới */
-  useEffect(() => {
-    if (topicId && !availableTopics.some((t) => t.id === topicId)) {
-      setTopicId('');
-    }
-  }, [subject, topicId, availableTopics]);
+  /* Giữ nguyên mã chuyên đề cũ khi mở form sửa (chỉ xóa khi GV chủ động đổi môn) */
 
   useEffect(() => {
     if (!initial) textareaRef.current?.focus();
@@ -220,7 +215,18 @@ export default function QuestionBankForm({
           <div className="qb-row-3">
             <label className="qb-field">
               <span>Môn</span>
-              <select value={subject} onChange={(e) => setSubject(e.target.value)} disabled={saving}>
+              <select
+                value={subject}
+                onChange={(e) => {
+                  const nextSubj = e.target.value;
+                  setSubject(nextSubj);
+                  const nextTopics = getTopicsForSubject(nextSubj);
+                  if (topicId && !nextTopics.some((t) => t.id === topicId)) {
+                    setTopicId('');
+                  }
+                }}
+                disabled={saving}
+              >
                 <option value="">Chưa chọn</option>
                 {ALL_SUBJECTS_LIST.map((s) => <option key={s} value={s}>{s}</option>)}
                 {subject && !ALL_SUBJECTS_LIST.includes(subject) && <option value={subject}>{subject}</option>}

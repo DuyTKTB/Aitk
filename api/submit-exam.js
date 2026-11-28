@@ -76,6 +76,7 @@ export function parseTimestampMs(v) {
 export function validateExamWindow({
   exam,
   attempt,
+  session = null,
   nowMs = Date.now(),
   autoSubmitted = false,
   isRetry = false,
@@ -84,26 +85,34 @@ export function validateExamWindow({
   if (exam.active === false) return { ok: false, status: 403, error: 'Đề thi đã bị đóng bởi giáo viên.' };
 
   const opensMs = parseTimestampMs(exam.opensAt);
-  const closesMs = parseTimestampMs(exam.closesAt);
+  const examClosesMs = parseTimestampMs(exam.closesAt);
+  const sessionClosesMs = parseTimestampMs(session?.closesAt || session?.closesAtMs);
+  const closesMs = Math.max(examClosesMs, sessionClosesMs);
   if (opensMs && nowMs < opensMs - 30000) {
     return { ok: false, status: 403, error: 'Đề thi chưa tới giờ mở.' };
   }
 
-  const durationMs = Math.max(0, Number(exam.duration) || 0) * 60000;
+  const effectiveDurationMin = Math.max(Number(exam.duration) || 0, Number(session?.duration) || 0);
+  const durationMs = Math.max(0, effectiveDurationMin) * 60000;
   const lateGraceMs = Math.max(durationMs, 15 * 60000);
   if (!autoSubmitted && !isRetry && closesMs && nowMs > closesMs + lateGraceMs) {
     return { ok: false, status: 403, error: 'Đề thi đã quá hạn đóng.' };
   }
 
   // Nếu có mốc startedAt của attempt và đề có thời lượng: cho phép trễ tối đa 3 phút (mạng/nộp tự động)
+  // Tôn trọng cả hạn đóng phòng thi trực tiếp khi GV bấm +5p / +10p gia hạn
   const startedMs = parseTimestampMs(attempt?.startedAt);
   if (startedMs > 0 && durationMs > 0 && !autoSubmitted && !isRetry) {
-    const maxAllowedMs = startedMs + durationMs + 3 * 60000;
+    const attemptDeadlineMs = startedMs + durationMs;
+    const effectiveDeadlineMs = sessionClosesMs > 0
+      ? Math.max(attemptDeadlineMs, sessionClosesMs)
+      : attemptDeadlineMs;
+    const maxAllowedMs = effectiveDeadlineMs + 3 * 60000;
     if (nowMs > maxAllowedMs) {
       return {
         ok: true,
         overdue: true,
-        overdueSeconds: Math.round((nowMs - (startedMs + durationMs)) / 1000),
+        overdueSeconds: Math.round((nowMs - effectiveDeadlineMs) / 1000),
       };
     }
   }
@@ -281,10 +290,15 @@ export default async function handler(req, res) {
     const attemptSnap = await attemptRef.get();
     const attemptData = attemptSnap.exists ? attemptSnap.data() : null;
 
+    let sessionData = null;
     let sessionStudentData = null;
     const sessionId = typeof attemptMeta.sessionId === 'string' ? attemptMeta.sessionId.trim() : '';
     if (sessionId) {
-      const stSnap = await db.collection('examSessions').doc(sessionId).collection('students').doc(uid).get().catch(() => null);
+      const [sessSnap, stSnap] = await Promise.all([
+        db.collection('examSessions').doc(sessionId).get().catch(() => null),
+        db.collection('examSessions').doc(sessionId).collection('students').doc(uid).get().catch(() => null),
+      ]);
+      if (sessSnap?.exists) sessionData = sessSnap.data();
       if (stSnap?.exists) sessionStudentData = stSnap.data();
     }
 
@@ -292,6 +306,7 @@ export default async function handler(req, res) {
     const windowCheck = validateExamWindow({
       exam,
       attempt: attemptData,
+      session: sessionData,
       nowMs,
       autoSubmitted: !!attemptMeta.autoSubmitted,
       isRetry: !!attemptMeta.isRetry,
@@ -327,7 +342,12 @@ export default async function handler(req, res) {
     }
 
     if (hasPrevSub && !retryAllowedByServer) {
-      const prevDoc = oldSubsSnap.docs[0];
+      const sortedPrevDocs = [...oldSubsSnap.docs].sort((a, b) => {
+        const ta = parseTimestampMs(a.data()?.submittedAt) || Number(a.data()?.serverGradedAtMs) || 0;
+        const tb = parseTimestampMs(b.data()?.submittedAt) || Number(b.data()?.serverGradedAtMs) || 0;
+        return tb - ta;
+      });
+      const prevDoc = sortedPrevDocs[0];
       const prev = prevDoc.data();
       return res.status(200).json({
         ok: true,
@@ -358,7 +378,7 @@ export default async function handler(req, res) {
     const timeSpent = computeAuthoritativeTimeSpent({
       clientTimeSpent: body.timeSpent,
       attemptStartedAt: attemptData?.startedAt,
-      durationMinutes: Number(exam.duration) || 0,
+      durationMinutes: Math.max(Number(exam.duration) || 0, Number(sessionData?.duration) || 0),
       nowMs,
     });
 
@@ -377,7 +397,7 @@ export default async function handler(req, res) {
       timeSpent,
       submittedAt: FieldValue.serverTimestamp(),
       serverGradedAtMs: nowMs,
-      graded: true,
+      graded: !detail.some((d) => d?.needsManualGrading),
       gradedByServer: true,
       autoSubmitted: !!attemptMeta.autoSubmitted || !!windowCheck.overdue,
       overdueSeconds: windowCheck.overdueSeconds || 0,

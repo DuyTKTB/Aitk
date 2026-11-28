@@ -288,15 +288,25 @@ export function buildPaperKeysFromVersions(versions = []) {
       const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : 1);
       if (part === 1) {
         const letters = ['A', 'B', 'C', 'D'];
-        const ans = q.correct !== undefined && q.correct >= 0 && q.correct <= 3 ? letters[q.correct] : (String(q.answer || 'A').toUpperCase().charAt(0));
+        let ans = '';
+        if (Number.isInteger(q.correct) && q.correct >= 0 && q.correct <= 3) {
+          ans = letters[q.correct];
+        } else if (typeof q.answer === 'string' && /^[A-D]/i.test(q.answer.trim())) {
+          ans = q.answer.trim().toUpperCase().charAt(0);
+        }
         p1.push(ans);
       } else if (part === 2) {
-        // Đúng/Sai 4 ý: chuỗi T/F
+        // Đúng/Sai 4 ý: chuỗi T/F (không bịa 'TFTF' nếu thiếu nhận định)
         const stmts = Array.isArray(q.statements) ? q.statements : [];
-        const tf = stmts.map((s) => (s.answer ? 'T' : 'F')).join('');
-        p2.push(tf || 'TFTF');
+        const tf = stmts.slice(0, 4).map((s) => (s?.answer ? 'T' : 'F')).join('');
+        p2.push(tf);
       } else if (part === 3) {
-        p3.push(String(q.answer || '0'));
+        const primary = q.answer != null ? String(q.answer).trim() : '';
+        const alts = Array.isArray(q.accepted)
+          ? q.accepted.map((x) => String(x ?? '').trim()).filter(Boolean)
+          : [];
+        const all = primary ? [primary, ...alts.filter((a) => a !== primary)] : alts;
+        p3.push(all.join('|'));
       }
     });
 

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import '../styles/study-sheet.css';
 import { useAuth } from '../hooks/useAuth.jsx';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { useLiveStreak } from '../hooks.js';

@@ -20,21 +20,35 @@ export default function SiteFooter() {
 
         <div className="sf-links">
           <div>
-            <b>Sản phẩm</b>
-            <a href="/">Trang chủ</a>
-            <a href="/tai-lieu-hoa-hoc">Công cụ KHTN</a>
-            <a href="/phong-thi-ao">Phòng thi ảo</a>
-            <a href="/tro-choi-khoa-hoc">Trò chơi &amp; Lab 3D</a>
+            <b>Học online &amp; AI Giáo dục</b>
+            <a href="/hoc-online-mien-phi">Học online miễn phí</a>
+            <a href="/ai-giao-duc">AI trong giáo dục</a>
+            <a href="/gia-su-ai">Gia sư AI 24/7</a>
+            <a href="/giai-bai-tap-bang-ai">Giải bài tập bằng AI</a>
+            <a href="/luyen-thi-thpt-quoc-gia">Luyện thi THPT Quốc gia</a>
+            <a href="/phong-thi-ao">Phòng thi ảo 2026</a>
           </div>
           <div>
-            <b>Công cụ nổi bật</b>
-            <a href="/bang-tuan-hoan">Bảng tuần hoàn</a>
-            <a href="/cong-thuc-hoa-hoc">Công thức 3 môn KHTN</a>
-            <a href="/can-bang-phuong-trinh-hoa-hoc">Cân bằng PTHH</a>
-            <a href="/lo-trinh-on-thi-thpt-quoc-gia">Lộ trình ôn thi</a>
+            <b>Giáo viên &amp; Học THPT</b>
+            <a href="/cho-giao-vien">LMS &amp; Quản lý lớp học</a>
+            <a href="/phan-mem-tao-de-thi">Phần mềm tạo đề thi</a>
+            <a href="/cham-bai-trac-nghiem-tu-dong">Chấm bài trắc nghiệm OMR</a>
+            <a href="/hoc-hoa-hoc-online">Học Hóa học online</a>
+            <a href="/hoc-vat-ly-online">Học Vật lý online</a>
+            <a href="/hoc-sinh-hoc-online">Học Sinh học online</a>
+          </div>
+          <div>
+            <b>Kho dữ liệu &amp; Công cụ</b>
+            <a href="/de-thi">Kho 66+ Đề thi thử THPT</a>
+            <a href="/nguyen-to">118 Nguyên tố IUPAC</a>
+            <a href="/phuong-trinh">Phương trình Hóa học</a>
+            <a href="/kien-thuc">125 Chuyên đề THPT</a>
+            <a href="/bang-tuan-hoan">Bảng tuần hoàn tương tác</a>
+            <a href="/can-bang-phuong-trinh-hoa-hoc">Cân bằng PTHH tự động</a>
           </div>
           <div>
             <b>Giới thiệu &amp; Cộng đồng</b>
+            <a href="/cong-dong">Cộng đồng hỏi đáp</a>
             <a href="/gioi-thieu">Giới thiệu ELEC AI</a>
             <a href={OFFICIAL_YOUTUBE_CHANNEL_URL} target="_blank" rel="noopener noreferrer">Kênh YouTube Hướng dẫn</a>
             <a href={OFFICIAL_TEACHER_ZALO_GROUP_URL} target="_blank" rel="noopener noreferrer">Nhóm Zalo Hỗ trợ Giáo viên</a>

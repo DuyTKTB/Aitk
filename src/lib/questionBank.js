@@ -70,15 +70,17 @@ const cleanPoints = (p) => (Number(p) > 0 ? Number(p) : 1);
 
 /** Chuẩn hóa + kiểm tra 1 câu (hỗ trợ Trắc nghiệm, Đúng/Sai, Trả lời ngắn & Tự luận). */
 function buildQuestion(raw, teacherId) {
-  const hasStemOrPassage = Boolean(String(raw?.q || '').trim() || String(raw?.passage || '').trim());
+  const hasImg = Boolean(raw?.image || (Array.isArray(raw?.images) && raw.images.some(Boolean)));
+  const hasStemOrPassage = Boolean(String(raw?.q || '').trim() || String(raw?.passage || '').trim() || hasImg);
   if (!hasStemOrPassage) throw new Error('Câu hỏi rỗng');
   const type = raw.type || (Array.isArray(raw.statements) ? 'true_false' : (raw.answer !== undefined && !(raw.options?.length)) ? 'short_answer' : 'single_choice');
+  const cleanImages = Array.isArray(raw.images) ? raw.images.filter((u) => typeof u === 'string' && u.trim()) : [];
   const base = {
     teacherId,
     type,
     subject: String(raw.subject || '').trim(),
     grade: Number(raw.grade) || 0,
-    topicId: String(raw.topicId || '').trim(),
+    topicId: String(raw.topicId || raw.topic || '').trim(),
     level: String(raw.level || '').trim(),
     tags: cleanTags(raw.tags),
     q: String(raw.q || '').trim(),
@@ -87,7 +89,15 @@ function buildQuestion(raw, teacherId) {
     ...(raw.passageId != null ? { passageId: raw.passageId } : {}),
     ...((raw.groupId || raw.pg) ? { groupId: raw.groupId || raw.pg } : {}),
     ...(raw.lockGroupQuestionOrder ? { lockGroupQuestionOrder: true } : {}),
+    ...(raw.image ? { image: String(raw.image).trim() } : {}),
+    ...(cleanImages.length ? { images: cleanImages } : {}),
+    ...(String(raw.imageCaption || '').trim() ? { imageCaption: String(raw.imageCaption).trim() } : {}),
+    ...(String(raw.imageAlt || '').trim() ? { imageAlt: String(raw.imageAlt).trim() } : {}),
+    ...(raw.optionImages && (Array.isArray(raw.optionImages) ? raw.optionImages.some(Boolean) : Object.keys(raw.optionImages).length > 0)
+      ? { optionImages: raw.optionImages }
+      : {}),
     explain: String(raw.explain || '').trim(),
+    ...(String(raw.work || '').trim() ? { work: String(raw.work).trim() } : {}),
     points: cleanPoints(raw.points),
     usageCount: 0,
     createdAt: serverTimestamp(),
@@ -136,7 +146,10 @@ function buildQuestion(raw, teacherId) {
   if (!Array.isArray(raw.options) || raw.options.length < 2) throw new Error('Cần ít nhất 2 đáp án');
   const options = raw.options.map((o) => String(o || '').trim());
   const correct = Number(raw.correct);
-  if (!Number.isInteger(correct) || correct < 0 || correct >= options.length || !options[correct]) {
+  const optImgAtCorrect = Array.isArray(raw.optionImages)
+    ? raw.optionImages[correct]
+    : (raw.optionImages && typeof raw.optionImages === 'object' ? (raw.optionImages[correct] ?? raw.optionImages[String(correct)]) : null);
+  if (!Number.isInteger(correct) || correct < 0 || correct >= options.length || (!options[correct] && !optImgAtCorrect)) {
     throw new Error('Đáp án đúng không hợp lệ');
   }
   return { ...base, options, correct };
@@ -202,13 +215,19 @@ export async function addQuestionsBatch({ teacherId, questions, skipDuplicates =
 export async function updateQuestion(questionId, patch) {
   if (!questionId) throw new Error('Thiếu questionId');
 
-  const allowed = ['type', 'subject', 'grade', 'topicId', 'level', 'tags', 'q', 'passage', 'instruction', 'passageId', 'groupId', 'lockGroupQuestionOrder', 'options', 'correct', 'statements', 'answer', 'accepted', 'explain', 'points'];
+  const allowed = [
+    'type', 'subject', 'grade', 'topicId', 'level', 'tags', 'q', 'passage', 'instruction',
+    'passageId', 'groupId', 'lockGroupQuestionOrder', 'image', 'images', 'imageCaption', 'imageAlt',
+    'optionImages', 'options', 'correct', 'statements', 'answer', 'accepted', 'explain', 'work', 'points',
+  ];
   const data = { updatedAt: serverTimestamp() };
 
   for (const k of allowed) {
     if (patch[k] === undefined) continue;
     if (k === 'tags') data[k] = cleanTags(patch[k]);
     else if (k === 'options') data[k] = (patch[k] || []).map((o) => String(o || '').trim());
+    else if (k === 'images') data[k] = Array.isArray(patch[k]) ? patch[k].filter((u) => typeof u === 'string' && u.trim()) : [];
+    else if (k === 'optionImages') data[k] = patch[k];
     else if (k === 'statements') {
       data[k] = (patch[k] || []).map((s, idx) => ({
         key: s?.key || String.fromCharCode(97 + idx),

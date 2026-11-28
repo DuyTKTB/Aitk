@@ -25,7 +25,9 @@ export function stripAnswerKeys(questions = []) {
       answer: _a,
       accepted: _acc,
       explanation: _exp,
+      explain: _expl,
       solution: _sol,
+      work: _w,
       correctAnswer: _ca,
       ...rest
     } = q;
@@ -71,7 +73,9 @@ export function extractAnswerKey(questions = []) {
     }
 
     if (q?.explanation) entry.explanation = q.explanation;
+    if (q?.explain) entry.explain = q.explain;
     if (q?.solution) entry.solution = q.solution;
+    if (q?.work) entry.work = q.work;
     return entry;
   });
 }
@@ -111,7 +115,9 @@ export function mergeAnswerKeyIntoQuestions(questions = [], keyEntries = []) {
     }
 
     if (k.explanation !== undefined) merged.explanation = k.explanation;
+    if (k.explain !== undefined) merged.explain = k.explain;
     if (k.solution !== undefined) merged.solution = k.solution;
+    if (k.work !== undefined) merged.work = k.work;
     if (Number.isFinite(Number(k.points)) && !merged.points) merged.points = Number(k.points);
     return merged;
   });
@@ -145,7 +151,7 @@ export function sanitizeDetailForStudent(detail = [], showAnswerAfter = true) {
   if (!Array.isArray(detail)) return [];
   return detail.map((d) => {
     if (!d || typeof d !== 'object') return d;
-    const { correct: _c, explanation: _e, ...rest } = d;
+    const { correct: _c, explanation: _e, explain: _expl, work: _w, ...rest } = d;
     return rest;
   });
 }

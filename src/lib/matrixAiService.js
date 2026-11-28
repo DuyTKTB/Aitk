@@ -1149,7 +1149,18 @@ export async function refineMatrixWithAI({ matrix, instruction, classInsights = 
   if (wanted && wanted !== curTotal && wanted >= 4 && wanted <= 60) {
     if (curTargets.true_false != null) {
       const s = gdptSplit(wanted, matrix.subject);
-      targets = { multiple_choice: s.p1, true_false: s.p2, ...(s.p3 > 0 ? { short_answer: s.p3 } : {}) };
+      if (curTargets.short_answer != null && s.p3 > 0) {
+        targets = { multiple_choice: s.p1, true_false: s.p2, short_answer: s.p3 };
+      } else {
+        // Ma trận 2 phần (Trắc nghiệm + Đúng/Sai): dồn tổng về đúng wanted
+        const p2 = Math.min(s.p2, Math.max(1, wanted - 1));
+        targets = { multiple_choice: Math.max(1, wanted - p2), true_false: p2 };
+      }
+    } else if (curTargets.essay != null && curTargets.multiple_choice != null) {
+      // Ma trận kết hợp Trắc nghiệm + Tự luận
+      const essayRatio = curTotal > 0 ? curTargets.essay / curTotal : 0.3;
+      const nextEssay = Math.max(1, Math.min(wanted - 1, Math.round(wanted * essayRatio)));
+      targets = { multiple_choice: wanted - nextEssay, essay: nextEssay };
     } else if (curTargets.essay != null) {
       targets = { essay: wanted };
     } else {
@@ -1442,19 +1453,21 @@ function buildMC(raw, sp, { shuffle = true, subject = 'Hóa học' } = {}) {
   const passageVal = raw.passage ? clean(raw.passage, subject) : '';
   const instrVal = raw.instruction ? clean(raw.instruction, subject) : '';
 
+  const workVal = clean(raw.work || raw.calculation || '', subject);
   let q = normalizeQuestion({
     ...raw,
+    type: 'single_choice',
     q: qText,
     ...(passageVal ? { passage: passageVal } : {}),
     ...(instrVal ? { instruction: instrVal } : {}),
     options,
     correct,
     explain: clean(raw.explain || raw.explanation || raw.solution || `Đáp án đúng là ${'ABCD'[correct]}.`, subject),
-    work: clean(raw.work || raw.calculation || '', subject),
+    work: workVal,
     ...carry(sp),
   });
   if (shuffle) q = shuffleOptions(q);
-  return { ...q, ...carry(sp), type: 'single_choice', id: q.id || rid() };
+  return { ...q, ...(workVal ? { work: workVal } : {}), ...carry(sp), type: 'single_choice', id: q.id || rid() };
 }
 
 function buildTF(raw, sp, subject = 'Hóa học') {
@@ -1495,6 +1508,7 @@ function buildTF(raw, sp, subject = 'Hóa học') {
   }
   st = st.slice(0, 4);
 
+  const tfWork = clean(raw.work || raw.calculation || '', subject);
   return {
     id: rid(),
     type: 'true_false',
@@ -1503,6 +1517,7 @@ function buildTF(raw, sp, subject = 'Hóa học') {
     ...(raw.instruction ? { instruction: clean(raw.instruction, subject) } : {}),
     statements: st,
     explain: clean(raw.explain || raw.explanation || raw.solution || 'Xem chi tiết đúng/sai theo từng nhận định a, b, c, d.', subject),
+    ...(tfWork ? { work: tfWork } : {}),
     ...carry(sp),
   };
 }
@@ -1858,11 +1873,15 @@ const VERIFY_SCHEMA = {
 
 function verifyPayload(q, i) {
   if (q.type === 'essay') return null;
+  const ctx = {
+    ...(q.instruction ? { instruction: q.instruction } : {}),
+    ...(q.passage ? { passage: q.passage } : {}),
+  };
   if (q.type === 'true_false') {
-    return { i, type: 'true_false', q: q.q, statements: (q.statements || []).map((s) => s.text) };
+    return { i, type: 'true_false', ...ctx, q: q.q, statements: (q.statements || []).map((s) => s.text) };
   }
-  if (q.type === 'short_answer') return { i, type: 'short_answer', q: q.q };
-  return { i, type: 'single_choice', q: q.q, options: q.options };
+  if (q.type === 'short_answer') return { i, type: 'short_answer', ...ctx, q: q.q };
+  return { i, type: 'single_choice', ...ctx, q: q.q, options: q.options };
 }
 
 function parseVerifyAnswer(q, ans, subject = 'Hóa học') {
@@ -1963,11 +1982,14 @@ export function applyVerifySuggestion(q) {
    ============================================================ */
 export function questionToPlainText(q) {
   if (!q) return '';
+  const prefix = [q.instruction, q.passage].filter(Boolean).join('\n');
+  const stem = prefix ? `${prefix}\n${q.q || ''}` : (q.q || '');
   if (q.type === 'true_false') {
-    return `${q.q}\n${(q.statements || []).map((s, i) => `${'abcd'[i]}) ${s.text} → ${s.answer ? 'Đúng' : 'Sai'}`).join('\n')}`;
+    return `${stem}\n${(q.statements || []).map((s, i) => `${'abcd'[i]}) ${s.text} → ${s.answer ? 'Đúng' : 'Sai'}`).join('\n')}`;
   }
-  if (q.type === 'short_answer') return `${q.q}\nĐáp án: ${q.answer}`;
-  return `${q.q}\n${(q.options || []).map((o, i) => `${'ABCD'[i]}. ${o}`).join('\n')}\nĐáp án đúng: ${'ABCD'[q.correct] || '?'}`;
+  if (q.type === 'short_answer') return `${stem}\nĐáp án: ${q.answer ?? ''}`;
+  if (q.type === 'essay') return `${stem}\nHướng dẫn chấm (Tự luận): ${q.answer || q.explain || ''}`;
+  return `${stem}\n${(q.options || []).map((o, i) => `${'ABCD'[i]}. ${o}`).join('\n')}\nĐáp án đúng: ${'ABCD'[q.correct] || '?'}`;
 }
 
 function specOf(question) {
@@ -2066,9 +2088,12 @@ export async function askTeacherCopilotWithAI({
         const ans = q.type === 'true_false'
           ? (q.statements || []).map((st, si) => `${'abcd'[si]}) ${st.answer ? 'Đ' : 'S'}`).join(' ')
           : q.type === 'short_answer'
-            ? `Đáp án: ${q.answer}`
-            : `Đáp án: ${'ABCD'[q.correct] ?? '?'}`;
-        return `Câu ${idx + 1} (${lvl}): ${String(q.q || '').slice(0, 220)} [${ans}]`;
+            ? `Đáp án: ${q.answer ?? ''}`
+            : q.type === 'essay'
+              ? `Tự luận (${q.points || 1}đ): ${String(q.answer || q.explain || 'Xem hướng dẫn chấm').slice(0, 120)}`
+              : `Đáp án: ${'ABCD'[q.correct] ?? '?'}`;
+        const preview = q.q || (q.passage ? `[Ngữ liệu] ${q.passage}` : '');
+        return `Câu ${idx + 1} (${lvl}): ${String(preview).slice(0, 220)} [${ans}]`;
       }).join('\n')
     : '';
 
@@ -2159,7 +2184,7 @@ NHIỆM VỤ: viết lại/hoàn thiện CÂU HỎI GỐC theo yêu cầu giáo 
     skipCredit,
   });
   const item = listFromPayload(parseJsonLoose(raw))[0];
-  const built = buildByType(item, sp, { shuffle: false });
+  const built = buildByType(item, sp, { shuffle: false, subject });
   if (!built) throw new Error('AI không trả về cấu trúc câu hỏi hợp lệ.');
   return { ...question, ...built, id: question.id || built.id, verify: { status: 'unchecked' } };
 }
@@ -2185,8 +2210,9 @@ Trả JSON: {"distractors":["...","...","..."],"explain":"Lời giải, chỉ ra
     skipCredit,
   });
   const p = parseJsonLoose(raw);
-  const d = (Array.isArray(p?.distractors) ? p.distractors : []).map(clean).filter(Boolean);
-  const uniq = [...new Set(d.filter((x) => x.toLowerCase() !== clean(correctText).toLowerCase()))];
+  const d = (Array.isArray(p?.distractors) ? p.distractors : []).map((x) => clean(x, subject)).filter(Boolean);
+  const cleanCorrect = clean(correctText, subject).toLowerCase();
+  const uniq = [...new Set(d.filter((x) => x.toLowerCase() !== cleanCorrect))];
   if (uniq.length < 3) throw new Error('AI không tạo được phương án nhiễu hợp lệ.');
   const options = [correctText, ...uniq.slice(0, 3)];
   const fixed = shuffleOptions({ ...question, options, correct: 0, explain: p.explain || question.explain });

@@ -8,36 +8,12 @@ import { SettingsProvider } from './contexts/SettingsContext.jsx';
 import { ToastProvider } from './ui/index.jsx';
 import { IntroProvider } from './components/ElecIntroLoader.jsx';
 
-/* ============ CSS NỀN ============ */
+/* ============ CSS NỀN (tối thiểu cho Landing & toàn trang — CSS từng phân hệ được tách lazy) ============ */
 import './index.css';
 import './theme-sandra.css';
 import './fx.css';
 import './fx-fallback.css';
-
-/* ============ CSS TÍNH NĂNG ============ */
-import './admin.css';
-import './admin-dashboard.css';
-import './admin-upgrade.css';
-import './stats.css';
-import './styles/study-sheet.css';
-
-/* ============ CSS TRANG CHỦ ============ */
-import './nav-home-v2.css';
-import './styles/home-apple-bento.css';
-
-/* ============ CSS APP ============ */
-import './app-extra.css';
-import './exam-formula.css';
-import './games-upgrade.css';
-
-/* ============ CSS TRONG styles/ ============ */
 import './styles/tokens.css';
-import './styles/tools-apple.css';
-import './styles/violation-overlay.css';
-import './styles/round-polish.css';
-import './styles/animated-icons.css';
-import './styles/ocean-glass-icons.css';
-import './styles/elec-mascot-modals.css';
 
 /* Chế độ nhẹ cho máy yếu — phải import SAU các file CSS khác để ghi đè */
 import './perf-lite.css';

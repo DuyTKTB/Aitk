@@ -18,7 +18,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import MathText, { MathTextConfigContext } from '../MathText.jsx';
 import { getQuestions, norm } from '../../lib/questionBank.js';
-import { getTopicsForSubject, getTopicName } from '../../data/topicsBySubject.js';
+import { getTopicsForSubject, getTopicName, resolveTopicsSubjectKey } from '../../data/topicsBySubject.js';
 import { getSubject, subjectUsesMath } from '../../lib/subjects.js';
 import { IcoClose, IcoSearch, IcoLibrary } from '../../lib/sessionIcons.jsx';
 import '../../styles/question-bank.css';
@@ -29,6 +29,16 @@ const IcoCheck = ({ size = 14 }) => (
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
+
+const normSubj = (s) => resolveTopicsSubjectKey(s) || String(s || '').trim().toLowerCase();
+const normLv = (lv) => {
+  const s = norm(lv);
+  if (s.includes('cao') || s === 'vdc' || s === 'very_hard') return 'vận dụng cao';
+  if (s.includes('van dung') || s === 'vd' || s === 'hard') return 'vận dụng';
+  if (s.includes('thong hieu') || s === 'th' || s === 'medium') return 'thông hiểu';
+  if (s.includes('nhan biet') || s === 'nb' || s === 'easy') return 'nhận biết';
+  return String(lv || '').trim().toLowerCase();
+};
 
 const LEVELS = ['', 'nhận biết', 'thông hiểu', 'vận dụng', 'vận dụng cao'];
 
@@ -147,17 +157,17 @@ export default function ExamPickerFromBank({
     [list]
   );
   const availableTopics = useMemo(() => {
-    const src = filterSubject ? list.filter((q) => q.subject === filterSubject) : list;
+    const src = filterSubject ? list.filter((q) => normSubj(q.subject) === normSubj(filterSubject)) : list;
     const ids = new Set(src.map((q) => q.topicId).filter(Boolean));
     return getTopicsForSubject(filterSubject).filter((t) => ids.has(t.id));
   }, [list, filterSubject]);
 
   const filtered = useMemo(() => {
     let arr = list;
-    if (filterSubject) arr = arr.filter((q) => q.subject === filterSubject);
-    if (filterGrade) arr = arr.filter((q) => q.grade === filterGrade);
+    if (filterSubject) arr = arr.filter((q) => normSubj(q.subject) === normSubj(filterSubject));
+    if (filterGrade) arr = arr.filter((q) => Number(q.grade) === Number(filterGrade));
     if (filterTopic) arr = arr.filter((q) => q.topicId === filterTopic);
-    if (filterLevel) arr = arr.filter((q) => q.level === filterLevel);
+    if (filterLevel) arr = arr.filter((q) => normLv(q.level) === filterLevel);
     if (search.trim()) {
       const needle = norm(search);
       arr = arr.filter((q) => norm(q.q).includes(needle) || norm(q.passage).includes(needle) || norm(q.explain).includes(needle));
@@ -228,8 +238,8 @@ export default function ExamPickerFromBank({
           {(availableSubjects.length > 1 || filterSubject) && (
             <div className="qb-filters">
               <span className="qb-filter-label">Môn</span>
-              {chip(!filterSubject, 'Tất cả', () => setFilterSubject(''), 'sub-all')}
-              {availableSubjects.map((s) => chip(filterSubject === s, s, () => setFilterSubject(s)))}
+              {chip(!filterSubject, 'Tất cả', () => { setFilterSubject(''); setFilterTopic(''); }, 'sub-all')}
+              {availableSubjects.map((s) => chip(filterSubject === s, s, () => { setFilterSubject(s); setFilterTopic(''); }))}
             </div>
           )}
 

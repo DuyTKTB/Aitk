@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import '../../games-upgrade.css';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { isAdmin } from '../../lib/isAdmin.js';
 import { CAMERA_GAMES } from '../../lib/cameraGames.js';

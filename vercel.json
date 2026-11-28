@@ -18,9 +18,24 @@
     { "source": "/gioi-thieu.html", "destination": "/gioi-thieu", "statusCode": 301 },
     { "source": "/chinh-sach-bao-mat.html", "destination": "/chinh-sach-bao-mat", "statusCode": 301 },
     { "source": "/dieu-khoan-su-dung.html", "destination": "/dieu-khoan-su-dung", "statusCode": 301 },
+    { "source": "/hoc-online-mien-phi.html", "destination": "/hoc-online-mien-phi", "statusCode": 301 },
+    { "source": "/ai-giao-duc.html", "destination": "/ai-giao-duc", "statusCode": 301 },
+    { "source": "/gia-su-ai.html", "destination": "/gia-su-ai", "statusCode": 301 },
+    { "source": "/giai-bai-tap-bang-ai.html", "destination": "/giai-bai-tap-bang-ai", "statusCode": 301 },
+    { "source": "/luyen-thi-thpt-quoc-gia.html", "destination": "/luyen-thi-thpt-quoc-gia", "statusCode": 301 },
+    { "source": "/cho-giao-vien.html", "destination": "/cho-giao-vien", "statusCode": 301 },
+    { "source": "/phan-mem-tao-de-thi.html", "destination": "/phan-mem-tao-de-thi", "statusCode": 301 },
+    { "source": "/cham-bai-trac-nghiem-tu-dong.html", "destination": "/cham-bai-trac-nghiem-tu-dong", "statusCode": 301 },
+    { "source": "/hoc-tap-lop-10.html", "destination": "/hoc-tap-lop-10", "statusCode": 301 },
+    { "source": "/hoc-tap-lop-11.html", "destination": "/hoc-tap-lop-11", "statusCode": 301 },
+    { "source": "/hoc-tap-lop-12.html", "destination": "/hoc-tap-lop-12", "statusCode": 301 },
+    { "source": "/hoc-hoa-hoc-online.html", "destination": "/hoc-hoa-hoc-online", "statusCode": 301 },
+    { "source": "/hoc-vat-ly-online.html", "destination": "/hoc-vat-ly-online", "statusCode": 301 },
+    { "source": "/hoc-sinh-hoc-online.html", "destination": "/hoc-sinh-hoc-online", "statusCode": 301 },
     { "source": "/tro-ly-ai-giai-hoa.html", "destination": "/tro-ly-ai-giai-hoa", "statusCode": 301 },
     { "source": "/phong-thi-ao.html", "destination": "/phong-thi-ao", "statusCode": 301 },
     { "source": "/phong-thi-nghiem-vat-li.html", "destination": "/phong-thi-nghiem-vat-li", "statusCode": 301 },
+    { "source": "/phong-thi-nghiem-sinh-hoc.html", "destination": "/phong-thi-nghiem-sinh-hoc", "statusCode": 301 },
     { "source": "/bang-tuan-hoan.html", "destination": "/bang-tuan-hoan", "statusCode": 301 },
     { "source": "/can-bang-phuong-trinh-hoa-hoc.html", "destination": "/can-bang-phuong-trinh-hoa-hoc", "statusCode": 301 },
     { "source": "/lo-trinh-on-thi-thpt-quoc-gia.html", "destination": "/lo-trinh-on-thi-thpt-quoc-gia", "statusCode": 301 },
@@ -36,112 +51,57 @@
     { "source": "/bang-xep-hang.html", "destination": "/bang-xep-hang", "statusCode": 301 }
   ],
   "rewrites": [
+    { "source": "/__/auth/(.*)", "destination": "https://duyheheh-2a269.firebaseapp.com/__/auth/$1" },
+    { "source": "/__/firebase/(.*)", "destination": "https://duyheheh-2a269.firebaseapp.com/__/firebase/$1" },
+    { "source": "/nha-sang-lap", "destination": "/nha-sang-lap.html" },
+    { "source": "/gioi-thieu", "destination": "/gioi-thieu.html" },
+    { "source": "/chinh-sach-bao-mat", "destination": "/chinh-sach-bao-mat.html" },
+    { "source": "/dieu-khoan-su-dung", "destination": "/dieu-khoan-su-dung.html" },
+    { "source": "/hoc-online-mien-phi", "destination": "/hoc-online-mien-phi.html" },
+    { "source": "/ai-giao-duc", "destination": "/ai-giao-duc.html" },
+    { "source": "/gia-su-ai", "destination": "/gia-su-ai.html" },
+    { "source": "/giai-bai-tap-bang-ai", "destination": "/giai-bai-tap-bang-ai.html" },
+    { "source": "/luyen-thi-thpt-quoc-gia", "destination": "/luyen-thi-thpt-quoc-gia.html" },
+    { "source": "/cho-giao-vien", "destination": "/cho-giao-vien.html" },
+    { "source": "/phan-mem-tao-de-thi", "destination": "/phan-mem-tao-de-thi.html" },
+    { "source": "/cham-bai-trac-nghiem-tu-dong", "destination": "/cham-bai-trac-nghiem-tu-dong.html" },
+    { "source": "/hoc-tap-lop-10", "destination": "/hoc-tap-lop-10.html" },
+    { "source": "/hoc-tap-lop-11", "destination": "/hoc-tap-lop-11.html" },
+    { "source": "/hoc-tap-lop-12", "destination": "/hoc-tap-lop-12.html" },
+    { "source": "/hoc-hoa-hoc-online", "destination": "/hoc-hoa-hoc-online.html" },
+    { "source": "/hoc-vat-ly-online", "destination": "/hoc-vat-ly-online.html" },
+    { "source": "/hoc-sinh-hoc-online", "destination": "/hoc-sinh-hoc-online.html" },
+    { "source": "/tro-ly-ai-giai-hoa", "destination": "/tro-ly-ai-giai-hoa.html" },
+    { "source": "/phong-thi-ao", "destination": "/phong-thi-ao.html" },
+    { "source": "/phong-thi-nghiem-vat-li", "destination": "/phong-thi-nghiem-vat-li.html" },
+    { "source": "/phong-thi-nghiem-sinh-hoc", "destination": "/phong-thi-nghiem-sinh-hoc.html" },
+    { "source": "/bang-tuan-hoan", "destination": "/bang-tuan-hoan.html" },
+    { "source": "/can-bang-phuong-trinh-hoa-hoc", "destination": "/can-bang-phuong-trinh-hoa-hoc.html" },
+    { "source": "/lo-trinh-on-thi-thpt-quoc-gia", "destination": "/lo-trinh-on-thi-thpt-quoc-gia.html" },
+    { "source": "/cong-thuc-hoa-hoc", "destination": "/cong-thuc-hoa-hoc.html" },
+    { "source": "/tai-lieu-hoa-hoc", "destination": "/tai-lieu-hoa-hoc.html" },
+    { "source": "/tinh-diem-xet-tuyen-dai-hoc", "destination": "/tinh-diem-xet-tuyen-dai-hoc.html" },
+    { "source": "/tra-cuu-diem-chuan", "destination": "/tra-cuu-diem-chuan.html" },
+    { "source": "/dinh-huong-nghe-nghiep", "destination": "/dinh-huong-nghe-nghiep.html" },
+    { "source": "/tro-choi-khoa-hoc", "destination": "/tro-choi-khoa-hoc.html" },
+    { "source": "/ai-doc-studio", "destination": "/ai-doc-studio.html" },
+    { "source": "/bang-phan-tuong-tac", "destination": "/bang-phan-tuong-tac.html" },
+    { "source": "/quiz", "destination": "/quiz.html" },
+    { "source": "/bang-xep-hang", "destination": "/bang-xep-hang.html" },
+    { "source": "/nguyen-to", "destination": "/nguyen-to/index.html" },
+    { "source": "/nguyen-to/:slug", "destination": "/nguyen-to/:slug.html" },
+    { "source": "/de-thi", "destination": "/de-thi/index.html" },
+    { "source": "/de-thi/:slug", "destination": "/de-thi/:slug.html" },
+    { "source": "/phuong-trinh", "destination": "/phuong-trinh/index.html" },
+    { "source": "/phuong-trinh/:slug", "destination": "/phuong-trinh/:slug.html" },
+    { "source": "/kien-thuc", "destination": "/kien-thuc/index.html" },
+    { "source": "/kien-thuc/:subject/:topic", "destination": "/kien-thuc/:subject/:topic.html" },
+    { "source": "/sitemap-community.xml", "destination": "/api/sitemap-community" },
+    { "source": "/cong-dong", "destination": "/api/community-seo?mode=hub" },
+    { "source": "/cong-dong/:slug", "destination": "/api/community-seo?mode=post&slug=:slug" },
+    { "source": "/chu-de/:tag", "destination": "/api/community-seo?mode=topic&tag=:tag" },
     {
-      "source": "/__/auth/(.*)",
-      "destination": "https://duyheheh-2a269.firebaseapp.com/__/auth/$1"
-    },
-    {
-      "source": "/__/firebase/(.*)",
-      "destination": "https://duyheheh-2a269.firebaseapp.com/__/firebase/$1"
-    },
-    {
-      "source": "/nha-sang-lap",
-      "destination": "/nha-sang-lap.html"
-    },
-    {
-      "source": "/gioi-thieu",
-      "destination": "/gioi-thieu.html"
-    },
-    {
-      "source": "/chinh-sach-bao-mat",
-      "destination": "/chinh-sach-bao-mat.html"
-    },
-    {
-      "source": "/dieu-khoan-su-dung",
-      "destination": "/dieu-khoan-su-dung.html"
-    },
-    {
-      "source": "/tro-ly-ai-giai-hoa",
-      "destination": "/tro-ly-ai-giai-hoa.html"
-    },
-    {
-      "source": "/phong-thi-ao",
-      "destination": "/phong-thi-ao.html"
-    },
-    {
-      "source": "/phong-thi-nghiem-vat-li",
-      "destination": "/phong-thi-nghiem-vat-li.html"
-    },
-    {
-      "source": "/bang-tuan-hoan",
-      "destination": "/bang-tuan-hoan.html"
-    },
-    {
-      "source": "/can-bang-phuong-trinh-hoa-hoc",
-      "destination": "/can-bang-phuong-trinh-hoa-hoc.html"
-    },
-    {
-      "source": "/lo-trinh-on-thi-thpt-quoc-gia",
-      "destination": "/lo-trinh-on-thi-thpt-quoc-gia.html"
-    },
-    {
-      "source": "/cong-thuc-hoa-hoc",
-      "destination": "/cong-thuc-hoa-hoc.html"
-    },
-    {
-      "source": "/tai-lieu-hoa-hoc",
-      "destination": "/tai-lieu-hoa-hoc.html"
-    },
-    {
-      "source": "/tinh-diem-xet-tuyen-dai-hoc",
-      "destination": "/tinh-diem-xet-tuyen-dai-hoc.html"
-    },
-    {
-      "source": "/tra-cuu-diem-chuan",
-      "destination": "/tra-cuu-diem-chuan.html"
-    },
-    {
-      "source": "/dinh-huong-nghe-nghiep",
-      "destination": "/dinh-huong-nghe-nghiep.html"
-    },
-    {
-      "source": "/tro-choi-khoa-hoc",
-      "destination": "/tro-choi-khoa-hoc.html"
-    },
-    {
-      "source": "/ai-doc-studio",
-      "destination": "/ai-doc-studio.html"
-    },
-    {
-      "source": "/bang-phan-tuong-tac",
-      "destination": "/bang-phan-tuong-tac.html"
-    },
-    {
-      "source": "/quiz",
-      "destination": "/quiz.html"
-    },
-    {
-      "source": "/bang-xep-hang",
-      "destination": "/bang-xep-hang.html"
-    },
-    {
-      "source": "/sitemap-community.xml",
-      "destination": "/api/sitemap-community"
-    },
-    {
-      "source": "/cong-dong",
-      "destination": "/api/community-seo?mode=hub"
-    },
-    {
-      "source": "/cong-dong/:slug",
-      "destination": "/api/community-seo?mode=post&slug=:slug"
-    },
-    {
-      "source": "/chu-de/:tag",
-      "destination": "/api/community-seo?mode=topic&tag=:tag"
-    },
-    {
-      "source": "/((?!api/|assets/|img/|video/|models/|__/auth/|__/firebase/|sw\\.js|ve\\.wasm|offline\\.html|elec\\.svg|robots\\.txt|sitemap\\.xml|sitemap-community\\.xml|cong-dong(?:/.*)?|chu-de(?:/.*)?|llms\\.txt|llms-full\\.txt|elecai2026indexnowkey771a44e1ad93\\.txt|BingSiteAuth\\.xml|google2cde4e78cb642518\\.html|nha-sang-lap(?:\\.html)?|gioi-thieu(?:\\.html)?|chinh-sach-bao-mat(?:\\.html)?|dieu-khoan-su-dung(?:\\.html)?|tro-ly-ai-giai-hoa(?:\\.html)?|phong-thi-ao(?:\\.html)?|phong-thi-nghiem-vat-li(?:\\.html)?|bang-tuan-hoan(?:\\.html)?|can-bang-phuong-trinh-hoa-hoc(?:\\.html)?|lo-trinh-on-thi-thpt-quoc-gia(?:\\.html)?|cong-thuc-hoa-hoc(?:\\.html)?|tai-lieu-hoa-hoc(?:\\.html)?|tinh-diem-xet-tuyen-dai-hoc(?:\\.html)?|tra-cuu-diem-chuan(?:\\.html)?|dinh-huong-nghe-nghiep(?:\\.html)?|tro-choi-khoa-hoc(?:\\.html)?|ai-doc-studio(?:\\.html)?|bang-phan-tuong-tac(?:\\.html)?|quiz(?:\\.html)?|bang-xep-hang(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
+      "source": "/((?!api/|assets/|img/|video/|models/|__/auth/|__/firebase/|sw\\.js|ve\\.wasm|offline\\.html|elec\\.svg|robots\\.txt|sitemap\\.xml|sitemap-pseo\\.xml|sitemap-community\\.xml|nguyen-to(?:/.*)?|de-thi(?:/.*)?|phuong-trinh(?:/.*)?|kien-thuc(?:/.*)?|cong-dong(?:/.*)?|chu-de(?:/.*)?|llms\\.txt|llms-full\\.txt|elecai2026indexnowkey771a44e1ad93\\.txt|BingSiteAuth\\.xml|google2cde4e78cb642518\\.html|nha-sang-lap(?:\\.html)?|gioi-thieu(?:\\.html)?|chinh-sach-bao-mat(?:\\.html)?|dieu-khoan-su-dung(?:\\.html)?|hoc-online-mien-phi(?:\\.html)?|ai-giao-duc(?:\\.html)?|gia-su-ai(?:\\.html)?|giai-bai-tap-bang-ai(?:\\.html)?|luyen-thi-thpt-quoc-gia(?:\\.html)?|cho-giao-vien(?:\\.html)?|phan-mem-tao-de-thi(?:\\.html)?|cham-bai-trac-nghiem-tu-dong(?:\\.html)?|hoc-tap-lop-10(?:\\.html)?|hoc-tap-lop-11(?:\\.html)?|hoc-tap-lop-12(?:\\.html)?|hoc-hoa-hoc-online(?:\\.html)?|hoc-vat-ly-online(?:\\.html)?|hoc-sinh-hoc-online(?:\\.html)?|tro-ly-ai-giai-hoa(?:\\.html)?|phong-thi-ao(?:\\.html)?|phong-thi-nghiem-vat-li(?:\\.html)?|phong-thi-nghiem-sinh-hoc(?:\\.html)?|bang-tuan-hoan(?:\\.html)?|can-bang-phuong-trinh-hoa-hoc(?:\\.html)?|lo-trinh-on-thi-thpt-quoc-gia(?:\\.html)?|cong-thuc-hoa-hoc(?:\\.html)?|tai-lieu-hoa-hoc(?:\\.html)?|tinh-diem-xet-tuyen-dai-hoc(?:\\.html)?|tra-cuu-diem-chuan(?:\\.html)?|dinh-huong-nghe-nghiep(?:\\.html)?|tro-choi-khoa-hoc(?:\\.html)?|ai-doc-studio(?:\\.html)?|bang-phan-tuong-tac(?:\\.html)?|quiz(?:\\.html)?|bang-xep-hang(?:\\.html)?|manifest\\.json|manifest\\.webmanifest|favicon\\.svg|favicon\\.ico).*)",
       "destination": "/index.html"
     }
   ],
@@ -171,6 +131,13 @@
     },
     {
       "source": "/sitemap.xml",
+      "headers": [
+        { "key": "Content-Type", "value": "application/xml; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=3600, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/sitemap-pseo.xml",
       "headers": [
         { "key": "Content-Type", "value": "application/xml; charset=utf-8" },
         { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=3600, must-revalidate" }

@@ -560,8 +560,10 @@ const avgOf = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length
 function examStatus(ex, liveSession, now) {
   if (liveSession) return { key: 'live', label: 'Đang thi' };
   if (ex.isDraft || ex.status === 'draft' || ex.kind === 'draft') return { key: 'draft', label: 'Nháp' };
-  if (ex.opensAt && now < new Date(ex.opensAt).getTime()) return { key: 'soon', label: 'Chưa mở' };
-  if (ex.closesAt && now > new Date(ex.closesAt).getTime()) return { key: 'closed', label: 'Đã kết thúc' };
+  const opensMs = tsMs(ex.opensAt);
+  const closesMs = tsMs(ex.closesAt);
+  if (opensMs && now < opensMs) return { key: 'soon', label: 'Chưa mở' };
+  if (closesMs && now > closesMs) return { key: 'closed', label: 'Đã kết thúc' };
   return { key: 'ready', label: 'Đã giao' };
 }
 
@@ -1170,10 +1172,10 @@ export default function TeacherDashboard({ onExit } = {}) {
 
   const showAdminLink = checkAdmin(user);
 
-  /* Live timer — chỉ chạy khi có session live */
+  /* Live timer — chỉ chạy khi thực sự có session live còn thời gian */
   const hasLiveSessions = useMemo(
-    () => sessions.some((s) => s.status === 'live'),
-    [sessions]
+    () => sessions.some((s) => s.status === 'live' && timeRemaining(s, now) > 0),
+    [sessions, now]
   );
   useEffect(() => {
     if (!hasLiveSessions) return undefined;
@@ -1259,32 +1261,39 @@ export default function TeacherDashboard({ onExit } = {}) {
           cls.map((c) => getExamsByClass(c.id).catch(() => []))
         );
         const seenIds = new Set(combinedExams.map((e) => e.id));
+        const extraClassExams = [];
         classExamArrays.flat().forEach((ce) => {
           if (ce && ce.id && !seenIds.has(ce.id)) {
             seenIds.add(ce.id);
-            combinedExams.push(ce);
+            extraClassExams.push(ce);
           }
         });
+        const hydratedExtra = await Promise.all(
+          extraClassExams.map((ce) => hydrateExamAnswerKey(ce).catch(() => ce))
+        );
+        combinedExams.push(...hydratedExtra);
       } catch (e) {
         console.warn('[TeacherDashboard] Không tải được đề của lớp chủ nhiệm:', e);
       }
 
       setClasses((prev) => {
         const map = new Map(cls.map((c) => [c.id, c]));
-        prev.forEach((p) => { if (!map.has(p.id)) map.set(p.id, p); });
+        prev.forEach((p) => {
+          if (p?.id && /^local-/.test(String(p.id)) && !map.has(p.id)) map.set(p.id, p);
+        });
         return Array.from(map.values());
       });
       setExams((prev) => {
         const map = new Map(combinedExams.map((e) => [e.id, e]));
-        prev.forEach((p) => { if (!map.has(p.id)) map.set(p.id, p); });
+        prev.forEach((p) => {
+          if (p?.id && /^local-/.test(String(p.id)) && !map.has(p.id)) map.set(p.id, p);
+        });
         const res = Array.from(map.values());
         res.sort((a, b) => (tsMs(b.createdAt) || 0) - (tsMs(a.createdAt) || 0));
         return res;
       });
-      setSessions((prev) => {
-        const map = new Map(sess.map((s) => [s.id, s]));
-        prev.forEach((p) => { if (!map.has(p.id)) map.set(p.id, p); });
-        const res = Array.from(map.values());
+      setSessions(() => {
+        const res = [...sess];
         res.sort((a, b) => (b.startedAtMs || 0) - (a.startedAtMs || 0));
         return res;
       });
@@ -1354,15 +1363,8 @@ export default function TeacherDashboard({ onExit } = {}) {
   useEffect(() => {
     if (!user?.uid) return undefined;
     const unsub = listenSessionsByTeacher(user.uid, (freshList) => {
-      setSessions((prev) => {
-        const freshMap = new Map(freshList.map((s) => [s.id, s]));
-        const merged = [...freshList];
-        prev.forEach((p) => {
-          if (!freshMap.has(p.id)) merged.push(p);
-        });
-        merged.sort((a, b) => (b.startedAtMs || 0) - (a.startedAtMs || 0));
-        return merged;
-      });
+      const sorted = [...(freshList || [])].sort((a, b) => (b.startedAtMs || 0) - (a.startedAtMs || 0));
+      setSessions(sorted);
     });
     return () => unsub?.();
   }, [user?.uid]);
@@ -1486,21 +1488,30 @@ export default function TeacherDashboard({ onExit } = {}) {
     };
   }, [refresh]);
 
-  /* Load allowances khi chọn lớp */
+  /* Load allowances khi chọn lớp (có guard tránh ghi đè modal đã đóng hoặc mất _linked/_mySubject) */
   useEffect(() => {
-    if (!selectedClass?.id) {
+    const classId = selectedClass?.id;
+    if (!classId) {
       setAllowances({});
-      return;
+      return undefined;
     }
+    let cancelled = false;
     (async () => {
       try {
-        const fresh = await getClassById(selectedClass.id);
-        setSelectedClass(fresh);
-        setAllowances(await getClassAllowances(selectedClass.id));
+        const [fresh, nextAllowances] = await Promise.all([
+          getClassById(classId),
+          getClassAllowances(classId),
+        ]);
+        if (cancelled) return;
+        if (fresh) {
+          setSelectedClass((prev) => (prev && prev.id === fresh.id ? { ...prev, ...fresh } : prev));
+        }
+        setAllowances(nextAllowances || {});
       } catch (e) {
-        console.warn(e);
+        if (!cancelled) console.warn(e);
       }
     })();
+    return () => { cancelled = true; };
   }, [selectedClass?.id]);
 
   /* Helper dùng chung sau khi tạo/nhập/trộn đề thành công: đồng bộ state, mở thư mục lớp và báo GVCN nếu là lớp liên kết */
@@ -1639,21 +1650,23 @@ export default function TeacherDashboard({ onExit } = {}) {
     const targetCls = [...classes, ...linkedClasses].find((c) => c.id === copyTargetClassId);
     setCopyExamBusy(true);
     try {
+      const hydrated = await hydrateExamAnswerKey(copyExamTarget).catch(() => copyExamTarget);
       const cloned = await createExam({
         teacherId: user.uid,
         teacherName: user.displayName || user.email,
         classId: copyTargetClassId,
-        title: copyExamTarget.title || 'Đề kiểm tra',
-        description: copyExamTarget.description || '',
-        duration: copyExamTarget.duration || 45,
-        questions: copyExamTarget.questions || [],
-        showAnswerAfter: copyExamTarget.showAnswerAfter ?? true,
-        allowRetry: copyExamTarget.allowRetry ?? false,
-        shuffle: copyExamTarget.shuffle ?? true,
-        proctor: copyExamTarget.proctor,
-        subject: copyExamTarget.subject || targetCls?._mySubject || targetCls?.subject || '',
-        grade: copyExamTarget.grade || targetCls?.grade || '',
-        source: copyExamTarget.source || 'assigned-copy',
+        title: hydrated.title || 'Đề kiểm tra',
+        description: hydrated.description || '',
+        duration: hydrated.duration || 45,
+        questions: hydrated.questions || [],
+        showAnswerAfter: hydrated.showAnswerAfter ?? true,
+        allowRetry: hydrated.allowRetry ?? false,
+        shuffle: hydrated.shuffle ?? true,
+        proctor: hydrated.proctor,
+        subject: hydrated.subject || targetCls?._mySubject || targetCls?.subject || '',
+        grade: hydrated.grade || targetCls?.grade || '',
+        gradeType: hydrated.gradeType || '',
+        source: hydrated.source || 'assigned-copy',
       });
       setExams((prev) => [cloned, ...prev]);
       if (targetCls?._linked && targetCls?.teacherId && targetCls.teacherId !== user.uid) {
@@ -1760,7 +1773,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     } finally {
       setStartingId(null);
     }
-  }, [user, classes, linkedClasses, say]);
+  }, [user, classes, linkedClasses, say, guardTeacherVip]);
 
   const handleEndSession = useCallback((session) => {
     setConfirmState({
@@ -1878,7 +1891,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     } catch (e) {
       say('Không nhân bản được đề: ' + (e.message || e), 'error');
     }
-  }, [user, say]);
+  }, [user, say, isTeacherVip, exams.length, guardTeacherVip]);
 
   /* Đặt lịch mở / đóng đề thi (Mục D4) */
   const openScheduleModal = useCallback((exam) => {
@@ -1964,7 +1977,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       }],
     });
     say(`Đã xuất danh sách ${members.length} học sinh lớp ${cls.name} (.xlsx)`, 'success');
-  }, [say]);
+  }, [say, guardTeacherVip]);
 
   const reloadClass = async (id) => {
     const fresh = await getClassById(id);
@@ -2188,7 +2201,9 @@ export default function TeacherDashboard({ onExit } = {}) {
     [submissionsMap]
   );
 
-  const cutoff = range === 'all' ? 0 : now - Number(range) * 86400000;
+  // Làm tròn mốc cutoff theo từng phút để live timer 1s không recompute toàn bộ biểu đồ thống kê mỗi giây
+  const minuteBucket = Math.floor(now / 60000) * 60000;
+  const cutoff = range === 'all' ? 0 : minuteBucket - Number(range) * 86400000;
   const subsInRange = useMemo(
     () => subsAll.filter((s) => {
       if (range === 'all') return true;
@@ -2409,7 +2424,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       }],
     });
     say(`Đã xuất bảng điểm Excel lớp ${cls.name}`, 'success');
-  }, [say]);
+  }, [say, guardTeacherVip]);
 
   /* ---------- EARLY RETURN ---------- */
   if (viewingSessionId && isTeacherVip) {
@@ -2543,7 +2558,7 @@ export default function TeacherDashboard({ onExit } = {}) {
   })();
 
   const examsWithStatus = exams.map((ex) => {
-    const liveSession = sessions.find((s) => s.examId === ex.id && s.status === 'live');
+    const liveSession = sessions.find((s) => s.examId === ex.id && s.status === 'live' && timeRemaining(s, now) > 0);
     return { ex, liveSession, st: examStatus(ex, liveSession, now) };
   });
   const countBy = (k) => examsWithStatus.filter((x) => x.st.key === k).length;
@@ -2624,6 +2639,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     try {
       await setExamVisibility(exam.id, next);
       setExams((cur) => cur.map((e) => (e.id === exam.id ? { ...e, visibility: next } : e)));
+      setDetailExamModal((cur) => (cur?.id === exam.id ? { ...cur, visibility: next } : cur));
       say(
         next === 'public' ? 'Đề đã chuyển sang Công khai' : 'Đề đã chuyển sang Riêng tư',
         'success',
@@ -2632,6 +2648,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           onUndo: async () => {
             await setExamVisibility(exam.id, prev);
             setExams((cur) => cur.map((e) => (e.id === exam.id ? { ...e, visibility: prev } : e)));
+            setDetailExamModal((cur) => (cur?.id === exam.id ? { ...cur, visibility: prev } : cur));
             say('Đã hoàn tác chế độ hiển thị đề', 'info');
           },
         },
@@ -2665,6 +2682,7 @@ export default function TeacherDashboard({ onExit } = {}) {
     try {
       await setExamLock(exam.id, next);
       setExams((cur) => cur.map((e) => (e.id === exam.id ? { ...e, lockUntilStart: next } : e)));
+      setDetailExamModal((cur) => (cur?.id === exam.id ? { ...cur, lockUntilStart: next } : cur));
       say(
         next ? 'Đã khoá bài: học sinh chỉ luyện tập cho tới khi bạn bắt đầu' : 'Đã mở: học sinh vào thi được ngay',
         'success',
@@ -2673,6 +2691,7 @@ export default function TeacherDashboard({ onExit } = {}) {
           onUndo: async () => {
             await setExamLock(exam.id, prev);
             setExams((cur) => cur.map((e) => (e.id === exam.id ? { ...e, lockUntilStart: prev } : e)));
+            setDetailExamModal((cur) => (cur?.id === exam.id ? { ...cur, lockUntilStart: prev } : cur));
             say('Đã hoàn tác chế độ khoá bài', 'info');
           },
         },
@@ -2894,7 +2913,7 @@ export default function TeacherDashboard({ onExit } = {}) {
       }}
     >
       <Topbar
-        {...(topProps[section] || {})}
+        {...topProps}
         onOpenAiCopilot={toggleAiChatGuarded}
         search={section !== 'create' && section !== 'simulator' && section !== 'bank' && section !== 'profile' && section !== 'analytics' && section !== 'link' ? search : undefined}
         bell={section !== 'create' && section !== 'bank' ? {
@@ -3463,7 +3482,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                             type="button"
                             className="t-folder-arrow-btn"
                             aria-label={`Mở lớp ${c.name}`}
-                            onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
+                            onClick={() => { setSelectedClass(c); setDetailTab('overview'); setClassSectionTab('my'); goSection('classes'); }}
                           >
                             <IcoArrowRight size={15} />
                           </button>
@@ -3483,7 +3502,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <div
                       key={c.id}
                       className={`t-folder-card ${tint}`}
-                      onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
+                      onClick={() => { setSelectedClass(c); setDetailTab('overview'); setClassSectionTab('linked'); goSection('classes'); }}
                     >
                       <SubjectWatermarkSvg index={idx + 2} className="t-folder-watermark" />
                       <div className="t-folder-top">
@@ -3507,9 +3526,9 @@ export default function TeacherDashboard({ onExit } = {}) {
                             type="button"
                             className="vt-btn sm"
                             onClick={() => {
-                              setExtCreate(false);
-                              setExtClass(null);
-                              setSelectedClass(c);
+                              setSelectedClass(null);
+                              setExtClass(c);
+                              setExtCreate(true);
                               goSection('create');
                             }}
                           >
@@ -3519,7 +3538,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                             type="button"
                             className="t-folder-arrow-btn"
                             aria-label={`Mở lớp ${c.name}`}
-                            onClick={() => { setSelectedClass(c); setDetailTab('overview'); goSection('classes'); }}
+                            onClick={() => { setSelectedClass(c); setDetailTab('overview'); setClassSectionTab('linked'); goSection('classes'); }}
                           >
                             <IcoArrowRight size={15} />
                           </button>
@@ -3587,7 +3606,10 @@ export default function TeacherDashboard({ onExit } = {}) {
                       cls={cls}
                       submissions={subs}
                       onStart={handleStartSession}
-                      onViewLive={(sid) => setViewingSessionId(sid)}
+                      onViewLive={(sid) => {
+                        if (!guardTeacherVip(`Giám sát phòng thi trực tiếp (LIVE Proctor) thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`)) return;
+                        setViewingSessionId(sid);
+                      }}
                       onDetail={(e) => setDetailExamModal(e)}
                       starting={startingId === ex.id}
                     />
@@ -3731,11 +3753,12 @@ export default function TeacherDashboard({ onExit } = {}) {
               ) : (
                 <div className="t-hardest-list">
                   {classInsights.hardest.slice(0, 3).map((q, idx) => {
-                    const rawTitle = q.questionText || q.topic || `Câu hỏi #${idx + 1}`;
+                    const rawTitle = q.text || q.questionText || q.topic || `Câu hỏi #${idx + 1}`;
                     const cleanTitle = rawTitle.replace(/^(ĐỀ[-_\s]KIỂM[-_\s]TRA[^\n]+?)(Câu\s*\d+|Bài\s*\d+|$)/i, '$2').trim() || rawTitle;
-                    const wrongPct = Math.max(0, Math.min(100, 100 - (q.pctCorrect ?? 0)));
-                    const okCount = q.correctCount ?? 0;
-                    const totalCount = q.totalAttempts ?? 0;
+                    const correctPct = q.rate ?? q.pctCorrect ?? 0;
+                    const wrongPct = Math.max(0, Math.min(100, 100 - correctPct));
+                    const okCount = q.ok ?? q.correctCount ?? 0;
+                    const totalCount = q.rated ?? q.totalAttempts ?? 0;
                     return (
                       <div key={idx} className="t-hardest-item">
                         <div style={{ flexShrink: 0, color: 'var(--t-ink)' }}>
@@ -5061,7 +5084,7 @@ export default function TeacherDashboard({ onExit } = {}) {
                             {prevSub && (
                               <span className={`t-retry-prev-chip ${(prevSub.violationCount || 0) > 0 ? 'is-viol' : ''}`}>
                                 Lần trước: {prevSub.score}/{prevSub.totalPoints} ({Math.round(pctOf(prevSub))}%) · {prevSub.violationCount || 0} vi phạm
-                                {prevSub.timeTaken ? ` · ${Math.max(1, Math.round(prevSub.timeTaken / 60))} phút` : ''}
+                                {(prevSub.timeSpent || prevSub.timeTaken) ? ` · ${Math.max(1, Math.round((prevSub.timeSpent || prevSub.timeTaken) / 60))} phút` : ''}
                               </span>
                             )}
                           </div>
@@ -5197,7 +5220,8 @@ export default function TeacherDashboard({ onExit } = {}) {
         const memberCount = cls?.members?.length || 0;
         const subject = detectExamSubject(ex) || cls?.subject || '—';
         const isPublic = ex.visibility === 'public';
-        const liveSession = sessions.find((s) => s.examId === ex.id && s.status === 'live');
+        const canEditExamVis = !ex.teacherId || ex.teacherId === user?.uid;
+        const liveSession = sessions.find((s) => s.examId === ex.id && s.status === 'live' && timeRemaining(s, now) > 0);
         const liveDoingCount = liveSession
           ? Math.max(0, (liveSession.stats?.joined || 0) - (liveSession.stats?.submitted || 0))
           : 0;
@@ -5273,15 +5297,25 @@ export default function TeacherDashboard({ onExit } = {}) {
                     <span>•</span>
                     <span>{ex.duration} phút</span>
                     <span>•</span>
-                    <button
-                      type="button"
-                      className="vt-chip"
-                      style={{ cursor: 'pointer', padding: '0.15rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                      onClick={() => toggleVisibility(ex)}
-                      title="Bấm để chuyển đổi giữa Riêng tư và Công khai"
-                    >
-                      {isPublic ? <><IcoGlobe size={12} /> Công khai</> : <><IcoLock size={12} /> Riêng tư</>}
-                    </button>
+                    {canEditExamVis ? (
+                      <button
+                        type="button"
+                        className="vt-chip"
+                        style={{ cursor: 'pointer', padding: '0.15rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        onClick={() => toggleVisibility(ex)}
+                        title="Bấm để chuyển đổi giữa Riêng tư và Công khai"
+                      >
+                        {isPublic ? <><IcoGlobe size={12} /> Công khai</> : <><IcoLock size={12} /> Riêng tư</>}
+                      </button>
+                    ) : (
+                      <span
+                        className="vt-chip"
+                        style={{ padding: '0.15rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: 4, opacity: 0.85 }}
+                        title="Chỉ giáo viên tạo đề mới có quyền đổi chế độ hiển thị"
+                      >
+                        {isPublic ? <><IcoGlobe size={12} /> Công khai</> : <><IcoLock size={12} /> Riêng tư</>}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -6093,6 +6127,12 @@ export default function TeacherDashboard({ onExit } = {}) {
               goSection('simulator');
             }}
             onCreateSoftExam={async (examData) => {
+              if (!isTeacherVip && exams.length >= FREE_TEACHER_LIMITS.maxExams) {
+                openTeacherUpgrade(
+                  `Tài khoản miễn phí tối đa ${FREE_TEACHER_LIMITS.maxExams} đề thi. Nâng cấp Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm) để tạo không giới hạn đề thi!`
+                );
+                return;
+              }
               try {
                 const targetClassId = examData.classId !== undefined
                   ? examData.classId
@@ -6426,7 +6466,8 @@ export default function TeacherDashboard({ onExit } = {}) {
 /* ============================================================
    THỐNG KÊ ĐỀ + XEM BÀI LÀM CHI TIẾT TỪNG HỌC SINH
    ============================================================ */
-function ExamStats({ exam, subs: initialSubs = [], onExport }) {
+function ExamStats({ exam: rawExam, subs: initialSubs = [], onExport }) {
+  const [exam, setExam] = useState(rawExam);
   const [subs, setSubs] = useState(initialSubs || []);
   const [loading, setLoading] = useState(!initialSubs || initialSubs.length === 0);
   const [inspectSub, setInspectSub] = useState(null);
@@ -6434,6 +6475,17 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
   const [essayNote, setEssayNote] = useState('');
   const [savingEssay, setSavingEssay] = useState(false);
   const [essayMsg, setEssayMsg] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    setExam(rawExam);
+    if (rawExam?.id && rawExam?.secureAnswerKey) {
+      hydrateExamAnswerKey(rawExam)
+        .then((hydrated) => { if (alive && hydrated) setExam(hydrated); })
+        .catch(() => {});
+    }
+    return () => { alive = false; };
+  }, [rawExam]);
 
   useEffect(() => {
     if (!inspectSub) {
@@ -6446,12 +6498,12 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
     (exam?.questions || []).forEach((q, idx) => {
       if ((q?.type || 'single_choice') !== 'essay') return;
       const d = inspectSub.detail?.[idx];
-      if (d && (d.manualGraded || typeof d.earned === 'number')) {
+      if (d && (d.manualGraded || (!d.needsManualGrading && typeof d.earned === 'number'))) {
         nextDraft[idx] = String(d.earned ?? 0);
       }
     });
     setEssayDraftScores(nextDraft);
-    setEssayNote(inspectSub.teacherNote || '');
+    setEssayNote(inspectSub.teacherComment ?? inspectSub.teacherNote ?? '');
     setEssayMsg('');
   }, [inspectSub?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -6644,7 +6696,7 @@ function ExamStats({ exam, subs: initialSubs = [], onExport }) {
                 {type === 'single_choice' && (
                   <div style={{ fontSize: '0.8rem', color: 'var(--mut)', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     <span>HS chọn: <b style={{ color: isOk ? '#10b981' : '#ef4444' }}>{d.picked != null && d.picked >= 0 ? `${String.fromCharCode(65 + Number(d.picked))}. ${q.options?.[d.picked] || ''}` : 'Bỏ trống'}</b></span>
-                    <span>Đáp án đúng: <b style={{ color: '#10b981' }}>{String.fromCharCode(65 + Number(q.correct || 0))}. {q.options?.[q.correct || 0] || ''}</b></span>
+                    <span>Đáp án đúng: <b style={{ color: '#10b981' }}>{typeof q.correct === 'number' && q.correct >= 0 ? `${String.fromCharCode(65 + q.correct)}. ${q.options?.[q.correct] || ''}` : '—'}</b></span>
                   </div>
                 )}
                 {type === 'short_answer' && (

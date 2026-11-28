@@ -18,6 +18,8 @@ function formatCompactCredits(val) {
 
 const SUBPAGE_TITLES = {
   'table': 'Bảng tuần hoàn IUPAC',
+  'physics-lab': 'Phòng Lab Vật lí Ảo',
+  'biology-lab': 'Phòng Lab Sinh học (20 Lab)',
   'sim-lab': 'Lab Mô phỏng Lý & Sinh',
   'chalkboard': 'Bảng phấn 3D & Voice AI',
   'notebook': 'Sổ tay lỗi sai & Đề 5 Phút',

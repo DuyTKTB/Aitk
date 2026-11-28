@@ -627,7 +627,10 @@ export function parseBulkMatrixKeys(rawText, counts = MAX_COUNTS) {
       if (/^phần\s*ii\b|^p\.?\s*2\b|^đúng\s*[\/-]?\s*sai/i.test(line)) { activePart = 2; continue; }
       if (/^phần\s*iii\b|^p\.?\s*3\b|^trả\s*lời\s*ngắn/i.test(line)) { activePart = 3; continue; }
 
-      const cells = line.split(/[\t;|]+|\s{2,}/).map((x) => x.trim());
+      // Nếu có dấu Tab (copy từ Excel/Sheets) thì tách theo Tab để giữ nguyên `|` làm đáp án thay thế Phần III (vd: "2,5|2.5")
+      const cells = line.includes('\t')
+        ? line.split('\t').map((x) => x.trim())
+        : line.split(/[;]+|\s{2,}/).map((x) => x.trim());
       if (cells.length < 2) continue;
 
       const label = cells[0].toLowerCase();
@@ -695,7 +698,9 @@ export function parseBulkMatrixKeys(rawText, counts = MAX_COUNTS) {
       if (!m) return;
       const code = m[1];
       const entry = ensureCode(code);
-      const chunks = m[2].split(/\s*[;|]\s*/);
+      const chunks = m[2].includes('\t')
+        ? m[2].split('\t').map((x) => x.trim())
+        : m[2].split(/\s*;\s*/);
       entry.p1 = parseKeyP1(chunks[0] || '', MAX_COUNTS.p1);
       if (chunks[1]) {
         const p2Raw = chunks[1].split(/[,/\s]+/).filter(Boolean).join('\n');

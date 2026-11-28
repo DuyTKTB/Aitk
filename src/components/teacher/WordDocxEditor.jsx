@@ -15,7 +15,7 @@ import { runWithCredit, CREDIT_TARIFF } from '../../lib/creditService.js';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { printOmrSheetA4 } from '../../lib/omrSheetGenerator.js';
 import { createPaperExam } from '../../lib/paperStore.js';
-import { keyToStored } from '../../lib/paperGrade.js';
+import { keyToStored, MAX_COUNTS } from '../../lib/paperGrade.js';
 import {
   STANDARD_TEMPLATES,
   generateTemplateQuestions,
@@ -347,23 +347,38 @@ export default function WordDocxEditor({
     (rawList || []).map((q, idx) => {
       const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : q.type === 'essay' ? 4 : 1);
       const type = q.type || (part === 2 ? 'true_false' : part === 3 ? 'short_answer' : part === 4 ? 'essay' : 'single_choice');
-      return {
+      const stemText = q.q !== undefined ? q.q : (q.question ?? '');
+      const explainText = q.explain !== undefined ? q.explain : (q.explanation ?? '');
+      const normalized = {
         ...q,
         id: q.id || `q_${idx + 1}`,
         part,
         type,
-        options: type === 'essay'
-          ? []
-          : (Array.isArray(q.options) && q.options.length >= 2 ? q.options : ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D']),
-        statements: Array.isArray(q.statements) && q.statements.length === 4 ? q.statements : [
-          { text: 'Nhận định a...', answer: true },
-          { text: 'Nhận định b...', answer: false },
-          { text: 'Nhận định c...', answer: true },
-          { text: 'Nhận định d...', answer: false },
-        ],
+        q: stemText,
+        explain: explainText,
         answer: q.answer !== undefined ? String(q.answer) : '',
         correct: q.correct !== undefined ? Number(q.correct) : (type === 'single_choice' ? 0 : -1),
       };
+      if (type === 'single_choice') {
+        normalized.options = Array.isArray(q.options) && q.options.length >= 2
+          ? q.options
+          : ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D'];
+        delete normalized.statements;
+      } else if (type === 'true_false') {
+        normalized.statements = Array.isArray(q.statements) && q.statements.length === 4
+          ? q.statements
+          : [
+              { text: 'Nhận định a...', answer: true },
+              { text: 'Nhận định b...', answer: false },
+              { text: 'Nhận định c...', answer: true },
+              { text: 'Nhận định d...', answer: false },
+            ];
+        delete normalized.options;
+      } else {
+        normalized.options = [];
+        delete normalized.statements;
+      }
+      return normalized;
     });
 
   // Danh sách câu hỏi
@@ -733,15 +748,24 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
       const questionWrongCounts = {};
       questions.forEach((q) => { questionWrongCounts[q.id] = 0; });
 
+      const isMathSubj = /toán/i.test(String(subject || ''));
+      const qPts = (q) => {
+        if (Number(q.points) > 0) return Number(q.points);
+        const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : q.type === 'essay' ? 4 : 1);
+        if (part === 2 || part === 4) return 1.0;
+        if (part === 3) return isMathSubj ? 0.5 : 0.25;
+        return 0.25;
+      };
+      const maxTotalPts = questions.reduce((sum, q) => sum + qPts(q), 0) || 10;
+
       for (let s = 0; s < 100; s++) {
         let ability = 0.65;
         if (s < 20) ability = 0.85 + Math.random() * 0.12;
         else if (s >= 70) ability = 0.35 + Math.random() * 0.18;
         else ability = 0.55 + Math.random() * 0.22;
 
-        let studentScore = 0;
+        let studentRaw = 0;
         questions.forEach((q) => {
-          const part = q.part || (q.type === 'true_false' ? 2 : q.type === 'short_answer' ? 3 : 1);
           const lvl = (q.level || 'th').toLowerCase();
           let passProb = ability;
           if (lvl === 'nb') passProb = Math.min(0.98, ability + 0.25);
@@ -750,12 +774,13 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
 
           const isCorrect = Math.random() < passProb;
           if (isCorrect) {
-            studentScore += (part === 2 ? 1.0 : part === 3 ? 0.25 : 0.25);
+            studentRaw += qPts(q);
           } else {
             questionWrongCounts[q.id] = (questionWrongCounts[q.id] || 0) + 1;
           }
         });
-        scores.push(Math.round(studentScore * 10) / 10);
+        const scaled10 = (studentRaw / maxTotalPts) * 10;
+        scores.push(Math.round(scaled10 * 10) / 10);
       }
 
       scores.sort((a, b) => a - b);
@@ -833,11 +858,11 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
 
       const parsed = await parseExamDocxFile(file);
       if (parsed?.questions?.length) {
-        setQuestions(parsed.questions);
+        const normalizedParsed = normalizeEditorQuestions(parsed.questions);
         if (parsed.subject) setSubject(parsed.subject);
         if (parsed.grade) setGrade(String(parsed.grade));
-        pushHistory(parsed.questions);
-        onSay?.(`Đã nạp file "${file.name}" và nhận diện ${parsed.questions.length} câu hỏi!`, 'success');
+        commitQuestions(normalizedParsed);
+        onSay?.(`Đã nạp file "${file.name}" và nhận diện ${normalizedParsed.length} câu hỏi!`, 'success');
       } else {
         setQuestions([]);
         onSay?.(`Đã nạp file "${file.name}". Chưa phát hiện mẫu "Câu 1...", Thầy/Cô có thể bấm "Đồng bộ Word" hoặc bổ sung câu hỏi.`, 'warning');
@@ -888,16 +913,15 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
     onSay?.('Đã cập nhật thông tin kỳ thi và cơ sở giáo dục!', 'success');
   };
 
-  // 6. Nạp khung đề chuẩn Bộ GD&ĐT 2025 (28 câu KHTN / 22 câu Toán)
+  // 6. Nạp khung đề chuẩn Bộ GD&ĐT 2025 (28 câu KHTN / 22 câu Toán / KHXH / Tiếng Anh / Ngữ văn)
   const handleApplyTemplate = (tplId) => {
     const tpl = STANDARD_TEMPLATES[tplId] || STANDARD_TEMPLATES.natural_28;
-    const generated = generateTemplateQuestions(tpl, subject, grade);
-    setQuestions(generated);
+    const generated = normalizeEditorQuestions(generateTemplateQuestions(tpl.id, subject, grade));
+    commitQuestions(generated);
     setDuration(String(tpl.duration || 50));
-    pushHistory(generated);
     setShowTemplateModal(false);
     onSay?.(
-      `Đã nạp khung đề ${tpl.label} (${tpl.totalQuestions} câu, 10.0 điểm) chuẩn GDPT 2025!`,
+      `Đã nạp khung đề ${tpl.name} (${generated.length} câu, 10.0 điểm) chuẩn GDPT 2025!`,
       'success'
     );
   };
@@ -989,10 +1013,14 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
         keys[c] = keyToStored(k);
       });
       const counts = {
-        p1: matrixStats.p1,
-        p2: matrixStats.p2,
-        p3: matrixStats.p3,
+        p1: Math.min(MAX_COUNTS.p1, Math.max(0, Number(matrixStats.p1) || 0)),
+        p2: Math.min(MAX_COUNTS.p2, Math.max(0, Number(matrixStats.p2) || 0)),
+        p3: Math.min(MAX_COUNTS.p3, Math.max(0, Number(matrixStats.p3) || 0)),
       };
+      if (counts.p1 + counts.p2 + counts.p3 === 0) {
+        onSay?.('Đề thi chỉ có câu Tự luận, không có câu trắc nghiệm để tạo phiếu chấm OMR.', 'warning');
+        return;
+      }
       const omrProfile = getSubjectExamProfile(subject);
       const isMathSubject = /toán/i.test(String(subject || ''));
       const scoring = {
@@ -1005,9 +1033,13 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
         (c) => c.id === selectedClassId || c.name === selectedClassId
       );
 
+      if (!user?.uid) {
+        throw new Error('Vui lòng đăng nhập tài khoản giáo viên để kích hoạt kỳ thi chấm OMR trên đám mây.');
+      }
+
       try {
         const res = await createPaperExam({
-          teacherId: user?.uid || 'teacher_default',
+          teacherId: user.uid,
           classId: targetClass?.id || selectedClassId || null,
           title: examName,
           counts,
@@ -1129,13 +1161,15 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
       part,
       type,
       q: 'Nội dung câu hỏi mới...',
-      options: part === 4 ? [] : ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D'],
-      statements: [
-        { text: 'a) Nhận định a...', answer: true },
-        { text: 'b) Nhận định b...', answer: false },
-        { text: 'c) Nhận định c...', answer: true },
-        { text: 'd) Nhận định d...', answer: false },
-      ],
+      ...(part === 1 ? { options: ['Phương án A', 'Phương án B', 'Phương án C', 'Phương án D'] } : { options: [] }),
+      ...(part === 2 ? {
+        statements: [
+          { text: 'a) Nhận định a...', answer: true },
+          { text: 'b) Nhận định b...', answer: false },
+          { text: 'c) Nhận định c...', answer: true },
+          { text: 'd) Nhận định d...', answer: false },
+        ],
+      } : {}),
       answer: part === 3 ? '0' : '',
       correct: part === 1 ? 0 : -1,
       explain: '',
@@ -1161,14 +1195,12 @@ ${questions.slice(0, 3).map((q, i) => `${i + 1}. ${q.q}`).join('\n')}`;
   // Chèn ký hiệu vào câu hỏi đang chọn
   const insertSymbol = (symVal) => {
     if (!selectedQId) return;
-    setQuestions((prev) => {
-      const updated = prev.map((q) => {
+    commitQuestions((prev) =>
+      prev.map((q) => {
         if (q.id !== selectedQId) return q;
         return { ...q, q: (q.q || '') + symVal };
-      });
-      pushHistory(updated);
-      return updated;
-    });
+      })
+    );
     setShowSymbolPalette(false);
   };
 
@@ -1215,8 +1247,7 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
         }
       );
       if (updated.countFixed > 0) {
-        setQuestions(updated.nextQs);
-        pushHistory(updated.nextQs);
+        commitQuestions(updated.nextQs);
       }
       setMsg(updated.countFixed > 0 ? `Đã rà soát & hiệu đính xong ${updated.countFixed} câu hỏi!` : 'Nội dung câu hỏi đã chuẩn, không phát hiện lỗi chính tả!');
       onSay?.(updated.countFixed > 0 ? `Đã hiệu đính ${updated.countFixed} câu hỏi chuẩn SGK mới!` : 'Đề thi đã chuẩn xác.', 'success');
@@ -1924,18 +1955,18 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                     type="button"
                     className="wde-tool-btn ai"
                     onClick={() => {
-                      // Tự động phân tích đáp án đúng
+                      // Tự động kiểm tra và chuẩn hóa các câu thiếu đáp án đúng
+                      const current = questionsRef.current || [];
                       let cnt = 0;
-                      setQuestions((arr) =>
-                        arr.map((q) => {
-                          if (q.type === 'single_choice' && (q.correct === undefined || q.correct < 0)) {
-                            cnt++;
-                            return { ...q, correct: 0 };
-                          }
-                          return q;
-                        })
-                      );
-                      setMsg(`Đã chuẩn hóa đáp án cho ${cnt} câu!`);
+                      const nextQs = current.map((q) => {
+                        if (q.type === 'single_choice' && (q.correct === undefined || q.correct < 0)) {
+                          cnt++;
+                          return { ...q, correct: 0 };
+                        }
+                        return q;
+                      });
+                      if (cnt > 0) commitQuestions(nextQs);
+                      setMsg(cnt > 0 ? `Đã chuẩn hóa đáp án cho ${cnt} câu!` : 'Tất cả câu trắc nghiệm đã có đáp án hợp lệ!');
                       setTimeout(() => setMsg(''), 3000);
                     }}
                   >
@@ -2306,6 +2337,8 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                         </button>
                       </div>
 
+                      {renderDocxPassageBanner(q, part2Questions[idx - 1])}
+
                       <div className="wde-stem-row">
                         <span className="wde-q-num-label">Câu {idx + 1}.</span>
                         <select
@@ -2591,6 +2624,70 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                     </tbody>
                   </table>
                 )}
+
+                {part2Questions.length > 0 && (
+                  <table className="wde-key-table" style={{ marginTop: 8 }}>
+                    <thead>
+                      <tr>
+                        <th colSpan={Math.min(part2Questions.length, 6)}>Phần II: Trắc nghiệm Đúng / Sai ({part2Questions.length} câu)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: Math.ceil(part2Questions.length / 6) }, (_, rowIdx) => {
+                        const start = rowIdx * 6;
+                        const slice = part2Questions.slice(start, start + 6);
+                        return (
+                          <React.Fragment key={rowIdx}>
+                            <tr>
+                              {slice.map((_, i) => (
+                                <td key={start + i} style={{ fontWeight: 700 }}>Câu {start + i + 1}</td>
+                              ))}
+                            </tr>
+                            <tr>
+                              {slice.map((q, i) => (
+                                <td key={start + i} style={{ color: '#185abd', fontWeight: 700, fontSize: 11 }}>
+                                  {(q.statements || []).slice(0, 4).map((st, si) => `${'abcd'[si]}:${st?.answer ? 'Đ' : 'S'}`).join(' ')}
+                                </td>
+                              ))}
+                            </tr>
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+
+                {part3Questions.length > 0 && (
+                  <table className="wde-key-table" style={{ marginTop: 8 }}>
+                    <thead>
+                      <tr>
+                        <th colSpan={Math.min(part3Questions.length, 6)}>Phần III: Trả lời ngắn ({part3Questions.length} câu)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: Math.ceil(part3Questions.length / 6) }, (_, rowIdx) => {
+                        const start = rowIdx * 6;
+                        const slice = part3Questions.slice(start, start + 6);
+                        return (
+                          <React.Fragment key={rowIdx}>
+                            <tr>
+                              {slice.map((_, i) => (
+                                <td key={start + i} style={{ fontWeight: 700 }}>Câu {start + i + 1}</td>
+                              ))}
+                            </tr>
+                            <tr>
+                              {slice.map((q, i) => (
+                                <td key={start + i} style={{ color: '#047857', fontWeight: 800 }}>
+                                  {q.answer || '-'}
+                                </td>
+                              ))}
+                            </tr>
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
           </div>
@@ -2818,7 +2915,13 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                                     <td style={{ padding: '6px 8px', fontWeight: 600 }}>Câu {idx + 1}</td>
                                     <td style={{ padding: '6px 8px', color: '#475569' }}>{q.q ? q.q.slice(0, 80) : ''}...</td>
                                     <td style={{ padding: '6px 8px', fontWeight: 700, color: '#185abd' }}>
-                                      {q.part === 2 ? 'Đ/S 4 ý' : q.part === 3 ? (q.answer || 'Tự luận') : LETTERS[q.correct || 0]}
+                                      {q.part === 2 || q.type === 'true_false'
+                                        ? 'Đ/S 4 ý'
+                                        : q.part === 3 || q.type === 'short_answer'
+                                          ? (q.answer || '—')
+                                          : q.part === 4 || q.type === 'essay'
+                                            ? 'Tự luận'
+                                            : (Number.isInteger(q.correct) && q.correct >= 0 && q.correct < LETTERS.length ? LETTERS[q.correct] : '—')}
                                     </td>
                                   </tr>
                                 ))}
@@ -3250,6 +3353,8 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {Object.entries(STANDARD_TEMPLATES).map(([tplKey, tpl]) => {
                     const isSelected = selectedTemplateId === tplKey;
+                    const c = tpl.counts || {};
+                    const totalQ = (c.p1 || 0) + (c.p2 || 0) + (c.p3 || 0) + (c.essay || 0);
                     return (
                       <div
                         key={tplKey}
@@ -3263,27 +3368,35 @@ Chỉ trả về JSON mảng danh sách các câu đã chuẩn hóa theo đúng 
                           transition: 'all 0.15s ease',
                         }}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', gap: '8px' }}>
                           <span style={{ fontSize: '14px', fontWeight: 700, color: isSelected ? '#185abd' : '#1e293b' }}>
                             {tpl.name}
                           </span>
-                          <span style={{ fontSize: '12px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: isSelected ? '#dbeafe' : '#f1f5f9', color: isSelected ? '#1e40af' : '#475569' }}>
-                            {tpl.duration} phút • {tpl.totalQuestions} câu • 10.0 điểm
+                          <span style={{ fontSize: '12px', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', background: isSelected ? '#dbeafe' : '#f1f5f9', color: isSelected ? '#1e40af' : '#475569', whiteSpace: 'nowrap' }}>
+                            {tpl.duration} phút • {totalQ} câu • {tpl.tag || '10.0đ'}
                           </span>
                         </div>
                         <div style={{ fontSize: '12.5px', color: '#475569', marginBottom: '8px' }}>
-                          Áp dụng cho: <strong>{tpl.subjects.join(', ')}</strong>
+                          {tpl.desc}
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '11.5px', color: '#64748b' }}>
-                          <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                            Phần I: <strong>{tpl.parts.part1.count} câu</strong> ({tpl.parts.part1.points} đ)
-                          </div>
-                          <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                            Phần II: <strong>{tpl.parts.part2.count} câu</strong> ({tpl.parts.part2.points} đ)
-                          </div>
-                          <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                            Phần III: <strong>{tpl.parts.part3.count} câu</strong> ({tpl.parts.part3.points} đ)
-                          </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: c.essay ? 'repeat(1, 1fr)' : 'repeat(3, 1fr)', gap: '8px', fontSize: '11.5px', color: '#64748b' }}>
+                          {c.essay ? (
+                            <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                              Tự luận: <strong>{c.essay} câu</strong> (10.0 đ)
+                            </div>
+                          ) : (
+                            <>
+                              <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                                Phần I: <strong>{c.p1 || 0} câu</strong>
+                              </div>
+                              <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                                Phần II: <strong>{c.p2 || 0} câu</strong>
+                              </div>
+                              <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                                Phần III: <strong>{c.p3 || 0} câu</strong>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     );

@@ -397,7 +397,15 @@ export default function TeacherSimulatorHub({
       if (sortBy === 'title-asc') {
         return String(a.title || '').localeCompare(String(b.title || ''), 'vi');
       }
-      return (b.createdAt || 0) - (a.createdAt || 0);
+      const toMs = (v) => {
+        if (!v) return 0;
+        if (typeof v === 'number') return v;
+        if (typeof v?.toMillis === 'function') return v.toMillis();
+        if (typeof v?.seconds === 'number') return v.seconds * 1000;
+        const t = Date.parse(v);
+        return Number.isFinite(t) ? t : 0;
+      };
+      return toMs(b.createdAt) - toMs(a.createdAt);
     });
   }, [hubTab, teacherExams, classes, searchQuery, gradeFilter, subjectFilter, sortBy]);
 

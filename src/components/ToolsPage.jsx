@@ -54,6 +54,7 @@ const STUDY_TOOLS = [
   { id: 'doc-studio', name: 'AI Doc Studio', desc: 'Học và tạo quiz từ file tài liệu của bạn', Icon: IconNote, tag: 'new' },
   { id: 'chalkboard', name: 'Bảng phấn 3D', desc: 'Mô phỏng hình học & kiểm định cơ học', Icon: IconScale, tag: 'hot' },
   { id: 'physics-lab', name: 'Phòng Lab Vật lí Ảo', desc: 'Ném xiên, Mạch điện DC, Quang hình, Sóng 2D, Con lắc kép & Olympiad', Icon: IconAtom, tag: 'new' },
+  { id: 'biology-lab', name: 'Phòng Lab Sinh học (20 Lab)', desc: 'Tế bào 3D, DNA 3D, Giải phẫu người 3D, Kính hiển vi ảo, Dịch tễ SIR & Thực hành', Icon: IconMicroscope, tag: 'new' },
   { id: 'sim-lab', name: 'Mô phỏng Lý & Sinh', desc: 'Mạch RLC, Y-âng, Đột biến ADN & Punnett', Icon: IconMicroscope, tag: 'new' },
   { id: 'analyze', name: 'Phân tích', desc: 'Phân tích hợp chất, phản ứng', Icon: IconMicroscope },
   { id: 'balance', name: 'Cân bằng PTHH', desc: 'Nhập phương trình, ra hệ số', Icon: IconScale, tag: 'hot' },

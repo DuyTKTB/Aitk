@@ -114,12 +114,15 @@ function Badge({ tone = 'na', children }) {
    ============================================================ */
 
 export default function LearningAnalytics({
-  classInfo = {}, exams = [], submissionsMap = {}, loadingSubmissions = false,
+  classInfo = {}, exams = [], submissionsMap = {}, loadingSubmissions = false, isClassOwner: isClassOwnerProp = undefined,
 }) {
   const { user } = useAuth();
   const classId = classInfo?.id || '';
   const members = classInfo?.members || [];
-  const ownerId = user?.uid || classInfo?.teacherId || '';
+  const ownerId = classInfo?.teacherId || user?.uid || '';
+  const isClassOwner = typeof isClassOwnerProp === 'boolean'
+    ? isClassOwnerProp
+    : (!classInfo?._linked && (!classInfo?.teacherId || !user?.uid || classInfo.teacherId === user.uid));
 
   const [rangeKey, setRangeKey] = useState('30');
   const [fromInput, setFromInput] = useState('');
@@ -198,11 +201,16 @@ export default function LearningAnalytics({
   }, [classId, classInfo?.bandThresholds]);
 
   const saveBands = async () => {
+    if (!isClassOwner) {
+      setBandMsg('Chỉ giáo viên chủ nhiệm mới có thể thay đổi ngưỡng xếp loại của lớp.');
+      return;
+    }
     const next = resolveBands(bandDraft);
     setSavingBands(true);
     setBandMsg('');
     try {
-      await updateClass(classId, { bandThresholds: next });
+      const res = await updateClass(classId, { bandThresholds: next });
+      if (!res?.ok) throw new Error(res?.error || 'Không lưu được ngưỡng xếp loại.');
       setBands(next);
       setBandDraft(next);
       setBandMsg('Đã lưu — áp dụng cho cả trang của học sinh.');
@@ -407,56 +415,54 @@ export default function LearningAnalytics({
 
       setLive(result);
 
-      /* Lưu báo cáo — lỗi lưu không được làm mất nội dung vừa tạo */
-      try {
-        const savedInfo = await saveAnalyticsReport({
-          classId,
-          range,
-          focusSubject,
-          result,
-          analytics,
-          userId: ownerId,
-          userName: classInfo?.teacherName || '',
-        });
-        setSaved({
-          id: savedInfo.id,
-          classId,
-          rangeKey: range.key,
-          rangeLabel: range.label,
-          focusSubject,
-          dataFingerprint: analytics.meta.fingerprint,
-          engine: result.engine,
-          version: savedInfo.version,
-          report: result.report,
-          metrics: {
-            submissions: overview.submissions,
-            exams: overview.exams,
-            students: overview.students,
-            avgPct: overview.avgPct,
-          },
-          generatedAtMs: Date.now(),
-          generatedAt: { seconds: Math.floor(Date.now() / 1000) },
-        });
-      } catch (e) {
-        setGen({
-          status: 'done',
-          engine: result.engine,
-          error: `Đã tạo báo cáo nhưng chưa lưu được vào Firestore: ${e?.message || e}`,
-        });
+      /* Lưu báo cáo — chỉ chủ lớp được ghi vào class_analytics_reports; lỗi lưu không làm mất nội dung vừa tạo */
+      let saveErrMsg = '';
+      if (isClassOwner) {
+        try {
+          const savedInfo = await saveAnalyticsReport({
+            classId,
+            range,
+            focusSubject,
+            result,
+            analytics,
+            userId: user?.uid || ownerId,
+            userName: user?.displayName || classInfo?.teacherName || '',
+          });
+          setSaved({
+            id: savedInfo.id,
+            classId,
+            rangeKey: range.key,
+            rangeLabel: range.label,
+            focusSubject,
+            dataFingerprint: analytics.meta.fingerprint,
+            engine: result.engine,
+            version: savedInfo.version,
+            report: result.report,
+            metrics: {
+              submissions: overview.submissions,
+              exams: overview.exams,
+              students: overview.students,
+              avgPct: overview.avgPct,
+            },
+            generatedAtMs: Date.now(),
+            generatedAt: { seconds: Math.floor(Date.now() / 1000) },
+          });
+        } catch (e) {
+          saveErrMsg = `Đã tạo báo cáo nhưng chưa lưu được vào Firestore: ${e?.message || e}`;
+        }
       }
 
-      if (!result.error) {
-        setGen({ status: 'done', engine: result.engine, error: '' });
-      } else {
-        /* AI lỗi → vẫn có báo cáo bằng luật, nhưng nói rõ lý do */
-        setGen({ status: 'done', engine: result.engine, error: result.error });
-      }
+      setGen({
+        status: 'done',
+        engine: result.engine,
+        error: result.error || saveErrMsg || '',
+      });
 
       await logTeacherEvent({
         classId,
         action: 'report_generate',
-        actorId: ownerId,
-        actorName: classInfo?.teacherName || '',
+        actorId: user?.uid || ownerId,
+        actorName: user?.displayName || classInfo?.teacherName || '',
         subject: focusSubject || '',
         detail: `${result.engine === 'ai' ? 'AI' : 'Thống kê'} · ${range.label} · ${overview.submissions} bài nộp`,
       });
@@ -830,30 +836,32 @@ export default function LearningAnalytics({
           <div className="la-card">
             <div className="la-ov-head">
               <h4>Bảng xếp hạng lớp — theo điểm trung bình</h4>
-              <button
-                type="button"
-                className="la-btn"
-                disabled={publishing || board.rows.length === 0}
-                onClick={async () => {
-                  setPublishing(true);
-                  setPublishMsg('');
-                  try {
-                    await publishClassLeaderboard({
-                      classId,
-                      className: classInfo?.name || '',
-                      board,
-                      publishedBy: classInfo?.teacherId || '',
-                    });
-                    setPublishMsg('Đã công bố cho học sinh thấy trong mục Lớp học và Trang chủ.');
-                  } catch (e) {
-                    setPublishMsg(`Không công bố được: ${e?.message || e}`);
-                  } finally {
-                    setPublishing(false);
-                  }
-                }}
-              >
-                {publishing ? 'Đang công bố…' : 'Công bố cho học sinh'}
-              </button>
+              {isClassOwner && (
+                <button
+                  type="button"
+                  className="la-btn"
+                  disabled={publishing || board.rows.length === 0}
+                  onClick={async () => {
+                    setPublishing(true);
+                    setPublishMsg('');
+                    try {
+                      await publishClassLeaderboard({
+                        classId,
+                        className: classInfo?.name || '',
+                        board,
+                        publishedBy: user?.uid || classInfo?.teacherId || '',
+                      });
+                      setPublishMsg('Đã công bố cho học sinh thấy trong mục Lớp học và Trang chủ.');
+                    } catch (e) {
+                      setPublishMsg(`Không công bố được: ${e?.message || e}`);
+                    } finally {
+                      setPublishing(false);
+                    }
+                  }}
+                >
+                  {publishing ? 'Đang công bố…' : 'Công bố cho học sinh'}
+                </button>
+              )}
             </div>
             {publishMsg && <p className="la-note">{publishMsg}</p>}
             {board.rows.length === 0 ? (
@@ -899,6 +907,7 @@ export default function LearningAnalytics({
               </button>
             </div>
 
+            {isClassOwner && (
             <details className="la-band-cfg">
               <summary>Ngưỡng xếp loại của lớp</summary>
               <div className="la-band-cfg-row">
@@ -933,6 +942,7 @@ export default function LearningAnalytics({
                 hồ sơ lớp và dùng chung cho trang của học sinh.
               </p>
             </details>
+            )}
 
             <div className="la-scroll">
               <table className="la-table sm">
@@ -1235,6 +1245,7 @@ export default function LearningAnalytics({
         )}
 
         {gen.status === 'error' && <p className="la-error">{gen.error}</p>}
+        {gen.status === 'done' && gen.error && !shownReport?.error && <p className="la-hint warn">{gen.error}</p>}
 
         {staleness.stale && saved && (
           <p className="la-hint warn">

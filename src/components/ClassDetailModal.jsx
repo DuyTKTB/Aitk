@@ -264,14 +264,16 @@ export default function ClassDetailModal({
   const vipUnlocked = typeof isTeacherVip === 'boolean'
     ? isTeacherVip
     : resolveEntitlements({ user, pro, tier, userRole: 'teacher' }).isTeacherVip;
+  const isClassOwner = !classInfo?._linked && (!classInfo?.teacherId || !user?.uid || classInfo.teacherId === user.uid);
   const mapInitialTab = (t) => {
     if (t === 'pending' || t === 'retry') return 'members';
     if (t === 'analytics') return 'scores';
+    if (!isClassOwner && (t === 'teachers' || t === 'settings')) return 'overview';
     return t || 'overview';
   };
   const [tab, setTab] = useState(() => mapInitialTab(initialTab));
   const [peopleSubTab, setPeopleSubTab] = useState(() => (
-    initialTab === 'pending' ? 'pending' : initialTab === 'retry' ? 'retry' : 'roster'
+    initialTab === 'pending' && isClassOwner ? 'pending' : initialTab === 'retry' ? 'retry' : 'roster'
   ));
   const [scoreSubTab, setScoreSubTab] = useState(() => (
     initialTab === 'analytics' ? 'ai' : 'matrix'
@@ -460,12 +462,14 @@ export default function ClassDetailModal({
       label: 'Học sinh',
       Icon: IconUsers,
       badge: members.length,
-      alertBadge: pending.length + pendingRetry.length,
+      alertBadge: (isClassOwner ? pending.length : 0) + pendingRetry.length,
     },
     { key: 'exams', label: 'Đề thi', Icon: IconBook, badge: exams.length },
     { key: 'scores', label: 'Bảng điểm & AI', Icon: IconTable },
-    { key: 'teachers', label: 'GV bộ môn', Icon: IconUserPlus },
-    { key: 'settings', label: 'Cài đặt', Icon: IconLock },
+    ...(isClassOwner ? [
+      { key: 'teachers', label: 'GV bộ môn', Icon: IconUserPlus },
+      { key: 'settings', label: 'Cài đặt', Icon: IconLock },
+    ] : []),
   ];
 
   const handleCopyClassKey = async () => {
@@ -531,7 +535,7 @@ export default function ClassDetailModal({
             </p>
           </div>
           <div className="cd-head-actions">
-            {onShareKey && (
+            {isClassOwner && onShareKey && (
               <button
                 type="button"
                 className="cd-action-btn"
@@ -585,7 +589,7 @@ export default function ClassDetailModal({
         </nav>
 
         <div className="cd-body">
-          {tab === 'teachers' && (
+          {tab === 'teachers' && isClassOwner && (
             vipUnlocked ? (
               <SubjectTeacherPanel
                 classInfo={classInfo}
@@ -607,9 +611,9 @@ export default function ClassDetailModal({
           {tab === 'overview' && (
             <div className="cd-overview">
               {/* Cảnh báo nhanh nếu có HS chờ duyệt hoặc xin thi lại */}
-              {(pending.length > 0 || pendingRetry.length > 0) && (
+              {((isClassOwner && pending.length > 0) || pendingRetry.length > 0) && (
                 <div className="cd-quick-alerts">
-                  {pending.length > 0 && (
+                  {isClassOwner && pending.length > 0 && (
                     <div className="cd-quick-alert-item">
                       <span><b>{pending.length} học sinh</b> đang chờ duyệt vào lớp</span>
                       <button
@@ -986,13 +990,15 @@ export default function ClassDetailModal({
                   >
                     Danh sách lớp <em>{members.length}</em>
                   </button>
-                  <button
-                    type="button"
-                    className={peopleSubTab === 'pending' ? 'on' : ''}
-                    onClick={() => setPeopleSubTab('pending')}
-                  >
-                    Chờ duyệt vào lớp <em style={pending.length > 0 ? { background: '#dc2626', color: '#fff' } : undefined}>{pending.length}</em>
-                  </button>
+                  {isClassOwner && (
+                    <button
+                      type="button"
+                      className={peopleSubTab === 'pending' ? 'on' : ''}
+                      onClick={() => setPeopleSubTab('pending')}
+                    >
+                      Chờ duyệt vào lớp <em style={pending.length > 0 ? { background: '#dc2626', color: '#fff' } : undefined}>{pending.length}</em>
+                    </button>
+                  )}
                   <button
                     type="button"
                     className={peopleSubTab === 'retry' ? 'on' : ''}
@@ -1118,7 +1124,7 @@ export default function ClassDetailModal({
                                 {s.lastSubAt ? fmtDate(s.lastSubAt) : '—'}
                               </td>
                               <td>
-                                {onRemoveMember && (
+                                {isClassOwner && onRemoveMember && (
                                   <button
                                     type="button"
                                     className="vt-icon-btn danger"
@@ -1142,7 +1148,7 @@ export default function ClassDetailModal({
                 </>
               )}
 
-              {peopleSubTab === 'pending' && (
+              {peopleSubTab === 'pending' && isClassOwner && (
                 <>
                   <div className="cd-toolbar">
                     <label className="cd-check">
@@ -1261,6 +1267,41 @@ export default function ClassDetailModal({
                                       </button>
                                     </div>
                                   </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </>
+                      )}
+                      {historyRetry.length > 0 && (
+                        <>
+                          <h3 style={{ margin: '0 0 .6rem', font: '800 .92rem var(--sans)', color: 'var(--ink)' }}>
+                            Lịch sử đã xử lý ({historyRetry.length})
+                          </h3>
+                          <ul className="cd-sub-list" style={{ marginBottom: '1rem' }}>
+                            {historyRetry.map((r) => {
+                              const examTitle = exams.find((e) => e.id === r.examId)?.title || 'Đề không xác định';
+                              const statusLabel = r.status === 'approved'
+                                ? 'Đã duyệt'
+                                : r.status === 'used'
+                                  ? 'Đã sử dụng'
+                                  : 'Đã từ chối';
+                              return (
+                                <li key={r.id} className="cd-sub-item" style={{ flexWrap: 'wrap' }}>
+                                  <Avatar name={r.studentName} size={36} />
+                                  <div className="cd-sub-main" style={{ flex: '1 1 200px' }}>
+                                    <h4>{r.studentName}</h4>
+                                    <p className="cd-sub-meta">
+                                      <b>{examTitle}</b> · {statusLabel}
+                                      {r.decidedAt || r.decidedAtMs ? ` · ${timeAgoShort(r.decidedAt || r.decidedAtMs)}` : ''}
+                                    </p>
+                                    {r.note && (
+                                      <p className="cd-sub-meta">Ghi chú GV: “{r.note}”</p>
+                                    )}
+                                  </div>
+                                  <span className={'vt-chip ' + (r.status === 'denied' ? 'closed' : 'ready')}>
+                                    {statusLabel}
+                                  </span>
                                 </li>
                               );
                             })}
@@ -1395,6 +1436,7 @@ export default function ClassDetailModal({
                     exams={exams}
                     submissionsMap={submissionsMap}
                     loadingSubmissions={loadingSubs}
+                    isClassOwner={isClassOwner}
                   />
                 ) : (
                   <TeacherVipLock
@@ -1468,7 +1510,7 @@ export default function ClassDetailModal({
             </div>
           )}
 
-          {tab === 'settings' && (
+          {tab === 'settings' && isClassOwner && (
             <div className="cd-settings-grid">
               <section className="cd-card">
                 <div className="cd-card-head-row">

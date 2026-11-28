@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
+import '../../admin.css';
+import '../../admin-dashboard.css';
+import '../../admin-upgrade.css';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { isAdmin } from '../../lib/isAdmin.js';
 import { fetchGrades, fetchSubjects } from '../../lib/examApi.js';

@@ -78,3 +78,14 @@ npm run test:watch    # chế độ theo dõi
 Bộ test bao phủ: parse công thức & cân bằng phương trình, công cụ tính, truy xuất tri thức,
 phân loại tác vụ & prompt, bộ nhớ, và **luồng gọi AI đầy đủ** (giả lập SSE của Gemini/Groq,
 cả nhánh OCR dự phòng và nhánh hết quota).
+
+## Bản quyền & Tác giả
+
+* **Chủ sở hữu & Nhà sáng lập:** Nguyễn Thế Duy (Duy TK / Tk Media) — [https://www.elecai.id.vn/](https://www.elecai.id.vn/)
+* **Giấy phép:** © 2026 Nguyễn Thế Duy — **All Rights Reserved** (xem [LICENSE](LICENSE) và [COPYRIGHT.md](COPYRIGHT.md)).
+* **Chứng thực mật mã mã nguồn (SHA-256 Manifest):**
+  ```bash
+  npm run copyright:manifest   # Tạo danh sách mã băm SHA-256 trong copyright-proofs/
+  npm run copyright:verify     # Kiểm chứng toàn vẹn mã nguồn theo manifest
+  ```
+  Dùng tệp `copyright-proofs/MANIFEST-SHA256.txt` để đóng dấu thời gian miễn phí tại [OpenTimestamps](https://opentimestamps.org/) mà không cần tải mã nguồn lên mạng.

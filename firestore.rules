@@ -459,6 +459,9 @@ service cloud.firestore {
       allow read: if signedIn() && (
         resource == null
         || resource.data.studentId == request.auth.uid
+        || (resource.data.classId is string
+            && resource.data.classId.size() > 0
+            && (classOwner(resource.data.classId) || linkedToClass(resource.data.classId, request.auth.uid)))
         || subExamAuthor()
         || subClassOwner()
         || subClassLinkedTeacher()
@@ -571,6 +574,7 @@ service cloud.firestore {
       allow read: if signedIn() && (
         resource == null
         || resource.data.studentId == request.auth.uid
+        || resource.data.teacherId == request.auth.uid
         || (resource.data.examId is string && isExamManager(resource.data.examId))
         || (resource.data.classId is string && resource.data.classId.size() > 0 && (classOwner(resource.data.classId) || linkedToClass(resource.data.classId, request.auth.uid)))
         || isAdmin()
@@ -588,7 +592,8 @@ service cloud.firestore {
 
       // Giáo viên duyệt/từ chối; học sinh CHỈ được chuyển đơn ĐÃ DUYỆT của mình sang 'used'
       allow update: if signedIn() && (
-        (resource.data.examId is string && isExamManager(resource.data.examId))
+        resource.data.teacherId == request.auth.uid
+        || (resource.data.examId is string && isExamManager(resource.data.examId))
         || (resource.data.classId is string && resource.data.classId.size() > 0 && (classOwner(resource.data.classId) || linkedToClass(resource.data.classId, request.auth.uid)))
         || isAdmin()
         || (resource.data.studentId == request.auth.uid
@@ -600,7 +605,8 @@ service cloud.firestore {
       );
 
       allow delete: if signedIn() && (
-        (resource.data.examId is string && isExamManager(resource.data.examId))
+        resource.data.teacherId == request.auth.uid
+        || (resource.data.examId is string && isExamManager(resource.data.examId))
         || isAdmin()
       );
     }
@@ -671,15 +677,15 @@ service cloud.firestore {
     match /paperExams/{examId} {
       allow read, update, delete: if signedIn() && (
         isAdmin()
-        || resource.data.get('teacherId', '') == request.auth.uid
-        || (resource.data.get('classId', '') is string
-            && resource.data.get('classId', '').size() > 0
+        || resource.data.teacherId == request.auth.uid
+        || (resource.data.classId is string
+            && resource.data.classId.size() > 0
             && (classOwner(resource.data.classId) || linkedToClass(resource.data.classId, request.auth.uid)))
       );
 
       allow create: if signedIn() && (
         isAdmin()
-        || request.resource.data.get('teacherId', '') == request.auth.uid
+        || request.resource.data.teacherId == request.auth.uid
       );
 
       match /results/{resId} {

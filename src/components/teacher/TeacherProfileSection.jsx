@@ -18,7 +18,9 @@ import {
 import { auth, db } from '../../lib/firebase.js';
 import { createExam } from '../../lib/classroom.js';
 import { SUBJECTS } from '../../lib/subjects.js';
+import { useAuth } from '../../hooks/useAuth.jsx';
 import { useTeacherPro } from '../../hooks/useTeacherPro.js';
+import { resolveEntitlements } from '../../lib/entitlements.js';
 import SubjectTeacherPanel from './SubjectTeacherPanel.jsx';
 import UserAvatar from '../UserAvatar.jsx';
 import {
@@ -331,41 +333,24 @@ function formatDateVN(val) {
   }
 }
 
-/* Đọc trạng thái gói VIP / PRO từ teacherPro, user hoặc localStorage khớp UID */
-function resolvePackageStatus(user, teacherPro) {
-  if (teacherPro?.isPro && teacherPro?.isTeacherPro !== false) {
-    const daysText = teacherPro.daysLeft != null ? ` (${teacherPro.daysLeft} ngày)` : '';
+/* Đọc trạng thái gói VIP / PRO chuẩn qua resolveEntitlements (tách bạch GV VIP vs HS VIP) */
+function resolvePackageStatus(user, teacherPro, tier = null) {
+  const ent = resolveEntitlements({ user, pro: teacherPro, tier, userRole: 'teacher' });
+  if (ent.isAdmin) {
+    return {
+      isPro: true,
+      label: 'Gói PRO (Quản trị viên)',
+      expiresAt: teacherPro?.expiry || user?.proExpiresAt || null,
+      keyCode: teacherPro?.pro?.key || null,
+    };
+  }
+  if (ent.isTeacherVip) {
+    const daysText = teacherPro?.daysLeft != null ? ` (${teacherPro.daysLeft} ngày)` : '';
     return {
       isPro: true,
       label: `Giáo viên VIP${daysText}`,
-      expiresAt: teacherPro.expiry || null,
-      keyCode: teacherPro.pro?.key || null,
-    };
-  }
-  if (user?.uid) {
-    try {
-      const rawVip = localStorage.getItem('cs-vip-status');
-      if (rawVip) {
-        const parsed = JSON.parse(rawVip);
-        const expMs = toMs(parsed?.expiresAt || parsed?.expiry || parsed?.expiryDate);
-        const isProPlan = parsed?.tier === 'pro' || parsed?.plan === 'PRO';
-        if (parsed && parsed.uid === user.uid && isProPlan && expMs > Date.now() && (parsed.isPro || parsed.active)) {
-          return {
-            isPro: true,
-            label: parsed.planName || 'Gói PRO Giáo Viên',
-            expiresAt: parsed.expiresAt || parsed.expiry || parsed.expiryDate || null,
-          };
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-  if (user?.isAdmin || user?.claims?.pro || user?.tier === 'pro') {
-    return {
-      isPro: true,
-      label: user?.isAdmin ? 'Gói PRO (Quản trị viên)' : 'Gói PRO Giáo Viên',
-      expiresAt: user?.proExpiresAt || null,
+      expiresAt: teacherPro?.expiry || user?.proExpiresAt || null,
+      keyCode: teacherPro?.pro?.key || null,
     };
   }
   return {
@@ -648,8 +633,9 @@ export default function TeacherProfileSection({
     return () => { active = false; };
   }, [uid, profileStorageKey, user?.displayName, user?.email, user?.photoURL]);
 
+  const { tier } = useAuth();
   const teacherPro = useTeacherPro();
-  const pkgStatus = useMemo(() => resolvePackageStatus(user, teacherPro), [user, teacherPro]);
+  const pkgStatus = useMemo(() => resolvePackageStatus(user, teacherPro, tier), [user, teacherPro, tier]);
 
   const notify = useCallback(
     (msg, tone = 'ok', opts) => {

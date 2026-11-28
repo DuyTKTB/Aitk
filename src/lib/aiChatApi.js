@@ -563,8 +563,20 @@ export async function saveTeacherFloatingChat(userId, messages = [], updatedAt =
       .map((m) => {
         const copy = { ...m };
         delete copy.realSummary;
+        delete copy.extractedImages;
         if (copy.imagePreview) {
           copy.imagePreview = { name: copy.imagePreview.name, sizeLabel: copy.imagePreview.sizeLabel };
+        }
+        // Không đẩy ảnh base64 nặng trong examData lên Firestore (giới hạn 1 MiB/doc)
+        if (copy.examData && Array.isArray(copy.examData.questions)) {
+          copy.examData = {
+            ...copy.examData,
+            questions: copy.examData.questions.map((q) => {
+              if (!q || typeof q !== 'object') return q;
+              const { image: _img, images: _imgs, optionImages: _oimgs, ...qRest } = q;
+              return qRest;
+            }),
+          };
         }
         return copy;
       });

@@ -34,6 +34,7 @@ export default function SystemAnnouncementBanner({ previewOverride = null, onPre
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [dismissed, setDismissed] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [popupReady, setPopupReady] = useState(false);
   const barRef = useRef(null);
 
   const isPreview = Boolean(previewOverride);
@@ -80,6 +81,37 @@ export default function SystemAnnouncementBanner({ previewOverride = null, onPre
     const t = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(t);
   }, [settings.announcementEnabled, settings.announcementShowCountdown, settings.announcementStartAt, settings.announcementEndAt]);
+
+  // Hoãn bật Popup Poster/Modal tới sau tương tác đầu tiên hoặc 4s sau khi trang tải xong
+  // để tránh biến ảnh poster thành phần tử LCP muộn & tránh gây CLS trên trang chủ.
+  useEffect(() => {
+    if (isPreview || !dismissible) {
+      setPopupReady(true);
+      return undefined;
+    }
+    if (popupReady || !evalRes.visible || (!isModalMode && !isPosterMode)) {
+      return undefined;
+    }
+    let timer = null;
+    const arm = () => {
+      setPopupReady(true);
+    };
+    const startTimer = () => {
+      timer = setTimeout(arm, 4000);
+    };
+    if (document.readyState === 'complete') {
+      startTimer();
+    } else {
+      window.addEventListener('load', startTimer, { once: true });
+    }
+    const events = ['pointerdown', 'keydown', 'scroll'];
+    events.forEach((ev) => window.addEventListener(ev, arm, { once: true, passive: true }));
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('load', startTimer);
+      events.forEach((ev) => window.removeEventListener(ev, arm));
+    };
+  }, [isPreview, dismissible, popupReady, evalRes.visible, isModalMode, isPosterMode]);
 
   // Kiểm tra trạng thái dismiss / modal seen theo phiên bản phát sóng
   useEffect(() => {
@@ -299,7 +331,7 @@ export default function SystemAnnouncementBanner({ previewOverride = null, onPre
       )}
 
       {/* 3. POPUP POSTER ẢNH FULL BO TRÒN (KIỂU SỰ KIỆN / KỲ THI) */}
-      {isPosterMode && modalOpen && (
+      {isPosterMode && modalOpen && popupReady && (
         <div
           className="sys-ann-modal-bg"
           role="dialog"
@@ -337,10 +369,10 @@ export default function SystemAnnouncementBanner({ previewOverride = null, onPre
                   onClick={handleNavigateLink}
                   title={settings.announcementText || ctaText}
                 >
-                  <img src={safeImage} alt={settings.announcementText || 'Poster thông báo ELEC AI'} className="sys-ann-poster-img" />
+                  <img src={safeImage} alt={settings.announcementText || 'Poster thông báo ELEC AI'} className="sys-ann-poster-img" loading="lazy" decoding="async" />
                 </a>
               ) : (
-                <img src={safeImage} alt={settings.announcementText || 'Poster thông báo ELEC AI'} className="sys-ann-poster-img" />
+                <img src={safeImage} alt={settings.announcementText || 'Poster thông báo ELEC AI'} className="sys-ann-poster-img" loading="lazy" decoding="async" />
               )
             ) : (
               /* Fallback poster gradient bo tròn đẹp khi Admin chưa tải ảnh */
@@ -365,7 +397,7 @@ export default function SystemAnnouncementBanner({ previewOverride = null, onPre
       )}
 
       {/* 4. HỘP THOẠI SPOTLIGHT POPUP CÓ KHUNG NỘI DUNG */}
-      {isModalMode && modalOpen && (
+      {isModalMode && modalOpen && popupReady && (
         <div
           className="sys-ann-modal-bg"
           role="dialog"

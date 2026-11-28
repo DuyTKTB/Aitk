@@ -445,6 +445,18 @@ export default function OmrCameraModal({
     }
     setLockedCode('auto');
     startStream('');
+    return () => {
+      openRef.current = false;
+      streamReqIdRef.current += 1;
+      clearTimeout(focusTimerRef.current);
+      stopStream();
+      try { window.speechSynthesis?.cancel?.(); } catch {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
     const onKey = (e) => {
       if (e.key === 'Escape') {
         if (showSettingsSheet) setShowSettingsSheet(false);
@@ -453,14 +465,8 @@ export default function OmrCameraModal({
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      clearTimeout(focusTimerRef.current);
-      stopStream();
-      try { window.speechSynthesis?.cancel?.(); } catch {}
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, showSettingsSheet, showHistory, onClose]);
 
   const handleToggleTorch = async () => {
     const track = streamRef.current?.getVideoTracks?.()[0];
@@ -682,8 +688,8 @@ export default function OmrCameraModal({
       const d = p1Detail[qi];
       const block = Math.floor(qi / 10);
       const row = qi % 10;
-      const pickedIdx = letters.indexOf(d.got);
-      const keyIdx = letters.indexOf(d.want);
+      const pickedIdx = letters.indexOf(d?.ans);
+      const keyIdx = letters.indexOf(d?.key);
       const tx = pickedIdx >= 0 ? TEMPLATE.p1X[block][pickedIdx] : (keyIdx >= 0 ? TEMPLATE.p1X[block][keyIdx] : null);
       if (tx == null) continue;
       const [dx, dy] = Hdisp(tx, TEMPLATE.p1Y[row]);

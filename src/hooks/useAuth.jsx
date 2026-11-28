@@ -21,8 +21,6 @@ import { supabase } from '../lib/supabase.js';
 import { getTier, clearTierCache } from '../lib/tier.js';
 import { invalidateVipCache } from '../lib/vipService.js';
 import { saveUserProfile, syncUserProfileFromCloud } from '../lib/userProfileService.js';
-import { initCloudStudySyncForUser, stopCloudStudySync, flushCloudStudyState, clearLocalStudyStateOnLogout } from '../lib/cloudStudySync.js';
-import { flushPendingSyncs, cancelAllSyncs } from '../lib/aiChatApi.js';
 import { canonicalizeEmail } from '../lib/authValidation.js';
 import { requestBrandedPasswordReset } from '../lib/emailOtp.js';
 import {
@@ -199,30 +197,37 @@ export function AuthProvider({ children }) {
 
   /* ============ AUTH STATE ============ */
   useEffect(() => {
-    // Hoàn tất phiên đăng nhập Google nếu vừa quay lại từ signInWithRedirect (khi popup bị chặn)
-    const redirectPromise = getRedirectResult(auth)
-      .then(async (cred) => {
-        let savedOpts = {};
-        try {
-          savedOpts = JSON.parse(sessionStorage.getItem(GOOGLE_REDIRECT_OPTS_KEY) || '{}') || {};
-          sessionStorage.removeItem(GOOGLE_REDIRECT_OPTS_KEY);
-        } catch { /* ignore */ }
-        if (cred?.user) {
-          const syncRes = await syncGoogleUserDocument(cred.user, savedOpts);
-          if (savedOpts?.redirectTarget === 'classroom' && syncRes?.role === 'teacher') {
-            setPostAuthRedirect('classroom');
-          } else if (savedOpts?.redirectTarget) {
+    // Chỉ gọi getRedirectResult khi thực sự có dấu hiệu vừa quay lại từ Google redirect (tránh 1 round-trip mạng thừa ở mọi lần tải trang)
+    let hasPendingGoogleRedirect = false;
+    try {
+      hasPendingGoogleRedirect = Boolean(sessionStorage.getItem(GOOGLE_REDIRECT_OPTS_KEY));
+    } catch { /* ignore */ }
+
+    const redirectPromise = hasPendingGoogleRedirect
+      ? getRedirectResult(auth)
+          .then(async (cred) => {
+            let savedOpts = {};
+            try {
+              savedOpts = JSON.parse(sessionStorage.getItem(GOOGLE_REDIRECT_OPTS_KEY) || '{}') || {};
+              sessionStorage.removeItem(GOOGLE_REDIRECT_OPTS_KEY);
+            } catch { /* ignore */ }
+            if (cred?.user) {
+              const syncRes = await syncGoogleUserDocument(cred.user, savedOpts);
+              if (savedOpts?.redirectTarget === 'classroom' && syncRes?.role === 'teacher') {
+                setPostAuthRedirect('classroom');
+              } else if (savedOpts?.redirectTarget) {
+                clearPostAuthRedirect();
+              }
+            }
+          })
+          .catch((err) => {
+            try { sessionStorage.removeItem(GOOGLE_REDIRECT_OPTS_KEY); } catch { /* ignore */ }
             clearPostAuthRedirect();
-          }
-        }
-      })
-      .catch((err) => {
-        try { sessionStorage.removeItem(GOOGLE_REDIRECT_OPTS_KEY); } catch { /* ignore */ }
-        clearPostAuthRedirect();
-        const code = String(err?.code || '');
-        if (code && mountedRef.current) setAuthRedirectError(code);
-        console.error('[useAuth] Google redirect error:', code, err?.message);
-      });
+            const code = String(err?.code || '');
+            if (code && mountedRef.current) setAuthRedirectError(code);
+            console.error('[useAuth] Google redirect error:', code, err?.message);
+          })
+      : Promise.resolve();
 
     const unsub = onAuthStateChanged(auth, async (u) => {
       await redirectPromise;
@@ -232,6 +237,7 @@ export function AuthProvider({ children }) {
       if (!mountedRef.current) return;
 
       if (u) {
+        try { localStorage.setItem('elec-has-session', '1'); } catch {}
         // Dọn dẹp cache VIP/PRO nếu thuộc tài khoản khác để acc Free không bao giờ kế thừa quyền VIP
         try {
           const rawVip = JSON.parse(localStorage.getItem('cs-vip-status') || 'null');
@@ -270,8 +276,10 @@ export function AuthProvider({ children }) {
             if (mountedRef.current) setProfileReady(true);
           });
 
-        // Kích hoạt đồng bộ toàn bộ dữ liệu học tập (Chuỗi ngày, XP, Tiến độ, Nguyện vọng, Lịch sử thi, Lịch sử hỏi...)
-        initCloudStudySyncForUser(u.uid);
+        // Kích hoạt đồng bộ toàn bộ dữ liệu học tập (lazy-load để không kéo 85KB vào trang chủ Landing)
+        import('../lib/cloudStudySync.js')
+          .then(({ initCloudStudySyncForUser }) => initCloudStudySyncForUser(u.uid))
+          .catch(() => {});
 
         try {
           const t = await getTier(u.uid);
@@ -298,13 +306,16 @@ export function AuthProvider({ children }) {
           } catch {}
         }
         try {
+          localStorage.removeItem('elec-has-session');
           localStorage.removeItem('cs-vip-status');
           localStorage.removeItem('cs-vip');
           localStorage.removeItem('cs-user-tier');
           clearTierCache();
           invalidateVipCache();
         } catch {}
-        stopCloudStudySync();
+        import('../lib/cloudStudySync.js')
+          .then(({ stopCloudStudySync }) => stopCloudStudySync())
+          .catch(() => {});
         setUser(null);
         setIsLoggedIn(false);
         setProfileReady(false);
@@ -519,19 +530,23 @@ export function AuthProvider({ children }) {
   /* ============ LOGOUT ============ */
   const logout = useCallback(async () => {
     const curUid = auth.currentUser?.uid || '';
+    const [cloudSync, aiChat] = await Promise.all([
+      import('../lib/cloudStudySync.js').catch(() => null),
+      import('../lib/aiChatApi.js').catch(() => null),
+    ]);
     if (curUid) {
       try {
-        flushPendingSyncs();
+        aiChat?.flushPendingSyncs?.();
         await Promise.race([
-          flushCloudStudyState(curUid).catch(() => {}),
+          cloudSync?.flushCloudStudyState?.(curUid)?.catch(() => {}) || Promise.resolve(),
           new Promise((resolve) => setTimeout(resolve, 1200)),
         ]);
       } catch { /* ignore */ }
     }
     clearPostAuthRedirect();
-    stopCloudStudySync();
-    cancelAllSyncs();
-    clearLocalStudyStateOnLogout();
+    cloudSync?.stopCloudStudySync?.();
+    aiChat?.cancelAllSyncs?.();
+    cloudSync?.clearLocalStudyStateOnLogout?.();
     try {
       localStorage.removeItem('cs-vip-status');
       localStorage.removeItem('cs-vip');

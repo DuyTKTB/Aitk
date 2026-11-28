@@ -527,11 +527,33 @@ export async function updateClass(classId, patch = {}) {
   }
   if (patch.bandThresholds && typeof patch.bandThresholds === 'object') {
     const b = patch.bandThresholds;
-    data.bandThresholds = {
-      good: Number(b.good) || 8,
-      fair: Number(b.fair) || 6.5,
-      pass: Number(b.pass) || 5,
+    const hasPctKeys = b.gioi !== undefined || b.kha !== undefined || b.tb !== undefined;
+    const toPct = (v, fallback) => {
+      if (v === null || v === undefined || v === '') return fallback;
+      const n = Number(v);
+      if (!Number.isFinite(n)) return fallback;
+      return !hasPctKeys && n <= 10 ? Math.round(n * 10) : Math.round(n);
     };
+    const gioi = Math.min(100, Math.max(2, toPct(b.gioi ?? b.good, 80)));
+    const kha = Math.min(gioi - 1, Math.max(1, toPct(b.kha ?? b.fair, 65)));
+    const tb = Math.min(kha - 1, Math.max(0, toPct(b.tb ?? b.pass, 50)));
+    data.bandThresholds = hasPctKeys
+      ? { gioi, kha, tb }
+      : {
+          good: Number(b.good) || 8,
+          fair: Number(b.fair) || 6.5,
+          pass: Number(b.pass) || 5,
+          gioi,
+          kha,
+          tb,
+        };
+  }
+  if ('maxStudents' in patch) {
+    if (patch.maxStudents === null || patch.maxStudents === undefined || Number(patch.maxStudents) <= 0) {
+      data.maxStudents = null;
+    } else if (Number.isFinite(Number(patch.maxStudents))) {
+      data.maxStudents = Math.floor(Number(patch.maxStudents));
+    }
   }
   if (!Object.keys(data).length) return { ok: false, error: 'Không có thay đổi.' };
   data.updatedAt = serverTimestamp();
@@ -566,7 +588,10 @@ export async function deleteClass(classId) {
   if (!classId) return { ok: false, error: 'Thiếu mã lớp' };
   try {
     const exams = await getExamsByClass(classId);
-    await Promise.all(exams.map((ex) => deleteExam(ex.id).catch(() => {})));
+    const currentUid = auth?.currentUser?.uid || null;
+    // Chỉ xoá các đề do chính GV đang xoá lớp tạo — tránh làm hỏng private/answerKey của đề GVBM
+    const ownedExams = exams.filter((ex) => !ex.teacherId || !currentUid || ex.teacherId === currentUid);
+    await Promise.all(ownedExams.map((ex) => deleteExam(ex.id).catch(() => {})));
     await deleteDoc(doc(db, 'classes', classId));
     removeLocalTeacherItem('classes', classId);
     return { ok: true };
@@ -880,7 +905,17 @@ export async function deleteExam(examId) {
     };
     await kill(query(collection(db, 'submissions'), where('examId', '==', examId)));
     await kill(query(collection(db, 'examRetryPermits'), where('examId', '==', examId)));
-    await kill(query(collection(db, 'examSessions'), where('examId', '==', examId)));
+    // Xoá luôn subcollection students & media của từng phòng thi để không sót ảnh camera học sinh
+    try {
+      const sessSnap = await getDocs(query(collection(db, 'examSessions'), where('examId', '==', examId)));
+      for (const sDoc of sessSnap.docs) {
+        await kill(collection(db, 'examSessions', sDoc.id, 'students'));
+        await kill(collection(db, 'examSessions', sDoc.id, 'media'));
+        await deleteDoc(sDoc.ref).catch((err) => console.warn('[deleteExam session]', err));
+      }
+    } catch (err) {
+      console.warn('[deleteExam sessions]', err);
+    }
     await kill(collection(db, 'exams', examId, 'attempts'));
     await kill(collection(db, 'exams', examId, 'private'));
     await deleteDoc(doc(db, 'exams', examId));
@@ -1216,7 +1251,7 @@ async function _submitExamImpl({ examId, student, answers, timeSpent, attemptMet
     totalQuestions: exam.questions.length,
     timeSpent: timeSpent || 0,
     submittedAt: serverTimestamp(),
-    graded: true,
+    graded: !detail.some((d) => d?.needsManualGrading),
     autoSubmitted: !!attemptMeta.autoSubmitted,
     violationCount: attemptMeta.violationCount || 0,
     cameraStatus: attemptMeta.cameraStatus || 'off',
@@ -1486,13 +1521,7 @@ export async function requestRetry({ examId, classId, teacherId, student, reason
     };
     const newDocRef = doc(collection(db, 'examRetryPermits'));
     const permitData = { ok: true, id: newDocRef.id, ...data };
-    const writePromise = setDoc(newDocRef, stripUndefined(data));
-    await Promise.race([
-      writePromise,
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]).catch((err) => {
-      console.warn('[requestRetry] setDoc background warning:', err?.message);
-    });
+    await setDoc(newDocRef, stripUndefined(data));
     return permitData;
   } catch (e) {
     console.error('[requestRetry] Lỗi:', e.code, e.message);
@@ -1504,16 +1533,13 @@ export async function requestRetry({ examId, classId, teacherId, student, reason
 export async function approveRetry({ permitId, teacherId, note = '' }) {
   if (!permitId) return { ok: false, error: 'Thiếu permitId' };
   try {
-    await Promise.race([
-      updateDoc(doc(db, 'examRetryPermits', permitId), {
-        status: 'approved',
-        decidedAt: serverTimestamp(),
-        decidedAtMs: Date.now(),
-        decidedBy: teacherId || null,
-        note: String(note || '').slice(0, 200),
-      }),
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]);
+    await updateDoc(doc(db, 'examRetryPermits', permitId), {
+      status: 'approved',
+      decidedAt: serverTimestamp(),
+      decidedAtMs: Date.now(),
+      decidedBy: teacherId || null,
+      note: String(note || '').slice(0, 200),
+    });
     return { ok: true };
   } catch (e) {
     console.error('[approveRetry] Lỗi:', e.code, e.message);
@@ -1525,16 +1551,13 @@ export async function approveRetry({ permitId, teacherId, note = '' }) {
 export async function denyRetry({ permitId, teacherId, note = '' }) {
   if (!permitId) return { ok: false, error: 'Thiếu permitId' };
   try {
-    await Promise.race([
-      updateDoc(doc(db, 'examRetryPermits', permitId), {
-        status: 'denied',
-        decidedAt: serverTimestamp(),
-        decidedAtMs: Date.now(),
-        decidedBy: teacherId || null,
-        note: String(note || '').slice(0, 200),
-      }),
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]);
+    await updateDoc(doc(db, 'examRetryPermits', permitId), {
+      status: 'denied',
+      decidedAt: serverTimestamp(),
+      decidedAtMs: Date.now(),
+      decidedBy: teacherId || null,
+      note: String(note || '').slice(0, 200),
+    });
     return { ok: true };
   } catch (e) {
     console.error('[denyRetry] Lỗi:', e.code, e.message);
@@ -1632,17 +1655,19 @@ export async function getClassAllowances(classId) {
 
 /* ------ GV: lấy danh sách yêu cầu ------ */
 export async function getRetryRequests({ examId = null, classId = null, status = null } = {}) {
+  if (!examId && !classId) return [];
   try {
     const constraints = [];
     if (examId) constraints.push(where('examId', '==', examId));
     if (classId) constraints.push(where('classId', '==', classId));
     if (status) constraints.push(where('status', '==', status));
-    constraints.push(orderBy('requestedAtMs', 'desc'));
     constraints.push(limit(200));
 
     const q = query(collection(db, 'examRetryPermits'), ...constraints);
     const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.requestedAtMs || 0) - (a.requestedAtMs || 0));
   } catch (e) {
     console.error('[getRetryRequests] Lỗi:', e.code, e.message);
     return [];
@@ -1688,16 +1713,20 @@ export function listenRetryRequestsByTeacher(teacherId, cb, onError) {
 }
 
 /* ------ GV: lắng nghe realtime ------ */
-export function listenRetryRequests(cb, { classId = null, status = null } = {}) {
+export function listenRetryRequests(cb, { classId = null, examId = null, status = null } = {}) {
+  if (!classId && !examId) { cb([]); return () => {}; }
   const constraints = [];
   if (classId) constraints.push(where('classId', '==', classId));
+  if (examId) constraints.push(where('examId', '==', examId));
   if (status) constraints.push(where('status', '==', status));
-  constraints.push(orderBy('requestedAtMs', 'desc'));
   constraints.push(limit(200));
 
   const q = query(collection(db, 'examRetryPermits'), ...constraints);
   return onSnapshot(q, (snap) => {
-    cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const list = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.requestedAtMs || 0) - (a.requestedAtMs || 0));
+    cb(list);
   }, (err) => {
     console.warn('[listenRetryRequests] Lỗi:', err.code, err.message);
   });
@@ -1768,18 +1797,34 @@ export function listenAttempts(examId, cb) {
    ============================================================ */
 const sumPoints = (qs = []) => Math.round(qs.reduce((t, q) => t + (Number(q.points) || 1), 0) * 100) / 100;
 
-/** Sửa thông tin đề. Nếu đổi `questions` thì tự tính lại tổng điểm. */
+/** Sửa thông tin đề. Nếu đổi `questions` thì tự tính lại tổng điểm và tách đáp án bí mật. */
 export async function updateExam(examId, patch = {}) {
   if (!examId) throw new Error('Thiếu mã đề');
   const allowed = ['title', 'description', 'duration', 'questions', 'showAnswerAfter',
     'allowRetry', 'shuffle', 'opensAt', 'closesAt', 'proctor', 'active', 'visibility', 'lockUntilStart'];
   const data = {};
   allowed.forEach((k) => { if (k in patch) data[k] = patch[k]; });
-  if (data.questions) data.totalPoints = sumPoints(data.questions);
+  let privateQuestionsKey = null;
+  if (Array.isArray(data.questions)) {
+    const rawQuestions = data.questions;
+    data.totalPoints = sumPoints(rawQuestions);
+    privateQuestionsKey = extractAnswerKey(rawQuestions);
+    data.questions = stripAnswerKeys(rawQuestions);
+    data.secureAnswerKey = true;
+  }
   if ('duration' in data) data.duration = Number(data.duration) || 15;
   data.updatedAt = serverTimestamp();
   try {
-    await updateDoc(doc(db, 'exams', examId), data);
+    await updateDoc(doc(db, 'exams', examId), stripUndefined(data));
+    if (privateQuestionsKey) {
+      await setDoc(
+        doc(db, 'exams', examId, 'private', 'answerKey'),
+        stripUndefined({
+          questionsKey: privateQuestionsKey,
+          updatedAt: serverTimestamp(),
+        }),
+      );
+    }
     return { ok: true };
   } catch (e) {
     throw new Error(friendlyFirestoreError(e, 'sửa đề'));
@@ -1854,7 +1899,8 @@ export const setExamActive = (examId, active) => updateExam(examId, { active: !!
 export async function extendExam(examId, minutes = 15) {
   const exam = await getExamById(examId);
   if (!exam) throw new Error('Đề không tồn tại');
-  const base = Math.max(Date.now(), exam.closesAt ? new Date(exam.closesAt).getTime() : 0);
+  const prevCloseMs = tsMs(exam.closesAt);
+  const base = Math.max(Date.now(), prevCloseMs || 0);
   const closesAt = new Date(base + Number(minutes) * 60000).toISOString();
   await updateExam(examId, { closesAt, active: true });
   return { ok: true, closesAt };
@@ -1897,22 +1943,44 @@ export async function regradeExam(examId, changes = {}) {
   let changed = 0;
   let sum = 0;
 
-  // Firestore giới hạn 500 thao tác / batch
-  for (let i = 0; i < subs.length; i += 400) {
-    const batch = writeBatch(db);
-    subs.slice(i, i + 400).forEach((sub) => {
-      const g = gradeAnswers(questions, sub.answers || {});
-      sum += g.score;
-      if (g.score !== sub.score || g.correctCount !== sub.correctCount) changed += 1;
-      batch.update(doc(db, 'submissions', sub.id), stripUndefined({
-        detail: g.detail, score: g.score, correctCount: g.correctCount,
-        totalPoints, regradedAt: serverTimestamp(),
-      }));
+  // Tính kết quả chấm lại trong bộ nhớ trước (bảo toàn điểm Tự luận giáo viên đã chấm tay)
+  const regradedRows = subs.map((sub) => {
+    const g = gradeAnswers(questions, sub.answers || {});
+    const prevDetail = Array.isArray(sub.detail) ? sub.detail : [];
+    const mergedDetail = g.detail.map((item, idx) => {
+      const prev = prevDetail[idx];
+      if (qType(questions[idx]) === 'essay' && prev?.manualGraded === true) {
+        const maxPts = Number(item?.maxPoints ?? questions[idx]?.points) || 1;
+        const clampedEarned = Math.max(0, Math.min(maxPts, Number(prev.earned) || 0));
+        return {
+          ...item,
+          earned: Math.round(clampedEarned * 100) / 100,
+          maxPoints: maxPts,
+          correct: maxPts > 0 && clampedEarned >= maxPts,
+          needsManualGrading: false,
+          manualGraded: true,
+          ...(prev.comment !== undefined ? { comment: prev.comment } : {}),
+          ...(prev.gradedBy !== undefined ? { gradedBy: prev.gradedBy } : {}),
+          ...(prev.gradedAt !== undefined ? { gradedAt: prev.gradedAt } : {}),
+        };
+      }
+      return item;
     });
-    // eslint-disable-next-line no-await-in-loop
-    await batch.commit();
-  }
+    const finalScore = Math.round(mergedDetail.reduce((acc, d) => acc + (Number(d?.earned) || 0), 0) * 100) / 100;
+    const finalCorrect = mergedDetail.filter((d) => d?.correct).length;
+    const isGraded = !mergedDetail.some((d) => d?.needsManualGrading);
+    sum += finalScore;
+    if (finalScore !== sub.score || finalCorrect !== sub.correctCount) changed += 1;
+    return {
+      sub,
+      detail: mergedDetail,
+      score: finalScore,
+      correctCount: finalCorrect,
+      graded: isGraded,
+    };
+  });
 
+  // Cập nhật đề và đáp án bí mật TRƯỚC khi ghi batch bài nộp để lỗi quyền (non-author) không làm lệch dữ liệu
   await updateDoc(doc(db, 'exams', examId), stripUndefined({
     questions: stripAnswerKeys(questions),
     secureAnswerKey: true,
@@ -1927,6 +1995,24 @@ export async function regradeExam(examId, changes = {}) {
       updatedAt: serverTimestamp(),
     }),
   );
+
+  // Firestore giới hạn 500 thao tác / batch
+  for (let i = 0; i < regradedRows.length; i += 400) {
+    const batch = writeBatch(db);
+    regradedRows.slice(i, i + 400).forEach((row) => {
+      batch.update(doc(db, 'submissions', row.sub.id), stripUndefined({
+        detail: row.detail,
+        score: row.score,
+        correctCount: row.correctCount,
+        graded: row.graded,
+        totalPoints,
+        regradedAt: serverTimestamp(),
+      }));
+    });
+    // eslint-disable-next-line no-await-in-loop
+    await batch.commit();
+  }
+
   return { ok: true, changed, total: subs.length, avg: subs.length ? sum / subs.length : 0 };
 }
 

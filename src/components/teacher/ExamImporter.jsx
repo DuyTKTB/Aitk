@@ -406,6 +406,8 @@ const normalizeJsonExam = (data) => {
     meta = {
       title: pickK(o, ['title', 'name', 'tende', 'tieude']),
       duration: Number(pickK(o, ['duration', 'time', 'thoigian', 'minutes'])) || 0,
+      subject: pickK(o, ['subject', 'mon', 'monhoc']) || '',
+      grade: pickK(o, ['grade', 'khoi', 'lop']) || '',
     };
     arr = pickK(o, ['questions', 'items', 'data', 'cauhoi', 'quiz', 'groups', 'passages', 'sections', 'parts']);
     if (arr && !Array.isArray(arr) && typeof arr === 'object') arr = pickK(normObj(arr), ['questions', 'items', 'cauhoi']);
@@ -484,7 +486,8 @@ const normalizeJsonExam = (data) => {
     const stRaw = pickK(o, ['statements', 'claims', 'nhandinh', 'menhde', 'ys', 'subquestions']);
     let type = 'single_choice';
     if (Array.isArray(stRaw) || /true|dung|tf|boolean/.test(typeRaw)) type = 'true_false';
-    else if (/short|ngan|numeric|number|fill|tuluan/.test(typeRaw)) type = 'short_answer';
+    else if (/essay|tuluan|tu_luan|vanban|nghiluan/.test(typeRaw)) type = 'essay';
+    else if (/short|ngan|numeric|number|fill/.test(typeRaw)) type = 'short_answer';
     else if (!options.length && c !== undefined && String(Array.isArray(c) ? c[0] : c).trim() !== '' && correct < 0)
       type = 'short_answer';
 
@@ -586,7 +589,9 @@ const toUiQuestion = (q, fallbackIdx = 0) => {
     options: Array.isArray(q?.options) ? q.options : normType === 'single_choice' ? ['', '', '', ''] : [],
     correct: typeof q?.correct === 'number' ? q.correct : -1,
     statements: Array.isArray(q?.statements) ? q.statements : [],
-    answer: q?.answer ?? '',
+    answer: q?.answer !== undefined && q?.answer !== null && q?.answer !== ''
+      ? q.answer
+      : (Array.isArray(q?.accepted) && q.accepted.length ? q.accepted[0] : ''),
     accepted: Array.isArray(q?.accepted) ? q.accepted : [],
     points: Number(q?.points) > 0 ? Number(q.points) : defaultPts,
     topic: q?.topic || '',
@@ -1520,7 +1525,7 @@ export default function ExamImporter({
         }
       } else if (/^image\//i.test(f.type) || /\.(jpe?g|png|webp|bmp)$/i.test(f.name)) {
         setMsg('Đang OCR ảnh đề thi...');
-        const dataUrl = await fileToCompressedDataUrl(f, { maxWidth: 1800, quality: 0.9 });
+        const dataUrl = await fileToCompressedDataUrl(f, { maxW: 1800, quality: 0.9 });
         const ocrRes = await ocrImages([dataUrl]);
         extractedTextRef.current = ocrRes.text || '';
         if (!ocrRes.ok) {
@@ -1530,6 +1535,12 @@ export default function ExamImporter({
         newQuestions = res.questions.map((q, idx) => toUiQuestion(q, idx));
         fCount = newQuestions.reduce((s, q) => s + countFormulasInText(`${q.q} ${(q.options || []).join(' ')}`), 0);
       } else if (/\.(xlsx|xls|csv)$/i.test(f.name)) {
+        if (!vipUnlocked) {
+          const m = `Nhập đề từ bảng Excel/CSV thuộc gói Giáo viên VIP (${TEACHER_VIP_PRICE_TEXT}/năm).`;
+          setMsg(m);
+          onRequestUpgrade?.(m);
+          return false;
+        }
         setMsg('Đang đọc bảng câu hỏi từ Excel/CSV...');
         const XLSX = await import('xlsx');
         const buf = await f.arrayBuffer();
@@ -1593,9 +1604,11 @@ export default function ExamImporter({
         return newQuestions;
       });
       setFilterTab('all');
+      return true;
     } catch (err) {
       setFileName(f.name);
       setMsg(err.message || 'Không đọc được file này. Vui lòng dùng file Word (.docx), PDF hoặc TXT.');
+      return false;
     } finally {
       setBusy(false);
     }
@@ -1686,11 +1699,20 @@ export default function ExamImporter({
     setCriticBusy(true);
     setMsg('Hội đồng AI Critic đang thẩm định đề trên 5 tiêu chí sư phạm...');
     try {
-      const res = await criticReviewExamWithAI({
-        questions: items,
-        subject: detectedSubject || 'Khoa học tự nhiên',
-        grade: detectedGrade || '12',
-      });
+      const res = await runWithCredit(
+        {
+          userId: user?.uid,
+          cost: CREDIT_TARIFF.ERROR_ANALYSIS,
+          actionType: 'exam_critic',
+          reason: 'AI Critic thẩm định đề thi 5 tiêu chí',
+        },
+        () => criticReviewExamWithAI({
+          questions: items,
+          subject: detectedSubject || 'Khoa học tự nhiên',
+          grade: detectedGrade || '12',
+          skipCredit: true,
+        }),
+      );
       setCriticReport(res);
       setMsg(`AI Critic hoàn tất thẩm định: ${res.overallScore}/100 điểm.`);
     } catch (err) {
@@ -1708,10 +1730,18 @@ export default function ExamImporter({
       return;
     }
     const prevAppend = appendMode;
+    let okCount = 0;
+    let failCount = 0;
     for (let i = 0; i < files.length; i++) {
-      await processFile(files[i], i > 0 ? 'append' : prevAppend);
+      const ok = await processFile(files[i], i > 0 ? 'append' : prevAppend);
+      if (ok) okCount += 1;
+      else failCount += 1;
     }
-    setMsg(`Đã ghép xong ${files.length} file thành 1 bộ đề tổng hợp!`);
+    if (okCount > 0 && failCount === 0) {
+      setMsg(`Đã ghép xong ${okCount} file thành 1 bộ đề tổng hợp!`);
+    } else if (okCount > 0 && failCount > 0) {
+      setMsg(`Đã ghép ${okCount}/${files.length} file (${failCount} file lỗi hoặc bị bỏ qua).`);
+    }
   };
 
   const onFileChange = (e) => {
@@ -1998,10 +2028,11 @@ export default function ExamImporter({
       setMsg('Vui lòng nạp câu hỏi trước khi nhờ AI bổ sung.');
       return;
     }
-    const needP2 = Math.max(0, 4 - stats.p2);
-    const needP3 = Math.max(0, 6 - stats.p3);
+    const subjProfile = getSubjectExamProfile(detectedSubject || defaultSubject || classInfo?.subject || 'Hóa học');
+    const needP2 = subjProfile.hasTrueFalse ? Math.max(0, 4 - stats.p2) : 0;
+    const needP3 = subjProfile.hasShortAnswer ? Math.max(0, 6 - stats.p3) : 0;
     if (needP2 === 0 && needP3 === 0) {
-      setMsg('Đề đã có đủ cấu trúc chuẩn 3 phần GDPT 2025!');
+      setMsg('Đề đã có đủ cấu trúc chuẩn GDPT 2025 theo môn học này!');
       return;
     }
 
@@ -2657,7 +2688,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                         onClick={handleAiDeepScan}
                         disabled={busy}
                       >
-                        Quét AI chuẩn xác (2cr)
+                        Quét AI chuẩn xác ({formatCredits(CREDIT_TARIFF.ERROR_ANALYSIS)})
                       </button>
                     )}
                     <button
@@ -3202,6 +3233,7 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                           <option value="single_choice">Phần I · Trắc nghiệm</option>
                           <option value="true_false">Phần II · Đúng/Sai</option>
                           <option value="short_answer">Phần III · Trả lời ngắn</option>
+                          <option value="essay">Phần IV · Tự luận</option>
                         </select>
                         <button
                           type="button"
@@ -3358,11 +3390,20 @@ TRẢ VỀ DUY NHẤT JSON HỢP LỆ:
                           )}
                         </div>
 
-                        {it.image && (
-                          <div className="wimp-thumb-wrap" style={{ alignSelf: 'flex-start' }}>
-                            <img src={it.image} alt={`Hình câu ${it.num}`} />
-                          </div>
-                        )}
+                        {(() => {
+                          const allImgs = Array.isArray(it.images) && it.images.length
+                            ? it.images
+                            : (it.image ? [it.image] : []);
+                          return allImgs.length > 0 ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignSelf: 'flex-start' }}>
+                              {allImgs.map((src, imgIdx) => (
+                                <div key={imgIdx} className="wimp-thumb-wrap">
+                                  <img src={src} alt={`Hình câu ${it.num}${allImgs.length > 1 ? ` (${imgIdx + 1})` : ''}`} />
+                                </div>
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
 
                         {!isTf && !isSa && !isEssay && (
                           <div className="wimp-opts-grid">

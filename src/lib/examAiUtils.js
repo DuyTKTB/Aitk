@@ -811,7 +811,9 @@ export function normalizeQuestion(raw, { optionsCount = 4, wantExplain = true, t
     if ([q, explain, ...accepted].some(oddDollar)) warns.push('Công thức ($) chưa đóng đủ');
     return {
       ...contextMeta,
-      id: rid(), type, q, accepted,
+      id: rid(), type, q,
+      answer: accepted[0] || String(r.answer ?? '').trim(),
+      accepted,
       points: Number(r.points) > 0 ? Number(r.points) : 1,
       explain, topic, level, warns,
     };

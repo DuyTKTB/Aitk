@@ -127,6 +127,7 @@ import {
   updateClass,
   createExam,
   duplicateExam,
+  extendExam,
 } from '../src/lib/classroom.js';
 import { getDoc, updateDoc } from 'firebase/firestore';
 
@@ -870,5 +871,434 @@ describe('Round 3 — Regression checks (insightAi, exportBundleZip, examSession
     expect(stCss).toMatch(/\.st \.st-filters \.st-search\s*\{[\s\S]*width:\s*auto/);
     expect(stCss).toMatch(/\.st \.st-filters select\s*\{[\s\S]*width:\s*auto/);
     expect(stCss).toContain('.st-kpi[data-tone="ok"]::before');
+  });
+});
+
+describe('Teacher Audit Fixes — Topbar, Rules, maxStudents, Timestamps, GVBM & Essay Notes', () => {
+  it('updateClass hỗ trợ cập nhật và gỡ giới hạn maxStudents khi nâng cấp/hạ gói VIP', async () => {
+    const capRes = await updateClass('cls_free', { maxStudents: 40 });
+    expect(capRes).toEqual({ ok: true });
+    expect(updateDocCalls.at(-1)?.data).toMatchObject({ maxStudents: 40 });
+
+    const unlockRes = await updateClass('cls_free', { maxStudents: null });
+    expect(unlockRes).toEqual({ ok: true });
+    expect(updateDocCalls.at(-1)?.data).toMatchObject({ maxStudents: null });
+  });
+
+  it('extendExam xử lý được Firestore Timestamp (toMillis) không bị NaN/RangeError', async () => {
+    const futureMs = Date.now() + 10 * 60_000;
+    getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      id: 'ex_ts',
+      data: () => ({
+        title: 'Đề có lịch Timestamp',
+        closesAt: { toMillis: () => futureMs, seconds: Math.floor(futureMs / 1000) },
+      }),
+    });
+
+    const res = await extendExam('ex_ts', 15);
+    expect(res.ok).toBe(true);
+    const nextMs = new Date(res.closesAt).getTime();
+    expect(Number.isFinite(nextMs)).toBe(true);
+    expect(nextMs).toBeGreaterThanOrEqual(futureMs + 14 * 60_000);
+  });
+
+  it('ClassDetailModal ẩn tab chủ lớp với GVBM liên kết và hiển thị lịch sử đơn xin thi lại đã xử lý', () => {
+    globalThis.React = React;
+    const linkedHtml = renderToStaticMarkup(
+      React.createElement(ClassDetailModal, {
+        classInfo: {
+          id: 'cls_linked',
+          name: '12A3',
+          teacherId: 'gvcn_khac',
+          teacherName: 'Thầy Chủ Nhiệm',
+          _linked: true,
+          members: [{ id: 'hs_1', name: 'Trần An' }],
+          pendingMembers: [{ id: 'hs_2', name: 'Lê Bình' }],
+        },
+        exams: [{ id: 'ex_1', title: 'Đề 15p', questions: [{ q: 'Q1' }] }],
+        initialTab: 'retry',
+        initialSubmissionsMap: { ex_1: [] },
+        retryRequests: [
+          {
+            id: 'req_done',
+            examId: 'ex_1',
+            studentName: 'Trần An',
+            status: 'approved',
+            note: 'Cho phép thi lại do rớt mạng',
+            decidedAtMs: Date.now() - 120_000,
+          },
+        ],
+        onClose: () => {},
+        onShareKey: () => {},
+        onRemoveMember: () => {},
+      })
+    );
+
+    expect(linkedHtml).not.toContain('GV bộ môn');
+    expect(linkedHtml).not.toContain('Cài đặt');
+    expect(linkedHtml).not.toContain('Chờ duyệt vào lớp');
+    expect(linkedHtml).not.toContain('Mã QR');
+    expect(linkedHtml).toContain('Lịch sử đã xử lý (1)');
+    expect(linkedHtml).toContain('Cho phép thi lại do rớt mạng');
+  });
+
+  it('TeacherDashboard, TeacherProPanel và firestore.rules giữ vững các bản vá kiểm toán Giáo viên', () => {
+    const dashSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/TeacherDashboard.jsx'), 'utf8');
+    expect(dashSrc).toContain('{...topProps}');
+    expect(dashSrc).not.toContain('{...(topProps[section] || {})}');
+    expect(dashSrc).toContain('const opensMs = tsMs(ex.opensAt);');
+    expect(dashSrc).toContain('const closesMs = tsMs(ex.closesAt);');
+    expect(dashSrc).toContain('inspectSub.teacherComment ?? inspectSub.teacherNote');
+    expect(dashSrc).toContain('prevSub.timeSpent || prevSub.timeTaken');
+    expect(dashSrc).toContain('const hydrated = await hydrateExamAnswerKey(copyExamTarget)');
+
+    const proPanelSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/TeacherProPanel.jsx'), 'utf8');
+    expect(proPanelSrc).toContain('resolveEntitlements');
+    expect(proPanelSrc).not.toContain('if (pro.isPro)');
+    expect(proPanelSrc).not.toContain('3 đề thủ công');
+
+    const rulesSrc = fs.readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf8');
+    const subSection = rulesSrc.slice(rulesSrc.indexOf('match /submissions/{subId}'), rulesSrc.indexOf('match /examSessions/{sessionId}'));
+    expect(subSection).toContain('classOwner(resource.data.classId) || linkedToClass(resource.data.classId, request.auth.uid)');
+
+    const retrySection = rulesSrc.slice(rulesSrc.indexOf('match /examRetryPermits/{permitId}'), rulesSrc.indexOf('match /studentRetryAllowance/{allowanceId}'));
+    expect(retrySection).toContain('resource.data.teacherId == request.auth.uid');
+
+    const paperSection = rulesSrc.slice(rulesSrc.indexOf('match /paperExams/{examId}'), rulesSrc.indexOf('match /results/{resId}'));
+    expect(paperSection).toContain('resource.data.teacherId == request.auth.uid');
+    expect(paperSection).not.toContain("resource.data.get('teacherId', '') == request.auth.uid");
+  });
+
+  it('Pass 2: updateClass lưu đúng bandThresholds { gioi, kha, tb } thay vì ghi đè sang { good, fair, pass }', async () => {
+    const res = await updateClass('cls_band', { bandThresholds: { gioi: 85, kha: 70, tb: 55 } });
+    expect(res).toEqual({ ok: true });
+    expect(updateDocCalls.at(-1)?.data?.bandThresholds).toEqual({ gioi: 85, kha: 70, tb: 55 });
+
+    // Tương thích ngược nếu caller cũ truyền thang 10 { good, fair, pass }
+    const legacy = await updateClass('cls_band', { bandThresholds: { good: 9, fair: 7.5, pass: 5 } });
+    expect(legacy).toEqual({ ok: true });
+    expect(updateDocCalls.at(-1)?.data?.bandThresholds).toMatchObject({ good: 9, fair: 7.5, pass: 5, gioi: 90, kha: 75, tb: 50 });
+  });
+
+  it('Pass 2: buildClassInsights trả đủ text/ok/rate/rated và TeacherDashboard đọc đúng trường thay vì 100% sai', async () => {
+    const { buildClassInsights } = await import('../src/lib/classInsights.js');
+    const ins = buildClassInsights({
+      exams: [{ id: 'ex1', title: 'Đề 15p', questions: [{ q: 'Este nào có mùi chuối chín?', topic: 'Este', correct: 0, points: 1 }] }],
+      submissionsMap: {
+        ex1: [
+          { studentId: 's1', studentName: 'An', score: 1, totalPoints: 1, detail: [{ isCorrect: true }], submittedAt: Date.now() },
+          { studentId: 's2', studentName: 'Bình', score: 0, totalPoints: 1, detail: [{ isCorrect: false }], submittedAt: Date.now() },
+        ],
+      },
+    });
+    expect(ins.hardest[0]).toMatchObject({
+      text: 'Este nào có mùi chuối chín?',
+      ok: 1,
+      rated: 2,
+      rate: 50,
+    });
+
+    const dashSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/TeacherDashboard.jsx'), 'utf8');
+    expect(dashSrc).toContain('q.text || q.questionText || q.topic');
+    expect(dashSrc).toContain('q.rate ?? q.pctCorrect ?? 0');
+    expect(dashSrc).toContain('q.ok ?? q.correctCount ?? 0');
+    expect(dashSrc).toContain('q.rated ?? q.totalAttempts ?? 0');
+  });
+
+  it('Pass 2: findTargetClassInQuery không crash RegExp với tên lớp có ký tự đặc biệt (ngoặc đơn, dấu +)', async () => {
+    const { findTargetClassInQuery } = await import('../src/components/teacher/TeacherFloatingChat.jsx');
+    const cls = { id: 'c_spec', name: '12A1 (Nâng cao) +1', subject: 'Hóa học' };
+    expect(() => findTargetClassInQuery('Thống kê lớp 12A1 (Nâng cao) +1 giúp tôi', [cls], [], {})).not.toThrow();
+    expect(findTargetClassInQuery('Thống kê lớp 12A1 (Nâng cao) +1 giúp tôi', [cls], [], {})?.id).toBe('c_spec');
+  });
+
+  it('Pass 2: Kiểm tra tĩnh các bản vá ClassAnalytics, LearningAnalytics, analyticsReports, TeacherProfileSection, ExamCreateForm, TeacherSimulatorHub', () => {
+    const reportsSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/lib/analyticsReports.js'), 'utf8');
+    expect(reportsSrc).toContain("where('classId', '==', classId)");
+    expect(reportsSrc).toContain('.filter((d) => d.versionsOf === id)');
+
+    const classAnSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/teacher/ClassAnalytics.jsx'), 'utf8');
+    expect(classAnSrc).not.toContain('fileName: `phan-tich-khao-thi-CTT');
+    expect(classAnSrc).toContain('filename: `phan-tich-khao-thi-CTT');
+    expect(classAnSrc).toContain('hydrateExamAnswerKey');
+    expect(classAnSrc).toContain("useState('acc-desc')");
+    expect(classAnSrc).toContain("if (studentFilter === 'yeu') return s.count > 0 && s.accuracy < 50;");
+
+    const learnAnSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/teacher/LearningAnalytics.jsx'), 'utf8');
+    expect(learnAnSrc).toContain('const ownerId = classInfo?.teacherId || user?.uid ||');
+    expect(learnAnSrc).toContain('if (!res?.ok) throw new Error');
+    expect(learnAnSrc).toContain('let saveErrMsg = ');
+
+    const profSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/teacher/TeacherProfileSection.jsx'), 'utf8');
+    expect(profSrc).toContain('resolveEntitlements({ user, pro: teacherPro, tier, userRole:');
+
+    const formSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/teacher/ExamCreateForm.jsx'), 'utf8');
+    expect(formSrc).toContain('const toDatetimeLocal =');
+    expect(formSrc).toContain('[title, description, duration, classId, questions,');
+
+    const simSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/teacher/TeacherSimulatorHub.jsx'), 'utf8');
+    expect(simSrc).toContain('toMs(b.createdAt) - toMs(a.createdAt)');
+  });
+
+  it('Pass 3: examSecurity tách sạch explain/work, khôi phục đủ qua extract/merge và ẩn khi showAnswerAfter=false', async () => {
+    const {
+      stripAnswerKeys,
+      extractAnswerKey,
+      mergeAnswerKeyIntoQuestions,
+      sanitizeDetailForStudent,
+    } = await import('../src/lib/examSecurity.js');
+
+    const qs = [
+      {
+        type: 'single_choice',
+        q: 'Tính pH dung dịch HCl 0,01M',
+        options: ['1', '2', '3', '4'],
+        correct: 1,
+        explain: 'pH = -log(0,01) = 2',
+        work: 'Bước 1: [H+] = 10^-2 -> pH = 2',
+        points: 0.25,
+      },
+    ];
+    const stripped = stripAnswerKeys(qs);
+    expect(stripped[0].correct).toBeUndefined();
+    expect(stripped[0].explain).toBeUndefined();
+    expect(stripped[0].work).toBeUndefined();
+
+    const key = extractAnswerKey(qs);
+    expect(key[0].explain).toBe('pH = -log(0,01) = 2');
+    expect(key[0].work).toBe('Bước 1: [H+] = 10^-2 -> pH = 2');
+
+    const restored = mergeAnswerKeyIntoQuestions(stripped, key);
+    expect(restored[0].correct).toBe(1);
+    expect(restored[0].explain).toBe('pH = -log(0,01) = 2');
+    expect(restored[0].work).toBe('Bước 1: [H+] = 10^-2 -> pH = 2');
+
+    const sanitized = sanitizeDetailForStudent(
+      [{ index: 0, correct: 1, explain: 'secret', work: 'steps', isCorrect: true }],
+      false
+    );
+    expect(sanitized[0].correct).toBeUndefined();
+    expect(sanitized[0].explain).toBeUndefined();
+    expect(sanitized[0].work).toBeUndefined();
+    expect(sanitized[0].isCorrect).toBe(true);
+  });
+
+  it('Pass 3: validateExamWindow tôn trọng gia hạn phòng thi live (+10p) thay vì gắn cờ overdue oan', async () => {
+    const { validateExamWindow } = await import('../api/submit-exam.js');
+    const startedMs = 1_700_000_000_000;
+    const exam = { duration: 15, active: true };
+    const attempt = { startedAt: startedMs };
+    // Học sinh nộp sau 22 phút (vượt 15 + 3 phút gốc) nhưng GV đã gia hạn phòng live thêm 10p -> closesAt = +25p
+    const nowMs = startedMs + 22 * 60_000;
+
+    const withoutSession = validateExamWindow({ exam, attempt, nowMs });
+    expect(withoutSession.ok).toBe(true);
+    expect(withoutSession.overdue).toBe(true);
+
+    const withExtendedSession = validateExamWindow({
+      exam,
+      attempt,
+      session: { duration: 25, closesAtMs: startedMs + 25 * 60_000 },
+      nowMs,
+    });
+    expect(withExtendedSession.ok).toBe(true);
+    expect(withExtendedSession.overdue).toBe(false);
+  });
+
+  it('Pass 3: examShuffle hỗ trợ mã đề chữ, optionImages dạng object, nhóm đọc hiểu xuyên mức độ và đề thuần tự luận', async () => {
+    const { seedForCode, generateShuffledVersions } = await import('../src/lib/examShuffle.js');
+    expect(Number.isFinite(seedForCode('A', 0))).toBe(true);
+    expect(seedForCode('A', 0)).not.toBe(seedForCode('B', 0));
+
+    // optionImages dạng plain object { 0: 'imgA', 1: 'imgB', ... } phải đảo khớp phương án
+    const mcqWithObjImgs = [{
+      id: 'q_img',
+      type: 'single_choice',
+      level: 'nb',
+      q: 'Chọn đồ thị đúng',
+      options: ['Đồ thị A', 'Đồ thị B', 'Đồ thị C', 'Đồ thị D'],
+      optionImages: { 0: 'urlA', 1: 'urlB', 2: 'urlC', 3: 'urlD' },
+      correct: 2,
+    }];
+    const shufImg = generateShuffledVersions(mcqWithObjImgs, 4, { seedText: '2025', shuffleOptions: true });
+    shufImg.forEach((ver) => {
+      const q = ver.questions[0];
+      expect(q.options[q.correct]).toBe('Đồ thị C');
+      expect(q.optionImages[q.correct]).toBe('urlC');
+    });
+
+    // Nhóm đọc hiểu chung groupId nhưng khác mức độ NB/VD không bị xé lẻ khi bật keepDifficultyGroups + keepLinkedGroups
+    const passageQs = [
+      { id: 'p1', type: 'single_choice', level: 'nb', groupId: 'g1', passage: 'Read text...', q: 'Q1', options: ['A', 'B', 'C', 'D'], correct: 0 },
+      { id: 'p2', type: 'single_choice', level: 'vd', groupId: 'g1', passage: 'Read text...', q: 'Q2', options: ['A', 'B', 'C', 'D'], correct: 1 },
+      { id: 's1', type: 'single_choice', level: 'nb', q: 'Standalone 1', options: ['A', 'B', 'C', 'D'], correct: 0 },
+      { id: 's2', type: 'single_choice', level: 'th', q: 'Standalone 2', options: ['A', 'B', 'C', 'D'], correct: 0 },
+    ];
+    const shufPassage = generateShuffledVersions(passageQs, 4, { keepDifficultyGroups: true, keepLinkedGroups: true });
+    shufPassage.forEach((ver) => {
+      const idx1 = ver.questions.findIndex((q) => q.id === 'p1');
+      const idx2 = ver.questions.findIndex((q) => q.id === 'p2');
+      expect(Math.abs(idx2 - idx1)).toBe(1);
+    });
+
+    // Đề thuần tự luận (Ngữ văn) không bị xáo trộn thứ tự
+    const essays = [
+      { id: 'e1', type: 'essay', level: 'nb', q: 'Đọc hiểu câu 1' },
+      { id: 'e2', type: 'essay', level: 'vd', q: 'Nghị luận xã hội' },
+      { id: 'e3', type: 'essay', level: 'vdc', q: 'Nghị luận văn học' },
+    ];
+    const shufEssay = generateShuffledVersions(essays, 3, { shuffleQuestions: true });
+    shufEssay.forEach((ver) => {
+      expect(ver.questions.map((q) => q.id)).toEqual(['e1', 'e2', 'e3']);
+    });
+
+    // Đúng/Sai origLetter phản ánh trạng thái trước khi đảo mệnh đề
+    const tfQs = [{
+      id: 'tf1',
+      type: 'true_false',
+      level: 'th',
+      q: 'Xét các phát biểu',
+      statements: [
+        { text: 'a', answer: true },
+        { text: 'b', answer: false },
+        { text: 'c', answer: false },
+        { text: 'd', answer: false },
+      ],
+    }];
+    const shufTf = generateShuffledVersions(tfQs, 4, { shufflePart2Statements: true });
+    shufTf.forEach((ver) => {
+      expect(ver.origToNew[1].origLetter).toBe('Đ-S-S-S');
+    });
+  });
+
+  it('Pass 3: buildPaperKeysFromVersions không bịa đáp án A/TFTF/0 và parseBulkMatrixKeys giữ nguyên dấu | cho Phần III', async () => {
+    const { buildPaperKeysFromVersions } = await import('../src/lib/examTemplates.js');
+    const { parseBulkMatrixKeys } = await import('../src/lib/paperGrade.js');
+
+    const keys = buildPaperKeysFromVersions([{
+      code: '101',
+      questions: [
+        { type: 'single_choice', correct: -1 },
+        { type: 'true_false', statements: [] },
+        { type: 'short_answer', answer: '2,5', accepted: ['2,5', '2.5'] },
+        { type: 'short_answer', answer: '' },
+      ],
+    }]);
+    expect(keys['101'].p1).toEqual(['']);
+    expect(keys['101'].p2).toEqual(['']);
+    expect(keys['101'].p3).toEqual(['2,5|2.5', '']);
+
+    const tsv = [
+      'Câu\tMã 101\tMã 102',
+      'Phần III',
+      '1\t2,5|2.5\t-3|-3,0',
+    ].join('\n');
+    const parsed = parseBulkMatrixKeys(tsv);
+    expect(parsed.byCode['101'].p3[0]).toEqual(['2,5', '2.5']);
+    expect(parsed.byCode['102'].p3[0]).toEqual(['-3', '-3,0']);
+  });
+
+  it('Pass 3: buildExamDocBlob xuất ảnh dataURL với docx@9 ImageRun type không crash và đánh số lời giải khớp từng Phần', async () => {
+    // 1x1 PNG hợp lệ
+    const tinyPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const blob = await buildExamDocBlob({
+      examTitle: 'Đề kiểm tra ảnh',
+      subject: 'Hóa học',
+      questions: [
+        { type: 'single_choice', q: 'Câu P1', options: ['A1', 'B1', 'C1', 'D1'], correct: 0, image: tinyPng, optionImages: { 0: tinyPng } },
+        { type: 'true_false', q: 'Câu P2', statements: [{ text: 'a', answer: true }, { text: 'b', answer: false }, { text: 'c', answer: true }, { text: 'd', answer: false }] },
+      ],
+      includeAnswers: true,
+    });
+    expect(blob).toBeTruthy();
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const xml = await zip.file('word/document.xml').async('string');
+    const text = xml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    expect(text).toContain('PHẦN II — Trắc nghiệm Đúng/Sai');
+    expect(text).toContain('Câu 1 (Đúng/Sai');
+  });
+
+  it('Pass 3: savePersistedMessages lọc bỏ extractedImages và base64 ảnh trong examData, questionToPlainText hỗ trợ tự luận', async () => {
+    const { savePersistedMessages } = await import('../src/components/teacher/chat/tfcHelpers.js');
+    const { questionToPlainText } = await import('../src/lib/matrixAiService.js');
+
+    const store = new Map();
+    const prevWin = globalThis.window;
+    globalThis.window = {
+      localStorage: {
+        getItem: (k) => (store.has(k) ? store.get(k) : null),
+        setItem: (k, v) => { store.set(k, String(v)); },
+        removeItem: (k) => { store.delete(k); },
+      },
+    };
+    try {
+      savePersistedMessages('gv_test', [{
+        id: 'm1',
+        sender: 'bot',
+        text: 'Đã phân tích file Word',
+        extractedImages: ['data:image/png;base64,HUGE_BLOB'],
+        examData: {
+          title: 'Đề 1',
+          questions: [{ q: 'Câu 1', image: 'data:image/png;base64,HUGE_Q', images: ['data:image/png;base64,HUGE_Q'], options: ['A', 'B'] }],
+        },
+      }]);
+      const savedRaw = [...store.entries()].find(([k]) => !k.includes('meta'))?.[1] || '';
+      expect(savedRaw).not.toContain('HUGE_BLOB');
+      expect(savedRaw).not.toContain('HUGE_Q');
+      expect(savedRaw).toContain('Câu 1');
+    } finally {
+      globalThis.window = prevWin;
+    }
+
+    const essayTxt = questionToPlainText({
+      type: 'essay',
+      passage: 'Đoạn trích văn học...',
+      q: 'Phân tích hình tượng nhân vật',
+      answer: 'Nêu được 3 luận điểm chính',
+    });
+    expect(essayTxt).toContain('Đoạn trích văn học');
+    expect(essayTxt).toContain('Hướng dẫn chấm (Tự luận)');
+    expect(essayTxt).not.toContain('Đáp án đúng: ?');
+  });
+
+  it('Pass 3: kickStudent không ghi đè status=submitted, setStudentPaused/ForceSubmit không fake lastSeen, và kiểm tra tĩnh các bản vá UI', async () => {
+    // kickStudent bỏ qua khi học sinh đã submitted
+    getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ status: 'submitted' }),
+    });
+    const beforeUpdates = updateDocCalls.length;
+    await kickStudent({ sessionId: 'sess_sub', studentId: 'hs_done', reason: 'late' });
+    expect(updateDocCalls.length).toBe(beforeUpdates);
+
+    // setStudentPaused & setStudentForceSubmit không ghi đè lastSeen / lastSeenMs
+    await setStudentPaused({ sessionId: 'sess_1', studentId: 'hs_1', paused: true });
+    expect(updateDocCalls.at(-1)?.data).not.toHaveProperty('lastSeen');
+    expect(updateDocCalls.at(-1)?.data).not.toHaveProperty('lastSeenMs');
+
+    await setStudentForceSubmit({ sessionId: 'sess_1', studentId: 'hs_1' });
+    expect(updateDocCalls.at(-1)?.data).not.toHaveProperty('lastSeen');
+    expect(updateDocCalls.at(-1)?.data).not.toHaveProperty('lastSeenMs');
+
+    // Kiểm tra tĩnh không còn hàm pushHistory undefined trong WordDocxEditor và d.got/d.want trong OmrCameraModal
+    const wdeSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/teacher/WordDocxEditor.jsx'), 'utf8');
+    expect(wdeSrc).not.toContain('pushHistory(');
+    expect(wdeSrc).not.toContain('tpl.subjects.join');
+    expect(wdeSrc).not.toContain('tpl.parts.part1');
+
+    const omrCamSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/teacher/OmrCameraModal.jsx'), 'utf8');
+    expect(omrCamSrc).not.toContain('letters.indexOf(d.got)');
+    expect(omrCamSrc).not.toContain('letters.indexOf(d.want)');
+    expect(omrCamSrc).toContain('letters.indexOf(d?.ans)');
+    expect(omrCamSrc).toContain('letters.indexOf(d?.key)');
+
+    const proctorSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/LiveProctorView.jsx'), 'utf8');
+    expect(proctorSrc).toContain("student.status === 'submitted' || student.status === 'kicked'");
+
+    const qbSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/teacher/QuestionBank.jsx'), 'utf8');
+    expect(qbSrc).not.toContain('a.usedCount');
+    expect(qbSrc).toContain('a.usageCount');
+    expect(qbSrc).toContain('bumpUsage(usedIds)');
   });
 });

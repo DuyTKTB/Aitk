@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildClassAnalytics, masteryLabel, rateTone, MASTERY_PARTS } from '../../lib/teacherAnalytics.js';
 import { analyzeExamPsychometrics } from '../../lib/examPsychometrics.js';
 import { detectExamCollusion } from '../../lib/examCollusionDetector.js';
-import { getExamsByClass, getSubmissionsByExam } from '../../lib/classroom.js';
+import { getExamsByClass, getSubmissionsByExam, hydrateExamAnswerKey } from '../../lib/classroom.js';
 import { computeStudentPeriodGrades, classifyExamGradeColumn, exportStyledWorkbook } from '../../lib/excelExport.js';
 import { ElecFlaskBrandSvg, ElecMascot } from './ElecBrandMark.jsx';
 import { IconClose } from '../Icons.jsx';
@@ -415,14 +415,22 @@ function StudentDrawer({ student, classNameLabel = '', onClose }) {
     } catch { /* ignore */ }
   };
 
+  const escapeHtml = (str) => String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
   const handlePrintParentSlip = () => {
     const win = window.open('', '_blank', 'width=760,height=640');
     if (!win) return;
-    const textHtml = buildParentSlipText().replace(/\n/g, '<br/>');
-    win.document.write(`<!doctype html><html><head><title>Phiếu báo học tập - ${student.name}</title></head><body style="font-family:system-ui,sans-serif;padding:32px;line-height:1.7;color:#0f172a;">
+    const safeName = escapeHtml(student.name);
+    const textHtml = escapeHtml(buildParentSlipText()).replace(/\n/g, '<br/>');
+    win.document.write(`<!doctype html><html><head><title>Phiếu báo học tập - ${safeName}</title></head><body style="font-family:system-ui,sans-serif;padding:32px;line-height:1.7;color:#0f172a;">
       <div style="max-width:620px;margin:0 auto;border:2px solid #2563eb;border-radius:16px;padding:26px 28px;">
         <div style="font-size:12px;font-weight:800;color:#2563eb;letter-spacing:.06em;text-transform:uppercase;">ELEC AI · BÁO CÁO KẾT QUẢ HỌC TẬP</div>
-        <h2 style="margin:6px 0 14px;">${student.name}</h2>
+        <h2 style="margin:6px 0 14px;">${safeName}</h2>
         <div style="font-size:14.5px;">${textHtml}</div>
         <div style="margin-top:26px;display:flex;justify-content:space-between;font-size:13px;color:#64748b;">
           <span>Ngày in: ${new Date().toLocaleDateString('vi-VN')}</span>
@@ -606,8 +614,8 @@ export default function ClassAnalytics({
   const [compareFeed, setCompareFeed] = useState({ exams: [], submissionsMap: {}, loading: false });
 
   const [studentQuery, setStudentQuery] = useState('');
-  const [studentFilter, setStudentFilter] = useState('all'); // 'all' | 'risk' | 'nosub' | 'good'
-  const [studentSort, setStudentSort] = useState('mastery-asc'); // 'mastery-asc' | 'mastery-desc' | 'acc-desc' | 'subs-desc'
+  const [studentFilter, setStudentFilter] = useState('all'); // 'all' | 'gioi' | 'kha' | 'tb' | 'yeu' | 'risk' | 'nosub' | 'good'
+  const [studentSort, setStudentSort] = useState('acc-desc'); // 'acc-desc' | 'acc-asc' | 'subs-desc' | 'name-asc'
   const [studentView, setStudentView] = useState('list'); // 'list' | 'grid'
   const [psychoExamId, setPsychoExamId] = useState('');
 
@@ -634,7 +642,8 @@ export default function ClassAnalytics({
       const hit = feedCache.get(targetId);
       if (hit && Date.now() - hit.t < FEED_TTL) return hit.data;
     }
-    const list = await getExamsByClass(targetId);
+    const rawList = await getExamsByClass(targetId);
+    const list = await Promise.all(rawList.map((ex) => hydrateExamAnswerKey(ex).catch(() => ex)));
     const entries = await Promise.all(
       list.map(async (e) => {
         try {
@@ -876,7 +885,7 @@ export default function ClassAnalytics({
     if (!psychoReport || !psychoReport.items.length) return;
     try {
       await exportStyledWorkbook({
-        fileName: `phan-tich-khao-thi-CTT-${(psychoReport.examTitle || 'de-thi').replace(/[^a-zA-Z0-9\u00C0-\u1EF9_-]+/g, '_')}.xlsx`,
+        filename: `phan-tich-khao-thi-CTT-${(psychoReport.examTitle || 'de-thi').replace(/[^a-zA-Z0-9\u00C0-\u1EF9_-]+/g, '_')}.xlsx`,
         sheets: [{
           name: 'Phân tích CTT',
           mascot: 'think',
@@ -940,20 +949,25 @@ export default function ClassAnalytics({
     const q = studentQuery.trim().toLowerCase();
     let list = data.students.filter((s) => {
       if (q && !`${s.name || ''} ${s.email || ''}`.toLowerCase().includes(q)) return false;
-      if (studentFilter === 'gioi') return s.accuracy >= 80;
-      if (studentFilter === 'kha') return s.accuracy >= 65 && s.accuracy < 80;
-      if (studentFilter === 'tb') return s.accuracy >= 50 && s.accuracy < 65;
-      if (studentFilter === 'yeu' || studentFilter === 'risk') return s.accuracy < 50 || s.flags.length > 0;
+      if (studentFilter === 'gioi') return s.count > 0 && s.accuracy >= 80;
+      if (studentFilter === 'kha') return s.count > 0 && s.accuracy >= 65 && s.accuracy < 80;
+      if (studentFilter === 'tb') return s.count > 0 && s.accuracy >= 50 && s.accuracy < 65;
+      if (studentFilter === 'yeu') return s.count > 0 && s.accuracy < 50;
+      if (studentFilter === 'risk') return (s.count > 0 && s.accuracy < 50) || s.flags.some((f) => f.key !== 'none');
       if (studentFilter === 'nosub') return s.count === 0;
-      if (studentFilter === 'good') return s.accuracy >= 65;
+      if (studentFilter === 'good') return s.count > 0 && s.accuracy >= 65;
       return true;
     });
     list = [...list].sort((a, b) => {
-      if (studentSort === 'acc-desc') return (b.accuracy ?? -1) - (a.accuracy ?? -1);
-      if (studentSort === 'acc-asc') return (a.accuracy ?? 999) - (b.accuracy ?? 999);
+      const aAccDesc = a.count > 0 ? a.accuracy : -1;
+      const bAccDesc = b.count > 0 ? b.accuracy : -1;
+      const aAccAsc = a.count > 0 ? a.accuracy : 999;
+      const bAccAsc = b.count > 0 ? b.accuracy : 999;
+      if (studentSort === 'acc-desc') return bAccDesc - aAccDesc;
+      if (studentSort === 'acc-asc') return aAccAsc - bAccAsc;
       if (studentSort === 'subs-desc') return (b.count || 0) - (a.count || 0);
       if (studentSort === 'name-asc') return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
-      return (b.accuracy ?? -1) - (a.accuracy ?? -1);
+      return bAccDesc - aAccDesc;
     });
     return list;
   }, [data, studentQuery, studentFilter, studentSort]);

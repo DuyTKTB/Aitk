@@ -610,9 +610,20 @@ export function savePersistedMessages(uid, messages = [], updatedAt = Date.now()
       .map((m) => {
         const copy = { ...m };
         delete copy.realSummary;
+        delete copy.extractedImages;
         // Do not store large image base64 strings inside localStorage
         if (copy.imagePreview) {
           copy.imagePreview = { name: copy.imagePreview.name, sizeLabel: copy.imagePreview.sizeLabel };
+        }
+        if (copy.examData && Array.isArray(copy.examData.questions)) {
+          copy.examData = {
+            ...copy.examData,
+            questions: copy.examData.questions.map((q) => {
+              if (!q || typeof q !== 'object') return q;
+              const { image: _img, images: _imgs, optionImages: _oimgs, ...qRest } = q;
+              return qRest;
+            }),
+          };
         }
         return copy;
       });

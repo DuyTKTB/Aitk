@@ -17,7 +17,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/prerender-seo-routes.mjs",
+    "build": "vite build && node scripts/prerender-seo-routes.mjs && node scripts/generate-pseo-pages.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

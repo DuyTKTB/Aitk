@@ -13,6 +13,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import '../../styles/roadmap-upgrade.css';
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { askAI } from '../HomePlus.jsx';
 import {

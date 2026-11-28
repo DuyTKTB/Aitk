@@ -26,6 +26,7 @@ import * as tts from '../../lib/tts.js';
 import { runWithCredit, CREDIT_TARIFF } from '../../lib/creditService.js';
 import { detectExamSubjectAndGrade } from '../../lib/subjectClassifier.js';
 import { getCurrentTabInfo, buildTabDetailedAnalysis } from '../../lib/tabContextAnalyzer.js';
+import { getSessionStudents } from '../../lib/examSession.js';
 const WordDocxEditor = React.lazy(() => import('./WordDocxEditor.jsx'));
 import { ElecMascot } from './ElecBrandMark.jsx';
 import {
@@ -553,8 +554,9 @@ export function findTargetClassInQuery(query, classes = [], exams = [], submissi
     const cNorm = normalizeText(c.name);
     if (!cNorm || cNorm.length < 2) continue;
 
-    // Ranh giới từ rõ ràng: phải có tiền tố "lớp"/"lop" hoặc là từ riêng biệt độc lập
-    const wordRegex = new RegExp(`(?:\\b(?:lớp|lop)\\s+|\\b)${cRaw}\\b`, 'i');
+    // Ranh giới từ rõ ràng: escape ký tự đặc biệt RegExp trong tên lớp (VD: "12A1 (Nâng cao)", "10+1")
+    const escapedRaw = cRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const wordRegex = new RegExp(`(?:\\b(?:lớp|lop)\\s+|\\b)${escapedRaw}(?=$|\\s|[.,;:!?()])`, 'i');
     if (wordRegex.test(rawQ)) {
       return c;
     }
@@ -872,6 +874,10 @@ export default function TeacherFloatingChat({
         const res = await onCreateClass({ name: className, grade, subject });
         setIsTyping(false);
         setTypingStatus('');
+        if (!res) {
+          onSay?.('Không thể tạo lớp học (đã hủy hoặc vượt giới hạn gói).', 'warn');
+          return;
+        }
         setMessages((prev) => [
           ...prev,
           {
@@ -913,9 +919,13 @@ export default function TeacherFloatingChat({
   const realViolationsCount = useMemo(() => {
     let count = 0;
     activeLiveRooms.forEach((ss) => {
-      (ss.students || []).forEach((st) => {
-        count += (st.violations || []).length;
-      });
+      if (Array.isArray(ss.students) && ss.students.length > 0) {
+        ss.students.forEach((st) => {
+          count += (st.violations || []).length || Number(st.violationCount) || 0;
+        });
+      } else {
+        count += Number(ss.stats?.violationCount ?? ss.stats?.violations ?? 0) || 0;
+      }
     });
     return count;
   }, [activeLiveRooms]);
@@ -1949,60 +1959,69 @@ Trả về duy nhất JSON:
         finalQuestions = await runWithCredit(
           { userId: user?.uid, cost: CREDIT_TARIFF.EXAM_GEN_LARGE, actionType: 'exam_gen', reason: 'Tạo đề kiểm tra 45-90 phút AI' },
           async () => {
+            const ctrl = new AbortController();
+            activeRequestRef.current = ctrl;
             let p1Err = null;
             let p2Err = null;
-            const pair = await Promise.all([
-              askAI(promptP1, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }).catch((e) => { p1Err = e; return null; }),
-              askAI(promptP2P3, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT }).catch((e) => { p2Err = e; return null; }),
-            ]);
-            if (!pair[0] && !pair[1]) {
-              throw new Error(p1Err?.message || p2Err?.message || 'Không kết nối được AI để sinh đề.');
+            try {
+              const pair = await Promise.all([
+                askAI(promptP1, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT, signal: ctrl.signal }).catch((e) => { p1Err = e; return null; }),
+                askAI(promptP2P3, null, null, { systemPrompt: TEACHER_COPILOT_SYSTEM_PROMPT, signal: ctrl.signal }).catch((e) => { p2Err = e; return null; }),
+              ]);
+              if (ctrl.signal.aborted) {
+                throw new Error('Đã dừng yêu cầu sinh đề theo lệnh giáo viên (ELEC Credit đã được hoàn trả).');
+              }
+              if (p1Err || p2Err || !pair[0] || !pair[1]) {
+                throw new Error(p1Err?.message || p2Err?.message || 'Một phần đề chưa sinh xong (ELEC Credit đã được hoàn trả).');
+              }
+              const textP1 = typeof pair[0] === 'string' ? pair[0] : (pair[0]?.text || '');
+              const textP2P3 = typeof pair[1] === 'string' ? pair[1] : (pair[1]?.text || '');
+              const parsedP1 = parseExamJsonSafe(textP1);
+              const parsedP2P3 = parseExamJsonSafe(textP2P3);
+              const p1 = (parsedP1?.part1 || []).map((q, idx) => ({
+                id: `q_gdpt_p1_${idx + 1}`,
+                q: q.q,
+                options: (Array.isArray(q.options) && q.options.length === 4) ? q.options : [
+                  'A. ' + (q.options?.[0] || 'Phương án đúng'),
+                  'B. ' + (q.options?.[1] || 'Phương án gây nhiễu 1'),
+                  'C. ' + (q.options?.[2] || 'Phương án gây nhiễu 2'),
+                  'D. ' + (q.options?.[3] || 'Phương án gây nhiễu 3'),
+                ],
+                correct: q.correct ?? 0,
+                level: q.level || (idx < 6 ? 'NB' : idx < 14 ? 'TH' : 'VD'),
+                explain: q.explain || '',
+                part: 1,
+                type: 'single_choice',
+                points: 0.25,
+              }));
+              const p2 = (parsedP2P3?.part2 || []).map((q, idx) => ({
+                id: `q_gdpt_p2_${idx + 1}`,
+                q: q.q,
+                statements: (q.statements || []).map((s) => ({ text: s.text, answer: s.answer === true })),
+                level: q.level || 'VD',
+                explain: q.explain || '',
+                part: 2,
+                type: 'true_false',
+                points: 1.0,
+              }));
+              const p3 = (parsedP2P3?.part3 || []).map((q, idx) => ({
+                id: `q_gdpt_p3_${idx + 1}`,
+                q: q.q,
+                answer: String(q.answer || '0').replace('.', ','),
+                level: q.level || 'VDC',
+                explain: q.explain || '',
+                part: 3,
+                type: 'short_answer',
+                points: 0.25,
+              }));
+              const list = [...p1, ...p2, ...p3];
+              if (!p1.length || (!p2.length && !p3.length)) {
+                throw new Error('AI chưa kịp hoàn tất đủ cả 3 phần câu hỏi (ELEC Credit đã được hoàn trả).');
+              }
+              return list;
+            } finally {
+              if (activeRequestRef.current === ctrl) activeRequestRef.current = null;
             }
-            const textP1 = typeof pair[0] === 'string' ? pair[0] : (pair[0]?.text || '');
-            const textP2P3 = typeof pair[1] === 'string' ? pair[1] : (pair[1]?.text || '');
-            const parsedP1 = parseExamJsonSafe(textP1);
-            const parsedP2P3 = parseExamJsonSafe(textP2P3);
-            const p1 = (parsedP1?.part1 || []).map((q, idx) => ({
-              id: `q_gdpt_p1_${idx + 1}`,
-              q: q.q,
-              options: (Array.isArray(q.options) && q.options.length === 4) ? q.options : [
-                'A. ' + (q.options?.[0] || 'Phương án đúng'),
-                'B. ' + (q.options?.[1] || 'Phương án gây nhiễu 1'),
-                'C. ' + (q.options?.[2] || 'Phương án gây nhiễu 2'),
-                'D. ' + (q.options?.[3] || 'Phương án gây nhiễu 3'),
-              ],
-              correct: q.correct ?? 0,
-              level: q.level || (idx < 6 ? 'NB' : idx < 14 ? 'TH' : 'VD'),
-              explain: q.explain || '',
-              part: 1,
-              type: 'single_choice',
-              points: 0.25,
-            }));
-            const p2 = (parsedP2P3?.part2 || []).map((q, idx) => ({
-              id: `q_gdpt_p2_${idx + 1}`,
-              q: q.q,
-              statements: (q.statements || []).map((s) => ({ text: s.text, answer: s.answer === true })),
-              level: q.level || 'VD',
-              explain: q.explain || '',
-              part: 2,
-              type: 'true_false',
-              points: 1.0,
-            }));
-            const p3 = (parsedP2P3?.part3 || []).map((q, idx) => ({
-              id: `q_gdpt_p3_${idx + 1}`,
-              q: q.q,
-              answer: String(q.answer || '0').replace('.', ','),
-              level: q.level || 'VDC',
-              explain: q.explain || '',
-              part: 3,
-              type: 'short_answer',
-              points: 0.25,
-            }));
-            const list = [...p1, ...p2, ...p3];
-            if (!list.length) {
-              throw new Error('AI chưa kịp hoàn tất định dạng JSON câu hỏi (ELEC Credit đã được hoàn trả).');
-            }
-            return list;
           }
         );
       }
@@ -3194,10 +3213,10 @@ HÃY THỰC HIỆN GIÁM ĐỊNH SƯ PHẠM VÀ PHẢN BIỆN KHOA HỌC THEO Đ
       (norm.includes('soạn') || norm.includes('tạo')) &&
       (norm.includes('giao') || norm.includes('cho lớp'))
     ) {
-      const targetClass = findTargetClassInQuery(query, classes) || classes[0] || { name: '12A1', id: 'c_auto' };
-      const grade = String(targetClass.grade || '12');
+      const targetClass = findTargetClassInQuery(query, classes) || classes[0] || null;
+      const grade = String(targetClass?.grade || '12');
       const detectedInfo = detectExamSubjectAndGrade({ text: query, fileName: '' });
-      const subject = detectedInfo.subject || targetClass.subject || 'Toán học';
+      const subject = detectedInfo.subject || targetClass?.subject || inferredSubject || 'Toán học';
 
       try {
         const finalQuestions = await callCopilotAI(
@@ -3299,7 +3318,8 @@ Trả về duy nhất đối tượng JSON:
           title: finalQuestions.title || `Đề giao tự động: ${query.slice(0, 28)}...`,
           subject: subject,
           grade: grade,
-          classId: targetClass.id === 'c_auto' ? '' : targetClass.id,
+          classId: targetClass?.id || '',
+          isDraft: !targetClass?.id,
           duration: 15,
           totalQuestions: agentQuestions.length,
           questions: agentQuestions,
@@ -3307,6 +3327,7 @@ Trả về duy nhất đối tượng JSON:
 
         await onCreateExam?.(agentExam);
 
+        const targetLabel = targetClass?.name ? `lớp ${targetClass.name}` : 'Kho đề cá nhân (Bản nháp — chưa có lớp)';
         setIsTyping(false);
         setMessages((prev) => [
           ...prev,
@@ -3315,34 +3336,34 @@ Trả về duy nhất đối tượng JSON:
             sender: 'bot',
             text: `AI Agent đã hoàn thành tự động toàn trình nhiệm vụ theo lệnh của Thầy/Cô:`,
             agentWorkflow: {
-              targetClassName: targetClass.name,
+              targetClassName: targetClass?.name || 'Bản nháp (Kho đề)',
               examTitle: agentExam.title,
               steps: [
                 'Biên soạn bộ câu hỏi chuẩn khung GDPT 2025 theo chuyên đề',
                 'Thiết lập 3 phần đầy đủ: Trắc nghiệm 4 lựa chọn, Đúng/Sai và Trả lời ngắn',
-                `Giao bài kiểm tra trực tiếp vào danh sách đề của lớp ${targetClass.name}`,
+                targetClass?.name
+                  ? `Giao bài kiểm tra trực tiếp vào danh sách đề của lớp ${targetClass.name}`
+                  : 'Lưu bản nháp đề thi vào Kho đề (Thầy/Cô có thể gán lớp sau)',
               ],
             },
             examData: agentExam,
             time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
           },
         ]);
-        onSay?.(`AI Agent đã tự động giao đề vào lớp ${targetClass.name}!`, 'success');
+        onSay?.(`AI Agent đã tạo đề và lưu vào ${targetLabel}!`, 'success');
         return;
       } catch (err) {
         setIsTyping(false);
-        if (err?.code === 'OUT_OF_CREDITS') {
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: 'bot_audit_err_' + Date.now(),
-              sender: 'bot',
-              text: err.message,
-              time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-            },
-          ]);
-          return;
-        }
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: 'bot_audit_err_' + Date.now(),
+            sender: 'bot',
+            text: err?.message || 'Không thể hoàn thành tác vụ soạn & giao đề tự động lúc này. Thầy/Cô vui lòng thử lại.',
+            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          },
+        ]);
+        return;
       }
     }
 
@@ -3534,6 +3555,10 @@ Thầy/Cô có muốn em hỗ trợ soạn đề hoặc giao bài kiểm tra cho
       if (isUrgentCreate && onCreateClass) {
         try {
           const newCls = await onCreateClass({ name: clsName, grade, subject });
+          if (!newCls) {
+            onSay?.('Không thể tạo lớp học (đã hủy hoặc vượt giới hạn gói).', 'warn');
+            return;
+          }
           setMessages((prev) => [
             ...prev,
             {
@@ -3549,7 +3574,8 @@ Thầy/Cô có muốn em hỗ trợ soạn đề hoặc giao bài kiểm tra cho
           ]);
           return;
         } catch (err) {
-          // fallback
+          onSay?.('Lỗi tạo lớp: ' + (err?.message || err), 'error');
+          return;
         }
       }
 
@@ -3880,19 +3906,29 @@ Hãy trả lời chính xác, bám sát các số liệu thực tế trên của
       }
 
       const realAlerts = [];
-      activeLiveRooms.forEach((ss) => {
-        (ss.students || []).forEach((st) => {
-          const vs = st.violations || [];
-          if (vs.length > 0) {
+      const roomStudentsLists = await Promise.all(
+        activeLiveRooms.map(async (ss) => {
+          if (Array.isArray(ss.students) && ss.students.length > 0) {
+            return { ss, students: ss.students };
+          }
+          const fetched = await getSessionStudents(ss.id).catch(() => []);
+          return { ss, students: Array.isArray(fetched) ? fetched : [] };
+        })
+      );
+      roomStudentsLists.forEach(({ ss, students }) => {
+        students.forEach((st) => {
+          const vs = Array.isArray(st.violations) ? st.violations : [];
+          const vCount = vs.length || Number(st.violationCount) || 0;
+          if (vCount > 0) {
             const hardCount = vs.filter((v) => v.severity === 'hard').length;
             realAlerts.push({
               sessionId: ss.id,
               examTitle: ss.title || 'Phòng thi LIVE',
-              studentId: st.studentId,
-              name: st.studentName || 'Thí sinh',
-              count: vs.length,
+              studentId: st.studentId || st.id,
+              name: st.studentName || st.name || 'Thí sinh',
+              count: vCount,
               lastViolation: vs[vs.length - 1]?.type || 'Chuyển tab làm bài',
-              severity: hardCount > 0 || vs.length >= 3 ? 'Nghiêm trọng' : 'Trung bình',
+              severity: hardCount > 0 || vCount >= 3 ? 'Nghiêm trọng' : 'Trung bình',
             });
           }
         });
@@ -4194,6 +4230,14 @@ HƯỚNG DẪN TRẢ LỜI:
     [inferredSubject, user?.displayName, user?.email, user?.schoolName, onSay]
   );
 
+  const latestHandlersRef = useRef({});
+  latestHandlersRef.current = {
+    handleSend,
+    handleStartExamWizard,
+    handleRunSimulation,
+    handleAnalyzeCurrentTab,
+  };
+
   const handleRegenerateLast = useCallback(() => {
     if (isTyping) return;
     const list = messagesRef.current || [];
@@ -4208,13 +4252,13 @@ HƯỚNG DẪN TRẢ LỜI:
     const lastUserText = list[lastUserIdx].text;
     setMessages((prev) => prev.slice(0, lastUserIdx + 1));
     setTimeout(() => {
-      handleSend(lastUserText, null, { skipUserBubble: true, skipImage: true, noCache: true, forceAi: true });
+      latestHandlersRef.current.handleSend?.(lastUserText, null, { skipUserBubble: true, skipImage: true, noCache: true, forceAi: true });
     }, 0);
   }, [isTyping]);
 
   const handleStartWizardWithTopic = useCallback(
     (topic) => {
-      handleStartExamWizard({ subject: inferredSubject, topic });
+      latestHandlersRef.current.handleStartExamWizard?.({ subject: inferredSubject, topic });
     },
     [inferredSubject]
   );
@@ -4230,7 +4274,7 @@ HƯỚNG DẪN TRẢ LỜI:
   const handleQuickAction = useCallback(
     (action) => {
       if (action === 'start_wizard') {
-        handleStartExamWizard();
+        latestHandlersRef.current.handleStartExamWizard?.();
       } else if (action === 'pick_file') {
         fileInputRef.current?.click();
       } else if (action === 'pick_image') {
@@ -4247,12 +4291,12 @@ HƯỚNG DẪN TRẢ LỜI:
       } else if (action === 'run_sim_latest') {
         const targetExam = selectedExam || (exams && exams[0]);
         if (targetExam && targetExam.questions?.length) {
-          handleRunSimulation(targetExam);
+          latestHandlersRef.current.handleRunSimulation?.(targetExam);
         } else {
-          handleSend('Chạy mô phỏng 100 học sinh ảo giải đề thi');
+          latestHandlersRef.current.handleSend?.('Chạy mô phỏng 100 học sinh ảo giải đề thi');
         }
       } else if (action === 'analyze_tab') {
-        handleAnalyzeCurrentTab();
+        latestHandlersRef.current.handleAnalyzeCurrentTab?.();
       } else if (action === 'clear_chat') {
         handleClearChat();
       }
@@ -4266,7 +4310,7 @@ HƯỚNG DẪN TRẢ LỜI:
       if (item.action) {
         handleQuickAction(item.action);
       } else if (item.query) {
-        handleSend(item.query);
+        latestHandlersRef.current.handleSend?.(item.query);
       }
     },
     [handleQuickAction]

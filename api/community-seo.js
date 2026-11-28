@@ -336,13 +336,19 @@ function renderSidebarHtml() {
       <a class="nav-cta" style="width:100%;justify-content:center" href="${SITE_ORIGIN}/#home">Vào Cộng đồng ELEC →</a>
     </div>
     <div class="side-box">
-      <h3>Công cụ KHTN nổi bật</h3>
+      <h3>Công cụ &amp; Kho học liệu nổi bật</h3>
       <div class="side-links">
-        <a href="${SITE_ORIGIN}/tro-ly-ai-giai-hoa">Trợ lý AI giải Hóa – Lý – Sinh</a>
-        <a href="${SITE_ORIGIN}/phong-thi-ao">Phòng thi ảo THPTQG 2026</a>
-        <a href="${SITE_ORIGIN}/can-bang-phuong-trinh-hoa-hoc">Cân bằng phương trình hóa học</a>
-        <a href="${SITE_ORIGIN}/bang-tuan-hoan">Bảng tuần hoàn nguyên tố 3D</a>
-        <a href="${SITE_ORIGIN}/lo-trinh-on-thi-thpt-quoc-gia">Lộ trình ôn thi THPT Quốc Gia</a>
+        <a href="${SITE_ORIGIN}/hoc-online-mien-phi">Học online miễn phí trên ELEC AI</a>
+        <a href="${SITE_ORIGIN}/giai-bai-tap-bang-ai">Giải bài tập bằng AI &amp; hình ảnh</a>
+        <a href="${SITE_ORIGIN}/gia-su-ai">Gia sư AI kèm học 24/7</a>
+        <a href="${SITE_ORIGIN}/luyen-thi-thpt-quoc-gia">Luyện thi THPT Quốc Gia 2026</a>
+        <a href="${SITE_ORIGIN}/de-thi">Kho 66+ Đề thi thử có đáp án</a>
+        <a href="${SITE_ORIGIN}/nguyen-to">Thư viện 118 Nguyên tố IUPAC</a>
+        <a href="${SITE_ORIGIN}/phuong-trinh">65+ Phương trình Hóa học THPT</a>
+        <a href="${SITE_ORIGIN}/kien-thuc">125 Chuyên đề Kiến thức THPT</a>
+        <a href="${SITE_ORIGIN}/cho-giao-vien">LMS &amp; Quản lý lớp học Giáo viên</a>
+        <a href="${SITE_ORIGIN}/phan-mem-tao-de-thi">Phần mềm tạo đề thi trắc nghiệm</a>
+        <a href="${SITE_ORIGIN}/cham-bai-trac-nghiem-tu-dong">Chấm bài trắc nghiệm tự động OMR</a>
       </div>
     </div>
   </aside>`;

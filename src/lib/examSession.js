@@ -119,14 +119,11 @@ export async function createExamSession({
 export async function endExamSession(sessionId) {
   if (!sessionId) return;
   try {
-    await Promise.race([
-      updateDoc(doc(db, SESSIONS, sessionId), {
-        status: 'ended',
-        endedAt: serverTimestamp(),
-        endedAtMs: Date.now(),
-      }),
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]);
+    await updateDoc(doc(db, SESSIONS, sessionId), {
+      status: 'ended',
+      endedAt: serverTimestamp(),
+      endedAtMs: Date.now(),
+    });
   } catch (err) {
     console.warn('[endExamSession] updateDoc warning:', err?.message);
     throw err;
@@ -137,22 +134,16 @@ export async function extendExamSession(sessionId, extraMinutes = 5) {
   if (!sessionId) return;
   const mins = Number(extraMinutes) || 5;
   try {
-    const snap = await Promise.race([
-      getDoc(doc(db, SESSIONS, sessionId)),
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]);
-    if (!snap || !snap.exists()) return;
+    const snap = await getDoc(doc(db, SESSIONS, sessionId));
+    if (!snap || !snap.exists()) throw new Error('Phòng thi không tồn tại.');
     const cur = snap.data();
     const baseEnd = cur.closesAt?.toMillis?.() ?? cur.closesAtMs ?? Date.now();
     const nextEndMs = Math.max(Date.now(), baseEnd) + mins * 60 * 1000;
-    await Promise.race([
-      updateDoc(doc(db, SESSIONS, sessionId), {
-        duration: (Number(cur.duration) || 15) + mins,
-        closesAt: Timestamp.fromMillis(nextEndMs),
-        closesAtMs: nextEndMs,
-      }),
-      new Promise((resolve) => setTimeout(resolve, 2000)),
-    ]);
+    await updateDoc(doc(db, SESSIONS, sessionId), {
+      duration: (Number(cur.duration) || 15) + mins,
+      closesAt: Timestamp.fromMillis(nextEndMs),
+      closesAtMs: nextEndMs,
+    });
   } catch (err) {
     console.warn('[extendExamSession] warning:', err?.message);
     throw err;
@@ -678,7 +669,12 @@ export async function markStudentSubmitted({ sessionId, studentId }) {
 export async function kickStudent({ sessionId, studentId, reason = '' }) {
   if (!sessionId || !studentId) return;
   try {
-    await updateDoc(doc(db, SESSIONS, sessionId, 'students', studentId), {
+    const ref = doc(db, SESSIONS, sessionId, 'students', studentId);
+    const snap = await getDoc(ref);
+    if (snap.exists() && snap.data()?.status === 'submitted') {
+      return;
+    }
+    await updateDoc(ref, {
       status: 'kicked',
       kickedAt: serverTimestamp(),
       kickedAtMs: Date.now(),
@@ -724,8 +720,6 @@ export async function setStudentPaused({ sessionId, studentId, paused }) {
     await updateDoc(ref, {
       paused: !!paused,
       pausedAtMs: now,
-      lastSeen: serverTimestamp(),
-      lastSeenMs: now,
     });
   } catch (e) {
     console.warn('[examSession] setStudentPaused failed:', e.message);
@@ -745,8 +739,6 @@ export async function setStudentForceSubmit({ sessionId, studentId, reason = 'te
       forceSubmit: true,
       forceSubmitReason: reason,
       forceSubmitAtMs: now,
-      lastSeen: serverTimestamp(),
-      lastSeenMs: now,
     });
   } catch (e) {
     console.warn('[examSession] setStudentForceSubmit failed:', e.message);

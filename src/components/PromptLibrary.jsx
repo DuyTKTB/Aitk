@@ -26,13 +26,13 @@ const statsOf = (text) => {
    Cache-busting bằng ?v= để tránh CDN cache ảnh cũ.
    Khi bạn đổi ảnh mới, tăng số version (v=2 → v=3 → v=4...).
    ============================================================ */
-const PROM_IMG_VERSION = 2;
+const PROM_IMG_VERSION = 3;
 
 function CardCover({ prompt, cat }) {
   return (
     <div className="pl-cover">
       <img
-        src={`/img/prom.png?v=${PROM_IMG_VERSION}`}
+        src={`/img/prom.webp?v=${PROM_IMG_VERSION}`}
         alt={prompt.title}
         className="pl-cover-img"
         loading="lazy"

@@ -25,6 +25,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { formatMathAndChemSymbols } from './chemFormulaFormatter.js';
 import { subjectUsesMath, getSubjectExamProfile } from './subjects.js';
+import { buildOmrPrintDocumentHtml } from './omrSheetGenerator.js';
 
 const fmt = (s) => formatMathAndChemSymbols(String(s ?? ''));
 const isNonScienceSubject = (subj) => Boolean(String(subj || '').trim()) && !subjectUsesMath(subj);
@@ -49,19 +50,24 @@ function safeFilename(name) {
     .slice(0, 80);
 }
 
-function dataUrlToUint8Array(dataUrl) {
+function dataUrlToImagePayload(dataUrl) {
   try {
     if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) return null;
     const [meta, base64] = dataUrl.split(',');
     if (!base64) return null;
-    // docx ImageRun supports png, jpg/jpeg, gif, bmp
-    if (meta.includes('svg')) return null;
+    const lowerMeta = meta.toLowerCase();
+    // docx@9 ImageRun bắt buộc truyền `type` ('png' | 'jpg' | 'gif' | 'bmp')
+    if (lowerMeta.includes('svg') || lowerMeta.includes('webp')) return null;
+    let type = 'png';
+    if (lowerMeta.includes('jpeg') || lowerMeta.includes('jpg')) type = 'jpg';
+    else if (lowerMeta.includes('gif')) type = 'gif';
+    else if (lowerMeta.includes('bmp')) type = 'bmp';
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
       bytes[i] = binary.charCodeAt(i);
     }
-    return bytes;
+    return { data: bytes, type };
   } catch {
     return null;
   }
@@ -202,21 +208,33 @@ export async function buildExamDocBlob({
   const part3 = questions.filter((q) => q.type === 'short_answer');
   const part4 = questions.filter((q) => q.type === 'essay');
 
-  const appendQuestionImage = (q) => {
-    const imgBytes = dataUrlToUint8Array(q.image);
-    if (imgBytes) {
+  const appendImageDataUrl = (url, width = 300, height = 180) => {
+    const img = dataUrlToImagePayload(url);
+    if (img) {
       children.push(
         new Paragraph({
           alignment: AlignmentType.CENTER,
           children: [
             new ImageRun({
-              data: imgBytes,
-              transformation: { width: 300, height: 180 },
+              data: img.data,
+              type: img.type,
+              transformation: { width, height },
             }),
           ],
         }),
       );
     }
+  };
+
+  const appendQuestionImage = (q) => {
+    const urls = [];
+    if (q.image) urls.push(q.image);
+    if (Array.isArray(q.images)) {
+      q.images.forEach((u) => {
+        if (u && !urls.includes(u)) urls.push(u);
+      });
+    }
+    urls.forEach((u) => appendImageDataUrl(u, 300, 180));
   };
 
   // --- PHẦN I ---
@@ -267,6 +285,10 @@ export async function buildExamDocBlob({
               ],
             }),
           );
+          const optImg = Array.isArray(q.optionImages)
+            ? q.optionImages[oIdx]
+            : (q.optionImages && typeof q.optionImages === 'object' ? (q.optionImages[oIdx] ?? q.optionImages[String(oIdx)]) : null);
+          if (optImg) appendImageDataUrl(optImg, 220, 140);
         });
       }
       children.push(new Paragraph({ text: '' }));
@@ -562,7 +584,7 @@ export async function buildExamDocBlob({
       );
     }
 
-    // 2. HƯỚNG DẪN GIẢI CHI TIẾT TỪNG CÂU
+    // 2. HƯỚNG DẪN GIẢI CHI TIẾT TỪNG CÂU (đánh số khớp theo từng Phần I / II / III / IV)
     children.push(
       new Paragraph({
         children: [new TextRun({ text: 'II. HƯỚNG DẪN GIẢI CHI TIẾT & BIỂU ĐIỂM TỪNG CÂU', bold: true, size: 24, color: '1d4ed8' })],
@@ -570,24 +592,39 @@ export async function buildExamDocBlob({
       new Paragraph({ text: '' }),
     );
 
-    questions.forEach((q, idx) => {
-      const typeLabel = q.type === 'true_false'
-        ? 'Đúng/Sai'
-        : q.type === 'short_answer'
-          ? 'Trả lời ngắn'
-          : q.type === 'essay'
-            ? 'Tự luận'
-            : 'Trắc nghiệm 4 lựa chọn';
-      const levelLabel = q.level || 'Thông hiểu';
-      const previewStem = q.q || (q.passage ? '(Điền vào chỗ trống theo đoạn văn)' : '');
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: `Câu ${idx + 1} (${typeLabel} — ${levelLabel}${q.points ? ` — ${q.points}đ` : ''}): `, bold: true, size: 22, color: '0f172a' }),
-            new TextRun({ text: fmtLocal(String(previewStem).slice(0, 160) + (String(previewStem).length > 160 ? '...' : '')), italics: true, size: 20, color: '475569' }),
-          ],
-        }),
-      );
+    const orderedSolutionGroups = [
+      { label: 'PHẦN I — Trắc nghiệm 4 lựa chọn', items: part1 },
+      { label: 'PHẦN II — Trắc nghiệm Đúng/Sai', items: part2 },
+      { label: 'PHẦN III — Trả lời ngắn', items: part3 },
+      { label: 'PHẦN IV — Tự luận', items: part4 },
+    ].filter((g) => g.items.length > 0);
+
+    orderedSolutionGroups.forEach((group) => {
+      if (orderedSolutionGroups.length > 1) {
+        children.push(
+          new Paragraph({
+            children: [new TextRun({ text: group.label, bold: true, size: 22, color: '1e3a8a' })],
+          }),
+        );
+      }
+      group.items.forEach((q, idx) => {
+        const typeLabel = q.type === 'true_false'
+          ? 'Đúng/Sai'
+          : q.type === 'short_answer'
+            ? 'Trả lời ngắn'
+            : q.type === 'essay'
+              ? 'Tự luận'
+              : 'Trắc nghiệm 4 lựa chọn';
+        const levelLabel = q.level || 'Thông hiểu';
+        const previewStem = q.q || (q.passage ? '(Điền vào chỗ trống theo đoạn văn)' : '');
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `Câu ${idx + 1} (${typeLabel} — ${levelLabel}${q.points ? ` — ${q.points}đ` : ''}): `, bold: true, size: 22, color: '0f172a' }),
+              new TextRun({ text: fmtLocal(String(previewStem).slice(0, 160) + (String(previewStem).length > 160 ? '...' : '')), italics: true, size: 20, color: '475569' }),
+            ],
+          }),
+        );
 
       // In đáp án
       if (q.type === 'single_choice' || !q.type) {
@@ -663,6 +700,7 @@ export async function buildExamDocBlob({
       }
 
       children.push(new Paragraph({ text: '' }));
+      });
     });
   }
 
@@ -1029,22 +1067,16 @@ ${sourceQuestions.map((q, idx) => {
     console.warn('Lỗi thêm ma trận vào ZIP:', err);
   }
 
-  const omrHtml = `<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8">
-  <title>Phiếu Trả Lời Trắc Nghiệm OMR A4</title>
-  <style>
-    @page { size: A4 portrait; margin: 10mm; }
-    body { font-family: 'Times New Roman', serif; text-align: center; }
-  </style>
-</head>
-<body>
-  <h2>${schoolName.toUpperCase()}</h2>
-  <h3>PHIẾU TRẢ LỜI TRẮC NGHIỆM GDPT 2025</h3>
-  <p>Môn: ${subject} - Khối: ${grade}</p>
-</body>
-</html>`;
+  const omrHtml = buildOmrPrintDocumentHtml([{
+    questions: sourceQuestions,
+    examTitle: finalHeader?.examName || examTitle,
+    subject: finalHeader?.subject || subject,
+    grade: finalHeader?.grade || grade,
+    schoolName: finalHeader?.schoolName || schoolName,
+    year: finalHeader?.schoolYear || schoolYear,
+    duration: finalHeader?.duration || duration,
+    code: versions?.[0]?.code || '101',
+  }], { autoPrint: false });
   zip.file('Mau-Phieu-To-OMR-A4.html', omrHtml);
 
   const zipBlob = await zip.generateAsync({ type: 'blob' });

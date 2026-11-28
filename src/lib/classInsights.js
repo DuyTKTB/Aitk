@@ -84,6 +84,7 @@ export function buildClassInsights({ exams = [], submissionsMap = {}, rangeDays 
         text: qq.q,
         topic,
         level: qq.level || '',
+        ok,
         rate,
         rated,
       });

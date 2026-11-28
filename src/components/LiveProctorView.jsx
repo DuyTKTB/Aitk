@@ -539,7 +539,12 @@ function StudentModal({ student, total, cameraEnabled = false, isEnded = false, 
                 >
                   <IcoStop size={14} /> Thu bài ngay (cưỡng chế)
                 </button>
-                <button type="button" className="vt-btn danger block" onClick={() => requestKick(student)}>
+                <button
+                  type="button"
+                  className="vt-btn danger block"
+                  onClick={() => requestKick(student)}
+                  disabled={actioning || student.status === 'submitted' || student.status === 'kicked'}
+                >
                   <IcoUserKick size={14} /> Mời ra khỏi phòng
                 </button>
               </div>
@@ -605,7 +610,10 @@ export default function LiveProctorView({ sessionId, onBack, className: classNam
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+      clearTimeout(toastTimer.current);
+    };
   }, []);
 
   useEffect(() => {

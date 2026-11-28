@@ -17,6 +17,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, forwardRef, useImper
 import { useAuth } from '../../hooks/useAuth.jsx';
 import { useTeacherPro } from '../../hooks/useTeacherPro.js';
 import { resolveEntitlements } from '../../lib/entitlements.js';
+import { bumpUsage } from '../../lib/questionBank.js';
 import ExamPickerFromBank from './ExamPickerFromBank.jsx';
 
 /* ============ SVG ICONS ============ */
@@ -161,9 +162,12 @@ const toFormQuestion = (q) => {
     points: Number(q.points) > 0 ? Number(q.points) : (type === 'true_false' ? 1 : 0.25),
     explain: q.explain || q.explanation || '',
     warns: Array.isArray(q.warns) ? q.warns : [],
-    topic: q.topic || '',
+    topic: q.topic || q.topicId || '',
     level: q.level || '',
+    ...(q._bankId ? { _bankId: q._bankId } : {}),
     ...(q.image ? { image: q.image } : {}),
+    ...(Array.isArray(q.images) && q.images.length ? { images: q.images } : {}),
+    ...(q.optionImages ? { optionImages: q.optionImages } : {}),
     ...(q.passage ? { passage: q.passage } : {}),
     ...(q.instruction ? { instruction: q.instruction } : {}),
     ...(q.passageId != null ? { passageId: q.passageId } : {}),
@@ -270,7 +274,27 @@ const SYM_GROUPS = [
   },
 ];
 
-const localToIso = (v) => (v ? new Date(v).toISOString() : null);
+const toDatetimeLocal = (v) => {
+  if (!v) return '';
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) return v;
+  const ms = typeof v === 'number'
+    ? v
+    : typeof v?.toMillis === 'function'
+      ? v.toMillis()
+      : typeof v?.seconds === 'number'
+        ? v.seconds * 1000
+        : Date.parse(v);
+  if (!Number.isFinite(ms)) return '';
+  const d = new Date(ms);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+const localToIso = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : null;
+};
 
 /* ============================================================
    MAIN COMPONENT
@@ -307,8 +331,8 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
   const [allowRetry, setAllowRetry] = useState(initial?.allowRetry ?? false);
   const [shuffle, setShuffle] = useState(initial?.shuffle ?? true);
   const [gradeType, setGradeType] = useState(initial?.gradeType || '');
-  const [opensAt, setOpensAt] = useState(initial?.opensAt || '');
-  const [closesAt, setClosesAt] = useState(initial?.closesAt || '');
+  const [opensAt, setOpensAt] = useState(() => toDatetimeLocal(initial?.opensAt));
+  const [closesAt, setClosesAt] = useState(() => toDatetimeLocal(initial?.closesAt));
   const [error, setError] = useState('');
   const [showBankPicker, setShowBankPicker] = useState(false);
   const [showSymBar, setShowSymBar] = useState(true);
@@ -366,8 +390,8 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     if (data.showAnswerAfter !== undefined) setShowAnswerAfter(Boolean(data.showAnswerAfter));
     if (data.allowRetry !== undefined) setAllowRetry(Boolean(data.allowRetry));
     if (data.shuffle !== undefined) setShuffle(Boolean(data.shuffle));
-    if (data.opensAt !== undefined) setOpensAt(data.opensAt || '');
-    if (data.closesAt !== undefined) setClosesAt(data.closesAt || '');
+    if (data.opensAt !== undefined) setOpensAt(toDatetimeLocal(data.opensAt));
+    if (data.closesAt !== undefined) setClosesAt(toDatetimeLocal(data.closesAt));
     if (data.proctor && typeof data.proctor === 'object') {
       setProctor((prev) => ({
         ...prev,
@@ -414,7 +438,7 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
       });
     }, 800);
     return () => clearTimeout(t);
-  }, [title, description, duration, questions, showAnswerAfter, allowRetry, shuffle, gradeType, opensAt, closesAt, proctor]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [title, description, duration, classId, questions, showAnswerAfter, allowRetry, shuffle, gradeType, opensAt, closesAt, proctor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPoints = useMemo(
     () => round2(questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0)),
@@ -661,6 +685,8 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
         ...(q.topic ? { topic: q.topic } : {}),
         ...(q.level ? { level: q.level } : {}),
         ...(q.image ? { image: q.image } : {}),
+        ...(Array.isArray(q.images) && q.images.length ? { images: q.images } : {}),
+        ...(q.optionImages ? { optionImages: q.optionImages } : {}),
         ...(q.passage ? { passage: q.passage } : {}),
         ...(q.instruction ? { instruction: q.instruction } : {}),
         ...(q.passageId != null ? { passageId: q.passageId } : {}),
@@ -719,6 +745,10 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
     const err = validate();
     if (err) return setError(err);
     setError('');
+    const usedBankIds = questions.map((q) => q._bankId).filter(Boolean);
+    if (usedBankIds.length) {
+      bumpUsage(usedBankIds).catch(() => {});
+    }
     onSave?.({
       title: title.trim(),
       description: description.trim(),
@@ -1480,10 +1510,18 @@ const ExamCreateForm = forwardRef(function ExamCreateForm({
           onPick={(pickedList) => {
             setShowBankPicker(false);
             if (!pickedList?.length) return;
-            const mapped = pickedList.map(toFormQuestion);
+            const mapped = pickedList.map((q) => toFormQuestion({ ...q, _bankId: q.id || undefined }));
             setQuestions((prev) => {
-              // Nếu chỉ có 1 câu rỗng ban đầu thì thay thế luôn
-              if (prev.length === 1 && !prev[0].q.trim() && (prev[0].options || []).every((o) => !o.trim())) {
+              // Chỉ thay thế câu đầu nếu câu đó hoàn toàn rỗng (không có ngữ liệu, ảnh, đáp án hay mệnh đề)
+              const first = prev[0];
+              const isBlankFirst = prev.length === 1 && first
+                && !String(first.q || '').trim()
+                && !String(first.passage || '').trim()
+                && !first.image
+                && !String(first.answer || '').trim()
+                && (first.options || []).every((o) => !String(o || '').trim())
+                && (first.statements || []).every((s) => !String(s?.text || '').trim());
+              if (isBlankFirst) {
                 return mapped;
               }
               return [...prev, ...mapped];

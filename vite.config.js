@@ -52,11 +52,12 @@ const BIG_VENDORS = [
   [/node_modules[\\/]@supabase[\\/]/, 'vendor-supabase'],
   /* Không tách riêng `three`: khi tách, entry bị Rollup gắn import vào chunk three
      nên mọi trang phải tải ~950 kB. Để nguyên, three chỉ nằm trong chunk Lab3D (lazy). */
-  /* Không tách riêng pdf: khi tách, trang chủ vẫn preload ~460 kB pdf
+  /* Không tách riêng `pdf`: khi tách, trang chủ vẫn preload ~460 kB pdf
      dù chưa dùng tới. Để nguyên, pdf chỉ tải khi mở công cụ cần nó. */
+  /* Không tách riêng `docx|jspdf|html2canvas|file-saver`: khi tách, dist/index.html
+     tự gắn modulepreload ~995 kB lên trang chủ dù chỉ dùng lúc xuất đề Word/PDF. */
   [/node_modules[\\/](katex|mathjax)[\\/]/, 'vendor-math'],
   [/node_modules[\\/](framer-motion|gsap)[\\/]/, 'vendor-motion'],
-  [/node_modules[\\/](docx|jspdf|html2canvas|file-saver)[\\/]/, 'vendor-doc-export'],
 ];
 
 /* Middleware chạy API /api/email-otp trực tiếp trong vite dev (không đóng gói vào client build) */

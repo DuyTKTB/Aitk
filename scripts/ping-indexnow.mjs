@@ -1,44 +1,33 @@
 /**
  * scripts/ping-indexnow.mjs
  * -------------------------------------------------------------------
- * Gửi danh sách URL mới/cập nhật của ELEC Science AI tới IndexNow API
- * (Bing, Yandex, Naver, Seznam, Yep, và hệ sinh thái tìm kiếm AI sử dụng Bing).
+ * Gửi toàn bộ URL Pillar, Công cụ, pSEO Hubs và trang thông tin của ELEC Science AI
+ * tới IndexNow API (Bing, Yandex, Naver, Seznam, Yep và AI Search dùng Bing).
  */
+import { SEO_PILLAR_ROUTES, PSEO_HUB_LINKS, SITE_ORIGIN } from '../src/data/seoPillarRoutes.js';
+
 const HOST = 'www.elecai.id.vn';
-const ORIGIN = `https://${HOST}`;
+const ORIGIN = SITE_ORIGIN;
 const KEY = 'elecai2026indexnowkey771a44e1ad93';
 const KEY_LOCATION = `${ORIGIN}/${KEY}.txt`;
 
-const URL_LIST = [
-  `${ORIGIN}/`,
-  `${ORIGIN}/nha-sang-lap`,
-  `${ORIGIN}/gioi-thieu`,
-  `${ORIGIN}/cong-dong`,
-  `${ORIGIN}/chu-de/hoahoc12`,
-  `${ORIGIN}/chu-de/vatli12`,
-  `${ORIGIN}/chu-de/sinhhoc12`,
-  `${ORIGIN}/chu-de/thptqg2026`,
-  `${ORIGIN}/tro-ly-ai-giai-hoa`,
-  `${ORIGIN}/phong-thi-ao`,
-  `${ORIGIN}/phong-thi-nghiem-vat-li`,
-  `${ORIGIN}/bang-tuan-hoan`,
-  `${ORIGIN}/can-bang-phuong-trinh-hoa-hoc`,
-  `${ORIGIN}/lo-trinh-on-thi-thpt-quoc-gia`,
-  `${ORIGIN}/cong-thuc-hoa-hoc`,
-  `${ORIGIN}/tai-lieu-hoa-hoc`,
-  `${ORIGIN}/tinh-diem-xet-tuyen-dai-hoc`,
-  `${ORIGIN}/tra-cuu-diem-chuan`,
-  `${ORIGIN}/dinh-huong-nghe-nghiep`,
-  `${ORIGIN}/tro-choi-khoa-hoc`,
-  `${ORIGIN}/ai-doc-studio`,
-  `${ORIGIN}/bang-phan-tuong-tac`,
-  `${ORIGIN}/quiz`,
-  `${ORIGIN}/bang-xep-hang`,
-  `${ORIGIN}/chinh-sach-bao-mat`,
-  `${ORIGIN}/dieu-khoan-su-dung`,
-  `${ORIGIN}/llms.txt`,
-  `${ORIGIN}/llms-full.txt`,
-];
+const URL_LIST = Array.from(
+  new Set([
+    `${ORIGIN}/`,
+    `${ORIGIN}/nha-sang-lap`,
+    `${ORIGIN}/gioi-thieu`,
+    `${ORIGIN}/chinh-sach-bao-mat`,
+    `${ORIGIN}/dieu-khoan-su-dung`,
+    `${ORIGIN}/llms.txt`,
+    `${ORIGIN}/llms-full.txt`,
+    `${ORIGIN}/chu-de/hoahoc12`,
+    `${ORIGIN}/chu-de/vatli12`,
+    `${ORIGIN}/chu-de/sinhhoc12`,
+    `${ORIGIN}/chu-de/thptqg2026`,
+    ...PSEO_HUB_LINKS.map((h) => `${ORIGIN}${h.href}`),
+    ...SEO_PILLAR_ROUTES.map((r) => `${ORIGIN}/${r.slug}`),
+  ])
+);
 
 async function main() {
   const payload = {

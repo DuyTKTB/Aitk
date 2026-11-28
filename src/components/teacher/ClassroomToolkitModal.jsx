@@ -94,9 +94,21 @@ export default function ClassroomToolkitModal({ classes = [], initialClassId = '
     }));
   }, [activeClass]);
 
+  const toastTimerRef = useRef(null);
+  const wheelRafRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => () => {
+    mountedRef.current = false;
+    clearTimeout(toastTimerRef.current);
+    if (wheelRafRef.current) cancelAnimationFrame(wheelRafRef.current);
+  }, []);
+
   const showToast = useCallback((msg) => {
+    clearTimeout(toastTimerRef.current);
     setToast(msg);
-    setTimeout(() => setToast(''), 2800);
+    toastTimerRef.current = setTimeout(() => {
+      if (mountedRef.current) setToast('');
+    }, 2800);
   }, []);
 
   /* --- 1. SPINNING WHEEL (60FPS CANVAS) --- */
@@ -214,6 +226,7 @@ export default function ClassroomToolkitModal({ classes = [], initialClassId = '
     let lastSliceIdx = -1;
 
     const frame = (now) => {
+      if (!mountedRef.current) return;
       const p = Math.min(1, (now - t0) / duration);
       // Cubic ease-out mượt chuẩn vật lý
       const ease = 1 - Math.pow(1 - p, 3);
@@ -231,7 +244,7 @@ export default function ClassroomToolkitModal({ classes = [], initialClassId = '
       drawWheel(curAngle);
 
       if (p < 1) {
-        requestAnimationFrame(frame);
+        wheelRafRef.current = requestAnimationFrame(frame);
       } else {
         const winner = poolSnap[sliceIdx];
         setPickedStudent(winner);
@@ -268,6 +281,7 @@ export default function ClassroomToolkitModal({ classes = [], initialClassId = '
         });
         const burstStart = performance.now();
         const animConfetti = (ts) => {
+          if (!mountedRef.current) return;
           const dt = (ts - burstStart) / 1100;
           confettiRef.current.forEach((pt) => {
             pt.x += pt.vx;
@@ -277,13 +291,13 @@ export default function ClassroomToolkitModal({ classes = [], initialClassId = '
             pt.alpha = 1 - dt;
           });
           drawWheel(angleRef.current, confettiRef.current);
-          if (dt < 1) requestAnimationFrame(animConfetti);
+          if (dt < 1) wheelRafRef.current = requestAnimationFrame(animConfetti);
           else drawWheel(angleRef.current, []);
         };
-        requestAnimationFrame(animConfetti);
+        wheelRafRef.current = requestAnimationFrame(animConfetti);
       }
     };
-    requestAnimationFrame(frame);
+    wheelRafRef.current = requestAnimationFrame(frame);
   };
 
   /* --- 2. SEATING CHART (SEATWISE + 2-CLICK SWAP) --- */
@@ -455,9 +469,17 @@ export default function ClassroomToolkitModal({ classes = [], initialClassId = '
     }
   };
 
+  const escapeHtml = (str) => String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
   const handlePrintSeating = () => {
     const win = window.open('', '_blank', 'width=960,height=720');
     if (!win) return;
+    const safeClassName = escapeHtml(activeClass?.name || '');
     const htmlRows = activeGrid
       .map(
         (row) =>
@@ -465,17 +487,17 @@ export default function ClassroomToolkitModal({ classes = [], initialClassId = '
             .map(
               (cell) =>
                 `<td style="border:1px solid #cbd5e1;padding:10px 8px;text-align:center;vertical-align:middle;width:${Math.floor(100 / generatedSeating.cols)}%">
-                  <div style="font-size:11px;color:#64748b;margin-bottom:4px;">${cell.seatLabel}</div>
-                  <div style="font-weight:700;font-size:13px;color:#0f172a;">${cell.student ? cell.student.name : '— Trống —'}</div>
-                  ${cell.examCode ? `<div style="margin-top:4px;display:inline-block;padding:2px 8px;border-radius:99px;background:#eff6ff;color:#1d4ed8;font-weight:800;font-size:11px;">Mã đề ${cell.examCode}</div>` : ''}
+                  <div style="font-size:11px;color:#64748b;margin-bottom:4px;">${escapeHtml(cell.seatLabel)}</div>
+                  <div style="font-weight:700;font-size:13px;color:#0f172a;">${cell.student ? escapeHtml(cell.student.name) : '— Trống —'}</div>
+                  ${cell.examCode ? `<div style="margin-top:4px;display:inline-block;padding:2px 8px;border-radius:99px;background:#eff6ff;color:#1d4ed8;font-weight:800;font-size:11px;">Mã đề ${escapeHtml(cell.examCode)}</div>` : ''}
                 </td>`
             )
             .join('')}</tr>`
       )
       .join('');
-    win.document.write(`<!doctype html><html><head><title>Sơ đồ phòng thi - Lớp ${activeClass?.name || ''}</title></head><body style="font-family:system-ui,sans-serif;padding:24px;">
-      <h2 style="text-align:center;margin:0 0 6px;">SƠ ĐỒ CHỖ NGỒI PHÒNG THI — LỚP ${(activeClass?.name || '').toUpperCase()}</h2>
-      <p style="text-align:center;color:#475569;margin:0 0 18px;font-size:13px;">Sĩ số: ${generatedSeating.seatedCount}/${students.length} HS · Mã đề xen kẽ chống nhìn bài (${generatedSeating.codes.join(', ')})</p>
+    win.document.write(`<!doctype html><html><head><title>Sơ đồ phòng thi - Lớp ${safeClassName}</title></head><body style="font-family:system-ui,sans-serif;padding:24px;">
+      <h2 style="text-align:center;margin:0 0 6px;">SƠ ĐỒ CHỖ NGỒI PHÒNG THI — LỚP ${safeClassName.toUpperCase()}</h2>
+      <p style="text-align:center;color:#475569;margin:0 0 18px;font-size:13px;">Sĩ số: ${generatedSeating.seatedCount}/${students.length} HS · Mã đề xen kẽ chống nhìn bài (${generatedSeating.codes.map(escapeHtml).join(', ')})</p>
       <div style="text-align:center;padding:8px;margin:0 auto 14px;width:240px;border:2px dashed #64748b;border-radius:8px;font-weight:700;font-size:13px;">BẢNG / BÀN GIÁO VIÊN</div>
       <table style="width:100%;border-collapse:collapse;">${htmlRows}</table>
     </body></html>`);

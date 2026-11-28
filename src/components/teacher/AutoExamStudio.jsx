@@ -530,8 +530,11 @@ export default function AutoExamStudio({
     }
   }, [classes, initialClass?.id, selectedClassId]);
 
-  // Cập nhật môn học và khối lớp THPT khi chọn lớp khác
+  // Cập nhật môn học và khối lớp THPT CHỈ khi người dùng đổi sang lớp khác (không ghi đè khi mảng classes cập nhật realtime)
+  const lastAppliedClassIdRef = useRef(selectedClassId);
   useEffect(() => {
+    if (lastAppliedClassIdRef.current === selectedClassId) return;
+    lastAppliedClassIdRef.current = selectedClassId;
     const c = classes.find((cls) => cls.id === selectedClassId) || initialClass;
     if (c?.subject) {
       const nextSubj = normalizeStudioSubject(c.subject);
@@ -742,11 +745,20 @@ export default function AutoExamStudio({
     feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, step, analyzing, generating]);
 
+  const splitCleanupRef = useRef(null);
+
   // Cleanup
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) abortControllerRef.current.abort();
       if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+      if (splitCleanupRef.current) {
+        splitCleanupRef.current();
+        splitCleanupRef.current = null;
+      }
+      try {
+        speechRecognitionRef.current?.stop?.();
+      } catch { /* ignore */ }
     };
   }, []);
 
@@ -775,10 +787,7 @@ export default function AutoExamStudio({
     }
     if (!preset) return;
     if (preset.subject) {
-      if (/sinh/i.test(preset.subject)) setSelectedSubject('Sinh học');
-      else if (/hóa|hoa/i.test(preset.subject)) setSelectedSubject('Hóa học');
-      else if (/lý|vật/i.test(preset.subject)) setSelectedSubject('Vật lý');
-      else if (/toán|toan/i.test(preset.subject)) setSelectedSubject('Toán học');
+      setSelectedSubject(normalizeStudioSubject(preset.subject));
     }
     const topicsStr = Array.isArray(preset.topics) && preset.topics.length
       ? preset.topics.join(', ')
@@ -942,6 +951,7 @@ export default function AutoExamStudio({
       setIsDraggingSplit(false);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      splitCleanupRef.current = null;
       setSplitRatio((final) => {
         try {
           localStorage.setItem('aes_split_ratio', final.toFixed(3));
@@ -952,6 +962,11 @@ export default function AutoExamStudio({
       });
     };
 
+    if (splitCleanupRef.current) splitCleanupRef.current();
+    splitCleanupRef.current = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
   };
@@ -1973,28 +1988,31 @@ export default function AutoExamStudio({
     }
   };
 
+  const getQuestionStableKey = (q, idx) => q?.id || `idx_${idx}`;
+
   const handleTogglePedagogy = async (idx) => {
     const q = questions[idx];
     if (!q) return;
-    const existing = pedagogyInsights[idx];
+    const qKey = getQuestionStableKey(q, idx);
+    const existing = pedagogyInsights[qKey];
     if (existing?.open) {
       setPedagogyInsights((prev) => ({
         ...prev,
-        [idx]: { ...prev[idx], open: false },
+        [qKey]: { ...prev[qKey], open: false },
       }));
       return;
     }
     if (existing && !existing.loading) {
       setPedagogyInsights((prev) => ({
         ...prev,
-        [idx]: { ...prev[idx], open: true },
+        [qKey]: { ...prev[qKey], open: true },
       }));
       return;
     }
 
     setPedagogyInsights((prev) => ({
       ...prev,
-      [idx]: { loading: true, open: true },
+      [qKey]: { loading: true, open: true },
     }));
 
     try {
@@ -2013,7 +2031,7 @@ export default function AutoExamStudio({
       );
       setPedagogyInsights((prev) => ({
         ...prev,
-        [idx]: { ...insight, loading: false, open: true },
+        [qKey]: { ...insight, loading: false, open: true },
       }));
     } catch (err) {
       const isCreditOrAuthErr =
@@ -2025,7 +2043,7 @@ export default function AutoExamStudio({
       }
       setPedagogyInsights((prev) => ({
         ...prev,
-        [idx]: isCreditOrAuthErr
+        [qKey]: isCreditOrAuthErr
           ? { open: false, loading: false }
           : {
               trap: 'Học sinh hay nhầm lẫn kiến thức trọng tâm và các trường hợp ngoại lệ.',
@@ -2056,7 +2074,7 @@ export default function AutoExamStudio({
         grade: Number(selectedGrade) || 12,
       });
       sound.cheer();
-      setSavedBankKeys((prev) => new Set([...prev, idx]));
+      setSavedBankKeys((prev) => new Set([...prev, getQuestionStableKey(q, idx)]));
       showToast(`Đã lưu Câu ${idx + 1} vào Ngân hàng câu hỏi`, 'success');
     } catch (err) {
       showToast(err.message || 'Lỗi lưu câu hỏi', 'error');
@@ -2084,7 +2102,7 @@ export default function AutoExamStudio({
       sound.cheer();
       const skippedTypes = questions.length - eligible.length;
       showToast(`Đã lưu ${res.count} câu vào Ngân hàng (bỏ qua ${res.skipped} câu trùng${skippedTypes ? `, ${skippedTypes} câu dạng khác chưa hỗ trợ` : ''})`, 'success');
-      setSavedBankKeys(new Set(questions.map((q, i) => (isSupportedBankType(q) ? i : -1)).filter((i) => i >= 0)));
+      setSavedBankKeys(new Set(questions.map((q, i) => (isSupportedBankType(q) ? getQuestionStableKey(q, i) : null)).filter(Boolean)));
     } catch (err) {
       showToast(err.message || 'Lỗi lưu ngân hàng', 'error');
     } finally {
@@ -2254,11 +2272,12 @@ export default function AutoExamStudio({
   };
 
   /* ============================================================
-     RENDER: MÀN HÌNH CHAT-ONLY
+     RENDER: MÀN HÌNH CHAT-ONLY HOẶC CHIA 2 PANEL (dùng chung Modal Ma trận riêng & Overlay)
      ============================================================ */
-  if (!showWorkspace) {
-    const activeChips = SUBJECT_QUICK_CHIPS[selectedSubject] || SUBJECT_QUICK_CHIPS['Hóa học'];
-    return (
+  const activeChips = SUBJECT_QUICK_CHIPS[selectedSubject] || SUBJECT_QUICK_CHIPS['Hóa học'];
+  return (
+    <MathTextConfigContext.Provider value={{ disableChemFormat: !subjectUsesMath(selectedSubject) }}>
+      {!showWorkspace ? (
       <div className="aes-chat-only">
         <div className="aes-chat-center">
           <div className="aes-chat-hero">
@@ -2498,14 +2517,8 @@ export default function AutoExamStudio({
                   if (m && THPT_GRADES.includes(m[1])) {
                     setSelectedGrade(m[1]);
                   }
-                  if (/sinh\s*học|môn\s*sinh/i.test(val)) {
-                    setSelectedSubject('Sinh học');
-                  } else if (/hóa\s*học|môn\s*hóa/i.test(val)) {
-                    setSelectedSubject('Hóa học');
-                  } else if (/vật\s*lý|vật\s*lí|môn\s*lý/i.test(val)) {
-                    setSelectedSubject('Vật lý');
-                  } else if (/toán\s*học|môn\s*toán/i.test(val)) {
-                    setSelectedSubject('Toán học');
+                  if (/(?:môn\s+)?(?:sinh\s*học|hóa\s*học|vật\s*l[ýí]|toán\s*học|tiếng\s*anh|ngữ\s*văn|lịch\s*sử|địa\s*l[ýí]|tin\s*học|công\s*nghệ|gdkt|kinh\s*tế)/i.test(val)) {
+                    setSelectedSubject(normalizeStudioSubject(val));
                   }
                 }}
                 placeholder={
@@ -2632,113 +2645,8 @@ export default function AutoExamStudio({
           style={{ display: 'none' }}
           onChange={handleFileSelect}
         />
-
-        {/* OVERLAY KÉO THẢ TỆP */}
-        {isDraggingFile && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: '16px',
-              zIndex: 99999,
-              background: 'var(--panel, rgba(255, 255, 255, 0.94))',
-              backdropFilter: 'blur(10px)',
-              border: '3px dashed #2f6bff',
-              borderRadius: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '1rem',
-              boxShadow: '0 20px 50px rgba(47, 107, 255, 0.25)',
-              pointerEvents: 'none',
-            }}
-          >
-            <div style={{ color: '#2f6bff', transform: 'scale(1.3)' }}>
-              <IcoUpload size={54} />
-            </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--ink, #1e293b)' }}>
-              Thả tệp vào đây để tải lên
-            </div>
-            <div style={{ fontSize: '0.95rem', color: 'var(--mut, #64748b)', maxWidth: '480px', textAlign: 'center', lineHeight: 1.5 }}>
-              Hỗ trợ <b>ảnh chụp ma trận/đề thi</b> (.png, .jpg, .webp), file Word (.docx), Excel (.xlsx), PDF
-            </div>
-          </div>
-        )}
-
-        {/* LIGHTBOX MODAL XEM ẢNH PHÓNG TO */}
-        {lightboxImage && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 100000,
-              background: 'rgba(0, 0, 0, 0.82)',
-              backdropFilter: 'blur(6px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '1.5rem',
-            }}
-            onClick={() => setLightboxImage(null)}
-          >
-            <div
-              style={{ position: 'relative', maxWidth: '94vw', maxHeight: '90vh' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                type="button"
-                onClick={() => setLightboxImage(null)}
-                style={{
-                  position: 'absolute',
-                  top: -38,
-                  right: 0,
-                  background: 'rgba(255, 255, 255, 0.25)',
-                  border: 'none',
-                  color: '#fff',
-                  borderRadius: '50%',
-                  width: 32,
-                  height: 32,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
-                aria-label="Đóng"
-              >
-                <IcoClose size={16} />
-              </button>
-              <img
-                src={lightboxImage}
-                alt="Ảnh phóng to"
-                style={{
-                  maxWidth: '94vw',
-                  maxHeight: '86vh',
-                  objectFit: 'contain',
-                  borderRadius: 14,
-                  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6)',
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {toast && (
-          <div className={`aes-toast ${toast.type}`}>
-            {toast.type === 'success' && <IcoCheck size={15} />}
-            {toast.type === 'error' && <IcoClose size={15} />}
-            {toast.type === 'info' && <IcoSpark size={15} />}
-            <span>{toast.message}</span>
-          </div>
-        )}
       </div>
-    );
-  }
-
-  /* ============================================================
-     RENDER: MÀN HÌNH CHIA 2 PANEL VỚI RESIZER
-     ============================================================ */
-  return (
-    <MathTextConfigContext.Provider value={{ disableChemFormat: !subjectUsesMath(selectedSubject) }}>
+      ) : (
       <div
         ref={splitContainerRef}
       className={`aes-studio-split ${isDraggingSplit ? 'is-resizing' : ''}`}
@@ -3148,14 +3056,8 @@ export default function AutoExamStudio({
               if (m && THPT_GRADES.includes(m[1])) {
                 setSelectedGrade(m[1]);
               }
-              if (/sinh\s*học|môn\s*sinh/i.test(val)) {
-                setSelectedSubject('Sinh học');
-              } else if (/hóa\s*học|môn\s*hóa/i.test(val)) {
-                setSelectedSubject('Hóa học');
-              } else if (/vật\s*lý|vật\s*lí|môn\s*lý/i.test(val)) {
-                setSelectedSubject('Vật lý');
-              } else if (/toán\s*học|môn\s*toán/i.test(val)) {
-                setSelectedSubject('Toán học');
+              if (/(?:môn\s+)?(?:sinh\s*học|hóa\s*học|vật\s*l[ýí]|toán\s*học|tiếng\s*anh|ngữ\s*văn|lịch\s*sử|địa\s*l[ýí]|tin\s*học|công\s*nghệ|gdkt|kinh\s*tế)/i.test(val)) {
+                setSelectedSubject(normalizeStudioSubject(val));
               }
             }}
             placeholder={
@@ -3473,8 +3375,9 @@ export default function AutoExamStudio({
               <MathTextConfigContext.Provider value={{ disableChemFormat: Boolean(selectedSubject) && !subjectUsesMath(selectedSubject) }}>
               {questions.map((q, idx) => {
                 const lvMeta = LEVEL_INFO[normLevel(q.level)] || LEVEL_INFO.nb;
-                const ped = pedagogyInsights[idx];
-                const isSaved = savedBankKeys.has(idx);
+                const qKey = getQuestionStableKey(q, idx);
+                const ped = pedagogyInsights[qKey];
+                const isSaved = savedBankKeys.has(qKey);
                 const isEditing = editingIdx === idx;
 
                 return (
@@ -4087,8 +3990,10 @@ export default function AutoExamStudio({
           </div>
         </div>
       )}
+      </div>
+      )}
 
-      {/* MODAL GỬI MA TRẬN RIÊNG */}
+      {/* MODAL GỬI MA TRẬN RIÊNG (hiển thị được trên cả màn hình Landing lẫn Workspace) */}
       {showCustomMatrixModal && (
         <div className="aes-modal-backdrop" onClick={() => setShowCustomMatrixModal(false)}>
           <div className="aes-modal" style={{ maxWidth: '640px', width: '92%' }} onClick={(e) => e.stopPropagation()}>
@@ -4405,7 +4310,6 @@ export default function AutoExamStudio({
           <span>{toast.message}</span>
         </div>
       )}
-      </div>
     </MathTextConfigContext.Provider>
   );
 }

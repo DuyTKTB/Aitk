@@ -1,11 +1,20 @@
-import UniversityDetailModal from './components/aspiration/UniversityDetailModal.jsx';
 import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo } from 'react';
-import ErrorBoundary from './components/ErrorBoundary.jsx';
-import { isAdmin } from './lib/isAdmin.js';   // nguồn duy nhất (claims), thay cho bản cũ đọc VITE_ADMIN_EMAILS
+import { isAdmin } from './lib/isAdmin.js'; // nguồn duy nhất (claims), thay cho bản cũ đọc VITE_ADMIN_EMAILS
 import { CAMERA_GAMES } from './lib/cameraGames.js';
-import { initSubmitQueue } from './lib/submitQueue.js';
-import { initServerClock } from './lib/serverClock.js';
 import { useLocalStorage } from './hooks.js';
+import { PageLoader } from './components/ElecIntroLoader.jsx';
+import { useAuth } from './hooks/useAuth.jsx';
+import { useSettings } from './contexts/SettingsContext.jsx';
+import { useSeoHead } from './hooks/useSeoHead.js';
+import { clearPostAuthRedirect } from './lib/userRole.js';
+
+/* ============ LAZY SHELLS & WIDGETS ============ */
+const AuthenticatedAppShell = lazy(() => import('./components/AuthenticatedAppShell.jsx'));
+const PublicToolShell = lazy(() => import('./components/PublicToolShell.jsx'));
+const SystemAnnouncementBanner = lazy(() => import('./components/SystemAnnouncementBanner.jsx'));
+const UniversityDetailModal = lazy(() => import('./components/aspiration/UniversityDetailModal.jsx'));
+const VerifyEmailGate = lazy(() => import('./components/VerifyEmailGate.jsx'));
+const AuthActionPage = lazy(() => import('./components/AuthActionPage.jsx'));
 
 /* ============ LAZY PAGES ============ */
 const Home = lazy(() => import('./components/Home.jsx'));
@@ -37,6 +46,7 @@ const DocStudio = lazy(() => import('./components/DocStudio.jsx'));
 const ChalkboardView = lazy(() => import('./components/ChalkboardView.jsx'));
 const ScienceSimLab = lazy(() => import('./components/ScienceSimLab.jsx'));
 const PhysicsLabPage = lazy(() => import('./features/physics/PhysicsLabPage.jsx'));
+const BiologyLabPage = lazy(() => import('./features/biology/BiologyLabPage.jsx'));
 const Casio580Page = lazy(() => import('./components/Casio580Page.jsx'));
 
 /* ============ GAMES ============ */
@@ -47,7 +57,6 @@ const JeopardyGame = lazy(() => import('./components/games/JeopardyGame.jsx'));
 const VirtualLab = lazy(() => import('./components/games/VirtualLab.jsx'));
 const ElementBattle = lazy(() => import('./components/games/ElementBattle.jsx'));
 const ChemSudoku = lazy(() => import('./components/games/ChemSudoku.jsx'));
-/* ❗ Game mới bổ sung route (trước đây bị thiếu, bấm vào ra 404) */
 const TugOfWarGame = lazy(() => import('./components/games/TugOfWarGame.jsx'));
 const LuckyWheelGame = lazy(() => import('./components/games/LuckyWheelGame.jsx'));
 const FlipPuzzleGame = lazy(() => import('./components/games/FlipPuzzleGame.jsx'));
@@ -58,170 +67,21 @@ const QuizDuel = lazy(() => import('./components/games/QuizDuel.jsx'));
 const CameraGame = lazy(() => import('./components/games/CameraGame.jsx'));
 const Lab3D = lazy(() => import('./features/lab3d/Lab3D.jsx'));
 
-/* ============ CLASSROOM ============ */
+/* ============ CLASSROOM & ADMIN ============ */
 const TeacherDashboard = lazy(() => import('./components/TeacherDashboard.jsx'));
 const ExamJoin = lazy(() => import('./components/ExamJoin.jsx'));
 const StudentClass = lazy(() => import('./components/StudentClass.jsx'));
 const MyClasses = lazy(() => import('./components/MyClasses.jsx'));
-
-/* ============ ADMIN ============ */
 const AdminPanel = lazy(() => import('./components/admin/AdminPanel.jsx'));
 
-/* ============ WIDGETS ============ */
-import PetWidget from './components/PetWidget.jsx';
-import ChatWidget from './components/ChatWidget.jsx';
-import ElecBuddies from './components/ElecBuddies.jsx';
-import MobileHeader from './components/MobileHeader.jsx';
-import BottomNav from './components/BottomNav.jsx';
-import DesktopNav from './components/DesktopNav.jsx';
-import StudySheet from './components/StudySheet.jsx';
-import CommandPalette from './components/CommandPalette.jsx';
-import SiteFooter from './components/SiteFooter.jsx';
-import LiveSessionBanner from './components/LiveSessionBanner.jsx';
-import SystemAnnouncementBanner from './components/SystemAnnouncementBanner.jsx';
-import GlobalPushBanner from './components/GlobalPushBanner.jsx';
-import OutOfCreditsModal from './components/OutOfCreditsModal.jsx';
-import FeedbackModal from './components/FeedbackModal.jsx';
-import CreditTopUp from './components/CreditTopUp.jsx';
-import StreakModal from './components/StreakModal.jsx';
-import OceanGlassIconDefs from './components/OceanGlassIconDefs.jsx';
-import './styles/apple-cobalt-polish.css';
-import ElecIntroLoader, { PageLoader } from './components/ElecIntroLoader.jsx';
-const OnboardingSurveyModal = lazy(() => import('./components/OnboardingSurveyModal.jsx'));
-const VerifyEmailGate = lazy(() => import('./components/VerifyEmailGate.jsx'));
-const AuthActionPage = lazy(() => import('./components/AuthActionPage.jsx'));
-
-/* ============ HOOKS + LIB ============ */
-import { useAuth } from './hooks/useAuth.jsx';
-import { useSettings } from './contexts/SettingsContext.jsx';
-import { useTeacherPro } from './hooks/useTeacherPro.js';
-import { useSeoHead, ROUTE_SEO } from './hooks/useSeoHead.js';
-import {
-  getUserRole,
-  peekPostAuthRedirect,
-  consumePostAuthRedirect,
-  clearPostAuthRedirect,
-} from './lib/userRole.js';
-import { getUserProfile } from './lib/userProfileService.js';
-import { getCredits, onCreditsChange } from './lib/creditService.js';
-import { setExamAiUserId } from './lib/examAiUtils.js';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from './lib/firebase.js';
-import { supabase } from './lib/supabase.js';
-
-/* ============ CSS ============ */
-import './app-extra.css';
-import './stats.css';
-import './admin-dashboard.css';
-import './admin-upgrade.css';
-import './styles/classroom.css';
-import './styles/teacher-pro.css';
-import './styles/roadmap-upgrade.css';
-import './styles/native-mobile-app.css';
-
-/* ============ ICONS ============ */
-import {
-  IconHome, IconCalc, IconRobot, IconMicroscope, IconScale,
-  IconTimer, IconCalendar, IconNote, IconTarget, IconQuiz, IconGamepad,
-  IconTools, IconUser, IcoBook,
-} from './components/Icons.jsx';
-
-/* ============ LOCAL ICONS ============ */
-const IconNotebook = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="5" y="3" width="14" height="18" rx="2" />
-    <path d="M9 3v18" />
-    <path d="M12 8h5M12 12h5M12 16h5" />
-  </svg>
-);
-
-const IconChart = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M4 20V10M10 20V4M16 20v-7M22 20V8" />
-  </svg>
-);
-
-const IconClass = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z" />
-    <path d="M4 20a2 2 0 0 0 2 1h13v-3" />
-    <path d="M8 7h7" />
-  </svg>
-);
-
-// PageLoader is imported from ./components/ElecIntroLoader.jsx
-
-/* ============ NAV CONFIG ============ */
-const NAV_MAIN = [
-  ['home', 'Trang chủ', IconHome],
-  ['ai', 'ELEC AI', IconRobot],
-  ['tools', 'Công cụ', IconTools],
-  ['profile', 'Trang cá nhân', IconUser],
-];
-
-/* Mega menu — chia nhóm 3 cột */
-const NAV_TOOLS_GROUPS = [
-  {
-    group: 'Học tập & Khảo thí',
-    tools: [
-      { id: 'roadmap', label: 'Lộ trình KHTN', desc: 'Tiến độ & mục tiêu 3 môn', Icon: IcoBook },
-      { id: 'casio', label: 'Máy tính fx-580VN X', desc: 'Mô phỏng Casio 50 phím · 8 chế độ', Icon: IconCalc },
-      { id: 'formulas', label: 'Công thức KHTN', desc: 'Tra cứu công thức Lý — Hóa — Sinh', Icon: IconCalc },
-      { id: 'analyze', label: 'Phân tích & Hợp chất', desc: 'Nhận diện chất, phản ứng & hiện tượng', Icon: IconMicroscope },
-      { id: 'balance', label: 'Cân bằng PTHH', desc: 'Cân bằng bằng đại số tuyến tính', Icon: IconScale },
-      { id: 'quiz', label: 'Ôn tập Quiz', desc: 'Quiz thông minh + SRS đa môn', Icon: IconQuiz },
-      { id: 'notebook', label: 'Sổ tay lỗi sai', desc: 'Câu sai tự động phân loại theo môn', Icon: IconNotebook },
-      { id: 'doc-studio', label: 'AI Doc Studio', desc: 'Học & tạo quiz từ tài liệu', Icon: IconNote },
-      { id: 'chalkboard', label: 'Bảng phấn 3D', desc: 'Hình không gian & kiểm định cơ học', Icon: IconScale },
-      { id: 'notes', label: 'Ghi chú', desc: 'Note dán trên canvas', Icon: IconNote },
-    ],
-  },
-  {
-    group: 'Tiện ích & Hướng nghiệp',
-    tools: [
-      { id: 'admission', label: 'Tra cứu điểm chuẩn', desc: 'Đo độ vừa sức khối A00, B00, A01, D07', Icon: IconTarget },
-      { id: 'career', label: 'Hướng nghiệp AI', desc: 'Test RIASEC & định hướng ngành', Icon: IcoBook },
-      { id: 'schedule', label: 'Thời khóa biểu', desc: 'Tự lập lịch học, nhắc đúng giờ', Icon: IconCalendar },
-      { id: 'pomodoro', label: 'Clock Hub', desc: 'Pomodoro, hẹn giờ, báo thức', Icon: IconTimer },
-      { id: 'exam', label: 'Kỳ thi', desc: 'Đếm ngược kỳ thi THPTQG & ĐGNL', Icon: IconCalendar },
-      { id: 'grade', label: 'Tính điểm xét tuyển', desc: 'Tính GPA, điểm xét tuyển ĐH', Icon: IconTarget },
-      { id: 'leaderboard', label: 'Bảng xếp hạng', desc: 'Vinh danh chuỗi lớp & học sinh', Icon: IconChart },
-      { id: 'stats', label: 'Thống kê', desc: 'Tiến độ học tập & Elo 3 môn', Icon: IconChart },
-    ],
-  },
-  {
-    group: 'Giải trí & Trực quan',
-    tools: [
-      { id: 'physics-lab', label: 'Phòng Lab Vật lí Ảo', desc: 'Ném xiên, Mạch điện DC, Quang hình, Sóng 2D, Con lắc kép & Olympiad', Icon: IconMicroscope },
-      { id: 'sim-lab', label: 'Mô phỏng Lý & Sinh', desc: 'Mạch RLC, Y-âng, Đột biến ADN & Punnett', Icon: IconMicroscope },
-      { id: 'games', label: 'Trò chơi Khoa học', desc: 'Game tương tác KHTN & lab ảo', Icon: IconGamepad },
-      { id: 'table', label: 'Bảng tuần hoàn', desc: '118 nguyên tố tương tác chuẩn IUPAC', Icon: IconHome },
-    ],
-  },
-];
-
-/* Flat list — dùng cho PAGES + pageTitle */
-const NAV_TOOLS_FLAT = NAV_TOOLS_GROUPS.flatMap((g) => g.tools.map((t) => [t.id, t.label]));
-
-const PAGES = [
-  ...NAV_MAIN,
-  ...NAV_TOOLS_FLAT,
-  ['table', 'Bảng tuần hoàn', null],
-  ['admin', 'Quản trị', null],
-  ['settings', 'Cài đặt', null],
-  ['feedback', 'Phản hồi', null],
-  ['classroom', 'Lớp học', null],
-  ['my-classes', 'Lớp học của tôi', IconClass],
-  ['leaderboard', 'Bảng xếp hạng', IconTarget],
-  ['virtual-exams', 'Phòng thi ảo', IconTarget],
-  ['admission', 'Tra cứu điểm chuẩn & Năng lực', IconTarget],
-  ['career', 'Định hướng nghề nghiệp AI', IconTarget],
-  ['doc-studio', 'AI Studio Tài liệu', IconNotebook],
-  ['study', 'Phòng học lý thuyết & Công thức', IconNotebook],
-  ['chalkboard', 'Bảng phấn tương tác & Kiểm định', IconScale],
-  ['truong', 'Đề án tuyển sinh', IconTarget],
-  ['tap-trung', 'Phòng Tập Trung Pomodoro', IconTimer],
-];
+/* ============ ROUTES METADATA ============ */
+const VALID_PAGES = new Set([
+  'home', 'ai', 'tools', 'profile',
+  'roadmap', 'casio', 'formulas', 'analyze', 'balance', 'quiz', 'notebook', 'doc-studio', 'chalkboard', 'notes',
+  'admission', 'career', 'schedule', 'pomodoro', 'exam', 'grade', 'leaderboard', 'stats',
+  'physics-lab', 'biology-lab', 'sim-lab', 'games', 'table',
+  'admin', 'settings', 'feedback', 'classroom', 'my-classes', 'virtual-exams', 'study', 'truong', 'tap-trung',
+]);
 
 const GAME_ROUTES = [
   'chicken', 'slingshot', 'jeopardy', 'lab', 'battle', 'sudoku',
@@ -229,7 +89,6 @@ const GAME_ROUTES = [
   ...CAMERA_GAMES.map((g) => g.id),
 ].map((g) => 'games/' + g);
 
-/* ============ PAGE ROUTING HELPERS ============ */
 const CLEAN_PATH_MAP = {
   'bang-tuan-hoan': 'table',
   'can-bang-phuong-trinh-hoa-hoc': 'balance',
@@ -251,15 +110,21 @@ const CLEAN_PATH_MAP = {
   'quiz': 'quiz',
   'mo-phong-khtn': 'sim-lab',
   'phong-thi-nghiem-vat-li': 'physics-lab',
+  'phong-thi-nghiem-sinh-hoc': 'biology-lab',
   'may-tinh-casio-580': 'casio',
   'tap-trung': 'pomodoro',
   'auth-action': 'auth-action',
 };
 
+const PUBLIC_SEO_PAGES = [
+  'ai', 'table', 'balance', 'formulas', 'casio', 'roadmap', 'study', 'grade',
+  'virtual-exams', 'tools', 'admission', 'career', 'doc-studio',
+  'chalkboard', 'sim-lab', 'physics-lab', 'biology-lab', 'quiz', 'games', 'leaderboard', 'pomodoro', 'tap-trung', 'schedule',
+];
+
 const readPage = () => {
   if (typeof window === 'undefined') return 'home';
 
-  // 1. Khi có hash, hash LUÔN có quyền ưu tiên cao nhất để không bị kẹt khi click menu từ trang SEO clean path
   const raw = (window.location.hash || '').replace(/^#\/?/, '').split('?')[0].replace(/^\/+/, '');
   const h = raw;
   if (h) {
@@ -269,16 +134,14 @@ const readPage = () => {
     if (h === 'truong' || h.startsWith('truong/')) return h;
     if (h === 'admin' || h.startsWith('admin/')) return 'admin';
     if (h === 'main' || h === 'home') return 'home';
-    if (PAGES.some((p) => p[0] === h)) return h;
+    if (VALID_PAGES.has(h)) return h;
   }
 
-  // 2. Link xác thực / đặt lại mật khẩu từ Firebase Action URL (?mode=...&oobCode=...)
   const searchParams = new URLSearchParams(window.location.search || '');
   if (searchParams.get('oobCode') && searchParams.get('mode')) {
     return 'auth-action';
   }
 
-  // 3. Khi hash rỗng hoặc chưa chọn, kiểm tra pathname SEO sạch
   const path = (window.location.pathname || '').replace(/^\/+/, '').split('/')[0];
   if (CLEAN_PATH_MAP[path]) return CLEAN_PATH_MAP[path];
 
@@ -286,72 +149,16 @@ const readPage = () => {
   return '404';
 };
 
-const pageTitle = (page) => {
-  if (ROUTE_SEO[page]?.title) return ROUTE_SEO[page].title;
-  if (page === '404') return 'Không tìm thấy trang · ELEC Science AI';
-  const hit = PAGES.find((p) => p[0] === page);
-  if (hit) return hit[1] + ' · ELEC Science AI';
-  if (page.startsWith('games/')) return 'Trò chơi Khoa học · ELEC Science AI';
-  if (page.startsWith('exam/')) return 'Làm bài thi thử · ELEC Science AI';
-  return 'ELEC Science AI (ELECAI) — Nền Tảng Học & Luyện Thi Khoa Học Tự Nhiên Chuẩn 2026';
-};
-
-const pageMeta = (page) => {
-  const metas = {
-    home: 'Học tập Khoa học Tự nhiên thông minh với AI: Vật lí, Hóa học, Sinh học, phòng thi ảo, quiz và trò chơi giáo dục.',
-    ai: 'Trợ lý AI Khoa học Tự nhiên — giải bài tập Vật lí, Hóa học, Sinh học, phân tích ảnh đề, sinh câu hỏi ôn tập.',
-    table: 'Bảng tuần hoàn 118 nguyên tố — lọc, tìm kiếm, xem chi tiết.',
-    tools: 'Bộ công cụ Khoa học Tự nhiên: cân bằng PTHH, máy tính dao động/RLC, máy tính di truyền ADN, phân tích hợp chất.',
-    formulas: 'Tra cứu công thức Khoa học Tự nhiên (Vật lí — Hóa học — Sinh học) nhanh chóng theo chuyên đề.',
-    balance: 'Cân bằng phương trình hóa học chính xác bằng đại số tuyến tính.',
-    analyze: 'Phân tích hợp chất — nhận diện loại, tính chất, phản ứng đặc trưng.',
-    pomodoro: 'Clock Hub — Đồng hồ tổng hợp: Pomodoro, hẹn giờ, báo thức, bấm giây, đồng hồ thế giới.',
-    schedule: 'Thời khóa biểu — tự lập lịch học, nhắc đúng giờ và theo dõi tiến độ mỗi ngày.',
-    quiz: 'Ôn tập KHTN với quiz thông minh đa môn, lặp lại ngắt quãng SRS.',
-    roadmap: 'Lộ trình kiến thức KHTN — tiến độ theo chuyên đề, mức thành thạo, bản đồ kiến thức và gợi ý học tiếp.',
-    games: 'Học Khoa học qua trò chơi tương tác: kéo co, vòng quay, đua xe, phòng lab ảo.',
-    profile: 'Trang cá nhân — quản lý tài khoản, thống kê học tập KHTN.',
-    classroom: 'Quản lý lớp học — tạo lớp, giao đề, quản lý học sinh theo bộ môn.',
-    'my-classes': 'Tham gia lớp học — dán key lớp hoặc link đề thầy cô gửi.',
-    leaderboard: 'Bảng xếp hạng chuỗi và thành tích học tập — vinh danh các lớp và học sinh bền bỉ nhất.',
-    'virtual-exams': 'Phòng thi ảo ELEC AI — Luyện đề thi thử KHTN (Lý - Hóa - Sinh) bấm giờ thật, cấu hình kỳ thi chuẩn, phân khu VIP, PRO, FREE.',
-    admin: 'Trang quản trị hệ thống — quản lý đề thi, người dùng, key PRO.',
-  };
-  return metas[page] || metas.home;
-};
-
-/* ============ MAIN APP ============ */
+/* ============ MAIN APP (LIGHTWEIGHT ROUTER ENTRY) ============ */
 export default function App() {
   const { ready, profileReady, isLoggedIn, user, logout } = useAuth();
   const { settings } = useSettings();
-  const pro = useTeacherPro();
   const [hashTick, setHashTick] = useState(0);
-  const [surveyOpen, setSurveyOpen] = useState(false);
+  const [theme, setTheme] = useLocalStorage('cs-theme-v2', 'dark');
 
   const rawPage = useMemo(() => readPage(), [hashTick]); // eslint-disable-line react-hooks/exhaustive-deps
   const page = !isLoggedIn && rawPage === '404' ? 'home' : rawPage;
 
-  const [menu, setMenu] = useState(false);
-  const [toolOpen, setToolOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [scrolled, setScrolled] = useState(false);
-  const [askLogout, setAskLogout] = useState(false);
-  const [userRole, setUserRole] = useState('student');
-  const dlgRef = useRef(null);
-  const navRef = useRef(null);
-  const progRef = useRef(null);
-  const [theme, setTheme] = useLocalStorage('cs-theme-v2', 'dark');
-  const [credits, setCredits] = useState(null);
-  const [virtualExamActive, setVirtualExamActive] = useState(false);
-  const [isMobileScreen, setIsMobileScreen] = useState(
-    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
-  );
-
-  const effectiveRole =
-    pro?.isPro && pro?.isTeacherPro !== false
-      ? 'teacher'
-      : (userRole === 'teacher' || getUserRole(user) === 'teacher' ? 'teacher' : userRole);
-  const isTeacherAccount = Boolean(effectiveRole === 'teacher' || isAdmin(user));
   const needsEmailVerification = Boolean(
     isLoggedIn &&
     user &&
@@ -360,136 +167,6 @@ export default function App() {
     !isAdmin(user)
   );
 
-  useEffect(() => {
-    const onResize = () => setIsMobileScreen(window.innerWidth <= 768);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  // Tự động đóng mọi dropdown/modal menu trên nav khi chuyển trang
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent('elec-close-nav-dropdowns'));
-  }, [page]);
-
-  useEffect(() => {
-    const onVexMode = (e) => setVirtualExamActive(!!e.detail?.active);
-    window.addEventListener('elec-virtual-exam-mode', onVexMode);
-    return () => window.removeEventListener('elec-virtual-exam-mode', onVexMode);
-  }, []);
-
-  /* ============ ONBOARDING SURVEY AUTO-OPEN ============ */
-  useEffect(() => {
-    const onManualOpen = () => setSurveyOpen(true);
-    const onToggleThemeEvt = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-    window.addEventListener('elec-open-onboarding-survey', onManualOpen);
-    window.addEventListener('elec-toggle-theme', onToggleThemeEvt);
-    return () => {
-      window.removeEventListener('elec-open-onboarding-survey', onManualOpen);
-      window.removeEventListener('elec-toggle-theme', onToggleThemeEvt);
-    };
-  }, [setTheme]);
-
-  useEffect(() => {
-    if (!isLoggedIn || !user?.uid || !profileReady) return;
-    const needsVerify =
-      !user.emailVerified &&
-      user.providerData?.some((p) => p.providerId === 'password') &&
-      !isAdmin(user);
-    if (needsVerify) return;
-    if (page.startsWith('exam/') || page === 'admin' || page === 'classroom' || page === 'auth-action') return;
-    if (peekPostAuthRedirect() === 'classroom') return;
-    const prof = getUserProfile(user.uid, user);
-    if (isTeacherAccount || prof?.survey?.role === 'teacher') return;
-    if (!prof?.survey?.completed && !prof?.survey?.skippedAt) {
-      setSurveyOpen(true);
-    }
-  }, [isLoggedIn, user?.uid, user?.emailVerified, profileReady, page, user, isTeacherAccount]);
-
-  /* ============ LOAD CREDITS ============ */
-  useEffect(() => {
-    if (!user?.uid) { setCredits(null); setExamAiUserId(null); return; }
-    setExamAiUserId(user.uid); // Cho exam AI cũng trừ credits
-    getCredits(user.uid).then((c) => setCredits(c.balance)).catch(() => {});
-    const unsub = onCreditsChange(user.uid, (data) => setCredits(data.balance));
-    // Lắng nghe event từ creditService khi trừ điểm hoặc cộng điểm
-    const onCreditEvt = (e) => {
-      if (e.detail?.balance != null) {
-        setCredits(e.detail.balance);
-      } else if (e.detail?.delta != null) {
-        setCredits((prev) => (prev != null ? prev + e.detail.delta : e.detail.delta));
-      }
-    };
-    window.addEventListener('cs-credit-update', onCreditEvt);
-    return () => { unsub(); window.removeEventListener('cs-credit-update', onCreditEvt); };
-  }, [user?.uid]);
-
-  /* ============ LOAD ROLE ============ */
-  useEffect(() => {
-    if (!user?.uid) {
-      setUserRole('student');
-      return undefined;
-    }
-
-    const saveLocalRole = (role) => {
-      setUserRole(role);
-      try {
-        const meta = JSON.parse(localStorage.getItem('cs-user-meta') || '{}');
-        meta[user.uid] = { ...(meta[user.uid] || {}), role };
-        localStorage.setItem('cs-user-meta', JSON.stringify(meta));
-      } catch { /* ignore */ }
-    };
-
-    if (pro?.isPro && pro?.isTeacherPro !== false) {
-      saveLocalRole('teacher');
-      return undefined;
-    }
-
-    setUserRole(getUserRole(user));
-
-    let alive = true;
-    const syncRoleFromServer = async () => {
-      try {
-        const { data: prof } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.uid)
-          .maybeSingle();
-        if (!alive) return;
-        if (prof?.role === 'teacher') {
-          saveLocalRole('teacher');
-          return;
-        }
-      } catch { /* ignore */ }
-
-      try {
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        if (!alive) return;
-        if (snap.exists()) {
-          const remoteRole = snap.data()?.role;
-          if (remoteRole === 'teacher' || (remoteRole === 'student' && getUserRole(user) !== 'teacher')) {
-            saveLocalRole(remoteRole);
-          }
-        }
-      } catch (e) {
-        console.warn('Không load được role:', e);
-      }
-    };
-
-    syncRoleFromServer();
-    const onRoleUpdate = () => {
-      if (pro?.isPro && pro?.isTeacherPro !== false) {
-        saveLocalRole('teacher');
-      } else {
-        setUserRole(getUserRole(user));
-      }
-    };
-    window.addEventListener('user-profile-change', onRoleUpdate);
-    return () => {
-      alive = false;
-      window.removeEventListener('user-profile-change', onRoleUpdate);
-    };
-  }, [user?.uid, pro?.isPro, pro?.isTeacherPro]);
-
   /* ============ THEME ============ */
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -497,7 +174,13 @@ export default function App() {
     if (meta) meta.content = theme === 'dark' ? '#030618' : '#f3f6ff';
   }, [theme]);
 
-  /* ============ DYNAMIC SEO (META + OG + CANONICAL) ============ */
+  useEffect(() => {
+    const onToggleThemeEvt = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+    window.addEventListener('elec-toggle-theme', onToggleThemeEvt);
+    return () => window.removeEventListener('elec-toggle-theme', onToggleThemeEvt);
+  }, [setTheme]);
+
+  /* ============ DYNAMIC SEO ============ */
   useSeoHead(page);
 
   useEffect(() => {
@@ -512,94 +195,18 @@ export default function App() {
     }
   }, [ready, page, user]);
 
-  /* ============ LOGIN/LOGOUT RESET & POST-AUTH TEACHER REDIRECT ============ */
+  /* ============ LOGOUT CLEANUP ============ */
   const prevLoginRef = useRef(isLoggedIn);
-  const prevNeedsVerifyRef = useRef(needsEmailVerification);
   useEffect(() => {
-    const justLoggedIn = !prevLoginRef.current && isLoggedIn;
-    const justVerifiedEmail = prevNeedsVerifyRef.current && !needsEmailVerification && isLoggedIn;
-
     if (prevLoginRef.current && !isLoggedIn) {
       clearPostAuthRedirect();
       if (window.location.hash !== '#home') history.replaceState(null, '', '#home');
       setHashTick((t) => t + 1);
     }
-
-    if (isLoggedIn && user?.uid && page !== 'auth-action' && !needsEmailVerification) {
-      const pendingTarget = peekPostAuthRedirect();
-      const effectiveTeacher = Boolean(
-        isTeacherAccount ||
-        getUserRole(user) === 'teacher' ||
-        (pro?.isPro && pro?.isTeacherPro !== false)
-      );
-      const currentRoute = window.location.hash.replace(/^#\/?/, '').split(/[/?]/)[0];
-      const onEntryOrHome = !currentRoute || currentRoute === 'home' || currentRoute === 'login' || currentRoute === 'register';
-
-      if (pendingTarget === 'classroom') {
-        if (effectiveTeacher) {
-          consumePostAuthRedirect();
-          setSurveyOpen(false);
-          if (window.location.hash !== '#classroom') {
-            history.replaceState(null, '', '#classroom');
-            setHashTick((t) => t + 1);
-          }
-          window.scrollTo(0, 0);
-        } else if (profileReady) {
-          consumePostAuthRedirect();
-          if (onEntryOrHome) {
-            history.replaceState(null, '', '#home');
-            setHashTick((t) => t + 1);
-          }
-        }
-      } else if ((justLoggedIn || justVerifiedEmail) && effectiveTeacher && onEntryOrHome) {
-        setSurveyOpen(false);
-        if (window.location.hash !== '#classroom') {
-          history.replaceState(null, '', '#classroom');
-          setHashTick((t) => t + 1);
-        }
-        window.scrollTo(0, 0);
-      } else if (justLoggedIn) {
-        if (pendingTarget) consumePostAuthRedirect();
-        const isRealRoute = currentRoute !== '' && currentRoute !== 'login' && currentRoute !== 'register' && readPage() !== '404';
-        const keep = window.location.hash.startsWith('#exam/') || isRealRoute;
-        if (!keep && window.location.hash !== '#home') history.replaceState(null, '', '#home');
-        setHashTick((t) => t + 1);
-        window.scrollTo(0, 0);
-      }
-    }
-
     prevLoginRef.current = isLoggedIn;
-    prevNeedsVerifyRef.current = needsEmailVerification;
-  }, [isLoggedIn, needsEmailVerification, user, page, isTeacherAccount, profileReady, pro?.isPro, pro?.isTeacherPro]);
+  }, [isLoggedIn]);
 
-  /* ============ LOGOUT DIALOG ============ */
-  useEffect(() => {
-    const d = dlgRef.current;
-    if (!d) return;
-    if (askLogout && !d.open) d.showModal();
-    if (!askLogout && d.open) d.close();
-  }, [askLogout]);
-
-  /* ============ SCROLL PROGRESS ============ */
-  useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 12);
-      const h = document.documentElement.scrollHeight - window.innerHeight;
-      if (progRef.current) {
-        progRef.current.style.transform = `scaleX(${h > 0 ? Math.min(1, window.scrollY / h) : 0})`;
-      }
-    };
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  /* Màn loading gắn với trạng thái thật (auth sẵn sàng), không còn chờ giả 700ms */
-  useEffect(() => { if (ready) setLoading(false); }, [ready]);
-  /* Nộp lại các bài bị kẹt do rớt mạng */
-  useEffect(() => { initSubmitQueue(); initServerClock(); }, []);
-
-  /* ============ HASH + KEYBOARD + CLICK ============ */
+  /* ============ HASH LISTENER ============ */
   useEffect(() => {
     const syncSubjectFromHash = () => {
       try {
@@ -619,33 +226,12 @@ export default function App() {
     const onHash = () => {
       syncSubjectFromHash();
       setHashTick((x) => x + 1);
-      setMenu(false);
-      setToolOpen(false);
       window.scrollTo(0, 0);
     };
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        setToolOpen(false);
-        setMenu(false);
-      }
-    };
-    const onDocClick = (e) => {
-      if (navRef.current && !navRef.current.contains(e.target)) {
-        setToolOpen(false);
-        setMenu(false);
-      }
-    };
     window.addEventListener('hashchange', onHash);
-    window.addEventListener('keydown', onKey);
-    document.addEventListener('mousedown', onDocClick);
-    return () => {
-      window.removeEventListener('hashchange', onHash);
-      window.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onDocClick);
-    };
+    return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  /* ============ NAVIGATE (dùng cho MyClasses) ============ */
   const navigate = useCallback((target) => {
     if (!target) return;
     const next = target.replace(/^#/, '');
@@ -656,130 +242,8 @@ export default function App() {
     }
   }, []);
 
-  /* ============ LAYOUT MODES ============ */
-  const isExamMode = page.startsWith('exam/');
-  const isAdminMode = page === 'admin';
-
-  /* ============ GUARDS ============ */
-  if (!ready) {
-    return null;
-  }
-
-  if (page === 'auth-action') {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <AuthActionPage />
-      </Suspense>
-    );
-  }
-
-  const PUBLIC_SEO_PAGES = [
-    'ai', 'table', 'balance', 'formulas', 'casio', 'roadmap', 'study', 'grade',
-    'virtual-exams', 'tools', 'admission', 'career', 'doc-studio',
-    'chalkboard', 'sim-lab', 'quiz', 'games', 'leaderboard', 'pomodoro', 'tap-trung', 'schedule',
-  ];
-
-  if (!isLoggedIn) {
-    if (PUBLIC_SEO_PAGES.includes(page)) {
-      if (page === 'ai' || page === 'pomodoro' || page === 'tap-trung') {
-        return (
-          <Suspense fallback={<PageLoader />}>
-            <main id="main" tabIndex="-1" style={{ width: '100%', height: '100%' }}>
-              {renderPage()}
-            </main>
-          </Suspense>
-        );
-      }
-      return (
-        <div className="public-guest-wrap" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <SystemAnnouncementBanner />
-          <div className="guest-banner" style={{
-            background: 'linear-gradient(90deg, #1d4ed8, #6d28d9)',
-            color: '#fff',
-            padding: '8px 12px',
-            textAlign: 'center',
-            fontSize: '12.5px',
-            fontWeight: 600,
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px 10px',
-            position: 'sticky',
-            top: 0,
-            zIndex: 1000,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
-          }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8-5-3.6-5 3.6 1.9-5.8L4 8.8h6.1z" />
-              </svg>
-              <span>Bạn đang xem bản trải nghiệm mở của <strong>ELEC AI</strong>.</span>
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <a
-                href="/#/register"
-                style={{
-                  background: '#fff',
-                  color: '#1d4ed8',
-                  padding: '4px 12px',
-                  borderRadius: '999px',
-                  textDecoration: 'none',
-                  fontWeight: 700,
-                  fontSize: '12px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Đăng ký miễn phí
-              </a>
-              <a
-                href="/#/login"
-                style={{
-                  color: 'rgba(255,255,255,0.92)',
-                  textDecoration: 'underline',
-                  fontSize: '12px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Đăng nhập
-              </a>
-            </span>
-          </div>
-          <Suspense fallback={<PageLoader />}>
-            <main id="main" tabIndex="-1" style={{ flex: 1 }}>
-              {renderPage()}
-            </main>
-          </Suspense>
-          <SiteFooter />
-        </div>
-      );
-    }
-
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <SystemAnnouncementBanner />
-        <ElecIntroLoader />
-        <Landing
-          theme={theme}
-          onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          authOpen={page === 'login' || page === 'register' || page === 'profile' || page.startsWith('exam/')}
-          authMode={page === 'register' ? 'register' : 'login'}
-        />
-      </Suspense>
-    );
-  }
-
-  /* ============ EMAIL VERIFICATION GATE (chống Gmail ảo) ============ */
-  if (needsEmailVerification) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <VerifyEmailGate />
-      </Suspense>
-    );
-  }
-
-  /* ============ PAGE ROUTING ============ */
-  function renderPage() {
+  /* ============ PAGE RENDERER ============ */
+  const renderPage = useCallback(({ isTeacherAccount = false, credits = null } = {}) => {
     if (page === 'home') return <Home />;
 
     if (page === 'table') {
@@ -792,18 +256,13 @@ export default function App() {
 
     if (page === 'tools') return <ToolsPage />;
 
-    /* ============ CLASSROOM ROUTES ============ */
     if (page === 'classroom') {
-      if (isTeacherAccount) {
-        return <TeacherDashboard />;
-      }
-      return <StudentClass />;
+      return isTeacherAccount ? <TeacherDashboard /> : <StudentClass />;
     }
     if (page === 'my-classes') {
       return <MyClasses onNavigate={navigate} />;
     }
 
-    /* ============ EXAM MODE ============ */
     if (page.startsWith('exam/')) {
       return (
         <ExamJoin
@@ -845,6 +304,7 @@ export default function App() {
     if (page === 'chalkboard') return <ChalkboardView />;
     if (page === 'sim-lab') return <ScienceSimLab onNavigate={navigate} />;
     if (page === 'physics-lab') return <PhysicsLabPage onNavigate={navigate} />;
+    if (page === 'biology-lab') return <BiologyLabPage onNavigate={navigate} />;
     if (page === 'casio') return <Casio580Page />;
 
     if (page === 'truong' || page.startsWith('truong/')) {
@@ -861,7 +321,7 @@ export default function App() {
         </>
       );
     }
-  
+
     if (page === 'stats') return <StatsPage />;
     if (page === 'profile') return <ProfilePage credits={credits} />;
     if (page === 'settings') return <Settings theme={theme} onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />;
@@ -891,198 +351,84 @@ export default function App() {
     }
 
     return <Home />;
-  };
+  }, [page, navigate, theme, setTheme, user]);
 
-  /* ============ EXAM MODE LAYOUT ============ */
-  if (isExamMode) {
+  /* ============ GUARDS ============ */
+  const hasLocalSessionHint = (() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      if (localStorage.getItem('elec-has-session') === '1') return true;
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const k = localStorage.key(i) || '';
+        if (k.startsWith('firebase:authUser:')) return true;
+      }
+    } catch { /* ignore */ }
+    return false;
+  })();
+
+  const isGuestImmediateRoute =
+    page === 'home' ||
+    page === 'login' ||
+    page === 'register' ||
+    PUBLIC_SEO_PAGES.includes(page);
+
+  if (!ready && (hasLocalSessionHint || !isGuestImmediateRoute)) {
+    return null;
+  }
+
+  if (page === 'auth-action') {
     return (
       <Suspense fallback={<PageLoader />}>
-        {renderPage()}
+        <AuthActionPage />
       </Suspense>
     );
   }
 
-  /* ============ ADMIN MODE LAYOUT ============ */
-  if (isAdminMode && isAdmin(user)) {
+  if (!isLoggedIn) {
+    if (PUBLIC_SEO_PAGES.includes(page)) {
+      return (
+        <Suspense fallback={<PageLoader />}>
+          <PublicToolShell page={page} renderPage={renderPage} />
+        </Suspense>
+      );
+    }
+
     return (
       <Suspense fallback={<PageLoader />}>
-        {renderPage()}
+        <SystemAnnouncementBanner />
+        <Landing
+          theme={theme}
+          onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          authOpen={page === 'login' || page === 'register' || page === 'profile' || page.startsWith('exam/')}
+          authMode={page === 'register' ? 'register' : 'login'}
+        />
       </Suspense>
     );
   }
 
-  /* ============ CHẾ ĐỘ BẢO TRÌ TOÀN HỆ THỐNG (CHỈ ADMIN ĐI QUA) ============ */
-  if (settings?.maintenanceMode && !isAdmin(user)) {
+  if (needsEmailVerification) {
     return (
-      <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24, background: 'var(--bg, #0b1120)', color: 'var(--ink, #f8fafc)', textAlign: 'center' }}>
-        <div style={{ maxWidth: 460, padding: '32px 28px', borderRadius: 24, background: 'var(--panel, rgba(255,255,255,0.06))', border: '1px solid var(--line, rgba(255,255,255,0.14))', display: 'grid', gap: 14, justifyItems: 'center' }}>
-          <img src="/img/elec/elec-wink.png" alt="ELEC AI" style={{ width: 84, height: 84, objectFit: 'contain' }} />
-          <h1 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 800 }}>Hệ thống đang bảo trì nâng cấp</h1>
-          <p style={{ margin: 0, opacity: 0.8, lineHeight: 1.6, fontSize: '0.92rem' }}>
-            {settings.siteName || 'ELEC AI'} đang cập nhật dữ liệu và cải thiện hiệu năng. Vui lòng quay lại sau ít phút nhé!
-          </p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            style={{ padding: '10px 22px', borderRadius: 999, border: 0, background: '#2563eb', color: '#fff', fontWeight: 700, cursor: 'pointer' }}
-          >
-            Kiểm tra lại
-          </button>
-        </div>
-      </div>
+      <Suspense fallback={<PageLoader />}>
+        <VerifyEmailGate />
+      </Suspense>
     );
   }
-
-  const featureDisabledLabel = !isAdmin(user)
-    ? (page === 'ai' && settings?.enableAI === false ? 'Trợ lý AI (ELEC AI)'
-      : (page === 'games' || page.startsWith('games/')) && settings?.enableGames === false ? 'Trò chơi Khoa học'
-      : page === 'quiz' && settings?.enableQuiz === false ? 'Ôn tập (Quiz)'
-      : null)
-    : null;
-
-  /* ============ LAYOUT CHÍNH ============ */
-  /* Trang AI Chat chạy toàn màn hình: ẩn nav trên/dưới, mascot, nút chat nổi, footer.
-     AIChat đã có sẵn nút "Về trang chủ" (ds-exit-btn) nên không bị kẹt trong trang. */
-  const isAiPage = page === 'ai' && !featureDisabledLabel;
-  /* Khu giáo viên (Lớp học + AutoExam Studio...) cũng chạy toàn màn hình, không có nav chính.
-     Học sinh vào #classroom vẫn thấy giao diện thường. */
-  const isTeacherPage = page === 'classroom' && isTeacherAccount;
-  /* Khi vào làm bài trong Phòng thi ảo (#quiz / #virtual-exams): ẩn toàn bộ Nav, Mascot, ChatWidget, Footer giống hệt ExamJoin */
-  const isVirtualExamRoom = (page === 'quiz' || page === 'virtual-exams') && (virtualExamActive || (typeof document !== 'undefined' && document.body?.dataset?.virtualExamActive === '1'));
-  /* Phòng Tập Trung Pomodoro (#pomodoro / #tap-trung): hiển thị FULL NỀN 100vw×100dvh không vướng Navbar/Footer, vẫn giữ Con Chat PetWidget */
-  const isFocusStudioPage = page === 'pomodoro' || page === 'tap-trung';
-  /* Phòng Lab 3D (#games/lab-3d): toàn màn hình chuyên dụng — ẩn toàn bộ Navbar, Footer, Mascot & ChatWidget ngoài */
-  const isLab3dPage = page === 'games/lab-3d' && !featureDisabledLabel;
-  const isFullPage = isAiPage || isTeacherPage || isVirtualExamRoom || isLab3dPage;
-  const hidePageChrome = isFullPage || isFocusStudioPage;
 
   return (
-    <div data-page={page} className={isVirtualExamRoom ? 'is-virtual-exam-fullscreen' : isFocusStudioPage ? 'is-focus-fullscreen' : undefined}>
-      <OceanGlassIconDefs />
-      {!isVirtualExamRoom && !isFocusStudioPage && !isLab3dPage && (
-        <a
-          className="skip-link"
-          href="#main"
-          onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}
-        >Bỏ qua điều hướng</a>
-      )}
-      {!hidePageChrome && <div className="scroll-progress" ref={progRef} aria-hidden="true" />}
-
-      {!isFullPage && settings?.enablePet !== false && <PetWidget />}
-      {!isVirtualExamRoom && !isFocusStudioPage && !isLab3dPage && settings?.enableChat !== false && <ChatWidget />}
-      {!hidePageChrome && (
-        <div className="elec-global-bottom-blur" aria-hidden="true">
-          <div className="elec-blur-layer l1" />
-          <div className="elec-blur-layer l2" />
-          <div className="elec-blur-layer l3" />
-          <div className="elec-blur-layer l4" />
-          <div className="elec-blur-fade" />
-        </div>
-      )}
-      <OutOfCreditsModal />
-      <FeedbackModal />
-      <CreditTopUp userId={user?.uid} onCreditUpdate={(newBal) => setCredits(newBal)} />
-      <StreakModal />
-      {surveyOpen && (
-        <Suspense fallback={null}>
-          <OnboardingSurveyModal
-            open={surveyOpen}
-            onClose={() => setSurveyOpen(false)}
-          />
-        </Suspense>
-      )}
-      {/* Vài bạn Elec cỡ lớn đứng cạnh các mục của trang chủ (chỉ hiện trên máy tính) */}
-      {/* {page === 'home' && <ElecBuddies />} */}
-
-      {!isVirtualExamRoom && !isLab3dPage && <SystemAnnouncementBanner />}
-      {!isVirtualExamRoom && !isLab3dPage && <LiveSessionBanner />}
-      <GlobalPushBanner />
-
-      <ElecIntroLoader />
-
-      {!hidePageChrome && isMobileScreen && (
-        <MobileHeader
-          page={page}
-          theme={theme}
-          isPro={Boolean(pro.isPro && pro.isTeacherPro !== false)}
-          userRole={effectiveRole}
-          credits={credits}
-          onSearch={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
-          onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          onMenu={() => setMenu(true)}
-        />
-      )}
-
-      {!hidePageChrome && !isMobileScreen && (
-        <DesktopNav
-          page={page}
-          theme={theme}
-          scrolled={scrolled}
-          isAdmin={isAdmin(user)}
-          isPro={Boolean(pro.isPro && pro.isTeacherPro !== false)}
-          userRole={effectiveRole}
-          credits={credits}
-          toolOpen={toolOpen}
-          onToolOpen={setToolOpen}
-          tools={NAV_TOOLS_GROUPS}
-          navRef={navRef}
-          onSearch={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
-          onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          onLogout={() => setAskLogout(true)}
-        />
-      )}
-
-      <StudySheet
-        open={menu}
-        onClose={() => setMenu(false)}
+    <Suspense fallback={<PageLoader />}>
+      <AuthenticatedAppShell
+        page={page}
+        hashTick={hashTick}
+        setHashTick={setHashTick}
+        readPage={readPage}
         theme={theme}
-        onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+        setTheme={setTheme}
+        user={user}
+        logout={logout}
+        profileReady={profileReady}
+        settings={settings}
+        renderPage={renderPage}
       />
-
-      <main id="main" tabIndex={-1}>
-        <ErrorBoundary resetKey={hashTick}>
-          <Suspense fallback={<PageLoader />}>
-            {featureDisabledLabel ? (
-              <section className="wrap" style={{ padding: '48px 16px', textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
-                <h2 style={{ marginBottom: 8 }}>{featureDisabledLabel} đang tạm bảo trì</h2>
-                <p style={{ opacity: 0.78, marginBottom: 18 }}>
-                  Quản trị viên đang tạm khóa tính năng này để nâng cấp. Vui lòng quay lại sau!
-                </p>
-                <a href="#home" style={{ display: 'inline-block', padding: '10px 20px', borderRadius: 999, background: '#2563eb', color: '#fff', fontWeight: 700, textDecoration: 'none' }}>
-                  Về trang chủ
-                </a>
-              </section>
-            ) : renderPage()}
-          </Suspense>
-        </ErrorBoundary>
-      </main>
-
-      <dialog
-        ref={dlgRef}
-        className="app-dialog"
-        onClose={() => setAskLogout(false)}
-        onClick={(e) => e.target === dlgRef.current && setAskLogout(false)}
-      >
-        <h3>Đăng xuất?</h3>
-        <p>Tài khoản <b>{user?.displayName || user?.email}</b> sẽ thoát khỏi thiết bị này.</p>
-        <div className="app-dialog-actions">
-          <button type="button" onClick={() => setAskLogout(false)}>Ở lại</button>
-          <button type="button" className="danger" onClick={logout}>Đăng xuất</button>
-        </div>
-      </dialog>
-
-      {!hidePageChrome && !isMobileScreen && <SiteFooter />}
-
-      {!hidePageChrome && isMobileScreen && (
-        <BottomNav
-          page={page}
-          userRole={effectiveRole}
-          isPro={Boolean(pro.isPro && pro.isTeacherPro !== false)}
-          onOpenMore={() => setMenu(true)}
-        />
-      )}
-
-      {!isVirtualExamRoom && <CommandPalette />}
-    </div>
+    </Suspense>
   );
 }

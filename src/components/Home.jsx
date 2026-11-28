@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import '../styles/home-apple-bento.css';
 import AIMark from './AIMark.jsx';
 import { askAI, useGreeting } from './HomePlus.jsx';
 import { useAuth } from '../hooks/useAuth.jsx';

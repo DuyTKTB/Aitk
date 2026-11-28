@@ -713,8 +713,9 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
   const max = maxScore(counts, scoring);
 
   const addCode = () => {
-    const c = newCode.replace(/\D/g, '').padStart(3, '0').slice(-3);
-    if (!/^\d{3}$/.test(newCode.replace(/\D/g, '').padStart(3, '0'))) return;
+    const digits = newCode.replace(/\D/g, '');
+    if (!digits) return;
+    const c = digits.padStart(3, '0').slice(-3);
     if (codes.includes(c)) { setActive(c); setNewCode(''); return; }
     setCodes((a) => [...a, c].sort());
     setActive(c);
@@ -741,7 +742,7 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
       const part = classifyExamQuestionPart(q);
       if (part === 2) p2N += 1;
       else if (part === 3) p3N += 1;
-      else p1N += 1;
+      else if (part === 1) p1N += 1;
     });
     const k1 = keyP1FromExam(ex, MAX_COUNTS.p1);
     const k2 = keyP2FromExam(ex, MAX_COUNTS.p2);
@@ -755,7 +756,7 @@ function PaperSetup({ initial, classes, exams, saving, onSave, onCancel, say }) 
       p3: keyToTextP3(k3),
     });
     setCounts((c) => ({
-      p1: p1N > 0 ? Math.min(MAX_COUNTS.p1, p1N) : c.p1,
+      p1: p1N > 0 ? Math.min(MAX_COUNTS.p1, p1N) : (p2N + p3N > 0 ? 0 : c.p1),
       p2: p2N > 0 ? Math.min(MAX_COUNTS.p2, p2N) : (p1N + p3N > 0 ? 0 : c.p2),
       p3: p3N > 0 ? Math.min(MAX_COUNTS.p3, p3N) : (p1N + p2N > 0 ? 0 : c.p3),
     }));
@@ -1438,7 +1439,7 @@ function PaperGrade({
     }
   }, [vipUnlocked, omrRemaining, onOmrUsed]);
 
-  /* Đánh dấu studentManual khi sửa tên HS; khi sửa SBD thì cho phép tự khớp lại sbdMap */
+  /* Đánh dấu studentManual khi sửa tên HS; khi sửa SBD thì tự khớp lại sbdMap hoặc xóa liên kết cũ nếu không khớp */
   const updateItem = useCallback((id, patch) => {
     setItems((cur) => cur.map((c) => {
       if (c.id !== id) return c;
@@ -1451,6 +1452,9 @@ function PaperGrade({
           next.studentId = matched.id || null;
           next.studentName = matched.name || '';
           next.studentManual = false;
+        } else if (!c.studentManual) {
+          next.studentId = null;
+          next.studentName = '';
         }
       }
       if ('read' in patch || 'code' in patch || 'sbd' in patch || 'studentId' in patch || 'studentName' in patch) {
@@ -1473,18 +1477,19 @@ function PaperGrade({
       onUndo: () => {
         setItems((cur) => [...cur, removed]);
         if (removed.saved && paper?.id && removed.read) {
+          const restored = regrade(matchStudent(removed));
           savePaperResults(paper.id, [{
-            id: removed.id,
-            sbd: removed.sbd,
-            code: removed.code,
-            studentId: removed.studentId,
-            studentName: removed.studentName,
-            p1: removed.read.p1,
-            p2: removed.read.p2,
-            p3: removed.read.p3,
-            grade: removed.grade,
-            needsReview: removed.needsReview,
-            fileName: removed.fileName,
+            id: restored.id,
+            sbd: restored.sbd,
+            code: restored.code,
+            studentId: restored.studentId,
+            studentName: restored.studentName,
+            p1: restored.read.p1,
+            p2: restored.read.p2,
+            p3: restored.read.p3,
+            grade: restored.grade,
+            needsReview: restored.needsReview,
+            fileName: restored.fileName,
           }]).catch(() => {});
         }
         say('Đã khôi phục phiếu vào danh sách');
@@ -1576,10 +1581,15 @@ function PaperGrade({
     }));
     const res = await savePaperResults(paper.id, mappedItems);
 
-    // Tự động đồng bộ điểm vào Lớp học (Firestore submissions) nếu bài đã gán lớp
+    // Tự động đồng bộ điểm vào Lớp học (Firestore submissions) nếu bài đã gán lớp (dùng ID thực sau khi lưu)
     let syncError = null;
     if (res.ok && paper.classId) {
-      const syncRes = await syncPaperResultsToSubmissions(paper, mappedItems).catch((err) => ({
+      const idMap = res.idMap || {};
+      const syncedItems = mappedItems.map((m) => ({
+        ...m,
+        id: idMap[m.clientId] || m.id || m.clientId,
+      }));
+      const syncRes = await syncPaperResultsToSubmissions(paper, syncedItems).catch((err) => ({
         ok: false,
         error: err?.message || 'Lỗi đồng bộ lớp học',
       }));
@@ -1598,11 +1608,20 @@ function PaperGrade({
       };
       updatePaperExam(paper.id, { stats: nextStats }).catch(() => {});
       onPaperChange?.({ stats: nextStats });
-      setItems((cur) => cur.map((c) => {
-        if (!toSave.some((s) => s.id === c.id)) return c;
-        const realId = idMap[c.id] || c.id;
-        return { ...c, id: realId, saved: true, edited: false };
-      }));
+      setItems((cur) => {
+        const updated = cur.map((c) => {
+          if (!toSave.some((s) => s.id === c.id)) return c;
+          const realId = idMap[c.id] || c.id;
+          return { ...c, id: realId, saved: true, edited: false };
+        });
+        // Khử trùng nếu clientId tạm ánh xạ trùng về cùng 1 realId đã tồn tại
+        const seen = new Set();
+        return updated.filter((c) => {
+          if (seen.has(c.id)) return false;
+          seen.add(c.id);
+          return true;
+        });
+      });
       if (editId && idMap[editId]) setEditId(idMap[editId]);
     }
 
@@ -2190,7 +2209,12 @@ function SheetEditor({ item, codes, members, counts, navInfo = null, onNavigate 
                 <span>Họ và tên thí sinh</span>
                 <input
                   value={item.studentName || ''}
-                  onChange={(e) => onChange({ studentName: e.target.value, studentId: item.studentId || null })}
+                  onChange={(e) => {
+                    const nextName = e.target.value;
+                    const matchedMember = members.find((m) => m.id === item.studentId);
+                    const keepId = matchedMember && matchedMember.name === nextName ? item.studentId : null;
+                    onChange({ studentName: nextName, studentId: keepId });
+                  }}
                   placeholder="Gõ tên học sinh nếu chưa có trong lớp…"
                 />
               </label>

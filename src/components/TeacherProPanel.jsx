@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTeacherPro } from '../hooks/useTeacherPro.js';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { resolveEntitlements, FREE_TEACHER_LIMITS } from '../lib/entitlements.js';
 import '../styles/teacher-pro.css';
 
 /* ============ SVG ICONS ============ */
@@ -46,8 +47,9 @@ const IcoClock = ({ size = 18 }) => (
 
 /* ============ MAIN ============ */
 export default function TeacherProPanel() {
-  const { user } = useAuth();
+  const { user, tier } = useAuth();
   const pro = useTeacherPro();
+  const isTeacherProActive = resolveEntitlements({ user, pro, tier, userRole: 'teacher' }).isTeacherVip;
   const [keyInput, setKeyInput] = useState('');
   const [msg, setMsg] = useState(null);
 
@@ -69,9 +71,10 @@ export default function TeacherProPanel() {
   };
 
   /* ============ ĐANG LÀ PRO ============ */
-  if (pro.isPro) {
-    const expiryDate = new Date(pro.expiry);
-    const isExpiringSoon = pro.daysLeft <= 7;
+  if (isTeacherProActive) {
+    const expiryDate = pro.expiry ? new Date(pro.expiry) : null;
+    const isValidExpiry = Boolean(expiryDate && !Number.isNaN(expiryDate.getTime()));
+    const isExpiringSoon = isValidExpiry && typeof pro.daysLeft === 'number' && pro.daysLeft <= 7;
 
     return (
       <div className="tpp">
@@ -91,14 +94,14 @@ export default function TeacherProPanel() {
             <IcoClock size={18} />
             <div>
               <span>Hạn sử dụng</span>
-              <b>{expiryDate.toLocaleDateString('vi-VN')}</b>
+              <b>{isValidExpiry ? expiryDate.toLocaleDateString('vi-VN') : 'Không giới hạn'}</b>
             </div>
           </div>
           <div className={'tpp-info' + (isExpiringSoon ? ' warn' : '')}>
             <IcoWarning size={18} />
             <div>
               <span>Còn lại</span>
-              <b>{pro.daysLeft} ngày</b>
+              <b>{isValidExpiry ? `${pro.daysLeft} ngày` : 'Đặc quyền'}</b>
             </div>
           </div>
           <div className="tpp-info">
@@ -129,7 +132,7 @@ export default function TeacherProPanel() {
         </div>
 
         <p className="tpp-note">
-          Sau khi hết hạn, tài khoản sẽ tự động chuyển về gói <b>Giáo viên Free</b> (tối đa 1 lớp, 40 học sinh, 3 đề thủ công).
+          Sau khi hết hạn, tài khoản sẽ tự động chuyển về gói <b>Giáo viên Free</b> (tối đa {FREE_TEACHER_LIMITS.maxClasses} lớp, {FREE_TEACHER_LIMITS.maxStudentsPerClass} học sinh, {FREE_TEACHER_LIMITS.maxExams} đề / {FREE_TEACHER_LIMITS.maxManualEntries} lượt nhập thủ công).
         </p>
       </div>
     );

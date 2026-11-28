@@ -340,6 +340,14 @@ export default function ExamPreviewSimulator({
     initialWizardStep || derivedStepFromTab(defaultTab || 'sim')
   );
 
+  // Đồng bộ khi parent (VD: AutoExamStudio) thay đổi defaultTab / initialWizardStep
+  useEffect(() => {
+    if (defaultTab) {
+      setTab(defaultTab);
+      setWizardStep(initialWizardStep || derivedStepFromTab(defaultTab));
+    }
+  }, [defaultTab, initialWizardStep]);
+
   const handleSelectTab = useCallback((nextTab, explicitStep = null) => {
     setTab(nextTab);
     setWizardStep(explicitStep || derivedStepFromTab(nextTab));
@@ -427,15 +435,19 @@ export default function ExamPreviewSimulator({
     });
   }, [editData.questions, shuffleConfig, lockedIndices]);
 
-  // Ensure activeCode and compareCodeB are always valid
+  // Ensure activeCode, compareCodeB, and simCode are always valid
   useEffect(() => {
+    const firstCode = shuffledExams[0]?.code || '101';
     if (!shuffledExams.some((v) => v.code === activeCode)) {
-      setActiveCode(shuffledExams[0]?.code || '101');
+      setActiveCode(firstCode);
     }
     if (!shuffledExams.some((v) => v.code === compareCodeB)) {
-      setCompareCodeB(shuffledExams[1]?.code || shuffledExams[0]?.code || '101');
+      setCompareCodeB(shuffledExams[1]?.code || firstCode);
     }
-  }, [shuffledExams, activeCode, compareCodeB]);
+    if (!shuffledExams.some((v) => v.code === simCode)) {
+      setSimCode(firstCode);
+    }
+  }, [shuffledExams, activeCode, compareCodeB, simCode]);
 
   // Auto-Validation report
   const validationReport = useMemo(
@@ -515,6 +527,12 @@ export default function ExamPreviewSimulator({
       grade: exam.grade || matrix?.grade || '12',
       questions: [...questions],
     });
+    setSimAnswers({});
+    setSimActiveQ(0);
+    setSimSubmitted(false);
+    setSimScore(null);
+    setFlagged({});
+    setLockedIndices([]);
   }, [examSyncKey, exam, matrix, questions]);
 
   useEffect(() => {
@@ -523,9 +541,14 @@ export default function ExamPreviewSimulator({
 
   /* ---------- TOAST ---------- */
   const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, []);
   const showToast = useCallback((message, type = 'info') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3200);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3200);
   }, []);
 
   /* Đọc Mẫu đầu trang đề thi từ Hồ sơ Giáo viên (cs-teacher-exam-prefs-v1) */
@@ -689,9 +712,15 @@ export default function ExamPreviewSimulator({
   /* ---------- PRESETS ("MẪU ĐẢO") ---------- */
   const handleApplyPreset = (preset) => {
     if (!preset?.config) return;
+    const cfg = preset.config;
     setShuffleConfig((prev) => ({
       ...prev,
-      ...preset.config,
+      ...cfg,
+      shufflePart1: cfg.shufflePart1 ?? cfg.shuffleQuestions ?? prev.shufflePart1,
+      shufflePart2: cfg.shufflePart2 ?? cfg.shuffleQuestions ?? prev.shufflePart2,
+      shufflePart3: cfg.shufflePart3 ?? cfg.shuffleQuestions ?? prev.shufflePart3,
+      shufflePart1Options: cfg.shufflePart1Options ?? cfg.shuffleOptions ?? prev.shufflePart1Options,
+      shufflePart2Statements: cfg.shufflePart2Statements ?? cfg.shuffleOptions ?? prev.shufflePart2Statements,
     }));
     sound.pop();
     showToast(`Đã áp dụng mẫu đảo: "${preset.name}"`, 'success');
@@ -746,7 +775,7 @@ export default function ExamPreviewSimulator({
 
   /* ---------- TIMER ---------- */
   useEffect(() => {
-    if (simSubmitted) return undefined;
+    if (tab !== 'sim' || simSubmitted) return undefined;
     const t = setInterval(() => {
       setSimTimeLeft((s) => {
         if (s <= 0) return 0;
@@ -764,7 +793,7 @@ export default function ExamPreviewSimulator({
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [simSubmitted]);
+  }, [tab, simSubmitted]);
 
   /* ---------- SUBMIT ---------- */
   const handleSubmitSimulation = useCallback(() => {
@@ -1132,6 +1161,7 @@ export default function ExamPreviewSimulator({
       examTitle: exam.title || matrix?.title || 'Đề kiểm tra',
       subject: exam.subject || matrix?.subject || 'Hóa học',
       duration: exam.duration || matrix?.duration || 30,
+      grade: exam.grade || matrix?.grade || '12',
       questions: [...questions],
     });
     setEditMode(false);
@@ -1390,9 +1420,16 @@ export default function ExamPreviewSimulator({
                     <input
                       type="checkbox"
                       checked={shuffleConfig.shuffleQuestions}
-                      onChange={(e) =>
-                        setShuffleConfig((prev) => ({ ...prev, shuffleQuestions: e.target.checked }))
-                      }
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setShuffleConfig((prev) => ({
+                          ...prev,
+                          shuffleQuestions: checked,
+                          shufflePart1: checked,
+                          shufflePart2: checked,
+                          shufflePart3: checked,
+                        }));
+                      }}
                     />
                   </label>
 
@@ -1404,9 +1441,15 @@ export default function ExamPreviewSimulator({
                     <input
                       type="checkbox"
                       checked={shuffleConfig.shuffleOptions}
-                      onChange={(e) =>
-                        setShuffleConfig((prev) => ({ ...prev, shuffleOptions: e.target.checked }))
-                      }
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setShuffleConfig((prev) => ({
+                          ...prev,
+                          shuffleOptions: checked,
+                          shufflePart1Options: checked,
+                          shufflePart2Statements: checked,
+                        }));
+                      }}
                     />
                   </label>
 
@@ -1719,6 +1762,20 @@ export default function ExamPreviewSimulator({
                             </strong>
                             <span className="eps-opt-text">
                               {useMath ? <MathText text={opt} /> : opt}
+                              {(() => {
+                                const optImg = Array.isArray(currentQ.optionImages)
+                                  ? currentQ.optionImages[oIdx]
+                                  : (currentQ.optionImages && typeof currentQ.optionImages === 'object'
+                                      ? (currentQ.optionImages[oIdx] ?? currentQ.optionImages[String(oIdx)])
+                                      : null);
+                                return optImg ? (
+                                  <img
+                                    src={optImg}
+                                    alt={`Phương án ${String.fromCharCode(65 + oIdx)}`}
+                                    style={{ display: 'block', maxWidth: '100%', maxHeight: 140, marginTop: 6, borderRadius: 6, objectFit: 'contain' }}
+                                  />
+                                ) : null;
+                              })()}
                             </span>
                             {simSubmitted && isCorrect && (
                               <span
@@ -1805,7 +1862,7 @@ export default function ExamPreviewSimulator({
                       />
                       {simSubmitted && (
                         <div className="eps-input-result">
-                          Đáp án được chấp nhận: <strong>{(currentQ.accepted || []).join(' | ')}</strong>
+                          Đáp án được chấp nhận: <strong>{((currentQ.accepted && currentQ.accepted.length ? currentQ.accepted : [currentQ.answer]).filter((x) => x !== undefined && x !== null && x !== '').join(' | ')) || '—'}</strong>
                         </div>
                       )}
                     </div>
@@ -2390,7 +2447,7 @@ export default function ExamPreviewSimulator({
                                   </>
                                 ) : (
                                   <span className="eps-shuffle-mapping">
-                                    {mapping.type === 'true_false' ? 'Đ/S' : 'TLN'} · Câu {mapping.newNum}
+                                    {mapping.type === 'true_false' ? 'Đ/S' : mapping.type === 'essay' ? 'Tự luận' : 'TLN'} · Câu {mapping.newNum}
                                   </span>
                                 )}
                               </td>
@@ -2412,7 +2469,7 @@ export default function ExamPreviewSimulator({
                                 </>
                               ) : (
                                 <span className="eps-shuffle-mapping">
-                                  {mapping.type === 'true_false' ? 'Đ/S' : 'TLN'} · Gốc #{mapping.origNum}
+                                  {mapping.type === 'true_false' ? 'Đ/S' : mapping.type === 'essay' ? 'Tự luận' : 'TLN'} · Gốc #{mapping.origNum}
                                 </span>
                               )}
                             </td>
@@ -2650,7 +2707,9 @@ export default function ExamPreviewSimulator({
                             <div key={idx} className="a4-answers-cell">
                               <div className="a4-answers-num">{idx + 1}</div>
                               <div className="a4-answers-letter">
-                                {String.fromCharCode(65 + (q.correct || 0))}
+                                {Number.isInteger(q.correct) && q.correct >= 0 && q.correct < 26
+                                  ? String.fromCharCode(65 + q.correct)
+                                  : '—'}
                               </div>
                             </div>
                           );
@@ -2699,7 +2758,7 @@ export default function ExamPreviewSimulator({
                           if (q.type !== 'short_answer') return null;
                           return (
                             <li key={idx}>
-                              <strong>Câu {idx + 1}:</strong> {(q.accepted || []).join(' hoặc ')}
+                              <strong>Câu {idx + 1}:</strong> {((q.accepted && q.accepted.length ? q.accepted : [q.answer]).filter((x) => x !== undefined && x !== null && x !== '').join(' hoặc ')) || '—'}
                             </li>
                           );
                         })}

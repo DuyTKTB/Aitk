@@ -17,7 +17,6 @@ import './landing-3d.css';
 import './landing-more.css';
 import { Audience, Bento, ExamFlow, Beyond, Trust, StartSteps } from './LandingSections.jsx';
 import { IconDefs, FaqIcon, AtomOrbit, Molecule, Crystal, Helix, Flask } from './Art3D.jsx';
-import { addUserReport } from '../data/virtualExamsBank.js';
 import { peekPostAuthRedirect } from '../lib/userRole.js';
 import {
   OFFICIAL_TUTORIAL_VIDEOS,
@@ -27,7 +26,7 @@ import {
 
 const LoginPage = lazy(() => import('./LoginPage.jsx'));
 
-const LOGO = '/img/logo.png';
+const LOGO = '/img/logo-96.webp';
 const openAuth = (mode = 'login') => { location.hash = mode; };
 const prefersReduced = () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -489,7 +488,8 @@ function Manifesto() {
 function VideoSection() {
   const [failed, setFailed] = useState(false);
   const [muted, setMuted] = useState(true);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
+  const [videoActivated, setVideoActivated] = useState(false);
   const [activeVideoId, setActiveVideoId] = useState(VIDEO.youtubeId || OFFICIAL_TUTORIAL_VIDEOS[1]?.videoId || 'nzSoVddOf9s');
   const vref = useRef(null);
 
@@ -524,7 +524,10 @@ function VideoSection() {
               <button
                 key={vid.videoId}
                 type="button"
-                onClick={() => setActiveVideoId(vid.videoId)}
+                onClick={() => {
+                  setActiveVideoId(vid.videoId);
+                  setVideoActivated(true);
+                }}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -543,6 +546,10 @@ function VideoSection() {
                 <img
                   src={mascotImg}
                   alt=""
+                  width={22}
+                  height={22}
+                  loading="lazy"
+                  decoding="async"
                   draggable={false}
                   style={{ width: 22, height: 22, objectFit: 'contain', borderRadius: 999, background: 'rgba(255,255,255,0.16)' }}
                 />
@@ -571,6 +578,10 @@ function VideoSection() {
             <img
               src="/img/elec/elec-happy.png"
               alt=""
+              width={22}
+              height={22}
+              loading="lazy"
+              decoding="async"
               draggable={false}
               style={{ width: 22, height: 22, objectFit: 'contain', borderRadius: 999, background: 'rgba(255,255,255,0.14)' }}
             />
@@ -597,6 +608,10 @@ function VideoSection() {
             <img
               src="/img/elec/elec-love.png"
               alt=""
+              width={22}
+              height={22}
+              loading="lazy"
+              decoding="async"
               draggable={false}
               style={{ width: 22, height: 22, objectFit: 'contain', borderRadius: 999, background: 'rgba(255,255,255,0.14)' }}
             />
@@ -609,11 +624,64 @@ function VideoSection() {
         <Crystal className="cry-l" />
         <Crystal className="cry-r" />
         <div className="lp-vframe">
-          {currentVideo?.videoId ? (
+          {!videoActivated ? (
+            <button
+              type="button"
+              onClick={() => setVideoActivated(true)}
+              aria-label={`Phát video: ${currentVideo?.title || 'Hướng dẫn ELEC AI'}`}
+              style={{
+                position: 'relative',
+                width: '100%',
+                height: '100%',
+                padding: 0,
+                border: 0,
+                background: '#0b1224',
+                cursor: 'pointer',
+                display: 'block',
+                overflow: 'hidden',
+              }}
+            >
+              <img
+                src={
+                  currentVideo?.videoId
+                    ? `https://i.ytimg.com/vi/${currentVideo.videoId}/hqdefault.jpg`
+                    : (VIDEO.poster || '')
+                }
+                alt={currentVideo?.title || 'Video hướng dẫn ELEC AI'}
+                width={1280}
+                height={720}
+                loading="lazy"
+                decoding="async"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', filter: 'brightness(0.84)' }}
+              />
+              <span
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 72,
+                  height: 72,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #2563eb, #4f46e5)',
+                  color: '#fff',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 14px 36px rgba(37, 99, 235, 0.55)',
+                  border: '2px solid rgba(255,255,255,0.45)',
+                }}
+              >
+                <IcoPlay size={28} />
+              </span>
+            </button>
+          ) : currentVideo?.videoId ? (
             <iframe
               key={currentVideo.videoId}
               title={currentVideo.title}
-              src={`https://www.youtube-nocookie.com/embed/${currentVideo.videoId}?rel=0`}
+              src={`https://www.youtube-nocookie.com/embed/${currentVideo.videoId}?rel=0&autoplay=1`}
+              loading="lazy"
               allow="autoplay; encrypted-media; picture-in-picture"
               allowFullScreen
             />
@@ -622,7 +690,7 @@ function VideoSection() {
               ref={vref}
               src={VIDEO.src}
               poster={VIDEO.poster || undefined}
-              preload="auto"
+              preload="none"
               playsInline
               muted={muted}
               autoPlay
@@ -634,7 +702,7 @@ function VideoSection() {
             />
           )}
 
-          {!failed && !currentVideo?.videoId && (
+          {videoActivated && !failed && !currentVideo?.videoId && (
             <div className="lp-vctl">
               <button type="button" onClick={togglePlay} aria-label={playing ? 'Tạm dừng' : 'Phát'}>
                 {playing ? <IcoPause /> : <IcoPlay size={18} />}
@@ -1053,14 +1121,18 @@ export default function Landing({ theme, onToggleTheme, authOpen, authMode }) {
     const email = String(fd.get('fb-email') || '').trim();
     if (!message) return;
     try {
-      addUserReport('guest', {
-        kind: fbType === 'bug' ? 'report' : 'feedback',
-        category: fbType || 'idea',
-        content: message,
-        userEmail: email || 'Khách (Landing)',
-        rating: 5,
-        submittedAt: Date.now(),
-      });
+      import('../data/virtualExamsBank.js')
+        .then(({ addUserReport }) => {
+          addUserReport('guest', {
+            kind: fbType === 'bug' ? 'report' : 'feedback',
+            category: fbType || 'idea',
+            content: message,
+            userEmail: email || 'Khách (Landing)',
+            rating: 5,
+            submittedAt: Date.now(),
+          });
+        })
+        .catch(() => {});
     } catch { /* ignore storage errors */ }
     form.reset();
     setFbSent(true);
