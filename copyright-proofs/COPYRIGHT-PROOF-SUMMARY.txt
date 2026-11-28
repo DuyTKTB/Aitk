@@ -1,0 +1,25 @@
+========================================================================
+  ELEC SCIENCE AI — CRYPTOGRAPHIC COPYRIGHT MANIFEST SUMMARY (SHA-256)  
+========================================================================
+Project          : ELEC Science AI (ELEC AI) (elec-science-ai v1.0.0)
+Copyright Owner  : Nguyễn Thế Duy (Duy TK / Tk Media) <duyfamabo@gmail.com>
+License          : All Rights Reserved (UNLICENSED)
+Official Website : https://www.elecai.id.vn/
+Repository       : https://github.com/DuyTKTB/Aitk.git
+Git Branch       : main
+Git HEAD Commit  : 954f4a451d5ee3efe8a9d184a8744d97700e4bdf
+Git Commit Date  : 2026-11-27T07:22:40+07:00
+Generated (UTC)  : 2026-11-28T10:11:35.099Z
+Files Hashed     : 1741
+Total Size       : 284,992,822 bytes
+------------------------------------------------------------------------
+MASTER SHA-256 (MANIFEST-SHA256.txt):
+  7a1827a109376a31e674bb728541559ef346d66f46062c872e1ce35b63642cdc
+========================================================================
+Verification command:
+  npm run copyright:verify
+
+OpenTimestamps (Bitcoin Blockchain Proof — Free & Private):
+  Drop copyright-proofs/MANIFEST-SHA256.txt onto https://opentimestamps.org/
+  Save the downloaded MANIFEST-SHA256.txt.ots into copyright-proofs/
+========================================================================

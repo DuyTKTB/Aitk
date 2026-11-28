@@ -1,0 +1,23 @@
+{
+  "project": "ELEC Science AI (ELEC AI)",
+  "packageName": "elec-science-ai",
+  "version": "1.0.0",
+  "license": "All Rights Reserved (UNLICENSED)",
+  "copyrightOwner": "Nguyễn Thế Duy (Duy TK / Tk Media)",
+  "contactEmail": "duyfamabo@gmail.com",
+  "officialWebsite": "https://www.elecai.id.vn/",
+  "repository": "https://github.com/DuyTKTB/Aitk.git",
+  "gitBranch": "main",
+  "gitCommit": "954f4a451d5ee3efe8a9d184a8744d97700e4bdf",
+  "gitCommitDate": "2026-11-27T07:22:40+07:00",
+  "generatedAtUtc": "2026-11-28T10:11:35.099Z",
+  "totalFilesHashed": 1741,
+  "totalBytesHashed": 284992822,
+  "manifestFile": "copyright-proofs/MANIFEST-SHA256.txt",
+  "manifestSha256": "7a1827a109376a31e674bb728541559ef346d66f46062c872e1ce35b63642cdc",
+  "howToTimestamp": [
+    "1. Upload ONLY copyright-proofs/MANIFEST-SHA256.txt (not your source code) to https://opentimestamps.org/",
+    "2. Download the resulting MANIFEST-SHA256.txt.ots file and store it in copyright-proofs/",
+    "3. Keep an immutable backup/archive or Git commit of this exact snapshot alongside the .ots proof."
+  ]
+}

@@ -25,12 +25,42 @@
     </image:image>
   </url>
 
-  <!-- Tiểu sử Nhà sáng lập ELEC Science AI: Nguyễn Thế Duy (Duy TK / Tk Media) -->
+  <!-- Tiểu sử Nhà sáng lập, Giải thưởng & Bản quyền Tác giả ELEC Science AI: Nguyễn Thế Duy (Duy TK / Tk Media) -->
   <url>
     <loc>https://www.elecai.id.vn/nha-sang-lap</loc>
-    <lastmod>2026-11-26</lastmod>
-    <changefreq>monthly</changefreq>
+    <lastmod>2026-11-28</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/author/nguyen-the-duy-giai-ba-khoi-nghiep-hung-yen-2026.jpg</image:loc>
+      <image:title>Nguyễn Thế Duy nhận Giải Ba Cuộc thi Học sinh phổ thông với ý tưởng khởi nghiệp tỉnh Hưng Yên năm 2026</image:title>
+      <image:caption>Chân dung tác giả Nguyễn Thế Duy (Duy TK / Tk Media) cùng Giấy chứng nhận Giải Ba của Sở GD&amp;ĐT Hưng Yên năm 2026 cho dự án ELEC AI.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/author/chung-nhan-giai-ba-elec-ai-hung-yen-2026.jpg</image:loc>
+      <image:title>Giấy chứng nhận Giải Ba Sở GD&amp;ĐT Hưng Yên năm 2026 — Dự án Elec AI</image:title>
+      <image:caption>Giấy chứng nhận chính thức Giải Ba Cuộc thi Học sinh phổ thông với ý tưởng khởi nghiệp tỉnh Hưng Yên năm 2026 cho dự án Elec AI (Trường THPT Đông Thụy Anh).</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/author/nguyen-the-duy-phong-van-hytv-elec-ai-2026.jpg</image:loc>
+      <image:title>Nguyễn Thế Duy trả lời phỏng vấn Đài PT&amp;TH Hưng Yên (HYTV) về dự án ELEC AI</image:title>
+      <image:caption>Nhà sáng lập Nguyễn Thế Duy trả lời phỏng vấn phóng viên Đài Phát thanh và Truyền hình Hưng Yên (HYTV) trước gian trưng bày ELEC AI.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/author/elec-ai-thuyet-trinh-ban-giam-khao-hung-yen-2026.jpg</image:loc>
+      <image:title>Nhóm dự án ELEC AI thuyết trình trước Ban giám khảo năm 2026</image:title>
+      <image:caption>Đội ngũ học sinh Trường THPT Đông Thụy Anh thuyết trình phần mềm trợ lý học tập số ELEC AI trước Hội đồng Giám khảo tỉnh Hưng Yên.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/author/doi-ngu-elec-ai-san-khau-khoi-nghiep-hung-yen-2026.jpg</image:loc>
+      <image:title>Đội ngũ dự án ELEC AI trên sân khấu Cuộc thi khởi nghiệp tỉnh Hưng Yên năm 2026</image:title>
+      <image:caption>Tập thể nhóm tác giả và giáo viên hướng dẫn dự án ELEC AI chụp ảnh kỷ niệm trên sân khấu chính cuộc thi năm 2026.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/author/gian-hang-elec-ai-thpt-dong-thuy-anh-2026.jpg</image:loc>
+      <image:title>Gian hàng trưng bày dự án ELEC AI — Trường THPT Đông Thụy Anh</image:title>
+      <image:caption>Không gian gian trưng bày dự án Elec AI — Phần mềm trợ lý học tập số môn Hóa học trong trường phổ thông cùng linh vật ELEC AI.</image:caption>
+    </image:image>
     <image:image>
       <image:loc>https://www.elecai.id.vn/img/nguyen-the-duy.jpg?v=2</image:loc>
       <image:title>Nguyễn Thế Duy (Duy TK / Tk Media) — Nhà sáng lập ELEC Science AI</image:title>
@@ -46,8 +76,8 @@
   <!-- Giới thiệu chi tiết về nền tảng ELEC Science AI (ELEC AI) -->
   <url>
     <loc>https://www.elecai.id.vn/gioi-thieu</loc>
-    <lastmod>2026-11-26</lastmod>
-    <changefreq>monthly</changefreq>
+    <lastmod>2026-11-28</lastmod>
+    <changefreq>weekly</changefreq>
     <priority>0.9</priority>
     <image:image>
       <image:loc>https://www.elecai.id.vn/img/og-image.png</image:loc>
@@ -56,6 +86,14 @@
     <image:image>
       <image:loc>https://www.elecai.id.vn/so_do_kien_truc_tong_the_elec_ai.png</image:loc>
       <image:title>Kiến trúc công nghệ AI &amp; Khảo thí ELEC Science AI</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/author/chung-nhan-giai-ba-elec-ai-hung-yen-2026.jpg</image:loc>
+      <image:title>Chứng nhận Giải Ba Sở GD&amp;ĐT Hưng Yên 2026 — Dự án Elec AI</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://www.elecai.id.vn/img/author/nguyen-the-duy-phong-van-hytv-elec-ai-2026.jpg</image:loc>
+      <image:title>Phỏng vấn Đài PT&amp;TH Hưng Yên (HYTV) về ELEC AI</image:title>
     </image:image>
   </url>
 

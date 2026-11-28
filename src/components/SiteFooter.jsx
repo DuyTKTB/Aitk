@@ -47,9 +47,17 @@ export default function SiteFooter() {
       {/* Copyright */}
       <div className="sf-bot">
         <small>
-          © 2026 ELEC AI · Nhà sáng lập:{' '}
+          © 2026 ELEC Science AI (All Rights Reserved) · Tác giả &amp; Bản quyền:{' '}
           <a href="/nha-sang-lap" style={{ color: 'inherit', fontWeight: 600, textDecoration: 'underline' }}>
             Nguyễn Thế Duy (Duy TK)
+          </a>{' '}
+          ·{' '}
+          <a href="/nha-sang-lap#founder-awards" style={{ color: 'inherit', textDecoration: 'underline' }}>
+            Giải Ba Sở GD&amp;ĐT Hưng Yên 2026
+          </a>{' '}
+          ·{' '}
+          <a href="/nha-sang-lap#founder-copyright" style={{ color: 'inherit', textDecoration: 'underline' }}>
+            Chứng thực SHA-256
           </a>{' '}
           ·{' '}
           <a

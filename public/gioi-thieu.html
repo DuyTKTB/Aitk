@@ -66,14 +66,16 @@
             "description": "Tổng quan kiến trúc, sứ mệnh, toàn bộ phân hệ công cụ học tập & khảo thí KHTN và thông tin nhà sáng lập Nguyễn Thế Duy của ELEC Science AI.",
             "inLanguage": "vi-VN",
             "datePublished": "2025-09-01",
-            "dateModified": "2026-11-26",
+            "dateModified": "2026-11-28",
+            "copyrightYear": 2026,
+            "copyrightHolder": { "@id": "https://www.elecai.id.vn/#founder" },
             "isPartOf": { "@id": "https://www.elecai.id.vn/#website" },
             "about": { "@id": "https://www.elecai.id.vn/#app" },
             "mainEntity": { "@id": "https://www.elecai.id.vn/#org" },
             "author": { "@id": "https://www.elecai.id.vn/#founder" },
             "speakable": {
               "@type": "SpeakableSpecification",
-              "cssSelector": ["#aeo-summary", "#geo-specs", "#about-faq h3", "#about-faq p"]
+              "cssSelector": ["#aeo-summary", "#geo-specs", "#awards-copyright", "#about-faq h3", "#about-faq p"]
             }
           },
           {
@@ -82,6 +84,9 @@
             "name": "ELEC Science AI",
             "alternateName": ["ELEC AI", "ELECAI", "Elec AI"],
             "url": "https://www.elecai.id.vn/",
+            "award": [
+              "Giải Ba Cuộc thi 'Học sinh phổ thông với ý tưởng khởi nghiệp' tỉnh Hưng Yên năm 2026 — Sở Giáo dục và Đào tạo Hưng Yên (Dự án: Elec AI - Phần mềm trợ lý học tập số môn Hóa học trong trường phổ thông, Trường THPT Đông Thụy Anh)"
+            ],
             "founder": {
               "@type": "Person",
               "@id": "https://www.elecai.id.vn/#founder",
@@ -89,7 +94,13 @@
               "alternateName": ["Nguyen The Duy", "Duy TK", "Tk Media", "nguyentheduytk"],
               "birthDate": "2010",
               "url": "https://www.elecai.id.vn/nha-sang-lap",
-              "image": "https://www.elecai.id.vn/img/nguyen-the-duy.jpg?v=2",
+              "award": "Giải Ba Cuộc thi 'Học sinh phổ thông với ý tưởng khởi nghiệp' tỉnh Hưng Yên năm 2026 (Sở GD&ĐT Hưng Yên)",
+              "image": [
+                "https://www.elecai.id.vn/img/nguyen-the-duy.jpg?v=2",
+                "https://www.elecai.id.vn/img/author/nguyen-the-duy-giai-ba-khoi-nghiep-hung-yen-2026.jpg",
+                "https://www.elecai.id.vn/img/author/chung-nhan-giai-ba-elec-ai-hung-yen-2026.jpg",
+                "https://www.elecai.id.vn/img/author/nguyen-the-duy-phong-van-hytv-elec-ai-2026.jpg"
+              ],
               "disambiguatingDescription": "Nguyễn Thế Duy (Duy TK / Tk Media, sinh năm 2010 tại Thái Bình) là nhà sáng lập trẻ của ELEC Science AI và PhotobothNe, KHÔNG phải các cá nhân trùng tên làm việc tại PetroVietnam (PVN).",
               "sameAs": [
                 "https://www.facebook.com/nguyentheduytk",
@@ -179,6 +190,21 @@
       }
       .mini-box b { display: block; color: #fff; margin-bottom: 6px; font-size: 15px; }
       .mini-box p { margin: 0; font-size: 14px; color: #cbd5e1; }
+      .award-gallery {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px; margin-top: 14px;
+      }
+      .award-fig {
+        margin: 0; border-radius: 12px; overflow: hidden;
+        border: 1px solid var(--border); background: rgba(15, 23, 42, 0.85);
+      }
+      .award-fig img {
+        width: 100%; height: 220px; object-fit: cover; display: block;
+      }
+      .award-fig figcaption {
+        padding: 10px 12px; font-size: 13px; color: #cbd5e1; line-height: 1.5;
+      }
+      .award-fig figcaption small { display: block; margin-top: 4px; color: #94a3b8; font-size: 11px; }
       ul { margin: 8px 0 0; padding-left: 20px; color: #cbd5e1; }
       li { margin-bottom: 8px; }
       a.inline { color: #93c5fd; text-decoration: underline; }
@@ -304,13 +330,32 @@
           </p>
         </section>
 
-        <section class="card">
-          <h2>5. Thông tin Nhà sáng lập (Founder)</h2>
+        <section class="card" id="awards-copyright">
+          <h2>5. Giải thưởng, Ghi nhận &amp; Bản quyền Tác giả</h2>
           <p>
-            <strong>ELEC Science AI (ELEC AI)</strong> được sáng lập và trực tiếp phát triển bởi <strong>Nguyễn Thế Duy</strong> (biệt danh <strong>Tk Media / Duy TK</strong>, sinh sống tại Thái Bình). Trước khi xây dựng ELEC AI và nền tảng PhotobothNe (<a class="inline" href="https://photobothne.io.vn/" rel="noopener noreferrer">photobothne.io.vn</a>), Duy từng giữ vai trò Chủ nhiệm Gen 6 CLB Truyền thông Sự kiện THPT Đông Thụy Anh.
+            <strong>ELEC Science AI (ELEC AI)</strong> được sáng lập và trực tiếp phát triển bởi <strong>Nguyễn Thế Duy</strong> (biệt danh <strong>Tk Media / Duy TK</strong>, sinh năm 2010 tại Thái Bình, cựu Chủ nhiệm Gen 6 CLB Truyền thông Sự kiện Trường THPT Đông Thụy Anh), đồng thời là tác giả nền tảng PhotobothNe (<a class="inline" href="https://photobothne.io.vn/" rel="noopener noreferrer">photobothne.io.vn</a>).
           </p>
-          <p>
-            Xem tiểu sử đầy đủ tại <a class="inline" href="/nha-sang-lap">https://www.elecai.id.vn/nha-sang-lap</a> hoặc kết nối qua Facebook chính thức:
+          <ul>
+            <li><strong>Giải Ba cấp tỉnh năm 2026:</strong> Dự án <em>“Elec AI — Phần mềm trợ lý học tập số môn Hóa học trong trường phổ thông”</em> (Trường THPT Đông Thụy Anh) đã đoạt <strong>Giải Ba Cuộc thi “Học sinh phổ thông với ý tưởng khởi nghiệp” tỉnh Hưng Yên năm 2026</strong> do Sở Giáo dục và Đào tạo Hưng Yên trao tặng.</li>
+            <li><strong>Ghi nhận truyền thông:</strong> Tác giả Nguyễn Thế Duy được phóng viên <strong>Đài Phát thanh và Truyền hình Hưng Yên (HYTV)</strong> phỏng vấn trực tiếp tại gian trưng bày dự án.</li>
+            <li><strong>Bản quyền &amp; Chứng thực mã nguồn:</strong> Toàn bộ mã nguồn (<code style="color:#93c5fd">elec-science-ai</code>), bộ thuật toán khoa học lõi, giao diện, linh vật ELEC và tư liệu ảnh thuộc bản quyền độc quyền (<strong>© 2026 Nguyễn Thế Duy — All Rights Reserved</strong>), được chứng thực mật mã bằng <strong>SHA-256 Manifest</strong> &amp; dấu thời gian <strong>OpenTimestamps</strong>.</li>
+          </ul>
+          <div class="award-gallery">
+            <figure class="award-fig">
+              <img src="/img/author/nguyen-the-duy-giai-ba-khoi-nghiep-hung-yen-2026.jpg" alt="Nguyễn Thế Duy nhận Giấy chứng nhận Giải Ba Cuộc thi khởi nghiệp tỉnh Hưng Yên năm 2026" width="480" height="720" loading="lazy" />
+              <figcaption>Nhà sáng lập Nguyễn Thế Duy nhận Giấy chứng nhận Giải Ba năm 2026.<small>© 2026 Nguyễn Thế Duy · ELEC Science AI</small></figcaption>
+            </figure>
+            <figure class="award-fig">
+              <img src="/img/author/chung-nhan-giai-ba-elec-ai-hung-yen-2026.jpg" alt="Giấy chứng nhận Giải Ba Sở Giáo dục và Đào tạo Hưng Yên năm 2026 cho dự án Elec AI" width="768" height="1024" loading="lazy" />
+              <figcaption>Giấy chứng nhận Giải Ba của Sở GD&amp;ĐT Hưng Yên cho dự án Elec AI.<small>© 2026 Nguyễn Thế Duy · ELEC Science AI</small></figcaption>
+            </figure>
+            <figure class="award-fig">
+              <img src="/img/author/nguyen-the-duy-phong-van-hytv-elec-ai-2026.jpg" alt="Nguyễn Thế Duy trả lời phỏng vấn Đài Phát thanh và Truyền hình Hưng Yên HYTV" width="461" height="1024" loading="lazy" />
+              <figcaption>Phỏng vấn Đài PT&amp;TH Hưng Yên (HYTV) tại gian hàng trưng bày ELEC AI.<small>© 2026 Nguyễn Thế Duy · ELEC Science AI</small></figcaption>
+            </figure>
+          </div>
+          <p style="margin-top:14px">
+            Xem trọn bộ 6 ảnh bản quyền tác giả, chứng thực SHA-256 và tiểu sử đầy đủ tại <a class="inline" href="/nha-sang-lap">https://www.elecai.id.vn/nha-sang-lap</a> hoặc kết nối qua Facebook chính thức:
             <a class="inline" href="https://www.facebook.com/nguyentheduytk" rel="me noopener noreferrer">https://www.facebook.com/nguyentheduytk</a>.
           </p>
         </section>

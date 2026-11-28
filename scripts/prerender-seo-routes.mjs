@@ -23,10 +23,18 @@ const FOUNDER_PERSON_LD = {
   name: 'Nguyễn Thế Duy',
   alternateName: ['Nguyen The Duy', 'Duy TK', 'Tk Media', 'nguyentheduytk'],
   birthDate: '2010',
-  image: `${SITE_ORIGIN}/img/nguyen-the-duy.jpg?v=2`,
+  award: [
+    "Giải Ba Cuộc thi 'Học sinh phổ thông với ý tưởng khởi nghiệp' tỉnh Hưng Yên năm 2026 — Sở Giáo dục và Đào tạo Hưng Yên (Dự án: Elec AI - Phần mềm trợ lý học tập số môn Hóa học trong trường phổ thông, Trường THPT Đông Thụy Anh)",
+  ],
+  image: [
+    `${SITE_ORIGIN}/img/author/nguyen-the-duy-giai-ba-khoi-nghiep-hung-yen-2026.jpg`,
+    `${SITE_ORIGIN}/img/nguyen-the-duy.jpg?v=2`,
+    `${SITE_ORIGIN}/img/author/chung-nhan-giai-ba-elec-ai-hung-yen-2026.jpg`,
+    `${SITE_ORIGIN}/img/author/nguyen-the-duy-phong-van-hytv-elec-ai-2026.jpg`,
+  ],
   jobTitle: 'Nhà sáng lập & Kỹ sư phát triển chính (Founder & Lead Developer) — ELEC Science AI',
   disambiguatingDescription:
-    'Nguyễn Thế Duy (Duy TK / Tk Media, sinh năm 2010 tại Thái Bình) là nhà sáng lập trẻ của ELEC Science AI và PhotobothNe, KHÔNG phải các cá nhân trùng tên làm việc tại PetroVietnam (PVN).',
+    'Nguyễn Thế Duy (Duy TK / Tk Media, sinh năm 2010 tại Thái Bình) là nhà sáng lập trẻ của ELEC Science AI và PhotobothNe, đoạt Giải Ba Cuộc thi Học sinh phổ thông với ý tưởng khởi nghiệp tỉnh Hưng Yên năm 2026 (Sở GD&ĐT Hưng Yên), KHÔNG phải các cá nhân trùng tên làm việc tại PetroVietnam (PVN).',
   nationality: { '@type': 'Country', name: 'Vietnam' },
   knowsLanguage: ['vi', 'en'],
   alumniOf: {

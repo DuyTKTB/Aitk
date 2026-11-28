@@ -1,0 +1,34 @@
+Copyright (c) 2026 Nguyễn Thế Duy (Duy TK / Tk Media) — ELEC Science AI.
+All Rights Reserved.
+
+BẢN QUYỀN ĐỘC QUYỀN — MỌI QUYỀN ĐƯỢC BẢO LƯU
+
+1. Chủ sở hữu bản quyền (Copyright Owner)
+   - Dự án / Phần mềm: ELEC Science AI (ELEC AI / ELECAI) — package `elec-science-ai`
+   - Tác giả & Nhà sáng lập: Nguyễn Thế Duy (Duy TK / Tk Media)
+   - Website chính thức: https://www.elecai.id.vn/
+   - Kho mã nguồn chính thức: https://github.com/DuyTKTB/Aitk
+   - Liên hệ: duyfamabo@gmail.com | https://www.facebook.com/nguyentheduytk
+
+2. Phạm vi bảo hộ (Scope)
+   Toàn bộ mã nguồn, kiến trúc hệ thống, thuật toán tự phát triển, giao diện người dùng (UI/UX),
+   hình ảnh/linh vật ELEC tự thiết kế, cơ sở dữ liệu biên soạn và tài liệu kỹ thuật trong kho lưu trữ
+   này thuộc quyền sở hữu trí tuệ độc quyền của Chủ sở hữu bản quyền nêu trên, được bảo hộ theo
+   Luật Sở hữu trí tuệ Việt Nam và Công ước Berne về bảo hộ các tác phẩm văn học và nghệ thuật.
+
+3. Điều khoản hạn chế (Restrictions)
+   Nghiêm cấm mọi hành vi sao chép, nhân bản, sửa đổi, phân phối, tái xuất bản, dịch ngược,
+   sử dụng cho mục đích thương mại hoặc phi thương mại đối với bất kỳ phần nào của phần mềm này
+   nếu không có sự đồng ý trước bằng văn bản của Chủ sở hữu bản quyền.
+
+   Permission is NOT granted to copy, modify, merge, publish, distribute, sublicense,
+   and/or sell copies of this software, in whole or in part, without prior written
+   permission from the Copyright Owner.
+
+4. Thư viện bên thứ ba (Third-Party Open Source Software)
+   Các thư viện mã nguồn mở của bên thứ ba được liệt kê trong `package.json` (như React, Vite,
+   Three.js, KaTeX, MediaPipe, Firebase SDK, Supabase SDK, v.v.) vẫn thuộc quyền sở hữu và chịu
+   sự điều chỉnh theo giấy phép mã nguồn mở riêng của từng tác giả tương ứng.
+
+5. Tuyên bố miễn trừ trách nhiệm (Disclaimer)
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
