@@ -4,9 +4,6 @@
      body: { kind: 'bug'|'idea'|'content', message, contact?, context?, clientId, sentAt }
      201/200 → đã nhận.   4xx → dữ liệu sai (không gửi lại).   5xx/mạng → gửi lại sau. */
 
-import { addUserReport } from '../data/virtualExamsBank.js';
-import { supabase } from './supabase.js';
-
 const URL_ = import.meta.env?.VITE_FEEDBACK_URL || null;
 const QUEUE = 'cs-feedback-queue';
 const LAST = 'cs-feedback-last';
@@ -29,9 +26,10 @@ export const collectContext = () => ({
 });
 
 async function post(item) {
-  // 1. Lưu vào kho báo cáo/phản hồi người dùng nội bộ để hiện ngay trong Profile
+  // 1. Lưu vào kho báo cáo/phản hồi người dùng nội bộ để hiện ngay trong Profile (dynamic import tránh kéo 650KB vào entry)
   try {
     const cId = clientId();
+    const { addUserReport } = await import('../data/virtualExamsBank.js');
     addUserReport(cId, {
       kind: item.kind === 'bug' ? 'report' : 'feedback',
       category: item.kind === 'bug' ? 'Báo lỗi hệ thống' : item.kind === 'content' ? 'Báo sai đáp án' : 'Góp ý nâng cấp',
@@ -47,6 +45,7 @@ async function post(item) {
 
   // 2. Thử lưu vào Supabase nếu có bảng feedbacks
   try {
+    const { supabase } = await import('./supabase.js');
     if (supabase) {
       await supabase.from('feedbacks').insert([{
         kind: item.kind,

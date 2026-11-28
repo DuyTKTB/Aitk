@@ -1,23 +1,7 @@
 import { useEffect } from 'react';
-import { SEO_PILLAR_ROUTES, SITE_ORIGIN } from '../data/seoPillarRoutes.js';
 
+const SITE_ORIGIN = 'https://www.elecai.id.vn';
 const NOINDEX_PAGES = new Set(['404', 'admin', 'settings', 'feedback', 'login', 'register']);
-
-const PILLAR_ROUTE_SEO = Object.fromEntries(
-  SEO_PILLAR_ROUTES.map((r) => [
-    r.appPage,
-    {
-      title: r.title,
-      description: r.description,
-      keywords: r.keywords,
-      path: `/${r.slug}`,
-      label: r.label,
-      faqs: r.faqs || [],
-      faqQ: r.faqs?.[0]?.q,
-      faqA: r.faqs?.[0]?.a,
-    },
-  ])
-);
 
 export const ROUTE_SEO = {
   home: {
@@ -29,8 +13,13 @@ export const ROUTE_SEO = {
     path: '/',
     label: 'Trang chủ',
   },
-  ...PILLAR_ROUTE_SEO,
-  'biology-lab': PILLAR_ROUTE_SEO['biology-lab'],
+  'biology-lab': {
+    title: 'Phòng Thí Nghiệm Sinh Học Ảo 3D (20 Lab) · ELEC Science AI',
+    description:
+      '20 mô phỏng Phòng Lab Sinh học 3D trực tuyến: Tế bào 3D, DNA 3D, Giải phẫu người 3D, Kính hiển vi ảo, Di truyền và Sinh thái học chuẩn GDPT 2018.',
+    path: '/phong-thi-nghiem-sinh-hoc',
+    label: 'Phòng Lab Sinh học 3D',
+  },
   login: {
     title: 'Đăng Nhập Tài Khoản Học Sinh & Giáo Viên · ELEC AI',
     description: 'Đăng nhập để vào lớp học, làm bài thi, lưu tiến độ học tập và sử dụng Trợ lý AI giáo dục ELEC Science AI.',
@@ -44,6 +33,28 @@ export const ROUTE_SEO = {
     label: 'Đăng ký',
   },
 };
+
+let pillarSeoMapCache = null;
+async function loadPillarSeoMap() {
+  if (pillarSeoMapCache) return pillarSeoMapCache;
+  const { SEO_PILLAR_ROUTES } = await import('../data/seoPillarRoutes.js');
+  pillarSeoMapCache = Object.fromEntries(
+    SEO_PILLAR_ROUTES.map((r) => [
+      r.appPage,
+      {
+        title: r.title,
+        description: r.description,
+        keywords: r.keywords,
+        path: `/${r.slug}`,
+        label: r.label,
+        faqs: r.faqs || [],
+        faqQ: r.faqs?.[0]?.q,
+        faqA: r.faqs?.[0]?.a,
+      },
+    ])
+  );
+  return pillarSeoMapCache;
+}
 
 function updateRouteJsonLd(meta, url, isNoindex) {
   const SCRIPT_ID = 'elec-route-ld';
@@ -130,77 +141,94 @@ function updateRouteJsonLd(meta, url, isNoindex) {
   });
 }
 
+function applySeoMeta(meta, isNoindex) {
+  const url = `${SITE_ORIGIN}${meta.path}`;
+  document.title = meta.title;
+
+  let descEl = document.querySelector('meta[name="description"]');
+  if (!descEl) {
+    descEl = document.createElement('meta');
+    descEl.name = 'description';
+    document.head.appendChild(descEl);
+  }
+  descEl.content = meta.description;
+
+  if (meta.keywords) {
+    let kwEl = document.querySelector('meta[name="keywords"]');
+    if (!kwEl) {
+      kwEl = document.createElement('meta');
+      kwEl.name = 'keywords';
+      document.head.appendChild(kwEl);
+    }
+    kwEl.content = meta.keywords;
+  }
+
+  let robotsEl = document.querySelector('meta[name="robots"]');
+  if (!robotsEl) {
+    robotsEl = document.createElement('meta');
+    robotsEl.name = 'robots';
+    document.head.appendChild(robotsEl);
+  }
+  const robotsContent = isNoindex
+    ? 'noindex,nofollow'
+    : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1';
+  robotsEl.content = robotsContent;
+  ['googlebot', 'bingbot'].forEach((botName) => {
+    const botEl = document.querySelector(`meta[name="${botName}"]`);
+    if (botEl) botEl.content = robotsContent;
+  });
+
+  let canonicalEl = document.querySelector('link[rel="canonical"]');
+  if (!canonicalEl) {
+    canonicalEl = document.createElement('link');
+    canonicalEl.rel = 'canonical';
+    document.head.appendChild(canonicalEl);
+  }
+  canonicalEl.href = url;
+
+  document.querySelectorAll('link[rel="alternate"][hreflang]').forEach((el) => {
+    el.href = url;
+  });
+
+  const ogTitle = document.querySelector('meta[property="og:title"]');
+  if (ogTitle) ogTitle.content = meta.title;
+
+  const ogDesc = document.querySelector('meta[property="og:description"]');
+  if (ogDesc) ogDesc.content = meta.description;
+
+  const ogUrl = document.querySelector('meta[property="og:url"]');
+  if (ogUrl) ogUrl.content = url;
+
+  const twUrl = document.querySelector('meta[name="twitter:url"]');
+  if (twUrl) twUrl.content = url;
+
+  const twTitle = document.querySelector('meta[name="twitter:title"]');
+  if (twTitle) twTitle.content = meta.title;
+
+  const twDesc = document.querySelector('meta[name="twitter:description"]');
+  if (twDesc) twDesc.content = meta.description;
+
+  updateRouteJsonLd(meta, url, isNoindex);
+}
+
 export function useSeoHead(page) {
   useEffect(() => {
-    const meta = ROUTE_SEO[page] || ROUTE_SEO.home;
-    const url = `${SITE_ORIGIN}${meta.path}`;
     const isNoindex = NOINDEX_PAGES.has(page);
-
-    document.title = meta.title;
-
-    let descEl = document.querySelector('meta[name="description"]');
-    if (!descEl) {
-      descEl = document.createElement('meta');
-      descEl.name = 'description';
-      document.head.appendChild(descEl);
-    }
-    descEl.content = meta.description;
-
-    if (meta.keywords) {
-      let kwEl = document.querySelector('meta[name="keywords"]');
-      if (!kwEl) {
-        kwEl = document.createElement('meta');
-        kwEl.name = 'keywords';
-        document.head.appendChild(kwEl);
-      }
-      kwEl.content = meta.keywords;
+    if (page === 'home' || page === 'login' || page === 'register' || isNoindex) {
+      applySeoMeta(ROUTE_SEO[page] || ROUTE_SEO.home, isNoindex);
+      return undefined;
     }
 
-    let robotsEl = document.querySelector('meta[name="robots"]');
-    if (!robotsEl) {
-      robotsEl = document.createElement('meta');
-      robotsEl.name = 'robots';
-      document.head.appendChild(robotsEl);
-    }
-    const robotsContent = isNoindex
-      ? 'noindex,nofollow'
-      : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1';
-    robotsEl.content = robotsContent;
-    ['googlebot', 'bingbot'].forEach((botName) => {
-      const botEl = document.querySelector(`meta[name="${botName}"]`);
-      if (botEl) botEl.content = robotsContent;
-    });
-
-    let canonicalEl = document.querySelector('link[rel="canonical"]');
-    if (!canonicalEl) {
-      canonicalEl = document.createElement('link');
-      canonicalEl.rel = 'canonical';
-      document.head.appendChild(canonicalEl);
-    }
-    canonicalEl.href = url;
-
-    document.querySelectorAll('link[rel="alternate"][hreflang]').forEach((el) => {
-      el.href = url;
-    });
-
-    const ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) ogTitle.content = meta.title;
-
-    const ogDesc = document.querySelector('meta[property="og:description"]');
-    if (ogDesc) ogDesc.content = meta.description;
-
-    const ogUrl = document.querySelector('meta[property="og:url"]');
-    if (ogUrl) ogUrl.content = url;
-
-    const twUrl = document.querySelector('meta[name="twitter:url"]');
-    if (twUrl) twUrl.content = url;
-
-    const twTitle = document.querySelector('meta[name="twitter:title"]');
-    if (twTitle) twTitle.content = meta.title;
-
-    const twDesc = document.querySelector('meta[name="twitter:description"]');
-    if (twDesc) twDesc.content = meta.description;
-
-    updateRouteJsonLd(meta, url, isNoindex);
+    let alive = true;
+    loadPillarSeoMap()
+      .then((map) => {
+        if (!alive) return;
+        applySeoMeta(map[page] || ROUTE_SEO[page] || ROUTE_SEO.home, isNoindex);
+      })
+      .catch(() => {
+        if (!alive) return;
+        applySeoMeta(ROUTE_SEO[page] || ROUTE_SEO.home, isNoindex);
+      });
+    return () => { alive = false; };
   }, [page]);
 }

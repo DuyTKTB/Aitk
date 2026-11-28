@@ -20,12 +20,21 @@ import './perf-lite.css';
 
 import App from './App.jsx';
 import { applySettings } from './lib/settings.js';
-import { initFeedbackQueue } from './lib/feedback.js';
 import { applyPerfMode } from './lib/perf.js';
 
 applyPerfMode();
 applySettings();
-initFeedbackQueue();
+// Chỉ tải hàng đợi feedback khi thực sự có tin nhắn chờ gửi hoặc khi mạng vừa kết nối lại
+const bootFeedbackQueue = () => {
+  try {
+    const raw = localStorage.getItem('cs-feedback-queue');
+    if (raw && raw !== '[]') {
+      import('./lib/feedback.js').then(({ initFeedbackQueue }) => initFeedbackQueue()).catch(() => {});
+    }
+  } catch { /* ignore */ }
+};
+bootFeedbackQueue();
+window.addEventListener('online', bootFeedbackQueue);
 
 /* ============================================================
    ERROR BOUNDARY

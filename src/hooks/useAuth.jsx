@@ -22,7 +22,6 @@ import { getTier, clearTierCache } from '../lib/tier.js';
 import { invalidateVipCache } from '../lib/vipService.js';
 import { saveUserProfile, syncUserProfileFromCloud } from '../lib/userProfileService.js';
 import { canonicalizeEmail } from '../lib/authValidation.js';
-import { requestBrandedPasswordReset } from '../lib/emailOtp.js';
 import {
   setUserRole,
   setPostAuthRedirect,
@@ -588,6 +587,7 @@ export function AuthProvider({ children }) {
   /* ============ RESET PASSWORD ============ */
   const resetPassword = useCallback(async (email) => {
     try {
+      const { requestBrandedPasswordReset } = await import('../lib/emailOtp.js');
       await requestBrandedPasswordReset(email);
     } catch (e) {
       const code = String(e?.code || '');
