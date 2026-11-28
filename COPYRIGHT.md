@@ -76,4 +76,6 @@ node scripts/generate-copyright-manifest.mjs --verify
 
 * **Xác minh tên miền & công cụ tìm kiếm:** `https://www.elecai.id.vn/` (Google Search Console & Bing Webmaster Tools).
 * **Lịch sử phát triển trên bên thứ ba:** GitHub repository `DuyTKTB/Aitk` (khuyến nghị bật ký số commit bằng SSH/GPG để hiển thị nhãn `Verified`).
-* **Đăng ký pháp lý chính thức:** Khuyến nghị nộp hồ sơ đăng ký *Quyền tác giả chương trình máy tính* tại **Cục Bản quyền tác giả (Bộ VH-TT-DL Việt Nam)** và lưu trữ phiên bản học thuật kèm mã **DOI** trên **Zenodo**.
+* **Chứng thực học thuật quốc tế (Zenodo / CERN DOI):** [https://doi.org/10.5281/zenodo.24627147](https://doi.org/10.5281/zenodo.24627147) (Concept DOI: `10.5281/zenodo.24627146`, bản ghi `https://zenodo.org/records/24627147`).
+* **Hồ sơ công khai & Bách khoa:** Wikipedia tiếng Việt ([`ELEC Science AI`](https://vi.wikipedia.org/wiki/ELEC_Science_AI)) và Product Hunt ([`elec-science-ai`](https://www.producthunt.com/products/elec-science-ai)).
+* **Đăng ký pháp lý chính thức:** Khuyến nghị nộp hồ sơ đăng ký *Quyền tác giả chương trình máy tính* tại **Cục Bản quyền tác giả (Bộ VH-TT-DL Việt Nam)**.
